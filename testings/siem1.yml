@@ -1,0 +1,21 @@
+input {
+ file {
+  path => "/home/mmta/go/src/siem/test.log"
+  start_position => "beginning"
+  sincedb_path=> "/home/mmta/go/src/siem/sincedb.txt.1"
+  ignore_older => 0
+  codec => "json"
+ }
+}
+
+output{
+  http {
+   format=>"json"
+   # truststore => "/home/mmta/go/src/siem/test.jks"
+   # truststore_password => changeit
+   http_method=>"post"
+   url=>"http://localhost:8080"
+  }
+}
+
+

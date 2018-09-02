@@ -1,0 +1,36 @@
+site_name: 
+nav:
+    - net.md
+    - arch.md
+theme: 
+  name: 'material'
+  palette:
+    primary: 'indigo'
+    accent: 'indigo'
+extra_css:
+    - scripts/mermaid/mermaid.css
+    - scripts/asciinema/asciinema-player.css
+extra_javascript:
+    - scripts/mermaid/mermaid.min.js
+    - scripts/asciinema/asciinema-player.js
+    
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
