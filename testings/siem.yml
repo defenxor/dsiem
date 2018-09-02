@@ -2,7 +2,7 @@ input {
  file {
   path => "/home/mmta/go/src/siem/testings/test.log"
   start_position => "beginning"
-  sincedb_path=> "/home/mmta/go/src/siem/testings/sincedb.txt.1"
+  sincedb_path=> "/home/mmta/go/src/siem/testings/sincedb.txt.2"
   ignore_older => 0
   codec => "json"
  }
