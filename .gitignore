@@ -1,6 +1,6 @@
 testings/logstash*
 testings/sincedb.*
-
+siem
 keys/
 .vscode/
 doc/refs
