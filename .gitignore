@@ -1,5 +1,6 @@
 testings/logstash*
 testings/sincedb.*
+
 keys/
 .vscode/
 doc/refs

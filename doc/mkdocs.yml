@@ -1,4 +1,4 @@
-site_name: 
+site_name: SIEM
 nav:
     - net.md
     - arch.md
