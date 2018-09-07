@@ -7,6 +7,12 @@ input {
   codec => "json"
  }
 }
+filter {
+ uuid {
+  target    => "event_id"
+  overwrite => true
+ }
+}
 
 output{
   http {

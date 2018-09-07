@@ -1,9 +1,18 @@
 package main
 
-var eventChannel chan normalizedEvent
-
 func main() {
 	setupLogger()
-	directiveChanController()
+	initShortID()
+	err:= initAssets()
+	if err != nil {
+		logger.Info("Cannot initialize assets: ", err)
+		return
+	}
+	startBackLogTicker()
+	err = initDirectives()
+	if err != nil {
+		logger.Info("Cannot initialize directives: ", err)
+		return
+	}
 	startServer()
 }

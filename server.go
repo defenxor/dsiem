@@ -1,20 +1,17 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"sync/atomic"
 
 	"github.com/julienschmidt/httprouter"
 )
 
-var taskCounter uint64
+var connCounter uint64
 
 const (
-	progName = "siem"
+	progName = "SIEM"
 	port     = "8080"
 )
 
@@ -26,35 +23,38 @@ func startServer() {
 	logger.Fatal(http.ListenAndServe(":"+port, router))
 }
 
+func increaseConnCounter() uint64 {
+	// increase counter to differentiate entries in log
+	atomic.AddUint64(&connCounter, 1)
+	myID := atomic.LoadUint64(&connCounter)
+	return myID
+}
+
 func handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	clientAddr := r.RemoteAddr
 	evt := normalizedEvent{}
-
-	// increase counter to differentiate entries in log
-	atomic.AddUint64(&taskCounter, 1)
-	myID := atomic.LoadUint64(&taskCounter)
-	sMyID := strconv.Itoa(int(myID))
+	connID := increaseConnCounter()
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warn("[" + sMyID + "] Error reading message from " + clientAddr + ". Ignoring it.")
+		logWarn("Error reading message from "+clientAddr+". Ignoring it", connID)
 		return
 	}
-	err = json.Unmarshal(b, &evt)
-	fmt.Printf("%+v\n", evt)
-
+	err = evt.fromBytes(b)
+	if err != nil {
+		logWarn("Cannot parse normalizedEvent from "+clientAddr+". Ignoring it.", connID)
+		return
+	}
 	if !evt.valid() {
-		logger.Warn("[" + sMyID + "] l337 or epic fail attempt from " + clientAddr + " detected. Responding with UNKNOWN status")
+		logWarn("l337 or epic fail attempt from "+clientAddr+" detected. Discarding.", connID)
 		return
 	}
 
-	// just show the program name, parameters may contain sensitive info
-	logger.Info("[" + sMyID + "] Receive event from " + clientAddr + " for timestamp: " + evt.Timestamp + " pluginID: " + strconv.Itoa(evt.PluginID) + " sensor: " + evt.Sensor)
-
+	logInfo("Received event ID: "+evt.EventID, connID)
+	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt
 
-	// n := executeSSH(c)
-	logger.Info("[" + sMyID + "] Done.")
+	// logInfo("Done.", connID)
 }

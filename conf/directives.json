@@ -1,0 +1,96 @@
+{
+  "directives": [
+    {
+      "name": "Connection to Dangerous Address",
+      "id": 1,
+      "priority": 1,
+      "rules" : [
+        {
+          "name": "Criticalstack TI match",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [ 2001, 2002 ],
+          "occurrence": 1,
+          "from": "ANY",
+          "to": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "reliability": 1,
+          "timeout": 0
+        },
+        {
+          "name": "Criticalstack TI match",
+          "stage": 2,
+          "plugin_id": 1001,
+          "plugin_sid": [ 2001, 2002 ],
+          "occurrence": 5,
+          "from": "ANY",
+          "to": ":1",
+          "port_from": "ANY",
+          "port_to": ":1",
+          "reliability": 6,
+          "timeout": 30
+        },
+        {
+          "name": "Criticalstack TI match",
+          "stage": 3,
+          "plugin_id": 1001,
+          "plugin_sid": [ 2001, 2002 ],
+          "occurrence": 1000,
+          "from": "ANY",
+          "to": ":1",
+          "port_from": "ANY",
+          "port_to": ":1",
+          "reliability": 10,
+          "timeout": 3600
+        }
+      ]
+    },
+    {
+      "name": "Connection From Dangerous Address",
+      "id": 2,
+      "priority": 5,
+      "rules" : [
+        {
+          "name": "Criticalstack TI match",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [ 2001 ],
+          "occurrence": 1,
+          "from": "!HOME_NET",
+          "to": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "reliability": 5,
+          "timeout": 3600
+        },
+        {
+          "name": "Criticalstack TI match",
+          "stage": 2,
+          "plugin_id": 1001,
+          "plugin_sid": [ 2001, 2002 ],
+          "occurrence": 1000,
+          "from": "ANY",
+          "to": "1:TO",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "reliability": 6,
+          "timeout": 3600
+        },
+        {
+          "name": "Criticalstack TI match",
+          "stage": 3,
+          "plugin_id": 1001,
+          "plugin_sid": [ 2001, 2002 ],
+          "occurrence": 1000,
+          "from": "ANY",
+          "to": "1:TO",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "reliability": 10,
+          "timeout": 3600
+        }
+      ]
+    }    
+  ]    
+}
