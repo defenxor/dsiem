@@ -1,9 +1,11 @@
 {
   "directives": [
     {
-      "name": "Connection to Dangerous Address",
+      "name": "Connection to Dangerous Address From SRC_IP",
+      "kingdom": "System Compromise",
+      "category": "Malware Infection",
       "id": 1,
-      "priority": 1,
+      "priority": 5,
       "rules" : [
         {
           "name": "Criticalstack TI match",
@@ -47,8 +49,10 @@
       ]
     },
     {
-      "name": "Connection From Dangerous Address",
+      "name": "Connection From Dangerous Address to DST_IP",
       "id": 2,
+      "kingdom": "Delivery & Attack",
+      "category": "Suspicious Activity",
       "priority": 5,
       "rules" : [
         {
@@ -69,9 +73,9 @@
           "stage": 2,
           "plugin_id": 1001,
           "plugin_sid": [ 2001, 2002 ],
-          "occurrence": 1000,
+          "occurrence": 5,
           "from": "ANY",
-          "to": "1:TO",
+          "to": ":1",
           "port_from": "ANY",
           "port_to": "ANY",
           "reliability": 6,
@@ -82,9 +86,9 @@
           "stage": 3,
           "plugin_id": 1001,
           "plugin_sid": [ 2001, 2002 ],
-          "occurrence": 1000,
+          "occurrence": 10,
           "from": "ANY",
-          "to": "1:TO",
+          "to": ":1",
           "port_from": "ANY",
           "port_to": "ANY",
           "reliability": 10,

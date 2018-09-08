@@ -1,36 +1,37 @@
 package main
 
 import (
+	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
+
+	"os"
 
 	"github.com/teris-io/shortid"
 )
 
 type backLog struct {
-	ID           string
-	Risk         int
-	CurrentStage int
-	HighestStage int
-	Directive    directive
-	BEvents      bLogEvents
+	ID           string    `json:"backlog_id"`
+	StatusTime   int64     `json:"status_time"`
+	Risk         int       `json:"risk"`
+	CurrentStage int       `json:"current_stage"`
+	HighestStage int       `json:"highest_stage"`
+	Directive    directive `json:"directive"`
+	SrcIPs       []string  `json:"src_ips"`
+	DstIPs       []string  `json:"dst_ips"`
 }
+
+const (
+	blLogs = "logs/siem_backlogs.json"
+)
 
 var bLogs backLogs
 var sid *shortid.Shortid
 var ticker *time.Ticker
 
 type backLogs struct {
-	BackLogs []backLog
-}
-
-type bLogEvent struct {
-	RuleNo  int
-	EventID string
-}
-
-type bLogEvents struct {
-	BLogEvents []bLogEvent
+	BackLogs []backLog `json:"backlogs"`
 }
 
 func initShortID() {
@@ -89,7 +90,7 @@ func backlogManager(e normalizedEvent, d directive) {
 	b.ID = bid
 	b.Directive = directive{}
 
-	copyDirective(&b.Directive, &d)
+	copyDirective(&b.Directive, &d, &e)
 	initBackLogRules(b.Directive, e)
 	b.Directive.Rules[0].StartTime = time.Now().Unix()
 
@@ -99,10 +100,32 @@ func backlogManager(e normalizedEvent, d directive) {
 	bLogs.BackLogs = append(bLogs.BackLogs, b)
 }
 
-func copyDirective(dst *directive, src *directive) {
+func copyDirective(dst *directive, src *directive, e *normalizedEvent) {
 	dst.ID = src.ID
 	dst.Priority = src.Priority
-	dst.Name = src.Name
+	dst.Kingdom = src.Kingdom
+	dst.Category = src.Category
+
+	// replace SRC_IP and DST_IP with the asset name or IP address
+	title := src.Name
+	if strings.Contains(title, "SRC_IP") {
+		srcHost := getAssetName(e.SrcIP)
+		if srcHost != "" {
+			title = strings.Replace(title, "SRC_IP", srcHost, -1)
+		} else {
+			title = strings.Replace(title, "SRC_IP", e.SrcIP, -1)
+		}
+	}
+	if strings.Contains(title, "DST_IP") {
+		dstHost := getAssetName(e.DstIP)
+		if dstHost != "" {
+			title = strings.Replace(title, "DST_IP", dstHost, -1)
+		} else {
+			title = strings.Replace(title, "DST_IP", e.DstIP, -1)
+		}
+	}
+	dst.Name = title
+
 	for i := range src.Rules {
 		r := src.Rules[i]
 		dst.Rules = append(dst.Rules, r)
@@ -110,14 +133,11 @@ func copyDirective(dst *directive, src *directive) {
 }
 
 func initBackLogRules(d directive, e normalizedEvent) {
-	// need to copy the directiveRules here, changing 1:TO etc to actual IP address.
 	for i := range d.Rules {
-
 		// the first rule cannot use reference to other
 		if i == 0 {
 			continue
 		}
-
 		// for the rest, refer to the referenced stage if its not ANY or HOME_NET or !HOME_NET
 		// if the reference is ANY || HOME_NET || !HOME_NET then refer to event
 		r := d.Rules[i].From
@@ -170,19 +190,21 @@ func initBackLogRules(d directive, e normalizedEvent) {
 func (b *backLog) calcStage() {
 	s := b.CurrentStage
 	// heuristic, we know stage starts at 1 but rules start at 0
-	rIdx := s - 1
-	currRule := b.Directive.Rules[rIdx]
-	currEvents := b.BEvents.BLogEvents
-	if currEvents != nil {
+	idx := s - 1
+	currRule := b.Directive.Rules[idx]
+	nEvents := len(b.Directive.Rules[idx].Events)
 
-	}
-	nEvents := len(b.BEvents.BLogEvents)
 	if nEvents >= currRule.Occurrence && b.CurrentStage < b.HighestStage {
 		b.CurrentStage++
 		logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " increased stage to " + strconv.Itoa(b.CurrentStage))
 		idx := b.CurrentStage - 1
 		b.Directive.Rules[idx].StartTime = time.Now().Unix()
+		b.StatusTime = time.Now().Unix()
 		b.calcRisk()
+	}
+	err := b.updateElasticsearch()
+	if err != nil {
+		logger.Error("Backlog "+b.ID+" failed to update Elasticsearch! ", err)
 	}
 }
 
@@ -202,17 +224,35 @@ func (b *backLog) calcRisk() {
 	priority := b.Directive.Priority
 
 	risk := priority * reliability * value / 25
-	cRisk := b.Risk
-	if risk != cRisk {
-		logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " risk increased from " + strconv.Itoa(cRisk) + " to " + strconv.Itoa(risk))
-	}
+	pRisk := b.Risk
 	b.Risk = risk
+	if risk != pRisk {
+		logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " risk increased from " + strconv.Itoa(pRisk) + " to " + strconv.Itoa(risk))
+		if risk >= 1 {
+			upsertAlarmFromBackLog(b)
+		}
+	}
 }
 
 func (b *backLog) processMatchedEvent(e normalizedEvent, idx int) {
-	be := bLogEvent{}
-	be.RuleNo = idx
-	be.EventID = e.EventID
-	b.BEvents.BLogEvents = append(b.BEvents.BLogEvents, be)
+	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
+	b.SrcIPs = appendStringUniq(b.SrcIPs, e.SrcIP)
+	b.DstIPs = appendStringUniq(b.DstIPs, e.DstIP)
 	b.calcStage()
+}
+
+func (b *backLog) updateElasticsearch() error {
+	logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " updating Elasticsearch.")
+	filename := progDir + "/" + blLogs
+	b.StatusTime = time.Now().Unix()
+	bJSON, _ := json.Marshal(b)
+
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(string(bJSON) + "\n")
+	return err
 }

@@ -65,3 +65,28 @@ func logWarn(msg string, connID uint64) {
 	sID := strconv.Itoa(int(connID))
 	logger.Warn("[" + sID + "] " + msg)
 }
+
+func appendStringUniq(slice []string, i string) []string {
+	for _, ele := range slice {
+			if ele == i {
+					return slice
+			}
+	}
+	return append(slice, i)
+}
+
+func removeDuplicatesUnordered(elements []string) []string {
+	encountered := map[string]bool{}
+
+	// Create a map of all unique elements.
+	for v:= range elements {
+			encountered[elements[v]] = true
+	}
+
+	// Place all keys from the map into a slice.
+	result := []string{}
+	for key := range encountered {
+			result = append(result, key)
+	}
+	return result
+}

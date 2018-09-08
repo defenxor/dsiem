@@ -47,11 +47,7 @@ func newAssetEntry(ipNet net.IPNet, value int, name string) cidranger.RangerEntr
 }
 
 func initAssets() error {
-	dir, err := getDir()
-	if err != nil {
-		return err
-	}
-	filename := dir + "/" + assetFile
+	filename := progDir + "/" + assetFile
 	if !fileExist(filename) {
 		return errors.New("Cannot find " + filename)
 	}
@@ -95,6 +91,24 @@ func isInHomeNet(ip string) (bool, error) {
 	return contains, err
 }
 
+func getAssetName(ip string) string {
+	val := ""
+	containingNetworks, err := ranger.ContainingNetworks(net.ParseIP(ip))
+	if err != nil || len(containingNetworks) == 0 {
+		return val
+	}
+	// return the one with /32
+	for i := range containingNetworks {
+		r := containingNetworks[i].(*assetEntry)
+		m := r.ipNet.Mask.String()
+		if m == "ffffffff" {
+			val = r.name
+			break
+		}
+	}
+	return val
+}
+
 func getAssetValue(ip string) int {
 	val := 0
 	containingNetworks, err := ranger.ContainingNetworks(net.ParseIP(ip))
@@ -106,6 +120,24 @@ func getAssetValue(ip string) int {
 		r := containingNetworks[i].(*assetEntry)
 		if r.value > val {
 			val = r.value
+		}
+	}
+	return val
+}
+
+func getAssetNetworks(ip string) []string {
+	val := []string{}
+	containingNetworks, err := ranger.ContainingNetworks(net.ParseIP(ip))
+	if err != nil || len(containingNetworks) == 0 {
+		return val
+	}
+	// return all network string except those with /32
+	for i := range containingNetworks {
+		r := containingNetworks[i].(*assetEntry)
+		m := r.ipNet.Mask.String()
+		if m != "ffffffff" {
+			s := r.ipNet.String()
+			val = appendStringUniq(val, s)
 		}
 	}
 	return val

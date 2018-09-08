@@ -25,7 +25,7 @@ func startDirective(d directive, c chan normalizedEvent) {
 		}
 
 		logInfo("directive "+strconv.Itoa(d.ID)+" found matched event.", evt.ConnID)
-		backlogManager(evt, d)
+		go backlogManager(evt, d)
 	}
 }
 
@@ -80,11 +80,7 @@ func doesEventMatchRule(e normalizedEvent, r directiveRule) bool {
 }
 
 func initDirectives() error {
-	dir, err := getDir()
-	if err != nil {
-		return err
-	}
-	filename := dir + "/" + directiveFile
+	filename := progDir + "/" + directiveFile
 	if !fileExist(filename) {
 		return errors.New("Cannot find " + filename)
 	}

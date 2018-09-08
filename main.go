@@ -1,18 +1,25 @@
 package main
 
+var progDir string
+
+func init() {
+	d, _ := getDir()
+	progDir = d
+}
+
 func main() {
 	setupLogger()
 	initShortID()
-	err:= initAssets()
+	err := initAssets()
 	if err != nil {
 		logger.Info("Cannot initialize assets: ", err)
 		return
 	}
-	startBackLogTicker()
 	err = initDirectives()
 	if err != nil {
 		logger.Info("Cannot initialize directives: ", err)
 		return
 	}
+	startBackLogTicker()
 	startServer()
 }

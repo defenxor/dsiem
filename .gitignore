@@ -1,5 +1,7 @@
 testings/logstash*
-testings/sincedb.*
+testings/since_db*
+debug
+logs/
 siem
 keys/
 .vscode/

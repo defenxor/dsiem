@@ -1,8 +1,8 @@
 #!/bin/bash
 
-rm -rf ./sincedb.txt ./sincedb.txt.1 ./sincedb.txt.2
-if diff ./siem.yml ./siem1.yml >/dev/null 2>&1; then
-  cp ./siem2.yml ./siem.yml 
+rm -rf ./since_db.log.txt ./since_db.log.txt.1 ./since_db.log.txt.2
+if grep -q "since_db.log.txt.1" ./siem.yml; then
+ sed -i 's/since_db.log.txt.1/since_db.txt.2/g' ./siem.yml
 else
-  cp ./siem1.yml ./siem.yml
+ sed -i 's/since_db.log.txt.2/since_db.log.txt.1/g' ./siem.yml
 fi

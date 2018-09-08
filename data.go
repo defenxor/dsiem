@@ -11,7 +11,7 @@ import (
 type normalizedEvent struct {
 	ConnID       uint64
 	EventID      string `json:"event_id"`
-	Timestamp    string `json:"timestamp"`
+	Timestamp    string `json:"@timestamp"`
 	Sensor       string `json:"sensor"`
 	PluginID     int    `json:"plugin_id"`
 	PluginSID    int    `json:"plugin_sid"`
@@ -31,7 +31,8 @@ type normalizedEvent struct {
 }
 
 func (e *normalizedEvent) valid() bool {
-	if e.Timestamp == "" || e.Sensor == "" || e.PluginID == 0 || e.PluginSID == 0 {
+	if e.Timestamp == "" || e.Sensor == "" || e.PluginID == 0 || e.PluginSID == 0 || e.EventID == "" ||
+		e.SrcIP == "" || e.DstIP == "" {
 		return false
 	}
 	return true
@@ -53,24 +54,27 @@ func (e *normalizedEvent) dstIPInHomeNet() bool {
 }
 
 type directiveRule struct {
-	Name        string `json:"name"`
-	Stage       int    `json:"stage"`
-	PluginID    int    `json:"plugin_id"`
-	PluginSID   []int  `json:"plugin_sid"`
-	Occurrence  int    `json:"occurrence"`
-	From        string `json:"from"`
-	To          string `json:"to"`
-	PortFrom    string `json:"port_from"`
-	PortTo      string `json:"port_to"`
-	Reliability int    `json:"reliability"`
-	Timeout     int64  `json:"timeout"`
-	StartTime   int64
+	Name        string   `json:"name"`
+	Stage       int      `json:"stage"`
+	PluginID    int      `json:"plugin_id"`
+	PluginSID   []int    `json:"plugin_sid"`
+	Occurrence  int      `json:"occurrence"`
+	From        string   `json:"from"`
+	To          string   `json:"to"`
+	PortFrom    string   `json:"port_from"`
+	PortTo      string   `json:"port_to"`
+	Reliability int      `json:"reliability"`
+	Timeout     int64    `json:"timeout"`
+	StartTime   int64    `json:"start_time"`
+	Events      []string `json:"events"`
 }
 
 type directive struct {
 	ID       int             `json:"id"`
 	Name     string          `json:"name"`
 	Priority int             `json:"priority"`
+	Kingdom  string          `json:"kingdom"`
+	Category string          `json:"category"`
 	Rules    []directiveRule `json:"rules"`
 }
 

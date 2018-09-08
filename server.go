@@ -37,6 +37,8 @@ func handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	connID := increaseConnCounter()
 
 	b, err := ioutil.ReadAll(r.Body)
+	// bstr := string(b)
+	// logger.Info(bstr)
 	if err != nil {
 		logWarn("Error reading message from "+clientAddr+". Ignoring it", connID)
 		return
