@@ -1,6 +1,7 @@
 testings/logstash*
 testings/since_db*
 node_modules/
+ossim-directive-converter
 debug
 logs/
 siem
