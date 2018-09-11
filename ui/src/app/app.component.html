@@ -1,0 +1,11 @@
+<div class="container">
+		<h1 class="text-center">{{title}}</h1>
+		<h6 class="text-center">[{{status}}]</h6>
+	<nav>
+		<div class="text-center" style="margin-top:30px">
+		<a routerLink="alarms" class="btn btn-dark active" role="button" routerLinkActive="active">Alarms</a>
+		<a routerLink="events" class="btn btn-dark active" role="button" routerLinkActive="inactive">Events</a>
+	</div>
+	</nav>
+</div>
+<router-outlet></router-outlet>
