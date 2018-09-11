@@ -5,22 +5,25 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 )
 
 const (
-	directiveFile = "conf/directives.json"
+	confDir           = "conf"
+	directiveFileGlob = "directives_*.json"
 )
 
 var uCases directives
 var eventChannel chan normalizedEvent
 
 func startDirective(d directive, c chan normalizedEvent) {
-	logger.Info("Started directive ", d.ID)
+	// logger.Info("Started directive ", d.ID)
 	for {
 		// handle incoming event
 		evt := <-c
-		if !doesEventMatchRule(evt, d.Rules[0]) {
+		if !doesEventMatchRule(evt, d.Rules[0],0) {
 			continue
 		}
 
@@ -29,7 +32,7 @@ func startDirective(d directive, c chan normalizedEvent) {
 	}
 }
 
-func doesEventMatchRule(e normalizedEvent, r directiveRule) bool {
+func doesEventMatchRule(e normalizedEvent, r directiveRule, connID uint64) bool {
 	if e.PluginID != r.PluginID {
 		return false
 	}
@@ -52,8 +55,9 @@ func doesEventMatchRule(e normalizedEvent, r directiveRule) bool {
 	if r.From == "!HOME_NET" && eSrcInHomeNet == true {
 		return false
 	}
-	// covers r.From == CIDR network address, or single IP
-	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" && r.From != e.SrcIP && !isIPinCIDR(e.SrcIP, r.From) {
+	// covers  r.From == "IP", r.From == "IP1, IP2", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2"
+	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
+		!caseInsensitiveContains(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From, connID) {
 		return false
 	}
 
@@ -64,7 +68,9 @@ func doesEventMatchRule(e normalizedEvent, r directiveRule) bool {
 	if r.To == "!HOME_NET" && eDstInHomeNet == true {
 		return false
 	}
-	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" && r.To != e.DstIP && !isIPinCIDR(e.DstIP, r.To) {
+	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
+	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" && 
+	!caseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To, connID) {
 		return false
 	}
 
@@ -80,28 +86,41 @@ func doesEventMatchRule(e normalizedEvent, r directiveRule) bool {
 }
 
 func initDirectives() error {
-	filename := progDir + "/" + directiveFile
-	if !fileExist(filename) {
-		return errors.New("Cannot find " + filename)
-	}
-	file, err := os.Open(filename)
+	p := path.Join(progDir, confDir, directiveFileGlob)
+	files, err := filepath.Glob(p)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	byteValue, _ := ioutil.ReadAll(file)
-	err = json.Unmarshal(byteValue, &uCases)
-	if err != nil {
-		return err
+	for i := range files {
+		var d directives
+		if !fileExist(files[i]) {
+			return errors.New("Cannot find " + files[i])
+		}
+		file, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		byteValue, _ := ioutil.ReadAll(file)
+		err = json.Unmarshal(byteValue, &d)
+		if err != nil {
+			return err
+		}
+		for j := range d.Directives {
+			uCases.Directives = append(uCases.Directives, d.Directives[j])
+		}
 	}
 
 	total := len(uCases.Directives)
-	logger.Info("Loaded ", strconv.Itoa(total), " directives.")
+	logInfo("Loaded "+strconv.Itoa(total)+" directives.", 0)
 
-	for i := range uCases.Directives {
-		printDirective(uCases.Directives[i])
-	}
+	/*
+		for i := range uCases.Directives {
+			printDirective(uCases.Directives[i])
+		}
+	*/
 
 	var dirchan []chan normalizedEvent
 	eventChannel = make(chan normalizedEvent)
@@ -124,9 +143,9 @@ func initDirectives() error {
 }
 
 func printDirective(d directive) {
-	logger.Info("Directive ID: " + strconv.Itoa(d.ID) + " Name: " + d.Name)
+	logInfo("Directive ID: "+strconv.Itoa(d.ID)+" Name: "+d.Name, 0)
 	for j := 0; j < len(d.Rules); j++ {
-		logger.Info("- Rule " + strconv.Itoa(d.Rules[j].Stage) + " Name: " + d.Rules[j].Name +
-			" From: " + d.Rules[j].From + " To: " + d.Rules[j].To)
+		logInfo("- Rule "+strconv.Itoa(d.Rules[j].Stage)+" Name: "+d.Rules[j].Name+
+			" From: "+d.Rules[j].From+" To: "+d.Rules[j].To, 0)
 	}
 }

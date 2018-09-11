@@ -6,12 +6,14 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/yl2chen/cidranger"
 )
 
 const (
-	assetFile = "conf/assets.json"
+	assetsFileGlob = "assets_*.json"
 )
 
 var ranger cidranger.Ranger
@@ -47,20 +49,31 @@ func newAssetEntry(ipNet net.IPNet, value int, name string) cidranger.RangerEntr
 }
 
 func initAssets() error {
-	filename := progDir + "/" + assetFile
-	if !fileExist(filename) {
-		return errors.New("Cannot find " + filename)
-	}
-	file, err := os.Open(filename)
+	p := path.Join(progDir, confDir, assetsFileGlob)
+	files, err := filepath.Glob(p)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	byteValue, _ := ioutil.ReadAll(file)
-	err = json.Unmarshal(byteValue, &assets)
-	if err != nil {
-		return err
+	for i := range files {
+		var a networkAssets
+		if !fileExist(files[i]) {
+			return errors.New("Cannot find " + files[i])
+		}
+		file, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		byteValue, _ := ioutil.ReadAll(file)
+		err = json.Unmarshal(byteValue, &a)
+		if err != nil {
+			return err
+		}
+		for j := range a.NetworkAssets {
+			assets.NetworkAssets = append(assets.NetworkAssets, a.NetworkAssets[j])
+		}
 	}
 
 	ranger = cidranger.NewPCTrieRanger()
@@ -117,7 +130,10 @@ func getAssetValue(ip string) int {
 	}
 	// return the highest asset value
 	for i := range containingNetworks {
-		r := containingNetworks[i].(*assetEntry)
+		r, ok := containingNetworks[i].(*assetEntry)
+		if !ok {
+			continue
+		}
 		if r.value > val {
 			val = r.value
 		}

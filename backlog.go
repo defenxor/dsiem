@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
-
-	"os"
 
 	"github.com/teris-io/shortid"
 )
@@ -23,19 +24,40 @@ type backLog struct {
 }
 
 const (
-	blLogs = "logs/siem_backlogs.json"
+	logsDir     = "logs"
+	blLogs      = "siem_backlogs.json"
+	aEventsLogs = "siem_alarm_events.json"
 )
 
+var backLogRemovalChannel chan removalChannelMsg
 var bLogs backLogs
 var sid *shortid.Shortid
 var ticker *time.Ticker
 
 type backLogs struct {
+	mu       sync.RWMutex
 	BackLogs []backLog `json:"backlogs"`
+}
+type removalChannelMsg struct {
+	ID     string
+	connID uint64
 }
 
 func initShortID() {
 	sid, _ = shortid.New(1, shortid.DefaultABC, 2342)
+}
+
+func initBackLog() {
+	initShortID()
+	startBackLogTicker()
+	backLogRemovalChannel = make(chan removalChannelMsg)
+	go func() {
+		for {
+			// handle incoming event, id should be the ID to remove
+			msg := <-backLogRemovalChannel
+			go removeBackLog(msg)
+		}
+	}()
 }
 
 // this checks for timed-out backlog and discard it
@@ -45,6 +67,7 @@ func startBackLogTicker() {
 		for {
 			<-ticker.C
 			now := time.Now().Unix()
+			bLogs.mu.RLock()
 			for i := range bLogs.BackLogs {
 				cs := bLogs.BackLogs[i].CurrentStage
 				idx := cs - 1
@@ -54,30 +77,60 @@ func startBackLogTicker() {
 				if maxTime > now {
 					continue
 				}
-				logger.Info("directive " + strconv.Itoa(bLogs.BackLogs[i].Directive.ID) + " backlog " + bLogs.BackLogs[i].ID + " expired. Deleting it.")
+				logInfo("directive "+strconv.Itoa(bLogs.BackLogs[i].Directive.ID)+" backlog "+bLogs.BackLogs[i].ID+" expired. Deleting it.", 0)
+				m := removalChannelMsg{bLogs.BackLogs[i].ID, 0}
+				backLogRemovalChannel <- m
+				alarmRemovalChannel <- m
 			}
+			bLogs.mu.RUnlock()
 		}
 	}()
 }
 
-func backlogManager(e normalizedEvent, d directive) {
+func removeBackLog(m removalChannelMsg) {
+	logInfo("Trying to obtain write lock to remove backlog "+m.ID, m.connID)
+	bLogs.mu.Lock()
+	defer bLogs.mu.Unlock()
+	logInfo("Lock obtained. Removing backlog "+m.ID, m.connID)
+	idx := -1
+	for i := range bLogs.BackLogs {
+		if bLogs.BackLogs[i].ID == m.ID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return
+	}
+	// copy last element to idx location
+	bLogs.BackLogs[idx] = bLogs.BackLogs[len(bLogs.BackLogs)-1]
+	// write empty to last element
+	bLogs.BackLogs[len(bLogs.BackLogs)-1] = backLog{}
+	// truncate slice
+	bLogs.BackLogs = bLogs.BackLogs[:len(bLogs.BackLogs)-1]
+}
 
+func backlogManager(e normalizedEvent, d directive) {
 	found := false
+	bLogs.mu.RLock()
 	for i := range bLogs.BackLogs {
 		cs := bLogs.BackLogs[i].CurrentStage
 		// only applicable for non-stage 1, where there's more specific identifier like IP address to match
-		if bLogs.BackLogs[i].Directive.ID == d.ID && cs > 1 {
-			// should check for currentStage rule match with event
-			// heuristic, we know stage starts at 1 but rules start at 0
-			idx := cs - 1
-			currRule := bLogs.BackLogs[i].Directive.Rules[idx]
-			if doesEventMatchRule(e, currRule) {
-				logInfo("Directive "+strconv.Itoa(d.ID)+" backlog "+bLogs.BackLogs[i].ID+" matched. Not creating new backlog.", e.ConnID)
-				bLogs.BackLogs[i].processMatchedEvent(e, idx)
-				found = true
-			}
+		if bLogs.BackLogs[i].Directive.ID != d.ID || cs <= 1 {
+			continue
 		}
+		// should check for currentStage rule match with event
+		// heuristic, we know stage starts at 1 but rules start at 0
+		idx := cs - 1
+		currRule := bLogs.BackLogs[i].Directive.Rules[idx]
+		if !doesEventMatchRule(e, currRule) {
+			continue
+		}
+		logInfo("Directive "+strconv.Itoa(d.ID)+" backlog "+bLogs.BackLogs[i].ID+" matched. Not creating new backlog.", e.ConnID)
+		found = true
+		bLogs.BackLogs[i].processMatchedEvent(e, idx)
 	}
+	bLogs.mu.RUnlock()
 
 	if found {
 		return
@@ -97,7 +150,11 @@ func backlogManager(e normalizedEvent, d directive) {
 	b.CurrentStage = 1
 	b.HighestStage = len(d.Rules)
 	b.processMatchedEvent(e, 0)
+	logInfo("Trying to obtain write lock to create backlog "+bid, e.ConnID)
+	bLogs.mu.Lock()
 	bLogs.BackLogs = append(bLogs.BackLogs, b)
+	bLogs.mu.Unlock()
+	logInfo("Lock obtained/released for backlog "+bid+" creation.", e.ConnID)
 }
 
 func copyDirective(dst *directive, src *directive, e *normalizedEvent) {
@@ -187,29 +244,70 @@ func initBackLogRules(d directive, e normalizedEvent) {
 	}
 }
 
-func (b *backLog) calcStage() {
+func (b *backLog) processMatchedEvent(e normalizedEvent, idx int) {
+	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
+	b.SrcIPs = appendStringUniq(b.SrcIPs, e.SrcIP)
+	b.DstIPs = appendStringUniq(b.DstIPs, e.DstIP)
+
+	if err := b.updateElasticsearch(e); err != nil {
+		logWarn("Backlog "+b.ID+" failed to update Elasticsearch! "+err.Error(), e.ConnID)
+	}
+	stageIncreased, maxStageReached := b.calcStage(e.ConnID)
+	if !stageIncreased && !maxStageReached {
+		return
+	}
+	riskIncreased := b.calcRisk(e.ConnID)
+	if !riskIncreased && !maxStageReached {
+		return
+	}
+	if b.Risk >= 1 {
+		upsertAlarmFromBackLog(b, e.ConnID)
+	}
+	if maxStageReached {
+		b.delete(e.ConnID)
+	}
+	return
+}
+
+func (b *backLog) delete(connID uint64) {
+	logInfo("Backlog "+b.ID+" has reached its max stage and occurrence. Deleting it.", connID)
+	m := removalChannelMsg{b.ID, connID}
+	backLogRemovalChannel <- m
+	alarmRemovalChannel <- m
+}
+
+func (b *backLog) calcStage(connID uint64) (stageIncreased bool, maxStageReached bool) {
+	stageIncreased = false
+	maxStageReached = false
+
 	s := b.CurrentStage
 	// heuristic, we know stage starts at 1 but rules start at 0
 	idx := s - 1
 	currRule := b.Directive.Rules[idx]
 	nEvents := len(b.Directive.Rules[idx].Events)
 
-	if nEvents >= currRule.Occurrence && b.CurrentStage < b.HighestStage {
+	// exit early if count still lower than occurrence limit
+	if nEvents < currRule.Occurrence {
+		return
+	}
+
+	// at lower stage and occurrence has reach its limit
+	if b.CurrentStage < b.HighestStage {
 		b.CurrentStage++
-		logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " increased stage to " + strconv.Itoa(b.CurrentStage))
+		logInfo("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" increased stage to "+strconv.Itoa(b.CurrentStage), connID)
 		idx := b.CurrentStage - 1
 		b.Directive.Rules[idx].StartTime = time.Now().Unix()
 		b.StatusTime = time.Now().Unix()
-		b.calcRisk()
+		stageIncreased = true
+		return
 	}
-	err := b.updateElasticsearch()
-	if err != nil {
-		logger.Error("Backlog "+b.ID+" failed to update Elasticsearch! ", err)
-	}
+	// at highest stage and occurrence has reach its limit
+	maxStageReached = true
+	return
 }
 
-func (b *backLog) calcRisk() {
-
+func (b *backLog) calcRisk(connID uint64) (riskIncreased bool) {
+	riskIncreased = false
 	s := b.CurrentStage
 	idx := s - 1
 	from := b.Directive.Rules[idx].From
@@ -227,22 +325,15 @@ func (b *backLog) calcRisk() {
 	pRisk := b.Risk
 	b.Risk = risk
 	if risk != pRisk {
-		logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " risk increased from " + strconv.Itoa(pRisk) + " to " + strconv.Itoa(risk))
-		if risk >= 1 {
-			upsertAlarmFromBackLog(b)
-		}
+		logInfo("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+
+			b.ID+" risk increased from "+strconv.Itoa(pRisk)+" to "+strconv.Itoa(risk), connID)
+		riskIncreased = true
 	}
+	return riskIncreased
 }
 
-func (b *backLog) processMatchedEvent(e normalizedEvent, idx int) {
-	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
-	b.SrcIPs = appendStringUniq(b.SrcIPs, e.SrcIP)
-	b.DstIPs = appendStringUniq(b.DstIPs, e.DstIP)
-	b.calcStage()
-}
-
-func (b *backLog) updateElasticsearch() error {
-	logger.Info("directive " + strconv.Itoa(b.Directive.ID) + " backlog " + b.ID + " updating Elasticsearch.")
+func (b *backLog) oldUpdateES(connID uint64) error {
+	logInfo("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" updating Elasticsearch.", connID)
 	filename := progDir + "/" + blLogs
 	b.StatusTime = time.Now().Unix()
 	bJSON, _ := json.Marshal(b)
@@ -254,5 +345,29 @@ func (b *backLog) updateElasticsearch() error {
 	defer f.Close()
 
 	_, err = f.WriteString(string(bJSON) + "\n")
+	return err
+}
+
+type siemAlarmEvents struct {
+	ID    string `json:"alarm_id"`
+	Stage int    `json:"stage"`
+	Event string `json:"event_id"`
+}
+
+func (b *backLog) updateElasticsearch(e normalizedEvent) error {
+	logInfo("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" updating Elasticsearch.", e.ConnID)
+	filename := path.Join(progDir, logsDir, aEventsLogs)
+	b.StatusTime = time.Now().Unix()
+
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	v := siemAlarmEvents{b.ID, b.CurrentStage, e.EventID}
+	vJSON, _ := json.Marshal(v)
+
+	_, err = f.WriteString(string(vJSON) + "\n")
 	return err
 }

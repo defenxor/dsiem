@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"sync"
 )
 
 const (
@@ -10,28 +11,36 @@ const (
 )
 
 var alarms siemAlarms
+var alarmRemovalChannel chan removalChannelMsg
 
 type alarm struct {
-	ID          string   `json:"alarm_id"`
-	Title       string   `json:"title"`
-	Status      string   `json:"status"`
-	Kingdom     string   `json:"kingdom"`
-	Category    string   `json:"Category"`
-	CreatedTime int64    `json:"created_time"`
-	UpdateTime  int64    `json:"update_time"`
-	Risk        int      `json:"risk"`
-	RiskClass   string   `json:"risk_class"`
-	Tag         string   `json:"tag"`
-	SrcIPs      []string `json:"src_ips"`
-	DstIPs      []string `json:"dst_ips"`
-	Networks    []string `json:"networks"`
+	ID          string      `json:"alarm_id"`
+	Title       string      `json:"title"`
+	Status      string      `json:"status"`
+	Kingdom     string      `json:"kingdom"`
+	Category    string      `json:"Category"`
+	CreatedTime int64       `json:"created_time"`
+	UpdateTime  int64       `json:"update_time"`
+	Risk        int         `json:"risk"`
+	RiskClass   string      `json:"risk_class"`
+	Tag         string      `json:"tag"`
+	SrcIPs      []string    `json:"src_ips"`
+	DstIPs      []string    `json:"dst_ips"`
+	Networks    []string    `json:"networks"`
+	Rules       []alarmRule `json:"rules"`
+}
+
+type alarmRule struct {
+	directiveRule
+	EventCount int `json:"events_count"`
 }
 
 type siemAlarms struct {
+	mu     sync.RWMutex
 	Alarms []alarm `json:"alarm"`
 }
 
-func upsertAlarmFromBackLog(b *backLog) {
+func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	var a *alarm
 	for i := range alarms.Alarms {
 		c := &alarms.Alarms[i]
@@ -41,8 +50,10 @@ func upsertAlarmFromBackLog(b *backLog) {
 		}
 	}
 	if a == nil {
+		alarms.mu.Lock()
 		alarms.Alarms = append(alarms.Alarms, alarm{})
 		a = &alarms.Alarms[len(alarms.Alarms)-1]
+		alarms.mu.Unlock()
 	}
 	a.ID = b.ID
 	a.Title = b.Directive.Name
@@ -72,15 +83,21 @@ func upsertAlarmFromBackLog(b *backLog) {
 		a.Networks = append(a.Networks, getAssetNetworks(a.DstIPs[i])...)
 	}
 	a.Networks = removeDuplicatesUnordered(a.Networks)
+	a.Rules = []alarmRule{}
+	for _, v := range b.Directive.Rules {
+		rule := alarmRule{v, len(v.Events)}
+		rule.Events = []string{} // so it will be omited during json marshaling
+		a.Rules = append(a.Rules, rule)
+	}
 
-	err := a.updateElasticsearch()
+	err := a.updateElasticsearch(connID)
 	if err != nil {
-		logger.Error("Alarm "+a.ID+" failed to update Elasticsearch! ", err)
+		logWarn("Alarm "+a.ID+" failed to update Elasticsearch! "+err.Error(), connID)
 	}
 }
 
-func (a *alarm) updateElasticsearch() error {
-	logger.Info("alarm " + a.ID + " updating Elasticsearch.")
+func (a *alarm) updateElasticsearch(connID uint64) error {
+	logInfo("alarm "+a.ID+" updating Elasticsearch.", connID)
 	filename := progDir + "/" + alarmLogs
 	aJSON, _ := json.Marshal(a)
 
@@ -92,4 +109,37 @@ func (a *alarm) updateElasticsearch() error {
 
 	_, err = f.WriteString(string(aJSON) + "\n")
 	return err
+}
+
+func initAlarm() {
+	alarmRemovalChannel = make(chan removalChannelMsg)
+	go func() {
+		for {
+			// handle incoming event, id should be the ID to remove
+			m := <-alarmRemovalChannel
+			go removeAlarm(m)
+		}
+	}()
+}
+
+func removeAlarm(m removalChannelMsg) {
+	logInfo("Trying to obtain write lock to remove alarm "+m.ID, m.connID)
+	alarms.mu.Lock()
+	defer alarms.mu.Unlock()
+	logInfo("Lock obtained. Removing alarm "+m.ID, m.connID)
+	idx := -1
+	for i := range alarms.Alarms {
+		if alarms.Alarms[i].ID == m.ID {
+			idx = i
+		}
+	}
+	if idx == -1 {
+		return
+	}
+	// copy last element to idx location
+	alarms.Alarms[idx] = alarms.Alarms[len(alarms.Alarms)-1]
+	// write empty to last element
+	alarms.Alarms[len(alarms.Alarms)-1] = alarm{}
+	// truncate slice
+	alarms.Alarms = alarms.Alarms[:len(alarms.Alarms)-1]
 }

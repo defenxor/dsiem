@@ -15,8 +15,8 @@ type normalizedEvent struct {
 	Sensor       string `json:"sensor"`
 	PluginID     int    `json:"plugin_id"`
 	PluginSID    int    `json:"plugin_sid"`
-	Priority     int    `json:"priority"`
 	Reliability  int    `json:"reliability"`
+	Priority     int    `json:"priority"`
 	SrcIP        string `json:"src_ip"`
 	SrcPort      int    `json:"src_port"`
 	DstIP        string `json:"dst_ip"`
@@ -63,10 +63,11 @@ type directiveRule struct {
 	To          string   `json:"to"`
 	PortFrom    string   `json:"port_from"`
 	PortTo      string   `json:"port_to"`
+	Protocol    string   `json:"protocol"`
 	Reliability int      `json:"reliability"`
 	Timeout     int64    `json:"timeout"`
 	StartTime   int64    `json:"start_time"`
-	Events      []string `json:"events"`
+	Events      []string `json:"events,omitempty"`
 }
 
 type directive struct {
