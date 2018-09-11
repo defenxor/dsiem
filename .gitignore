@@ -1,5 +1,6 @@
 testings/logstash*
 testings/since_db*
+node_modules/
 debug
 logs/
 siem
