@@ -1,0 +1,34 @@
+{
+  "directives": [
+    {
+      "name": "Ping Flood from SRC_IP",
+      "kingdom": "Reconnaissance & Probing",
+      "category": "Misc Activity",
+      "id": 3,
+      "priority": 3,
+      "rules" : [
+        { "name": "ICMP Ping", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
+          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "reliability": 1, "timeout": 0 },
+        { "name": "ICMP Ping", "stage": 2, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100,
+          "from": ":1", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "reliability": 6, "timeout": 3600 },
+        { "name": "ICMP Ping", "stage": 3, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 10000,
+          "from": ":1", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "reliability": 10, "timeout": 60 }
+      ]
+    },
+    {
+      "name": "Ping Flood to DST_IP",
+      "kingdom": "Reconnaissance & Probing",
+      "category": "Misc Activity",
+      "id": 4,
+      "priority": 3,
+      "rules" : [
+        { "name": "ICMP Ping", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
+          "from": "ANY", "to": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "reliability": 1, "timeout": 0 },
+        { "name": "ICMP Ping", "stage": 2, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 10,
+          "from": ":1", "to": ":1", "port_from": "ANY", "port_to": "ANY", "reliability": 6, "timeout": 3600 },
+        { "name": "ICMP Ping", "stage": 3, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 20,
+          "from": ":1", "to": ":1", "port_from": "ANY", "port_to": "ANY", "reliability": 10, "timeout": 3600 }
+      ]
+    }
+  ]    
+}

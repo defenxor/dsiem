@@ -1,0 +1,39 @@
+{
+  "assets": [
+    {
+      "name": "Firewall",
+      "cidr": "10.73.255.1/32",
+      "value": 3
+    },
+    {
+      "name": "Defenxor Network",
+      "cidr": "10.73.0.0/16",
+      "value": 5
+    },
+    {
+      "name": "CTI DC Network",
+      "cidr": "10.8.100.0/24",
+      "value": 5
+    },
+    {
+      "name": "Defenxor Appl Network",
+      "cidr": "10.73.255.0/24",
+      "value": 5
+    },
+    {
+      "name": "192-168-Net",
+      "cidr": "192.168.0.0/16",
+      "value": 2
+    },
+    {
+      "name": "10-Net",
+      "cidr": "10.0.0.0/8",
+      "value": 2
+    },
+    {
+      "name": "172-16-Net",
+      "cidr": "172.16.0.0/12",
+      "value": 2
+    }
+  ]  
+}

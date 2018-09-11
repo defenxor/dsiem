@@ -50,12 +50,12 @@
             "occurrence": { "type": "long" },
             "port_to": { "type": "text" },
             "start_time": { "type": "data", "format": "epoch_second" },
-            "plugin_id": { "type" : "short" },
+            "plugin_id": { "type" : "long" },
             "from": { "type": "text" },
             "stage": { "type": "short" },
             "timeout": { "type": "short" },
             "events": { "type": "text" },
-            "plugin_sid": { "type": "short"}
+            "plugin_sid": { "type": "long"}
           }
         }
       }
