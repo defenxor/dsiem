@@ -3,6 +3,7 @@ testings/since_db*
 node_modules/
 ossim-directive-converter
 debug
+user.xml
 logs/
 siem
 keys/
