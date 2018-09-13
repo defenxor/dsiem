@@ -6,7 +6,8 @@ httpd
 user.xml
 logs/
 siem
-ui/*
+ui/
+siem-ui
 keys/
 .vscode/
 doc/refs

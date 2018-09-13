@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"sync/atomic"
 
 	"github.com/julienschmidt/httprouter"
@@ -15,11 +18,18 @@ const (
 	port     = "8080"
 )
 
+type configFiles struct {
+	FileName string `json:"filename"`
+}
+
 func startServer() {
 	for {
 		logInfo("Starting "+progName, 0)
 		router := httprouter.New()
-		router.POST("/*file", handle)
+		router.POST("/events", handleEvents)
+		router.GET("/config/:filename", handleConfFileDownload)
+		router.GET("/config/", handleConfFileList)
+		router.POST("/config", handleConfFileUpload)
 		logInfo("Server listening on port: "+port, 0)
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
@@ -35,7 +45,64 @@ func increaseConnCounter() uint64 {
 	return myID
 }
 
-func handle(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func handleConfFileList(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	clientAddr := r.RemoteAddr
+	logInfo("Request for list of configuration files from "+clientAddr, 0)
+
+	dir := path.Join(progDir, confDir)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		http.Error(w, "Error reading config directory.", 500)
+		return
+	}
+	c := []configFiles{}
+
+	for _, f := range files {
+		c = append(c, configFiles{f.Name()})
+	}
+	byteVal, err := json.MarshalIndent(&c, "", "  ")
+	if err != nil {
+		http.Error(w, "Error reading config file names.", 500)
+		return
+	}
+	_, err = w.Write(byteVal)
+	return
+}
+
+func handleConfFileDownload(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	clientAddr := r.RemoteAddr
+	filename := ps.ByName("filename")
+	if filename == "" {
+		http.Error(w, "requires /config/filename", 500)
+		return
+	}
+	logInfo("Request for file '"+filename+"' from "+clientAddr, 0)
+	f := path.Join(progDir, confDir, filename)
+	logInfo("Getting file "+f, 0)
+	if !fileExist(f) {
+		http.Error(w, filename+" doesnt exist", 404)
+		return
+	}
+	file, err := os.Open(f)
+	if err != nil {
+		http.Error(w, "cannot open "+filename, 500)
+		return
+	}
+	defer file.Close()
+
+	byteValue, err := ioutil.ReadAll(file)
+	if err != nil {
+		http.Error(w, "cannot read "+filename, 500)
+		return
+	}
+	_, err = w.Write(byteValue)
+	return
+}
+
+func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+}
+
+func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	clientAddr := r.RemoteAddr
 	evt := normalizedEvent{}

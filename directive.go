@@ -23,16 +23,16 @@ func startDirective(d directive, c chan normalizedEvent) {
 	for {
 		// handle incoming event
 		evt := <-c
-		if !doesEventMatchRule(evt, d.Rules[0],0) {
+		if !doesEventMatchRule(&evt, &d.Rules[0], 0) {
 			continue
 		}
 
 		logInfo("directive "+strconv.Itoa(d.ID)+" found matched event.", evt.ConnID)
-		go backlogManager(evt, d)
+		go backlogManager(&evt, &d)
 	}
 }
 
-func doesEventMatchRule(e normalizedEvent, r directiveRule, connID uint64) bool {
+func doesEventMatchRule(e *normalizedEvent, r *directiveRule, connID uint64) bool {
 	if e.PluginID != r.PluginID {
 		return false
 	}
@@ -69,15 +69,15 @@ func doesEventMatchRule(e normalizedEvent, r directiveRule, connID uint64) bool 
 		return false
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
-	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" && 
-	!caseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To, connID) {
+	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
+		!caseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To, connID) {
 		return false
 	}
 
-	if r.PortFrom != "ANY" && r.PortFrom != strconv.Itoa(e.SrcPort) {
+	if r.PortFrom != "ANY" && !caseInsensitiveContains(r.PortFrom, strconv.Itoa(e.SrcPort)) {
 		return false
 	}
-	if r.PortTo != "ANY" && r.PortTo != strconv.Itoa(e.DstPort) {
+	if r.PortTo != "ANY" && !caseInsensitiveContains(r.PortTo, strconv.Itoa(e.DstPort)) {
 		return false
 	}
 
@@ -114,6 +114,9 @@ func initDirectives() error {
 	}
 
 	total := len(uCases.Directives)
+	if total == 0 {
+		return errors.New("cannot find any directive to load from conf dir")
+	}
 	logInfo("Loaded "+strconv.Itoa(total)+" directives.", 0)
 
 	/*

@@ -32,7 +32,7 @@ type alarm struct {
 
 type alarmRule struct {
 	directiveRule
-	EventCount int `json:"events_count"`
+	/*	EventCount int `json:"events_count"` */
 }
 
 type siemAlarms struct {
@@ -42,6 +42,7 @@ type siemAlarms struct {
 
 func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	var a *alarm
+
 	for i := range alarms.Alarms {
 		c := &alarms.Alarms[i]
 		if c.ID == b.ID {
@@ -57,7 +58,13 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	}
 	a.ID = b.ID
 	a.Title = b.Directive.Name
-	a.Status = "Open"
+	if a.Status == "" {
+		a.Status = "Open"
+	}
+	if a.Tag == "" {
+		a.Tag = "Identified Threat"
+	}
+
 	a.Kingdom = b.Directive.Kingdom
 	a.Category = b.Directive.Category
 	if a.CreatedTime == 0 {
@@ -73,7 +80,6 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	case a.Risk >= 7:
 		a.RiskClass = "High"
 	}
-	a.Tag = "Identified Threat"
 	a.SrcIPs = b.SrcIPs
 	a.DstIPs = b.DstIPs
 	for i := range a.SrcIPs {
@@ -85,7 +91,8 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	a.Networks = removeDuplicatesUnordered(a.Networks)
 	a.Rules = []alarmRule{}
 	for _, v := range b.Directive.Rules {
-		rule := alarmRule{v, len(v.Events)}
+		// rule := alarmRule{v, len(v.Events)}
+		rule := alarmRule{v}
 		rule.Events = []string{} // so it will be omited during json marshaling
 		a.Rules = append(a.Rules, rule)
 	}

@@ -68,6 +68,7 @@ type directiveRule struct {
 	Timeout     int64    `json:"timeout"`
 	StartTime   int64    `json:"start_time"`
 	Events      []string `json:"events,omitempty"`
+	Status      string   `json:"status"`
 }
 
 type directive struct {

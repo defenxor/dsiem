@@ -76,6 +76,10 @@ func initAssets() error {
 		}
 	}
 
+	if len(assets.NetworkAssets) == 0 {
+		return errors.New("cannot load any asset from config dir")
+	}
+
 	ranger = cidranger.NewPCTrieRanger()
 
 	for i := range assets.NetworkAssets {

@@ -14,7 +14,9 @@ func getDir() (string, error) {
 	dir, err := osext.ExecutableFolder()
 
 	if devEnv == true {
+		// dir = "/home/mmta/go/src/siem2/src-local"
 		dir = "/go/src/siem"
+
 	}
 
 	return dir, err
