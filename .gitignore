@@ -1,5 +1,4 @@
-testings/logstash*
-testings/since_db*
+testings/
 node_modules/
 ossim-directive-converter
 debug
@@ -7,6 +6,7 @@ httpd
 user.xml
 logs/
 siem
+ui/*
 keys/
 .vscode/
 doc/refs
