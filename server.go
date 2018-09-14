@@ -29,7 +29,7 @@ func startServer() {
 		router.POST("/events", handleEvents)
 		router.GET("/config/:filename", handleConfFileDownload)
 		router.GET("/config/", handleConfFileList)
-		router.POST("/config", handleConfFileUpload)
+		router.POST("/config/:filename", handleConfFileUpload)
 		logInfo("Server listening on port: "+port, 0)
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
@@ -100,6 +100,36 @@ func handleConfFileDownload(w http.ResponseWriter, r *http.Request, ps httproute
 }
 
 func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	clientAddr := r.RemoteAddr
+	filename := ps.ByName("filename")
+	if filename == "" {
+		http.Error(w, "requires /config/filename", 500)
+		return
+	}
+	logInfo("Upload file request for '"+filename+"' from "+clientAddr, 0)
+	file := path.Join(progDir, confDir, filename)
+	b, err := ioutil.ReadAll(r.Body)
+	// bstr := string(b)
+	// logger.Info(bstr)
+	if err != nil {
+		logWarn("Error reading message from "+clientAddr+". Ignoring it.", 0)
+		http.Error(w, "Cannot read posted body content", 500)
+		return
+	}
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	defer f.Close()
+	if err != nil {
+		http.Error(w, "Cannot open target file location", 500)
+		return
+	}
+
+	_, err = f.Write(b)
+	if err != nil {
+		http.Error(w, "Cannot write to target file location", 500)
+		return
+	}
+	w.Write([]byte("File " + filename + " uploaded successfully\n"))
+	return
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

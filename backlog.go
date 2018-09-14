@@ -277,6 +277,22 @@ func (b *backLog) setStatus(status string, connID uint64) {
 	upsertAlarmFromBackLog(b, connID)
 }
 
+func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64) {
+	// this reinsert status and startDate for the currentStage rule if the first attempt failed
+	updateFlag := false
+	if b.Directive.Rules[idx].StartTime == 0 {
+		b.Directive.Rules[idx].StartTime = time.Now().Unix()
+		updateFlag = true
+	}
+	if b.Directive.Rules[idx].Status != "active" {
+		b.setStatus("active", connID)
+		updateFlag = true
+	}
+	if updateFlag {
+		upsertAlarmFromBackLog(b, connID)
+	}
+}
+
 func (b *backLog) processMatchedEvent(e *normalizedEvent, idx int) {
 
 	b.appendandWriteEvent(e, idx)
@@ -284,6 +300,7 @@ func (b *backLog) processMatchedEvent(e *normalizedEvent, idx int) {
 	// exit early if the newly added event hasnt caused events_count == occurrence
 	// for the current stage
 	if !b.isStageReachMaxEvtCount() {
+		b.ensureStatusAndStartTime(idx, e.ConnID)
 		return
 	}
 
