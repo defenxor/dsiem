@@ -12,7 +12,7 @@ func getDir() (string, error) {
 	dir, err := osext.ExecutableFolder()
 
 	if devEnv == true {
-		dir = "/home/mmta/go/src/ossim-converter"
+		dir = "/home/mmta/go/src/siem2/src-local/ossim-converter"
 	}
 
 	return dir, err
