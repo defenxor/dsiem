@@ -1,0 +1,15 @@
+{
+  "intel_sources": [
+    {
+      "name": "Wise",
+      "type": "IP",
+      "enabled": true,
+      "url": "http://frontend.appl184.mss.defenxor.com:8081/ip/${ip}",
+      "result_regex": [
+        "match: value.*", 
+        "match:\"(.*?)\"", 
+        "remove:\""
+      ]
+    }
+  ]
+}
