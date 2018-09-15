@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"net"
 	"os"
+	"reflect"
 	"sync"
 )
 
@@ -12,27 +14,30 @@ const (
 
 var alarms siemAlarms
 var alarmRemovalChannel chan removalChannelMsg
+var privateIPBlocks []*net.IPNet
 
 type alarm struct {
-	ID          string      `json:"alarm_id"`
-	Title       string      `json:"title"`
-	Status      string      `json:"status"`
-	Kingdom     string      `json:"kingdom"`
-	Category    string      `json:"Category"`
-	CreatedTime int64       `json:"created_time"`
-	UpdateTime  int64       `json:"update_time"`
-	Risk        int         `json:"risk"`
-	RiskClass   string      `json:"risk_class"`
-	Tag         string      `json:"tag"`
-	SrcIPs      []string    `json:"src_ips"`
-	DstIPs      []string    `json:"dst_ips"`
-	Networks    []string    `json:"networks"`
-	Rules       []alarmRule `json:"rules"`
+	ID          string        `json:"alarm_id"`
+	Title       string        `json:"title"`
+	Status      string        `json:"status"`
+	Kingdom     string        `json:"kingdom"`
+	Category    string        `json:"Category"`
+	CreatedTime int64         `json:"created_time"`
+	UpdateTime  int64         `json:"update_time"`
+	Risk        int           `json:"risk"`
+	RiskClass   string        `json:"risk_class"`
+	Tag         string        `json:"tag"`
+	SrcIPs      []string      `json:"src_ips"`
+	SrcIPIntel  []intelResult `json:"src_ips_intel,omitempty"`
+	DstIPs      []string      `json:"dst_ips"`
+	DstIPIntel  []intelResult `json:"dst_ips_intel,omitempty"`
+	Networks    []string      `json:"networks"`
+	Rules       []alarmRule   `json:"rules"`
+	mu          sync.RWMutex
 }
 
 type alarmRule struct {
 	directiveRule
-	/*	EventCount int `json:"events_count"` */
 }
 
 type siemAlarms struct {
@@ -82,6 +87,11 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	}
 	a.SrcIPs = b.SrcIPs
 	a.DstIPs = b.DstIPs
+	if intelEnabled {
+		// do intel check in the background
+		a.asyncIntelCheck(connID)
+	}
+
 	for i := range a.SrcIPs {
 		a.Networks = append(a.Networks, getAssetNetworks(a.SrcIPs[i])...)
 	}
@@ -101,6 +111,69 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	if err != nil {
 		logWarn("Alarm "+a.ID+" failed to update Elasticsearch! "+err.Error(), connID)
 	}
+}
+
+func (a *alarm) asyncIntelCheck(connID uint64) {
+	go func() {
+		// lock to make sure the alreadyExist test is useful
+		a.mu.Lock()
+		defer a.mu.Unlock()
+
+		pSrcIPIntel := a.SrcIPIntel
+		pDstIPIntel := a.DstIPIntel
+
+		for i := range a.SrcIPs {
+			// skip private IP
+			if isPrivateIP(a.SrcIPs[i]) {
+				continue
+			}
+			// skip existing entries
+			alreadyExist := false
+			for _, v := range a.SrcIPIntel {
+				if v.Term == a.SrcIPs[i] {
+					alreadyExist = true
+					break
+				}
+			}
+			if alreadyExist {
+				continue
+			}
+			if found, res := checkIntelIP(a.SrcIPs[i], connID); found {
+				a.SrcIPIntel = append(a.SrcIPIntel, res...)
+				logInfo("Found intel result for "+a.SrcIPs[i], connID)
+			}
+		}
+		for i := range a.DstIPs {
+			// skip private IP
+			if isPrivateIP(a.DstIPs[i]) {
+				continue
+			}
+			// skip existing entries
+			alreadyExist := false
+			for _, v := range a.DstIPIntel {
+				if v.Term == a.DstIPs[i] {
+					alreadyExist = true
+					break
+				}
+			}
+			if alreadyExist {
+				continue
+			}
+			if found, res := checkIntelIP(a.DstIPs[i], connID); found {
+				a.DstIPIntel = append(a.DstIPIntel, res...)
+				logInfo("Found intel result for "+a.DstIPs[i], connID)
+			}
+		}
+		// compare content of slice
+		if reflect.DeepEqual(pSrcIPIntel, a.SrcIPIntel) && reflect.DeepEqual(pDstIPIntel, a.DstIPIntel) {
+			return
+		}
+		err := a.updateElasticsearch(connID)
+		if err != nil {
+			logWarn("Alarm "+a.ID+" failed to update Elasticsearch after TI check! "+err.Error(), connID)
+		}
+	}()
+
 }
 
 func (a *alarm) updateElasticsearch(connID uint64) error {
@@ -127,6 +200,7 @@ func initAlarm() {
 			go removeAlarm(m)
 		}
 	}()
+
 }
 
 func removeAlarm(m removalChannelMsg) {
@@ -144,9 +218,34 @@ func removeAlarm(m removalChannelMsg) {
 		return
 	}
 	// copy last element to idx location
-	alarms.Alarms[idx] = alarms.Alarms[len(alarms.Alarms)-1]
+	alarms.Alarms[len(alarms.Alarms)-1].mu.Lock()
+	alarms.Alarms[idx].mu.Lock()
+	copyAlarm(&alarms.Alarms[idx], &alarms.Alarms[len(alarms.Alarms)-1])
+	alarms.Alarms[idx].mu.Unlock()
+	alarms.Alarms[len(alarms.Alarms)-1].mu.Unlock()
+
 	// write empty to last element
 	alarms.Alarms[len(alarms.Alarms)-1] = alarm{}
 	// truncate slice
 	alarms.Alarms = alarms.Alarms[:len(alarms.Alarms)-1]
+}
+
+// to avoid copying mutex
+func copyAlarm(dst *alarm, src *alarm) {
+	dst.ID = src.ID
+	dst.Title = src.Title
+	dst.Status = src.Status
+	dst.Kingdom = src.Kingdom
+	dst.Category = src.Category
+	dst.CreatedTime = src.CreatedTime
+	dst.UpdateTime = src.UpdateTime
+	dst.Risk = src.Risk
+	dst.RiskClass = src.RiskClass
+	dst.Tag = src.Tag
+	dst.SrcIPs = src.SrcIPs
+	dst.SrcIPIntel = src.SrcIPIntel
+	dst.DstIPs = src.DstIPs
+	dst.DstIPIntel = src.DstIPIntel
+	dst.Networks = src.Networks
+	dst.Rules = src.Rules
 }

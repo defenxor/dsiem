@@ -76,19 +76,19 @@ func isIPinCIDR(ip string, netcidr string, connID uint64) (found bool) {
 	return
 }
 
+func isPrivateIP(ip string) bool {
+	ipn := net.ParseIP(ip)
+	for _, block := range privateIPBlocks {
+		if block.Contains(ipn) {
+			return true
+		}
+	}
+	return false
+}
+
 func caseInsensitiveContains(s, substr string) bool {
 	s, substr = strings.ToUpper(s), strings.ToUpper(substr)
 	return strings.Contains(s, substr)
-}
-
-func logInfo(msg string, connID uint64) {
-	sID := strconv.Itoa(int(connID))
-	logger.Info("[" + sID + "] " + msg)
-}
-
-func logWarn(msg string, connID uint64) {
-	sID := strconv.Itoa(int(connID))
-	logger.Warn("[" + sID + "] " + msg)
 }
 
 func appendStringUniq(slice []string, i string) []string {

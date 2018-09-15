@@ -116,6 +116,7 @@ func createSIEMDirective(tempXMLFile string) (resFile string, err error) {
 		// flatten rules
 		res := flattenRule(d.Directives[i].Rules, []rule{})
 		d.Directives[i].Rules = res
+
 		// renumber rule's stage and convert plugin_sid, product, and subcategory from string to array of ints
 		for j := range d.Directives[i].Rules {
 			d.Directives[i].Rules[j].Stage = j + 1
@@ -129,14 +130,28 @@ func createSIEMDirective(tempXMLFile string) (resFile string, err error) {
 
 			if thisRule.Type == "PluginRule" {
 				// for plugin_sid
-				strSids := strings.Split(thisRule.PluginSIDstr, ",")
-				nArr := []int64{}
-				for k := range strSids {
-					n, _ := strconv.Atoi(strSids[k])
-					nArr = append(nArr, int64(n))
+
+				// first handle 1:Plugin_SID in Plugin_SID by copying from the referenced rule
+				if strings.Contains(thisRule.PluginSIDstr, ":") {
+					v := strings.Split(thisRule.PluginSIDstr, ":")
+					n, err := strconv.Atoi(v[0])
+					if err != nil {
+						return "", err
+					}
+					n--
+					thisRule.PluginSID = d.Directives[i].Rules[n].PluginSID
+
+				} else {
+					// the rest, convert sid,sid,sid to []int
+					strSids := strings.Split(thisRule.PluginSIDstr, ",")
+					nArr := []int64{}
+					for k := range strSids {
+						n, _ := strconv.Atoi(strSids[k])
+						nArr = append(nArr, int64(n))
+					}
+					thisRule.PluginSID = nArr
 				}
 				thisRule.PluginSIDstr = ""
-				thisRule.PluginSID = nArr
 			}
 
 			if thisRule.Type == "TaxonomyRule" {
@@ -206,7 +221,6 @@ func createSIEMDirective(tempXMLFile string) (resFile string, err error) {
 			}
 		}
 	}
-
 	b, err := json.MarshalIndent(d, "", "  ")
 	// fmt.Println(string(b))
 

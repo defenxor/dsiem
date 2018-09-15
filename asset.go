@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-
+	"strconv"
 	"github.com/yl2chen/cidranger"
 )
 
@@ -76,7 +76,8 @@ func initAssets() error {
 		}
 	}
 
-	if len(assets.NetworkAssets) == 0 {
+	total := len(assets.NetworkAssets)
+	if total == 0 {
 		return errors.New("cannot load any asset from config dir")
 	}
 
@@ -89,17 +90,20 @@ func initAssets() error {
 
 		_, net, err := net.ParseCIDR(cidr)
 		if err != nil {
-			logger.Info("Cannot parse ", cidr, "!")
+			logInfo("Cannot parse "+cidr+"!", 0)
 			return err
 		}
 
-		logger.Info("Inserting ", cidr, " network.")
+		// logInfo("Inserting "+cidr+" network into HOME_NET.", 0)
 		err = ranger.Insert(newAssetEntry(*net, value, name))
 		if err != nil {
-			logger.Info("Cannot insert ", cidr, " to HOME_NET!")
+			logWarn("Cannot insert "+cidr+" to HOME_NET!", 0)
 			return err
 		}
 	}
+
+	logInfo("Loaded "+strconv.Itoa(total)+" host and/or network assets.", 0)
+
 	return nil
 }
 

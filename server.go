@@ -147,9 +147,9 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	}
 	err = evt.fromBytes(b)
 	if err != nil {
-		logWarn("Cannot parse normalizedEvent from "+clientAddr+". Ignoring it.", connID)
-		bstr := string(b)
-		logger.Warn(bstr)
+		logWarn("Cannot parse normalizedEvent from "+clientAddr+". Ignoring it. err: "+err.Error(), connID)
+		// bstr := string(b)
+		// logWarn(bstr,connID)
 		return
 	}
 	if !evt.valid() {
@@ -157,10 +157,8 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		return
 	}
 
-	logInfo("Received event ID: "+evt.EventID, connID)
+	logDebug("Received event ID: "+evt.EventID, connID)
 	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt
-
-	// logInfo("Done.", connID)
 }

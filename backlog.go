@@ -74,7 +74,7 @@ func startBackLogTicker() {
 	go func() {
 		for {
 			<-ticker.C
-			logInfo("Ticker started, # of backlogs to check: "+strconv.Itoa(len(bLogs.BackLogs)), 0)
+			logDebug("Ticker started, # of backlogs to check: "+strconv.Itoa(len(bLogs.BackLogs)), 0)
 			now := time.Now().Unix()
 			bLogs.mu.RLock()
 			for i := range bLogs.BackLogs {
@@ -83,15 +83,6 @@ func startBackLogTicker() {
 				start := bLogs.BackLogs[i].Directive.Rules[idx].StartTime
 				timeout := bLogs.BackLogs[i].Directive.Rules[idx].Timeout
 				maxTime := start + timeout
-				/*
-					csStr := strconv.Itoa(cs)
-					maxTimeStr := strconv.FormatInt(maxTime, 10)
-					startTimeStr := strconv.FormatInt(start, 10)
-					timeoutStr := strconv.FormatInt(timeout, 10)
-					logger.Info("Processing for backlog " + bLogs.BackLogs[i].ID + ", stage: " + csStr)
-					logger.Info(" maxTime: " + maxTimeStr +
-						" startTime: " + startTimeStr + " timeout: " + timeoutStr)
-				*/
 				if maxTime > now {
 					continue
 				}
@@ -105,10 +96,10 @@ func startBackLogTicker() {
 }
 
 func removeBackLog(m removalChannelMsg) {
-	logInfo("Trying to obtain write lock to remove backlog "+m.ID, m.connID)
+	logDebug("Trying to obtain write lock to remove backlog "+m.ID, m.connID)
 	bLogs.mu.Lock()
 	defer bLogs.mu.Unlock()
-	logInfo("Lock obtained. Removing backlog "+m.ID, m.connID)
+	logDebug("Lock obtained. Removing backlog "+m.ID, m.connID)
 	idx := -1
 	for i := range bLogs.BackLogs {
 		if bLogs.BackLogs[i].ID == m.ID {
@@ -143,7 +134,7 @@ func backlogManager(e *normalizedEvent, d *directive) {
 		if !doesEventMatchRule(e, &currRule, e.ConnID) {
 			continue
 		}
-		logInfo("Directive "+strconv.Itoa(d.ID)+" backlog "+bLogs.BackLogs[i].ID+" matched. Not creating new backlog.", e.ConnID)
+		logDebug("Directive "+strconv.Itoa(d.ID)+" backlog "+bLogs.BackLogs[i].ID+" matched. Not creating new backlog.", e.ConnID)
 		found = true
 		bLogs.BackLogs[i].processMatchedEvent(e, idx)
 	}
@@ -170,11 +161,11 @@ func createNewBackLog(d *directive, e *normalizedEvent) {
 	b.CurrentStage = 1
 	b.HighestStage = len(d.Rules)
 	b.processMatchedEvent(e, 0)
-	logInfo("Trying to obtain write lock to create backlog "+bid, e.ConnID)
+	logDebug("Trying to obtain write lock to create backlog "+bid, e.ConnID)
 	bLogs.mu.Lock()
 	bLogs.BackLogs = append(bLogs.BackLogs, b)
 	bLogs.mu.Unlock()
-	logInfo("Lock obtained/released for backlog "+bid+" creation.", e.ConnID)
+	logDebug("Lock obtained/released for backlog "+bid+" creation.", e.ConnID)
 }
 
 func copyDirective(dst *directive, src *directive, e *normalizedEvent) {
@@ -392,7 +383,7 @@ func (b *backLog) delete(connID uint64) {
 }
 
 func (b *backLog) updateElasticsearch(e *normalizedEvent) error {
-	logInfo("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" updating Elasticsearch.", e.ConnID)
+	logDebug("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" updating Elasticsearch.", e.ConnID)
 	filename := path.Join(progDir, logsDir, aEventsLogs)
 	b.StatusTime = time.Now().Unix()
 

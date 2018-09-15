@@ -15,6 +15,37 @@ const (
 	directiveFileGlob = "directives_*.json"
 )
 
+type directiveRule struct {
+	Name        string   `json:"name"`
+	Stage       int      `json:"stage"`
+	PluginID    int      `json:"plugin_id"`
+	PluginSID   []int    `json:"plugin_sid"`
+	Occurrence  int      `json:"occurrence"`
+	From        string   `json:"from"`
+	To          string   `json:"to"`
+	PortFrom    string   `json:"port_from"`
+	PortTo      string   `json:"port_to"`
+	Protocol    string   `json:"protocol"`
+	Reliability int      `json:"reliability"`
+	Timeout     int64    `json:"timeout"`
+	StartTime   int64    `json:"start_time"`
+	Events      []string `json:"events,omitempty"`
+	Status      string   `json:"status"`
+}
+
+type directive struct {
+	ID       int             `json:"id"`
+	Name     string          `json:"name"`
+	Priority int             `json:"priority"`
+	Kingdom  string          `json:"kingdom"`
+	Category string          `json:"category"`
+	Rules    []directiveRule `json:"rules"`
+}
+
+type directives struct {
+	Directives []directive `json:"directives"`
+}
+
 var uCases directives
 var eventChannel chan normalizedEvent
 
