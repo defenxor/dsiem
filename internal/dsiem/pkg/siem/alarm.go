@@ -2,7 +2,7 @@ package siem
 
 import (
 	"dsiem/internal/dsiem/pkg/asset"
-	log "dsiem/internal/dsiem/pkg/logger"
+	log "dsiem/internal/shared/pkg/logger"
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
 	"dsiem/internal/shared/pkg/fs"
 	"encoding/json"

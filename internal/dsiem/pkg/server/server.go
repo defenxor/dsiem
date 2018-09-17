@@ -2,7 +2,7 @@ package server
 
 import (
 	"dsiem/internal/dsiem/pkg/event"
-	log "dsiem/internal/dsiem/pkg/logger"
+	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/fs"
 	"encoding/json"
 	"errors"
@@ -92,7 +92,7 @@ func handleConfFileDownload(w http.ResponseWriter, r *http.Request, ps httproute
 	clientAddr := r.RemoteAddr
 	filename := ps.ByName("filename")
 	if filename == "" {
-		http.Error(w, "requires /config/filename", 500)
+		http.Error(w, "requires /config/filename", 400)
 		return
 	}
 	log.Info("Request for file '"+filename+"' from "+clientAddr, 0)
@@ -131,7 +131,7 @@ func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.
 	// bstr := string(b)
 	// logger.Info(bstr)
 	if err != nil {
-		log.Warn("Error reading message from "+clientAddr+". Ignoring it.", 0)
+		log.Warn("Error reading message from "+clientAddr+". Returning HTTP 500.", 0)
 		http.Error(w, "Cannot read posted body content", 500)
 		return
 	}
@@ -161,18 +161,21 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	// bstr := string(b)
 	// logger.Info(bstr)
 	if err != nil {
-		log.Warn("Error reading message from "+clientAddr+". Ignoring it", connID)
+		log.Warn("Error reading message from "+clientAddr+". Returning HTTP 500.", connID)
+		http.Error(w, "Cannot read posted body content", 500)
 		return
 	}
 	err = evt.FromBytes(b)
 	if err != nil {
-		log.Warn("Cannot parse normalizedEvent from "+clientAddr+". Ignoring it. err: "+err.Error(), connID)
+		log.Warn("Cannot parse normalizedEvent from "+clientAddr+". err: "+err.Error(), connID)
+		http.Error(w, "Cannot parse the submitted event", 400)
 		// bstr := string(b)
 		// log.Warn(bstr,connID)
 		return
 	}
 	if !evt.Valid() {
 		log.Warn("l337 or epic fail attempt from "+clientAddr+" detected. Discarding.", connID)
+		http.Error(w, "Not a valid event", 418)
 		return
 	}
 

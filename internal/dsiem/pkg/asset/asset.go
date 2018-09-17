@@ -1,7 +1,7 @@
 package asset
 
 import (
-	log "dsiem/internal/dsiem/pkg/logger"
+	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/fs"
 	"dsiem/internal/shared/pkg/str"
 

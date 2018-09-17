@@ -4,11 +4,9 @@
       "name": "Nessus",
       "type": "IP-Port",
       "enabled": false,
-      "url": "http://frontend.appl184.mss.defenxor.com:8081/ip=${ip}&port=${port}",
+      "url": "http://127.0.0.1:8081/?ip=${ip}&port=${port}",
       "result_regex": [
-        "match: value.*", 
-        "match:\"(.*?)\"", 
-        "remove:\""
+        "match: :.*" 
       ]
     }
   ]

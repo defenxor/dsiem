@@ -3,11 +3,11 @@ package main
 import (
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
-	log "dsiem/internal/dsiem/pkg/logger"
 	"dsiem/internal/dsiem/pkg/server"
 	"dsiem/internal/dsiem/pkg/siem"
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
 	"dsiem/internal/shared/pkg/fs"
+	log "dsiem/internal/shared/pkg/logger"
 	"flag"
 	"fmt"
 	"os"

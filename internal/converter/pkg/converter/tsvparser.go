@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	ossimRefDir           = "ossimref"
 	ossimTaxonomyTSV      = "ossim_alarm_taxonomy.tsv"
 	ossimKingdomsTSV      = "ossim_alarm_kingdom.tsv"
 	ossimCategoriesTSV    = "ossim_alarm_category.tsv"
