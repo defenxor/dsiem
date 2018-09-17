@@ -147,7 +147,6 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	evt := event.NormalizedEvent{}
 	connID := increaseConnCounter()
 
-	log.Debug("handling event", connID)
 	b, err := ioutil.ReadAll(r.Body)
 	// bstr := string(b)
 	// logger.Info(bstr)
@@ -171,6 +170,6 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt
-	log.Debug("Pushed event ID: "+evt.EventID, connID)
+	// log.Debug("Pushed event ID: "+evt.EventID, connID)
 
 }
