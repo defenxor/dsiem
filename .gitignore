@@ -1,14 +1,11 @@
-testings/
+# Ignore all
+*
+# Unignore all with extensions
+!*.*
 node_modules/
-ossim-directive-converter
 debug
-httpd
+# alienvault rules
 user.xml
-logs/
-siem
-ui/
-siem-ui
-keys/
+logs/*
+!logs/.keep
 .vscode/
-doc/refs
-doc/site
