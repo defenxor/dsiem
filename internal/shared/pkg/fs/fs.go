@@ -51,5 +51,5 @@ func OverwriteFile(s string, filename string) error {
 
 // EnsureDir creates directory if it doesnt exist
 func EnsureDir(dir string) error {
-	return os.MkdirAll(dir, os.FileMode(700))
+	return os.MkdirAll(dir, os.FileMode(0700))
 }

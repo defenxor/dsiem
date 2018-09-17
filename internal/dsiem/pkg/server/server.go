@@ -5,10 +5,13 @@ import (
 	log "dsiem/internal/dsiem/pkg/logger"
 	"dsiem/internal/shared/pkg/fs"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/julienschmidt/httprouter"
@@ -17,34 +20,41 @@ import (
 var connCounter uint64
 var progDir, confDir string
 
-const (
-	progName = "SIEM"
-	port     = "8080"
-)
-
 type configFiles struct {
 	FileName string `json:"filename"`
 }
 
 var eventChannel chan<- event.NormalizedEvent
 
-// Start the server
-func Start(ch chan<- event.NormalizedEvent, confd string) {
-	eventChannel = ch
+// Start the HTTP server on addr:port, writing incoming event to ch and reading/writing
+// conf files to confd
+func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int) error {
+	if a := net.ParseIP(addr); a == nil {
+		return errors.New(addr + " is not a valid IP address")
+	}
+	if port < 1 || port > 65535 {
+		return errors.New("Invalid TCP port number")
+	}
+
+	// no need to check this, toctou issue
 	confDir = confd
+
+	eventChannel = ch
+
+	p := strconv.Itoa(port)
 	for {
-		log.Info("Starting "+progName, 0)
 		router := httprouter.New()
 		router.POST("/events", handleEvents)
 		router.GET("/config/:filename", handleConfFileDownload)
 		router.GET("/config/", handleConfFileList)
 		router.POST("/config/:filename", handleConfFileUpload)
-		log.Info("Server listening on port: "+port, 0)
-		err := http.ListenAndServe(":"+port, router)
+		log.Info("Server listening on "+addr+":"+p, 0)
+		err := http.ListenAndServe(addr+":"+p, router)
 		if err != nil {
 			log.Warn("Error from http.ListenAndServe: "+err.Error(), 0)
 		}
 	}
+	return nil
 }
 
 func increaseConnCounter() uint64 {

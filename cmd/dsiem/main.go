@@ -10,14 +10,22 @@ import (
 	"dsiem/internal/shared/pkg/fs"
 	"flag"
 	"fmt"
+	"os"
 	"path"
 )
 
-var confDir string
-var logDir string
-var debugFlag bool
+var (
+	confDir   string
+	logDir    string
+	debugFlag bool
+	port      int
+	buildTime string
+	version   string
+	addr      string
+)
 
 const (
+	progName    = "dsiem"
 	aEventsLogs = "siem_alarm_events.json"
 	alarmLogs   = "siem_alarms.json"
 )
@@ -25,7 +33,21 @@ const (
 func init() {
 	dev := flag.Bool("dev", false, "enable/disable dev env specific directory.")
 	dbg := flag.Bool("debug", false, "enable/disable debug level logging.")
+	ver := flag.Bool("version", false, "display version and build time.")
+	usage := flag.Bool("usage", false, "display acceptable CLI argument.")
+	a := flag.String("address", "0.0.0.0", "IP address to listen on.")
+	p := flag.Int("port", 8080, "TCP port to listen to.")
 	flag.Parse()
+	if *ver {
+		fmt.Println(progName, version, "("+buildTime+")")
+		os.Exit(0)
+	}
+	if *usage {
+		flag.Usage()
+		os.Exit(0)
+	}
+	addr = *a
+	port = *p
 	d, err := fs.GetDir(*dev)
 	if err != nil {
 		exit("Cannot get current directory??", err)
@@ -41,14 +63,21 @@ func init() {
 var eventChannel chan event.NormalizedEvent
 
 func exit(msg string, err error) {
-	fmt.Println("Exiting:", msg)
-	panic(err)
+	if debugFlag {
+		fmt.Println(msg)
+		panic(err)
+	} else {
+		fmt.Println("Exiting: " + msg + ": " + err.Error())
+		os.Exit(1)
+	}
 }
 
 func main() {
 	log.Setup(debugFlag)
 
 	eventChannel = make(chan event.NormalizedEvent)
+
+	log.Info("Starting "+progName+" "+version, 0)
 
 	err := asset.Init(confDir)
 	if err != nil {
@@ -66,15 +95,16 @@ func main() {
 	if err != nil {
 		exit("Cannot initialize directives", err)
 	}
-	siem.InitBackLog(path.Join(logDir, aEventsLogs))
+	err = siem.InitBackLog(path.Join(logDir, aEventsLogs))
 	if err != nil {
 		exit("Cannot initialize backlog", err)
 	}
-
-	siem.InitAlarm(path.Join(logDir, alarmLogs))
+	err = siem.InitAlarm(path.Join(logDir, alarmLogs))
 	if err != nil {
 		exit("Cannot initialize alarm", err)
 	}
-
-	server.Start(eventChannel, confDir)
+	err = server.Start(eventChannel, confDir, addr, port)
+	if err != nil {
+		exit("Cannot start server", err)
+	}
 }
