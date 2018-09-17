@@ -62,7 +62,7 @@ func main() {
 	if err != nil {
 		exit("Cannot initialize Vulnerability scan result", err)
 	}
-	err = siem.InitDirectives(confDir)
+	err = siem.InitDirectives(confDir, eventChannel)
 	if err != nil {
 		exit("Cannot initialize directives", err)
 	}
@@ -72,5 +72,9 @@ func main() {
 	}
 
 	siem.InitAlarm(path.Join(logDir, alarmLogs))
-	server.Start(eventChannel)
+	if err != nil {
+		exit("Cannot initialize alarm", err)
+	}
+
+	server.Start(eventChannel, confDir)
 }

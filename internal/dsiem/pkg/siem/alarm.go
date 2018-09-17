@@ -4,9 +4,11 @@ import (
 	"dsiem/internal/dsiem/pkg/asset"
 	log "dsiem/internal/dsiem/pkg/logger"
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
+	"dsiem/internal/shared/pkg/fs"
 	"encoding/json"
 	"net"
 	"os"
+	"path"
 	"reflect"
 	"sync"
 )
@@ -49,8 +51,12 @@ type siemAlarms struct {
 	Alarms []alarm `json:"alarm"`
 }
 
-// InitAlarm initialize alarm, storing results into dir
-func InitAlarm(logFile string) {
+// InitAlarm initialize alarm, storing result into logFile
+func InitAlarm(logFile string) error {
+	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
+		return err
+	}
+
 	aLogFile = logFile
 	alarmRemovalChannel = make(chan removalChannelMsg)
 	go func() {
@@ -73,6 +79,7 @@ func InitAlarm(logFile string) {
 		privateIPBlocks = append(privateIPBlocks, block)
 	}
 
+	return nil
 }
 
 func upsertAlarmFromBackLog(b *backLog, connID uint64) {

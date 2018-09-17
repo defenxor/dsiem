@@ -122,7 +122,7 @@ func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint6
 }
 
 // InitDirectives initialize directive from directive_*.json files in confDir
-func InitDirectives(confDir string) error {
+func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	p := path.Join(confDir, directiveFileGlob)
 	files, err := filepath.Glob(p)
 	if err != nil {
@@ -163,7 +163,6 @@ func InitDirectives(confDir string) error {
 	*/
 
 	var dirchan []chan event.NormalizedEvent
-	eventChannel = make(chan event.NormalizedEvent)
 
 	for i := 0; i < total; i++ {
 		dirchan = append(dirchan, make(chan event.NormalizedEvent))
@@ -172,7 +171,7 @@ func InitDirectives(confDir string) error {
 		// copy incoming events to all directive channels
 		go func() {
 			for {
-				evt := <-eventChannel
+				evt := <-ch
 				for i := range dirchan {
 					dirchan[i] <- evt
 				}

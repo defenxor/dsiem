@@ -19,7 +19,7 @@ func GetDir(devEnv bool) (string, error) {
 	if devEnv == true {
 		// check both docker internal location or dev local pc location
 		dir = "/go/src/dsiem"
-		if !FileExist(dir + "/conf/assets.json") {
+		if !FileExist(dir + "/configs/assets_testing.json") {
 			dir = "/home/mmta/go/src/dsiem"
 		}
 	}
@@ -47,4 +47,9 @@ func OverwriteFile(s string, filename string) error {
 	defer f.Close()
 	_, err = f.WriteString(s + "\n")
 	return err
+}
+
+// EnsureDir creates directory if it doesnt exist
+func EnsureDir(dir string) error {
+	return os.MkdirAll(dir, os.FileMode(700))
 }

@@ -29,8 +29,9 @@ type configFiles struct {
 var eventChannel chan<- event.NormalizedEvent
 
 // Start the server
-func Start(ch chan<- event.NormalizedEvent) {
+func Start(ch chan<- event.NormalizedEvent, confd string) {
 	eventChannel = ch
+	confDir = confd
 	for {
 		log.Info("Starting "+progName, 0)
 		router := httprouter.New()
@@ -146,6 +147,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	evt := event.NormalizedEvent{}
 	connID := increaseConnCounter()
 
+	log.Debug("handling event", connID)
 	b, err := ioutil.ReadAll(r.Body)
 	// bstr := string(b)
 	// logger.Info(bstr)
@@ -169,4 +171,6 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt
+	log.Debug("Pushed event ID: "+evt.EventID, connID)
+
 }
