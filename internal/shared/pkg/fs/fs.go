@@ -17,9 +17,10 @@ func GetDir(devEnv bool) (string, error) {
 	dir, err := osext.ExecutableFolder()
 
 	if devEnv == true {
-		dir = "/go/src/siem"
+		// check both docker internal location or dev local pc location
+		dir = "/go/src/dsiem"
 		if !FileExist(dir + "/conf/assets.json") {
-			dir = "/home/mmta/go/src/siem2/src-local"
+			dir = "/home/mmta/go/src/dsiem"
 		}
 	}
 

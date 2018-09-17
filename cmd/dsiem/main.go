@@ -52,7 +52,7 @@ func main() {
 
 	err := asset.Init(confDir)
 	if err != nil {
-		exit("Cannot initialize assets", err)
+		exit("Cannot initialize assets from "+confDir, err)
 	}
 	err = xc.InitIntel(confDir)
 	if err != nil {
