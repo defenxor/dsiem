@@ -2,8 +2,8 @@ package server
 
 import (
 	"dsiem/internal/dsiem/pkg/event"
-	"dsiem/internal/dsiem/pkg/fs"
 	log "dsiem/internal/dsiem/pkg/logger"
+	"dsiem/internal/shared/pkg/fs"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"

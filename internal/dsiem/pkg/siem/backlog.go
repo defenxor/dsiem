@@ -4,7 +4,7 @@ import (
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
 	log "dsiem/internal/dsiem/pkg/logger"
-	"dsiem/internal/dsiem/pkg/str"
+	"dsiem/internal/shared/pkg/str"
 	"encoding/json"
 	"errors"
 

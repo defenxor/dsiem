@@ -1,9 +1,9 @@
 package asset
 
 import (
-	"dsiem/internal/dsiem/pkg/fs"
 	log "dsiem/internal/dsiem/pkg/logger"
-	"dsiem/internal/dsiem/pkg/str"
+	"dsiem/internal/shared/pkg/fs"
+	"dsiem/internal/shared/pkg/str"
 
 	"encoding/json"
 	"errors"

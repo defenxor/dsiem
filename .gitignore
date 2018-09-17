@@ -5,9 +5,9 @@
 # Unignore all dirs
 !*/
 node_modules/
-debug
 # alienvault rules
 user.xml
-logs/*
-!logs/.keep
+user.xml.tmp
+
+logs
 .vscode/

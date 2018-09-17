@@ -1,7 +1,7 @@
 package xcorrelator
 
 import (
-	"dsiem/internal/dsiem/pkg/fs"
+	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/dsiem/pkg/logger"
 	"encoding/json"
 	"errors"
