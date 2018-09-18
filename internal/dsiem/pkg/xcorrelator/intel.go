@@ -21,6 +21,7 @@ const (
 	maxSecondToWaitForIntel = 2
 )
 
+// IntelEnabled mark whether intel lookup is enabled
 var IntelEnabled bool
 
 type intelSource struct {

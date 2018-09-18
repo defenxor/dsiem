@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	vulnFileGlob = "vulnscan_*.json"
+	vulnFileGlob = "vuln_*.json"
 )
 
-var vulnEnabled bool
+// VulnEnabled mark whether intel lookup is enabled
+var VulnEnabled bool
 
 type vulnSource struct {
 	Name        string   `json:"name"`
@@ -54,8 +55,11 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 
 	for _, v := range vulns.VulnSources {
 		p := strconv.Itoa(port)
+		log.Info("Checking url "+v.URL+" with ip: "+ip, 0)
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
-		url = strings.Replace(v.URL, "${port}", p, 1)
+		url = strings.Replace(url, "${port}", p, 1)
+		log.Info("result url "+url, 0)
+
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
@@ -72,6 +76,8 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 			log.Warn("Cannot read result from "+v.Name+" VS for IP "+ip+":"+p, connID)
 			continue
 		}
+
+		log.Info("Going to read rules", connID)
 		strRegex := v.ResultRegex
 		vResult := string(body)
 		// loop over the strRegex, applying it one by one to vResult
@@ -101,7 +107,7 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 		if vResult == "" {
 			continue
 		}
-		results = append(results, VulnResult{v.Name, ip+":"+p, vResult})
+		results = append(results, VulnResult{v.Name, ip + ":" + p, vResult})
 		found = true
 	}
 	return
@@ -140,7 +146,7 @@ func InitVuln(confDir string) error {
 
 	total := len(vulns.VulnSources)
 	if total > 0 {
-		vulnEnabled = true
+		VulnEnabled = true
 	}
 	log.Info("Loaded "+strconv.Itoa(total)+" vulnerability scan result sources.", 0)
 

@@ -2,14 +2,17 @@ package siem
 
 import (
 	"dsiem/internal/dsiem/pkg/asset"
-	log "dsiem/internal/shared/pkg/logger"
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
 	"dsiem/internal/shared/pkg/fs"
+	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"path"
 	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -23,23 +26,24 @@ var alarmRemovalChannel chan removalChannelMsg
 var privateIPBlocks []*net.IPNet
 
 type alarm struct {
-	ID          string           `json:"alarm_id"`
-	Title       string           `json:"title"`
-	Status      string           `json:"status"`
-	Kingdom     string           `json:"kingdom"`
-	Category    string           `json:"Category"`
-	CreatedTime int64            `json:"created_time"`
-	UpdateTime  int64            `json:"update_time"`
-	Risk        int              `json:"risk"`
-	RiskClass   string           `json:"risk_class"`
-	Tag         string           `json:"tag"`
-	SrcIPs      []string         `json:"src_ips"`
-	SrcIPIntel  []xc.IntelResult `json:"src_ips_intel,omitempty"`
-	DstIPs      []string         `json:"dst_ips"`
-	DstIPIntel  []xc.IntelResult `json:"dst_ips_intel,omitempty"`
-	Networks    []string         `json:"networks"`
-	Rules       []alarmRule      `json:"rules"`
-	mu          sync.RWMutex
+	ID              string           `json:"alarm_id"`
+	Title           string           `json:"title"`
+	Status          string           `json:"status"`
+	Kingdom         string           `json:"kingdom"`
+	Category        string           `json:"Category"`
+	CreatedTime     int64            `json:"created_time"`
+	UpdateTime      int64            `json:"update_time"`
+	Risk            int              `json:"risk"`
+	RiskClass       string           `json:"risk_class"`
+	Tag             string           `json:"tag"`
+	SrcIPs          []string         `json:"src_ips"`
+	SrcIPIntel      []xc.IntelResult `json:"src_ips_intel,omitempty"`
+	DstIPs          []string         `json:"dst_ips"`
+	DstIPIntel      []xc.IntelResult `json:"dst_ips_intel,omitempty"`
+	Vulnerabilities []xc.VulnResult  `json:"vulnerabilities,omitempty"`
+	Networks        []string         `json:"networks"`
+	Rules           []alarmRule      `json:"rules"`
+	mu              sync.RWMutex
 }
 
 type alarmRule struct {
@@ -128,6 +132,10 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 		// do intel check in the background
 		a.asyncIntelCheck(connID)
 	}
+	if xc.VulnEnabled {
+		// do vuln check in the background
+		a.asyncVulnCheck(b, connID)
+	}
 
 	for i := range a.SrcIPs {
 		a.Networks = append(a.Networks, asset.GetAssetNetworks(a.SrcIPs[i])...)
@@ -148,6 +156,111 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	if err != nil {
 		log.Warn("Alarm "+a.ID+" failed to update Elasticsearch! "+err.Error(), connID)
 	}
+}
+
+func uniqStringSlice(cslist string) (result []string) {
+	s := strings.Split(cslist, ",")
+	result = removeDuplicatesUnordered(s)
+	return
+}
+
+type vulnSearchTerms struct {
+	ip   string
+	port string
+}
+
+func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
+	go func() {
+		log.Info("Going to check vuln", connID)
+		// lock to make sure the alreadyExist test is useful
+		a.mu.Lock()
+		defer a.mu.Unlock()
+
+		// record prev value
+		pVulnerabilities := a.Vulnerabilities
+
+		// build IP:Port list
+
+		terms := []vulnSearchTerms{}
+
+		for _, v := range a.Rules {
+			sIps := uniqStringSlice(v.From)
+			ports := uniqStringSlice(v.PortFrom)
+			sPort := strconv.Itoa(b.LastEvent.SrcPort)
+			for _, z := range sIps {
+				if z == "ANY" || z == "HOME_NET" || z == "!HOME_NET" || strings.Contains(z, "/") {
+					continue
+				}
+				for _, y := range ports {
+					if y == "ANY" {
+						continue
+					}
+					terms = append(terms, vulnSearchTerms{z, y})
+				}
+				// also try to use port from last event
+				if sPort != "0" {
+					terms = append(terms, vulnSearchTerms{z, sPort})
+				}
+			}
+
+			dIps := uniqStringSlice(v.To)
+			ports = uniqStringSlice(v.PortTo)
+			dPort := strconv.Itoa(b.LastEvent.DstPort)
+			for _, z := range dIps {
+				if z == "ANY" || z == "HOME_NET" || z == "!HOME_NET" || strings.Contains(z, "/") {
+					continue
+				}
+				for _, y := range ports {
+					if y == "ANY" {
+						continue
+					}
+					terms = append(terms, vulnSearchTerms{z, y})
+				}
+				// also try to use port from last event
+				if dPort != "0" {
+					terms = append(terms, vulnSearchTerms{z, dPort})
+				}
+			}
+		}
+
+		fmt.Println(terms)
+		for i := range terms {
+			// skip existing entries
+			alreadyExist := false
+			for _, v := range a.Vulnerabilities {
+				s := terms[i].ip + ":" + terms[i].port
+				if v.Term == s {
+					alreadyExist = true
+					break
+				}
+			}
+			if alreadyExist {
+				continue
+			}
+
+			p, err := strconv.Atoi(terms[i].port)
+			if err != nil {
+				continue
+			}
+
+			fmt.Println("actually checking for", terms[i].ip, terms[i].port)
+
+			if found, res := xc.CheckVulnIPPort(terms[i].ip, p, connID); found {
+				a.Vulnerabilities = append(a.Vulnerabilities, res...)
+				log.Info("Found vulnerability for "+terms[i].ip+":"+terms[i].port, connID)
+			}
+		}
+
+		// compare content of slice
+		if reflect.DeepEqual(pVulnerabilities, a.Vulnerabilities) {
+			return
+		}
+		err := a.updateElasticsearch(connID)
+		if err != nil {
+			log.Warn("Alarm "+a.ID+" failed to update Elasticsearch after vulnerability check! "+err.Error(), connID)
+		}
+	}()
+
 }
 
 func (a *alarm) asyncIntelCheck(connID uint64) {

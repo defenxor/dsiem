@@ -43,15 +43,18 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	port := qv.Get("port")
 	if ip == "" || port == "" {
 		http.Error(w, "requires ip and port parameter", 400)
+		log.Info("returning 400-1", 0)
 		return
 	}
 	if a := net.ParseIP(ip); a == nil {
 		http.Error(w, "ip parameter only accept... ip address", 418)
+		log.Info("returning 418-1, provided adress: "+ip, 0)
 		return
 	}
 	p, err := strconv.Atoi(port)
 	if err != nil || p < 1 || p > 65535 {
 		http.Error(w, "port parameter only accept... valid port number", 418)
+		log.Info("returning 418-2", 0)
 		return
 	}
 	log.Info("Incoming query for "+ip+":"+port+" from "+clientAddr, 0)
@@ -63,7 +66,7 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	b, err := json.Marshal(&vulns.v)
+	b, err := json.MarshalIndent(&vulns.v, "", "  ")
 	if err != nil {
 		log.Warn("Cannot encode result for "+ip+":"+port+". Error: "+err.Error(), 0)
 		http.Error(w, "Cannot encode result", 500)

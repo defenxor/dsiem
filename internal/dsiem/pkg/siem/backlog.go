@@ -28,6 +28,7 @@ type backLog struct {
 	Directive    directive `json:"directive"`
 	SrcIPs       []string  `json:"src_ips"`
 	DstIPs       []string  `json:"dst_ips"`
+	LastEvent    event.NormalizedEvent
 }
 type siemAlarmEvents struct {
 	ID    string `json:"alarm_id"`
@@ -284,6 +285,8 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	// recalc risk, the new stage will have a different reliability
 	riskChanged := b.calcRisk(e.ConnID)
 	if riskChanged {
+		// this LastEvent is used to get ports by alarm
+		b.LastEvent = *e
 		upsertAlarmFromBackLog(b, e.ConnID)
 	}
 }
