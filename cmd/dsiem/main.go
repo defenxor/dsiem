@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"path"
+
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
 	"dsiem/internal/dsiem/pkg/server"
@@ -8,20 +12,9 @@ import (
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
-	"flag"
-	"fmt"
-	"os"
-	"path"
-)
 
-var (
-	confDir   string
-	logDir    string
-	debugFlag bool
-	port      int
-	buildTime string
-	version   string
-	addr      string
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -30,40 +23,37 @@ const (
 	alarmLogs   = "siem_alarms.json"
 )
 
-func init() {
-	dev := flag.Bool("dev", false, "enable/disable dev env specific directory.")
-	dbg := flag.Bool("debug", false, "enable/disable debug level logging.")
-	ver := flag.Bool("version", false, "display version and build time.")
-	usage := flag.Bool("usage", false, "display acceptable CLI argument.")
-	a := flag.String("address", "0.0.0.0", "IP address to listen on.")
-	p := flag.Int("port", 8080, "TCP port to listen to.")
-	flag.Parse()
-	if *ver {
-		fmt.Println(progName, version, "("+buildTime+")")
-		os.Exit(0)
-	}
-	if *usage {
-		flag.Usage()
-		os.Exit(0)
-	}
-	addr = *a
-	port = *p
-	d, err := fs.GetDir(*dev)
-	if err != nil {
-		exit("Cannot get current directory??", err)
-	}
-	confDir = path.Join(d, "configs")
-	logDir = path.Join(d, "logs")
+var version string
+var buildTime string
+var eventChannel chan event.NormalizedEvent
 
-	if *dbg {
-		debugFlag = true
+func init() {
+	cobra.OnInitialize(initConfig)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(serverCmd)
+	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address to listen on")
+	serverCmd.Flags().IntP("port", "p", 8080, "TCP port to listen on")
+	serverCmd.Flags().Bool("dev", false, "Enable development environment specific setting")
+	serverCmd.Flags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
+	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
+	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
+	viper.BindPFlag("dev", serverCmd.Flags().Lookup("dev"))
+	viper.BindPFlag("debug", serverCmd.Flags().Lookup("debug"))
+}
+
+func initConfig() {
+	viper.SetEnvPrefix(progName)
+	viper.AutomaticEnv()
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		exit("Error returned from command", err)
 	}
 }
 
-var eventChannel chan event.NormalizedEvent
-
 func exit(msg string, err error) {
-	if debugFlag {
+	if viper.GetBool("debug") {
 		fmt.Println(msg)
 		panic(err)
 	} else {
@@ -72,39 +62,74 @@ func exit(msg string, err error) {
 	}
 }
 
-func main() {
-	log.Setup(debugFlag)
+var rootCmd = &cobra.Command{
+	Use:   "dsiem",
+	Short: "SIEM for ELK stack",
+	Long: `
+DSiem is a security event correlation engine for ELK stack.
+Provides OSSIM-style event correlation, and relies on 
+Filebeat, Logstash, and Elasticsearch to do the rest.`,
+}
 
-	eventChannel = make(chan event.NormalizedEvent)
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version and build information",
+	Long:  `Print the version and build date information`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(version, buildTime)
+	},
+}
 
-	log.Info("Starting "+progName+" "+version, 0)
+var serverCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Start the server",
+	Long: `
+Start server listening on /events for event sent 
+from logstash, and on /config for configuration read/write from UI`,
+	Run: func(cmd *cobra.Command, args []string) {
 
-	err := asset.Init(confDir)
-	if err != nil {
-		exit("Cannot initialize assets from "+confDir, err)
-	}
-	err = xc.InitIntel(confDir)
-	if err != nil {
-		exit("Cannot initialize threat intel", err)
-	}
-	err = xc.InitVuln(confDir)
-	if err != nil {
-		exit("Cannot initialize Vulnerability scan result", err)
-	}
-	err = siem.InitDirectives(confDir, eventChannel)
-	if err != nil {
-		exit("Cannot initialize directives", err)
-	}
-	err = siem.InitBackLog(path.Join(logDir, aEventsLogs))
-	if err != nil {
-		exit("Cannot initialize backlog", err)
-	}
-	err = siem.InitAlarm(path.Join(logDir, alarmLogs))
-	if err != nil {
-		exit("Cannot initialize alarm", err)
-	}
-	err = server.Start(eventChannel, confDir, addr, port)
-	if err != nil {
-		exit("Cannot start server", err)
-	}
+		d, err := fs.GetDir(viper.GetBool("dev"))
+		if err != nil {
+			exit("Cannot get current directory??", err)
+		}
+		confDir := path.Join(d, "configs")
+		logDir := path.Join(d, "logs")
+		addr := viper.GetString("address")
+		port := viper.GetInt("port")
+
+		eventChannel = make(chan event.NormalizedEvent)
+
+		log.Setup(viper.GetBool("debug"))
+		log.Info("Starting "+progName+" "+versionCmd.Version, 0)
+
+		err = asset.Init(confDir)
+		if err != nil {
+			exit("Cannot initialize assets from "+confDir, err)
+		}
+		err = xc.InitIntel(confDir)
+		if err != nil {
+			exit("Cannot initialize threat intel", err)
+		}
+		err = xc.InitVuln(confDir)
+		if err != nil {
+			exit("Cannot initialize Vulnerability scan result", err)
+		}
+		err = siem.InitDirectives(confDir, eventChannel)
+		if err != nil {
+			exit("Cannot initialize directives", err)
+		}
+		err = siem.InitBackLog(path.Join(logDir, aEventsLogs))
+		if err != nil {
+			exit("Cannot initialize backlog", err)
+		}
+		err = siem.InitAlarm(path.Join(logDir, alarmLogs))
+		if err != nil {
+			exit("Cannot initialize alarm", err)
+		}
+		err = server.Start(eventChannel, confDir, addr, port)
+		if err != nil {
+			exit("Cannot start server", err)
+		}
+
+	},
 }

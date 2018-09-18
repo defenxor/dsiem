@@ -1,7 +1,7 @@
 package main
 
 import (
-	conv "dsiem/internal/converter/pkg/converter"
+	conv "dsiem/internal/ossimcnv/pkg/ossimcnv"
 	"flag"
 	"fmt"
 	"os"
