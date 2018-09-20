@@ -6,7 +6,6 @@ import (
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
-	"fmt"
 	"net"
 	"os"
 	"path"
@@ -164,14 +163,27 @@ func uniqStringSlice(cslist string) (result []string) {
 	return
 }
 
-type vulnSearchTerms struct {
+type vulnSearchTerm struct {
 	ip   string
 	port string
 }
 
+func sliceUniqMap(s []vulnSearchTerm) []vulnSearchTerm {
+	seen := make(map[vulnSearchTerm]struct{}, len(s))
+	j := 0
+	for _, v := range s {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		s[j] = v
+		j++
+	}
+	return s[:j]
+}
+
 func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 	go func() {
-		log.Info("Going to check vuln", connID)
 		// lock to make sure the alreadyExist test is useful
 		a.mu.Lock()
 		defer a.mu.Unlock()
@@ -180,8 +192,7 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 		pVulnerabilities := a.Vulnerabilities
 
 		// build IP:Port list
-
-		terms := []vulnSearchTerms{}
+		terms := []vulnSearchTerm{}
 
 		for _, v := range a.Rules {
 			sIps := uniqStringSlice(v.From)
@@ -195,11 +206,11 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 					if y == "ANY" {
 						continue
 					}
-					terms = append(terms, vulnSearchTerms{z, y})
+					terms = append(terms, vulnSearchTerm{z, y})
 				}
 				// also try to use port from last event
 				if sPort != "0" {
-					terms = append(terms, vulnSearchTerms{z, sPort})
+					terms = append(terms, vulnSearchTerm{z, sPort})
 				}
 			}
 
@@ -214,17 +225,18 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 					if y == "ANY" {
 						continue
 					}
-					terms = append(terms, vulnSearchTerms{z, y})
+					terms = append(terms, vulnSearchTerm{z, y})
 				}
 				// also try to use port from last event
 				if dPort != "0" {
-					terms = append(terms, vulnSearchTerms{z, dPort})
+					terms = append(terms, vulnSearchTerm{z, dPort})
 				}
 			}
 		}
 
-		fmt.Println(terms)
+		terms = sliceUniqMap(terms)
 		for i := range terms {
+			log.Debug("Evaluating "+terms[i].ip+":"+terms[i].port, connID)
 			// skip existing entries
 			alreadyExist := false
 			for _, v := range a.Vulnerabilities {
@@ -235,6 +247,7 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 				}
 			}
 			if alreadyExist {
+				log.Debug("vuln checker: "+terms[i].ip+":"+terms[i].port+" already exist", connID)
 				continue
 			}
 
@@ -243,7 +256,7 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 				continue
 			}
 
-			fmt.Println("actually checking for", terms[i].ip, terms[i].port)
+			log.Debug("actually checking for "+terms[i].ip+":"+terms[i].port, connID)
 
 			if found, res := xc.CheckVulnIPPort(terms[i].ip, p, connID); found {
 				a.Vulnerabilities = append(a.Vulnerabilities, res...)

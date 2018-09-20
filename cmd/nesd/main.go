@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dsiem/internal/nessusd/pkg/server"
+	"dsiem/internal/nesd/pkg/server"
 	log "dsiem/internal/shared/pkg/logger"
 
 	"fmt"

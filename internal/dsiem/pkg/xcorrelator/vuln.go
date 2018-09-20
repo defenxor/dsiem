@@ -36,6 +36,12 @@ type vulnSources struct {
 	VulnSources []vulnSource `json:"vuln_sources"`
 }
 
+type nesdResult struct {
+	Cve  string `json:"cve"`
+	Risk string `json:"risk"`
+	Name string `json:"name"`
+}
+
 // VulnResult contain results from vulnerability scan result queries
 type VulnResult struct {
 	Provider string `json:"provider"`
@@ -55,10 +61,10 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 
 	for _, v := range vulns.VulnSources {
 		p := strconv.Itoa(port)
-		log.Info("Checking url "+v.URL+" with ip: "+ip, 0)
+		log.Debug("Checking url "+v.URL+" with ip: "+ip, 0)
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
 		url = strings.Replace(url, "${port}", p, 1)
-		log.Info("result url "+url, 0)
+		log.Debug("result url "+url, 0)
 
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -77,7 +83,6 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 			continue
 		}
 
-		log.Info("Going to read rules", connID)
 		strRegex := v.ResultRegex
 		vResult := string(body)
 		// loop over the strRegex, applying it one by one to vResult
@@ -102,12 +107,42 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 				}
 				vResult = s
 			}
+			// special, natively supported, and cheating rule
+			if strings.HasPrefix(v, "nesd") {
+				if vResult == "no vulnerability found\n" {
+					log.Debug("nesd: no vulnerability found for "+ip+":"+strconv.Itoa(port), connID)
+					vResult = ""
+					continue
+				}
+				var n = []nesdResult{}
+				err := json.Unmarshal([]byte(vResult), &n)
+				if err != nil {
+					log.Debug("Error unmarshalling nesd result "+err.Error(), connID)
+					continue
+				}
+				vResult = ""
+				last := len(n) - 1
+				for i, v := range n {
+					if v.Risk != "Medium" && v.Risk != "High" && v.Risk != "Critical" {
+						continue
+					}
+					vResult = vResult + "[" + v.Risk + "] " + v.Name
+					if v.Cve != "" {
+						vResult = vResult + " (" + v.Cve + ")"
+					}
+					if i != last {
+						vResult = vResult + ", "
+					}
+				}
+			}
+
 		}
 		vResult = strings.Trim(vResult, " ")
 		if vResult == "" {
 			continue
 		}
 		results = append(results, VulnResult{v.Name, ip + ":" + p, vResult})
+		// log.Debug("Appending: "+vResult, connID)
 		found = true
 	}
 	return

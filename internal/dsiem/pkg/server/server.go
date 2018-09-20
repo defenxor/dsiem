@@ -2,8 +2,8 @@ package server
 
 import (
 	"dsiem/internal/dsiem/pkg/event"
-	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/fs"
+	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -13,12 +13,18 @@ import (
 	"path"
 	"strconv"
 	"sync/atomic"
+	"time"
+
+	rc "github.com/paulbellamy/ratecounter"
+	"golang.org/x/net/websocket"
 
 	"github.com/julienschmidt/httprouter"
 )
 
 var connCounter uint64
 var progDir, confDir string
+var rateCounter *rc.RateCounter
+var wss *wsServer
 
 type configFiles struct {
 	FileName string `json:"filename"`
@@ -40,21 +46,47 @@ func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int)
 	confDir = confd
 
 	eventChannel = ch
-
+	rateCounter = rc.NewRateCounter(1 * time.Second)
 	p := strconv.Itoa(port)
+
 	for {
 		router := httprouter.New()
 		router.POST("/events", handleEvents)
 		router.GET("/config/:filename", handleConfFileDownload)
 		router.GET("/config/", handleConfFileList)
 		router.POST("/config/:filename", handleConfFileUpload)
+		router.GET("/eps/", wsHandler)
 		log.Info("Server listening on "+addr+":"+p, 0)
+		initWSServer()
 		err := http.ListenAndServe(addr+":"+p, router)
 		if err != nil {
 			log.Warn("Error from http.ListenAndServe: "+err.Error(), 0)
 		}
 	}
+
 	return nil
+}
+
+func wsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	s := websocket.Server{Handler: websocket.Handler(wss.onClientConnected)}
+	s.ServeHTTP(w, r)
+}
+
+func initWSServer() {
+	wss = newWSServer()
+	go func() {
+		var c int
+		for {
+			c = len(wss.clients)
+			if c == 0 {
+				log.Debug("WS server waiting for client connection.", 0)
+				// wait until new client connected
+				<-wss.cConnectedCh
+			}
+			wss.sendAll(&message{rateCounter.Rate()})
+			time.Sleep(250 * time.Millisecond)
+		}
+	}()
 }
 
 func increaseConnCounter() uint64 {
@@ -156,6 +188,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	clientAddr := r.RemoteAddr
 	evt := event.NormalizedEvent{}
 	connID := increaseConnCounter()
+	rateCounter.Incr(1)
 
 	b, err := ioutil.ReadAll(r.Body)
 	// bstr := string(b)
@@ -165,6 +198,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		http.Error(w, "Cannot read posted body content", 500)
 		return
 	}
+
 	err = evt.FromBytes(b)
 	if err != nil {
 		log.Warn("Cannot parse normalizedEvent from "+clientAddr+". err: "+err.Error(), connID)
@@ -173,6 +207,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		// log.Warn(bstr,connID)
 		return
 	}
+
 	if !evt.Valid() {
 		log.Warn("l337 or epic fail attempt from "+clientAddr+" detected. Discarding.", connID)
 		http.Error(w, "Not a valid event", 418)

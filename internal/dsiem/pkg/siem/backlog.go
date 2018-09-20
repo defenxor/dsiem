@@ -3,6 +3,7 @@ package siem
 import (
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
+	"dsiem/internal/shared/pkg/idgen"
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 	"encoding/json"
@@ -13,8 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/teris-io/shortid"
 )
 
 var bLogFile string
@@ -46,20 +45,11 @@ type removalChannelMsg struct {
 
 var backLogRemovalChannel chan removalChannelMsg
 var bLogs backLogs
-var sid *shortid.Shortid
 var ticker *time.Ticker
-
-func initShortID() (err error) {
-	sid, err = shortid.New(1, shortid.DEFAULT_ABC, 2342)
-	return
-}
 
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
-	if err = initShortID(); err != nil {
-		return
-	}
 	startBackLogTicker()
 	backLogRemovalChannel = make(chan removalChannelMsg)
 	go func() {
@@ -151,10 +141,13 @@ func backlogManager(e *event.NormalizedEvent, d *directive) {
 	createNewBackLog(d, e)
 }
 
-func createNewBackLog(d *directive, e *event.NormalizedEvent) {
+func createNewBackLog(d *directive, e *event.NormalizedEvent) error {
 	// create new backlog here, passing the event as the 1st event for the backlog
-	bid, _ := sid.Generate()
-	log.Info("Directive "+strconv.Itoa(d.ID)+" created new backlog "+bid, e.ConnID)
+	bid, err := idgen.GenerateID()
+	if err != nil {
+		return err
+	}
+	log.Info("Directive "+strconv.Itoa(d.ID)+" creating new backlog "+bid, e.ConnID)
 	b := backLog{}
 	b.ID = bid
 	b.Directive = directive{}
@@ -171,6 +164,7 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) {
 	bLogs.BackLogs = append(bLogs.BackLogs, b)
 	bLogs.mu.Unlock()
 	log.Debug("Lock obtained/released for backlog "+bid+" creation.", e.ConnID)
+	return nil
 }
 
 func initBackLogRules(d *directive, e *event.NormalizedEvent) {
