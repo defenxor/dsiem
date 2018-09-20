@@ -6,6 +6,7 @@ import (
 	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
 	"errors"
+	"expvar"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	rc "github.com/paulbellamy/ratecounter"
 	"golang.org/x/net/websocket"
 
+	"github.com/elastic/apm-agent-go/module/apmhttprouter"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -30,6 +32,7 @@ type configFiles struct {
 	FileName string `json:"filename"`
 }
 
+var epsCounter = expvar.NewInt("counter")
 var eventChannel chan<- event.NormalizedEvent
 
 // Start the HTTP server on addr:port, writing incoming event to ch and reading/writing
@@ -50,10 +53,13 @@ func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int)
 	p := strconv.Itoa(port)
 
 	for {
-		router := httprouter.New()
+		// router := httprouter.New()
+		router := apmhttprouter.New()
 		router.POST("/events", handleEvents)
+		// router.POST("/events", apmhttprouter.Wrap(handleEvents, "/events"))
 		router.GET("/config/:filename", handleConfFileDownload)
 		router.GET("/config/", handleConfFileList)
+		router.GET("/debug/vars/", expvarHandler)
 		router.POST("/config/:filename", handleConfFileUpload)
 		router.GET("/eps/", wsHandler)
 		log.Info("Server listening on "+addr+":"+p, 0)
@@ -67,6 +73,9 @@ func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int)
 	return nil
 }
 
+func expvarHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	expvar.Handler().ServeHTTP(w, r)
+}
 func wsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	s := websocket.Server{Handler: websocket.Handler(wss.onClientConnected)}
 	s.ServeHTTP(w, r)

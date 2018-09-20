@@ -6,6 +6,7 @@ import (
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
+	"errors"
 	"net"
 	"os"
 	"path"
@@ -13,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/elastic/apm-agent-go"
+
+	"github.com/spf13/viper"
 )
 
 const (
@@ -20,6 +25,10 @@ const (
 )
 
 var aLogFile string
+var mediumRiskLowerBound int
+var mediumRiskUpperBound int
+var defaultTag string
+var defaultStatus string
 var alarms siemAlarms
 var alarmRemovalChannel chan removalChannelMsg
 var privateIPBlocks []*net.IPNet
@@ -29,16 +38,15 @@ type alarm struct {
 	Title           string           `json:"title"`
 	Status          string           `json:"status"`
 	Kingdom         string           `json:"kingdom"`
-	Category        string           `json:"Category"`
+	Category        string           `json:"category"`
 	CreatedTime     int64            `json:"created_time"`
 	UpdateTime      int64            `json:"update_time"`
 	Risk            int              `json:"risk"`
 	RiskClass       string           `json:"risk_class"`
 	Tag             string           `json:"tag"`
 	SrcIPs          []string         `json:"src_ips"`
-	SrcIPIntel      []xc.IntelResult `json:"src_ips_intel,omitempty"`
 	DstIPs          []string         `json:"dst_ips"`
-	DstIPIntel      []xc.IntelResult `json:"dst_ips_intel,omitempty"`
+	ThreatIntels    []xc.IntelResult `json:"intel_hits,omitempty"`
 	Vulnerabilities []xc.VulnResult  `json:"vulnerabilities,omitempty"`
 	Networks        []string         `json:"networks"`
 	Rules           []alarmRule      `json:"rules"`
@@ -58,6 +66,17 @@ type siemAlarms struct {
 func InitAlarm(logFile string) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
+	}
+
+	mediumRiskLowerBound = viper.GetInt("medRiskMin")
+	mediumRiskUpperBound = viper.GetInt("medRiskMax")
+	defaultTag = viper.GetStringSlice("tags")[0]
+	defaultStatus = viper.GetStringSlice("status")[0]
+
+	if mediumRiskLowerBound < 2 || mediumRiskUpperBound > 9 ||
+		mediumRiskLowerBound == mediumRiskUpperBound {
+		return errors.New("Wrong value for medRiskMin or medRiskMax: " +
+			"medRiskMax should be between 3-10, medRiskMin should be between 2-9, and medRiskMin should be < mdRiskMax")
 	}
 
 	aLogFile = logFile
@@ -85,7 +104,7 @@ func InitAlarm(logFile string) error {
 	return nil
 }
 
-func upsertAlarmFromBackLog(b *backLog, connID uint64) {
+func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transaction) {
 	var a *alarm
 
 	for i := range alarms.Alarms {
@@ -104,10 +123,10 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	a.ID = b.ID
 	a.Title = b.Directive.Name
 	if a.Status == "" {
-		a.Status = "Open"
+		a.Status = defaultStatus
 	}
 	if a.Tag == "" {
-		a.Tag = "Identified Threat"
+		a.Tag = defaultTag
 	}
 
 	a.Kingdom = b.Directive.Kingdom
@@ -118,22 +137,22 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 	a.UpdateTime = b.StatusTime
 	a.Risk = b.Risk
 	switch {
-	case a.Risk <= 2:
+	case a.Risk < mediumRiskLowerBound:
 		a.RiskClass = "Low"
-	case a.Risk >= 3 && a.Risk <= 6:
+	case a.Risk >= mediumRiskLowerBound && a.Risk <= mediumRiskUpperBound:
 		a.RiskClass = "Medium"
-	case a.Risk >= 7:
+	case a.Risk > mediumRiskUpperBound:
 		a.RiskClass = "High"
 	}
 	a.SrcIPs = b.SrcIPs
 	a.DstIPs = b.DstIPs
 	if xc.IntelEnabled {
 		// do intel check in the background
-		a.asyncIntelCheck(connID)
+		a.asyncIntelCheck(connID, tx)
 	}
 	if xc.VulnEnabled {
 		// do vuln check in the background
-		a.asyncVulnCheck(b, connID)
+		a.asyncVulnCheck(b, connID, tx)
 	}
 
 	for i := range a.SrcIPs {
@@ -153,7 +172,13 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64) {
 
 	err := a.updateElasticsearch(connID)
 	if err != nil {
+		tx.Result = "Alarm failed to update ES"
 		log.Warn("Alarm "+a.ID+" failed to update Elasticsearch! "+err.Error(), connID)
+		e := elasticapm.DefaultTracer.NewError(err)
+		e.Transaction = tx
+		e.Send()
+	} else {
+		tx.Result = "Alarm updated"
 	}
 }
 
@@ -182,7 +207,7 @@ func sliceUniqMap(s []vulnSearchTerm) []vulnSearchTerm {
 	return s[:j]
 }
 
-func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
+func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transaction) {
 	go func() {
 		// lock to make sure the alreadyExist test is useful
 		a.mu.Lock()
@@ -271,19 +296,21 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64) {
 		err := a.updateElasticsearch(connID)
 		if err != nil {
 			log.Warn("Alarm "+a.ID+" failed to update Elasticsearch after vulnerability check! "+err.Error(), connID)
+			e := elasticapm.DefaultTracer.NewError(err)
+			e.Transaction = tx
+			e.Send()
 		}
 	}()
 
 }
 
-func (a *alarm) asyncIntelCheck(connID uint64) {
+func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 	go func() {
 		// lock to make sure the alreadyExist test is useful
 		a.mu.Lock()
 		defer a.mu.Unlock()
 
-		pSrcIPIntel := a.SrcIPIntel
-		pDstIPIntel := a.DstIPIntel
+		IPIntel := a.ThreatIntels
 
 		for i := range a.SrcIPs {
 			// skip private IP
@@ -292,7 +319,7 @@ func (a *alarm) asyncIntelCheck(connID uint64) {
 			}
 			// skip existing entries
 			alreadyExist := false
-			for _, v := range a.SrcIPIntel {
+			for _, v := range a.ThreatIntels {
 				if v.Term == a.SrcIPs[i] {
 					alreadyExist = true
 					break
@@ -302,7 +329,7 @@ func (a *alarm) asyncIntelCheck(connID uint64) {
 				continue
 			}
 			if found, res := xc.CheckIntelIP(a.SrcIPs[i], connID); found {
-				a.SrcIPIntel = append(a.SrcIPIntel, res...)
+				a.ThreatIntels = append(a.ThreatIntels, res...)
 				log.Info("Found intel result for "+a.SrcIPs[i], connID)
 			}
 		}
@@ -313,7 +340,7 @@ func (a *alarm) asyncIntelCheck(connID uint64) {
 			}
 			// skip existing entries
 			alreadyExist := false
-			for _, v := range a.DstIPIntel {
+			for _, v := range a.ThreatIntels {
 				if v.Term == a.DstIPs[i] {
 					alreadyExist = true
 					break
@@ -323,17 +350,20 @@ func (a *alarm) asyncIntelCheck(connID uint64) {
 				continue
 			}
 			if found, res := xc.CheckIntelIP(a.DstIPs[i], connID); found {
-				a.DstIPIntel = append(a.DstIPIntel, res...)
+				a.ThreatIntels = append(a.ThreatIntels, res...)
 				log.Info("Found intel result for "+a.DstIPs[i], connID)
 			}
 		}
 		// compare content of slice
-		if reflect.DeepEqual(pSrcIPIntel, a.SrcIPIntel) && reflect.DeepEqual(pDstIPIntel, a.DstIPIntel) {
+		if reflect.DeepEqual(IPIntel, a.ThreatIntels) {
 			return
 		}
 		err := a.updateElasticsearch(connID)
 		if err != nil {
 			log.Warn("Alarm "+a.ID+" failed to update Elasticsearch after TI check! "+err.Error(), connID)
+			e := elasticapm.DefaultTracer.NewError(err)
+			e.Transaction = tx
+			e.Send()
 		}
 	}()
 
@@ -393,9 +423,9 @@ func copyAlarm(dst *alarm, src *alarm) {
 	dst.RiskClass = src.RiskClass
 	dst.Tag = src.Tag
 	dst.SrcIPs = src.SrcIPs
-	dst.SrcIPIntel = src.SrcIPIntel
 	dst.DstIPs = src.DstIPs
-	dst.DstIPIntel = src.DstIPIntel
+	dst.ThreatIntels = src.ThreatIntels
+	dst.Vulnerabilities = src.Vulnerabilities
 	dst.Networks = src.Networks
 	dst.Rules = src.Rules
 }

@@ -10,10 +10,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/elastic/apm-agent-go"
 )
 
 const (
@@ -29,6 +30,7 @@ type intelSource struct {
 	Type        string   `json:"type"`
 	Enabled     bool     `json:"enabled"`
 	URL         string   `json:"url"`
+	Matcher     string   `json:"matcher"`
 	ResultRegex []string `json:"result_regex"`
 }
 
@@ -53,55 +55,52 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 		}
 	}()
 
+	term := ip
+
 	for _, v := range intels.IntelSources {
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
+
+		tx := elasticapm.DefaultTracer.StartTransaction("Threat Intel Lookup", "SIEM")
+		tx.Context.SetCustom("term", term)
+		tx.Context.SetCustom("provider", v.Name)
+		tx.Context.SetCustom("Url", url)
+
 		if err != nil {
 			log.Warn("Cannot create new HTTP request for "+v.Name+" TI.", connID)
+			tx.Result = "Cannot create HTTP request"
+			tx.End()
 			continue
 		}
 		res, err := c.Do(req)
 		if err != nil {
 			log.Warn("Failed to query "+v.Name+" TI for IP "+ip, connID)
+			tx.Result = "Failed to query " + v.Name
+			tx.End()
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
 		if readErr != nil {
 			log.Warn("Cannot read result from "+v.Name+" TI for IP "+ip, connID)
+			tx.Result = "Cannot read result from " + v.Name
+			tx.End()
 			continue
 		}
-		strRegex := v.ResultRegex
-		vResult := string(body)
-		// loop over the strRegex, applying it one by one to vResult
-		for _, v := range strRegex {
-			if strings.HasPrefix(v, "match:") {
-				r := strings.Split(v, ":")
-				re := regexp.MustCompile(r[len(r)-1])
-				s := re.FindAllString(vResult, -1)
-				if s == nil {
-					vResult = ""
-					break
-				}
-				vResult = s[len(s)-1]
-			}
-			if strings.HasPrefix(v, "remove:") {
-				r := strings.Split(v, ":")
-				re := regexp.MustCompile(r[len(r)-1])
-				s := re.ReplaceAllLiteralString(vResult, "")
-				if s == "" {
-					vResult = ""
-					break
-				}
-				vResult = s
+
+		if v.Matcher == "regex" {
+			f, r := matcherRegexIntel(body, v.Name, term, v.ResultRegex, connID)
+			if f {
+				found = true
+				results = append(results, r...)
 			}
 		}
-		vResult = strings.Trim(vResult, " ")
-		if vResult == "" {
-			continue
+		if found {
+			tx.Result = "Intel found"
+		} else {
+			tx.Result = "Intel not found"
 		}
-		results = append(results, IntelResult{v.Name, ip, vResult})
-		found = true
+		tx.End()
 	}
 	return
 }

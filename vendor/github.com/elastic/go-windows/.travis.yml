@@ -1,0 +1,17 @@
+sudo: false
+
+language: go
+
+os:
+- linux
+
+go:
+- 1.9.x
+
+go_import_path: github.com/elastic/go-windows
+
+script:
+- go run .ci/scripts/check_copyright.go .
+- go run .ci/scripts/check_format.go
+- go run .ci/scripts/check_lint.go
+- go test ./...

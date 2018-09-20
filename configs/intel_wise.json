@@ -5,6 +5,7 @@
       "type": "IP",
       "enabled": true,
       "url": "http://frontend.appl184.mss.defenxor.com:8081/ip/${ip}",
+      "matcher": "regex",
       "result_regex": [
         "match: value.*", 
         "match:\"(.*?)\"", 

@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/elastic/apm-agent-go"
+
 	"os"
 	"strconv"
 	"strings"
@@ -81,7 +83,7 @@ func startBackLogTicker() {
 					continue
 				}
 				log.Info("directive "+strconv.Itoa(bLogs.BackLogs[i].Directive.ID)+" backlog "+bLogs.BackLogs[i].ID+" expired.", 0)
-				bLogs.BackLogs[i].setStatus("timeout", 0)
+				bLogs.BackLogs[i].setStatus("timeout", 0, nil)
 				bLogs.BackLogs[i].delete(0)
 			}
 			bLogs.mu.RUnlock()
@@ -228,14 +230,14 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 	}
 }
 
-func (b *backLog) setStatus(status string, connID uint64) {
+func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transaction) {
 	s := b.CurrentStage
 	idx := s - 1
 	b.Directive.Rules[idx].Status = status
-	upsertAlarmFromBackLog(b, connID)
+	upsertAlarmFromBackLog(b, connID, tx)
 }
 
-func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64) {
+func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticapm.Transaction) {
 	// this reinsert status and startDate for the currentStage rule if the first attempt failed
 	updateFlag := false
 	if b.Directive.Rules[idx].StartTime == 0 {
@@ -243,56 +245,73 @@ func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64) {
 		updateFlag = true
 	}
 	if b.Directive.Rules[idx].Status != "active" {
-		b.setStatus("active", connID)
+		b.setStatus("active", connID, tx)
 		updateFlag = true
 	}
 	if updateFlag {
-		upsertAlarmFromBackLog(b, connID)
+		upsertAlarmFromBackLog(b, connID, tx)
 	}
 }
 
 func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 
-	b.appendandWriteEvent(e, idx)
+	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
+	tx.Context.SetCustom("event_id", e.EventID)
+	tx.Context.SetCustom("backlog_id", b.ID)
+	tx.Context.SetCustom("directive_id", b.Directive.ID)
+	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+	defer tx.End()
+
+	b.appendandWriteEvent(e, idx, tx)
 
 	// exit early if the newly added event hasnt caused events_count == occurrence
 	// for the current stage
 	if !b.isStageReachMaxEvtCount() {
-		b.ensureStatusAndStartTime(idx, e.ConnID)
+		b.ensureStatusAndStartTime(idx, e.ConnID, tx)
 		return
 	}
 
 	// the new event has caused events_count == occurrence
-	b.setStatus("finished", e.ConnID)
+	b.setStatus("finished", e.ConnID, tx)
 
 	// if it causes the last stage to reach events_count == occurrence, delete it
 	if b.isLastStage() {
 		log.Info("Backlog "+b.ID+" has reached its max stage and occurrence. Deleting it.", e.ConnID)
 		b.delete(e.ConnID)
+		tx.Result = "Backlog removed (max reached)"
 		return
 	}
 
 	// reach max occurrence, but not in last stage. Increase stage.
 	b.increaseStage(e.ConnID)
-	b.setStatus("active", e.ConnID)
+	b.setStatus("active", e.ConnID, tx)
+	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+	tx.Result = "Stage increased"
 
 	// recalc risk, the new stage will have a different reliability
 	riskChanged := b.calcRisk(e.ConnID)
 	if riskChanged {
 		// this LastEvent is used to get ports by alarm
 		b.LastEvent = *e
-		upsertAlarmFromBackLog(b, e.ConnID)
+		upsertAlarmFromBackLog(b, e.ConnID, tx)
 	}
 }
 
-func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int) {
+func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int, tx *elasticapm.Transaction) {
 	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
 	b.SrcIPs = str.AppendUniq(b.SrcIPs, e.SrcIP)
 	b.DstIPs = str.AppendUniq(b.DstIPs, e.DstIP)
 
 	if err := b.updateElasticsearch(e); err != nil {
 		log.Warn("Backlog "+b.ID+" failed to update Elasticsearch! "+err.Error(), e.ConnID)
+		e := elasticapm.DefaultTracer.NewError(err)
+		e.Transaction = tx
+		e.Send()
+		tx.Result = "Failed to append and write event"
+	} else {
+		tx.Result = "Event appended to backlog"
 	}
+	return
 }
 
 func (b *backLog) isLastStage() bool {

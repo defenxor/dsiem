@@ -1,0 +1,20 @@
+sudo: false
+
+language: go
+
+os:
+- linux
+- osx
+
+go:
+- 1.9.x
+
+go_import_path: github.com/elastic/go-sysinfo
+
+before_install:
+- go get -u github.com/elastic/go-licenser
+
+script:
+- go-licenser -d
+- go run .ci/scripts/check_format.go
+- go test -v ./...

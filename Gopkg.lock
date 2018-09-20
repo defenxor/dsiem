@@ -10,6 +10,54 @@
   revision = "8e02e611b1fb06f657b075f37e8770db156a101a"
 
 [[projects]]
+  digest = "1:9e969f0769a19e86e62c7415fbf303377143563660ade650143a6645022dae8a"
+  name = "github.com/elastic/apm-agent-go"
+  packages = [
+    ".",
+    "internal/apmconfig",
+    "internal/apmdebug",
+    "internal/apmhttputil",
+    "internal/apmschema",
+    "internal/apmstrings",
+    "internal/fastjson",
+    "internal/krtext",
+    "internal/pretty",
+    "internal/radix",
+    "model",
+    "module/apmhttp",
+    "module/apmhttprouter",
+    "stacktrace",
+    "transport",
+  ]
+  pruneopts = "UT"
+  revision = "df3d15a3f45f4e2fed5b6f131051815066b43191"
+  version = "v0.5.2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:6b81d4776e82d9193f3fb2001dec55db4d2d108690ca6209b97b22148b4134c8"
+  name = "github.com/elastic/go-sysinfo"
+  packages = [
+    ".",
+    "internal/registry",
+    "providers/darwin",
+    "providers/linux",
+    "providers/shared",
+    "providers/windows",
+    "types",
+  ]
+  pruneopts = "UT"
+  revision = "7b021494a9562d0c3f0422d49b9980709c5650e9"
+
+[[projects]]
+  branch = "master"
+  digest = "1:81f85f9185f94fdb03717cf15731dc097947f4a9106554468a4578cf1e044337"
+  name = "github.com/elastic/go-windows"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "bb1581babc04d5cb29a2bfa7a9ac6781c730c8dd"
+
+[[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
@@ -51,6 +99,14 @@
   pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ca41e6bafdc8d60c47dba38e9adfc75219a2892b09e5c2160161e7b6bf9562c2"
+  name = "github.com/joeshaw/multierror"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "69b34d4ec901851247ae7e77d33909caf9df99ed"
 
 [[projects]]
   digest = "1:ccfa094742ce1c97fd3f6481e1bf98f3d9862510eee2bc0eb56e2745396bd330"
@@ -107,6 +163,33 @@
   pruneopts = "UT"
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ef1dd9945e58ee9b635273d28c0ef3fa3742a7dedc038ebe207fd63e6ce000ef"
+  name = "github.com/prometheus/procfs"
+  packages = [
+    ".",
+    "internal/util",
+    "nfs",
+    "xfs",
+  ]
+  pruneopts = "UT"
+  revision = "418d78d0b9a7b7de3a6bbc8a23def624cc977bb2"
+
+[[projects]]
+  digest = "1:f097bdc9d9421ef00dcc50b7f8f9e89042af3c2ca16546aa91853a0a26187193"
+  name = "github.com/santhosh-tekuri/jsonschema"
+  packages = [
+    ".",
+    "decoders",
+    "formats",
+    "loader",
+    "mediatypes",
+  ]
+  pruneopts = "UT"
+  revision = "1471bfd74cff003b1e329d46a4de4487e88cc47b"
+  version = "v1.2.2"
 
 [[projects]]
   digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
@@ -204,11 +287,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:374fc90fcb026e9a367e3fad29e988e5dd944b68ca3f24a184d77abc5307dda4"
+  digest = "1:61c58b6fc2879cf88c4af5f383d82d743559f9e2c78b80392d90818666dd4a22"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
+    "windows/registry",
   ]
   pruneopts = "UT"
   revision = "d0be0721c37eeb5299f245a996a483160fc36940"
@@ -236,11 +320,21 @@
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
 
+[[projects]]
+  branch = "master"
+  digest = "1:cefe687c5b27365f87dff523c85266408415c62a2915cc6148e9c26861274984"
+  name = "howett.net/plist"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "500bd5b9081b5957ac10389f86e069869f00c348"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/dogenzaka/tsv",
+    "github.com/elastic/apm-agent-go",
+    "github.com/elastic/apm-agent-go/module/apmhttprouter",
     "github.com/gocarina/gocsv",
     "github.com/julienschmidt/httprouter",
     "github.com/kardianos/osext",

@@ -35,10 +35,22 @@ func init() {
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port to listen on")
 	serverCmd.Flags().Bool("dev", false, "Enable development environment specific setting")
 	serverCmd.Flags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
+	serverCmd.Flags().StringSliceP("tags", "t", []string{"Identified Threat", "False Positive", "Valid Threat", "Security Incident"},
+		"Alarm tags to use, the first one will be assigned to new alarms")
+	serverCmd.Flags().Int("medRiskMin", 3,
+		"Minimum alarm risk value to be classified as Medium risk. Lower value than this will be classified as Low risk")
+	serverCmd.Flags().Int("medRiskMax", 6,
+		"Maximum alarm risk value to be classified as Medium risk. Higher value than this will be classified as High risk")
+	serverCmd.Flags().StringSliceP("status", "s", []string{"Open", "In-Progress", "Closed"},
+		"Alarm status to use, the first one will be assigned to new alarms")
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
 	viper.BindPFlag("dev", serverCmd.Flags().Lookup("dev"))
 	viper.BindPFlag("debug", serverCmd.Flags().Lookup("debug"))
+	viper.BindPFlag("tags", serverCmd.Flags().Lookup("tags"))
+	viper.BindPFlag("status", serverCmd.Flags().Lookup("status"))
+	viper.BindPFlag("medRiskMin", serverCmd.Flags().Lookup("medRiskMin"))
+	viper.BindPFlag("medRiskMax", serverCmd.Flags().Lookup("medRiskMax"))
 }
 
 func initConfig() {
@@ -67,7 +79,8 @@ var rootCmd = &cobra.Command{
 	Short: "SIEM for ELK stack",
 	Long: `
 DSiem is a security event correlation engine for ELK stack.
-Provides OSSIM-style event correlation, and relies on 
+
+DSiem provides OSSIM-style event correlation, and relies on 
 Filebeat, Logstash, and Elasticsearch to do the rest.`,
 }
 
@@ -96,6 +109,12 @@ from logstash, and on /config for configuration read/write from UI`,
 		logDir := path.Join(d, "logs")
 		addr := viper.GetString("address")
 		port := viper.GetInt("port")
+
+		// saving the config for UI to read
+		err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))
+		if err != nil {
+			exit("Error writing config file", err)
+		}
 
 		eventChannel = make(chan event.NormalizedEvent)
 

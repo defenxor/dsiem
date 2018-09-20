@@ -1,0 +1,19 @@
+{
+  "address": "0.0.0.0",
+  "debug": false,
+  "dev": true,
+  "medriskmax": 6,
+  "medriskmin": 3,
+  "port": 8080,
+  "status": [
+    "Open",
+    "In-Progress",
+    "Closed"
+  ],
+  "tags": [
+    "Identified Threat",
+    "False Positive",
+    "Valid Threat",
+    "Security Incident"
+  ]
+}

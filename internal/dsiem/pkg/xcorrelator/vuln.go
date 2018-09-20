@@ -4,9 +4,10 @@ import (
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
+
+	"github.com/elastic/apm-agent-go"
 
 	"encoding/json"
 	"errors"
@@ -29,6 +30,7 @@ type vulnSource struct {
 	Type        string   `json:"type"`
 	Enabled     bool     `json:"enabled"`
 	URL         string   `json:"url"`
+	Matcher     string   `json:"matcher"`
 	ResultRegex []string `json:"result_regex"`
 }
 
@@ -61,89 +63,60 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 
 	for _, v := range vulns.VulnSources {
 		p := strconv.Itoa(port)
-		log.Debug("Checking url "+v.URL+" with ip: "+ip, 0)
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
 		url = strings.Replace(url, "${port}", p, 1)
 		log.Debug("result url "+url, 0)
+		term := ip + ":" + p
+
+		tx := elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
+		tx.Context.SetCustom("term", term)
+		tx.Context.SetCustom("provider", v.Name)
+		tx.Context.SetCustom("Url", url)
 
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			log.Warn("Cannot create new HTTP request for "+v.Name+" VS.", connID)
+			tx.Result = "Cannot create HTTP request"
+			tx.End()
 			continue
 		}
 		res, err := c.Do(req)
 		if err != nil {
-			log.Warn("Failed to query "+v.Name+" VS for IP "+ip+":"+p, connID)
+			log.Warn("Failed to query "+v.Name+" VS for IP "+term, connID)
+			tx.Result = "Failed to query" + v.Name
+			tx.End()
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
 		if readErr != nil {
-			log.Warn("Cannot read result from "+v.Name+" VS for IP "+ip+":"+p, connID)
+			log.Warn("Cannot read result from "+v.Name+" VS for IP "+term, connID)
+			tx.Result = "Cannot create read result from " + v.Name
+			tx.End()
 			continue
 		}
 
-		strRegex := v.ResultRegex
-		vResult := string(body)
-		// loop over the strRegex, applying it one by one to vResult
-		for _, v := range strRegex {
-			if strings.HasPrefix(v, "match:") {
-				r := strings.Split(v, ":")
-				re := regexp.MustCompile(r[len(r)-1])
-				s := re.FindAllString(vResult, -1)
-				if s == nil {
-					vResult = ""
-					break
-				}
-				vResult = s[len(s)-1]
+		if v.Matcher == "regex" {
+			f, r := matcherRegexVuln(body, v.Name, term, v.ResultRegex, connID)
+			if f {
+				found = true
+				results = append(results, r...)
 			}
-			if strings.HasPrefix(v, "remove:") {
-				r := strings.Split(v, ":")
-				re := regexp.MustCompile(r[len(r)-1])
-				s := re.ReplaceAllLiteralString(vResult, "")
-				if s == "" {
-					vResult = ""
-					break
-				}
-				vResult = s
-			}
-			// special, natively supported, and cheating rule
-			if strings.HasPrefix(v, "nesd") {
-				if vResult == "no vulnerability found\n" {
-					log.Debug("nesd: no vulnerability found for "+ip+":"+strconv.Itoa(port), connID)
-					vResult = ""
-					continue
-				}
-				var n = []nesdResult{}
-				err := json.Unmarshal([]byte(vResult), &n)
-				if err != nil {
-					log.Debug("Error unmarshalling nesd result "+err.Error(), connID)
-					continue
-				}
-				vResult = ""
-				last := len(n) - 1
-				for i, v := range n {
-					if v.Risk != "Medium" && v.Risk != "High" && v.Risk != "Critical" {
-						continue
-					}
-					vResult = vResult + "[" + v.Risk + "] " + v.Name
-					if v.Cve != "" {
-						vResult = vResult + " (" + v.Cve + ")"
-					}
-					if i != last {
-						vResult = vResult + ", "
-					}
-				}
-			}
+		}
 
+		if v.Matcher == "nesd" {
+			f, r := matcherNesd(body, v.Name, term, connID)
+			if f {
+				found = true
+				results = append(results, r...)
+			}
 		}
-		vResult = strings.Trim(vResult, " ")
-		if vResult == "" {
-			continue
+		if found {
+			tx.Result = "Vuln found"
+		} else {
+			tx.Result = "Vuln not found"
 		}
-		results = append(results, VulnResult{v.Name, ip + ":" + p, vResult})
-		// log.Debug("Appending: "+vResult, connID)
-		found = true
+		tx.End()
 	}
 	return
 }
