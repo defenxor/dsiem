@@ -3,8 +3,8 @@ package siem
 import (
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
-	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/fs"
+	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 	"encoding/json"
 	"errors"
@@ -26,9 +26,13 @@ type directiveRule struct {
 	Stage       int      `json:"stage"`
 	PluginID    int      `json:"plugin_id"`
 	PluginSID   []int    `json:"plugin_sid"`
+	Product     []string `json:"product"`
+	Category    string   `json:"category"`
+	SubCategory []string `json:"subcategory"`
 	Occurrence  int      `json:"occurrence"`
 	From        string   `json:"from"`
 	To          string   `json:"to"`
+	Type        string   `json:"type"`
 	PortFrom    string   `json:"port_from"`
 	PortTo      string   `json:"port_to"`
 	Protocol    string   `json:"protocol"`
@@ -69,6 +73,50 @@ func startDirective(d directive, c chan event.NormalizedEvent) {
 }
 
 func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint64) bool {
+	if r.Type == "PluginRule" {
+		return pluginRuleCheck(e, r, connID)
+	}
+	if r.Type == "TaxonomyRule" {
+		return taxonomyRuleCheck(e, r)
+	}
+	return false
+}
+
+func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule) bool {
+	// product is required and category is required
+
+	if r.Category != e.Category {
+		return false
+	}
+
+	prodMatch := false
+	for i := range r.Product {
+		if r.Product[i] == e.Product {
+			prodMatch = true
+			break
+		}
+	}
+	if !prodMatch {
+		return false
+	}
+
+	l := len(r.SubCategory)
+	if l == 0 {
+		return true
+	}
+
+	scMatch := false
+	for i := range r.SubCategory {
+		if r.SubCategory[i] == e.SubCategory {
+			scMatch = true
+			break
+		}
+	}
+	return scMatch
+}
+
+func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) bool {
+
 	if e.PluginID != r.PluginID {
 		return false
 	}

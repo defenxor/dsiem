@@ -33,6 +33,7 @@ var alarmRemovalChannel chan removalChannelMsg
 var privateIPBlocks []*net.IPNet
 
 type alarm struct {
+	sync.RWMutex
 	ID              string           `json:"alarm_id"`
 	Title           string           `json:"title"`
 	Status          string           `json:"status"`
@@ -49,22 +50,23 @@ type alarm struct {
 	Vulnerabilities []xc.VulnResult  `json:"vulnerabilities,omitempty"`
 	Networks        []string         `json:"networks"`
 	Rules           []alarmRule      `json:"rules"`
-	mu              sync.RWMutex
 }
 
 type alarmRule struct {
 	directiveRule
 }
 
-var amu sync.RWMutex
-var alarms map[string]*alarm
+var alarms struct {
+	sync.RWMutex
+	al map[string]*alarm
+}
 
 // InitAlarm initialize alarm, storing result into logFile
 func InitAlarm(logFile string) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
 	}
-	alarms = make(map[string]*alarm)
+	alarms.al = make(map[string]*alarm)
 
 	mediumRiskLowerBound = viper.GetInt("medRiskMin")
 	mediumRiskUpperBound = viper.GetInt("medRiskMax")
@@ -105,7 +107,7 @@ func InitAlarm(logFile string) error {
 func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transaction) {
 	var a *alarm
 
-	for _, v := range alarms {
+	for _, v := range alarms.al {
 		c := v
 		if c.ID == b.ID {
 			a = c
@@ -114,11 +116,11 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 	}
 	// if not found means new alarm
 	if a == nil {
-		amu.Lock()
+		alarms.Lock()
 		newAlarm := alarm{}
-		alarms[b.ID] = &newAlarm
+		alarms.al[b.ID] = &newAlarm
 		a = &newAlarm
-		amu.Unlock()
+		alarms.Unlock()
 	}
 	a.ID = b.ID
 	a.Title = b.Directive.Name
@@ -210,8 +212,8 @@ func sliceUniqMap(s []vulnSearchTerm) []vulnSearchTerm {
 func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transaction) {
 	go func() {
 		// lock to make sure the alreadyExist test is useful
-		a.mu.Lock()
-		defer a.mu.Unlock()
+		a.Lock()
+		defer a.Unlock()
 
 		// record prev value
 		pVulnerabilities := a.Vulnerabilities
@@ -307,8 +309,8 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 	go func() {
 		// lock to make sure the alreadyExist test is useful
-		a.mu.Lock()
-		defer a.mu.Unlock()
+		a.Lock()
+		defer a.Unlock()
 
 		IPIntel := a.ThreatIntels
 
@@ -385,10 +387,10 @@ func (a *alarm) updateElasticsearch(connID uint64) error {
 
 func removeAlarm(m removalChannelMsg) {
 	log.Info("Trying to obtain write lock to remove alarm "+m.ID, m.connID)
-	amu.Lock()
-	defer amu.Unlock()
+	alarms.Lock()
+	defer alarms.Unlock()
 	log.Info("Lock obtained. Removing alarm "+m.ID, m.connID)
-	delete(alarms, m.ID)
+	delete(alarms.al, m.ID)
 }
 
 // to avoid copying mutex

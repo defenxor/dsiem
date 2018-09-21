@@ -43,9 +43,13 @@ type removalChannelMsg struct {
 	connID uint64
 }
 
-var bMap map[string]*backLog
-var mu sync.RWMutex
+var backlogs struct {
+	sync.RWMutex
+	bl map[string]*backLog
+}
+
 var backlogCounter = expvar.NewInt("backlog_counter")
+var alarmCounter = expvar.NewInt("alarm_counter")
 
 var backLogRemovalChannel chan removalChannelMsg
 var ticker *time.Ticker
@@ -53,7 +57,7 @@ var ticker *time.Ticker
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
-	bMap = make(map[string]*backLog)
+	backlogs.bl = make(map[string]*backLog)
 	backLogRemovalChannel = make(chan removalChannelMsg)
 	startBackLogTicker()
 
@@ -73,12 +77,14 @@ func startBackLogTicker() {
 	go func() {
 		for {
 			<-ticker.C
-			bLen := len(bMap)
+			bLen := len(backlogs.bl)
+			aLen := len(alarms.al)
 			backlogCounter.Set(int64(bLen))
+			alarmCounter.Set(int64(aLen))
 			log.Debug("Ticker started, # of backlogs to check: "+strconv.Itoa(bLen), 0)
 			now := time.Now().Unix()
-			mu.RLock()
-			for _, v := range bMap {
+			backlogs.RLock()
+			for _, v := range backlogs.bl {
 				cs := v.CurrentStage
 				idx := cs - 1
 				start := v.Directive.Rules[idx].StartTime
@@ -98,23 +104,23 @@ func startBackLogTicker() {
 				v.setStatus("timeout", 0, tx)
 				v.delete(0)
 			}
-			mu.RUnlock()
+			backlogs.RUnlock()
 		}
 	}()
 }
 
 func removeBackLog(m removalChannelMsg) {
 	log.Debug("Trying to obtain write lock to remove backlog "+m.ID, m.connID)
-	mu.Lock()
-	defer mu.Unlock()
+	backlogs.Lock()
+	defer backlogs.Unlock()
 	log.Debug("Lock obtained. Removing backlog "+m.ID, m.connID)
-	delete(bMap, m.ID)
+	delete(backlogs.bl, m.ID)
 }
 
 func backlogManager(e *event.NormalizedEvent, d *directive) {
 	found := false
-	mu.RLock()
-	for _, v := range bMap {
+	backlogs.RLock()
+	for _, v := range backlogs.bl {
 		cs := v.CurrentStage
 		// only applicable for non-stage 1, where there's more specific identifier like IP address to match
 		if v.Directive.ID != d.ID || cs <= 1 {
@@ -130,9 +136,9 @@ func backlogManager(e *event.NormalizedEvent, d *directive) {
 		log.Debug("Directive "+strconv.Itoa(d.ID)+" backlog "+v.ID+" matched. Not creating new backlog. CurrentStage is "+
 			strconv.Itoa(v.CurrentStage), e.ConnID)
 		found = true
-		bMap[v.ID].processMatchedEvent(e, idx)
+		backlogs.bl[v.ID].processMatchedEvent(e, idx)
 	}
-	mu.RUnlock()
+	backlogs.RUnlock()
 
 	if found {
 		return
@@ -159,9 +165,9 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) error {
 	b.HighestStage = len(d.Rules)
 	b.processMatchedEvent(e, 0)
 	log.Debug("Trying to obtain write lock to create backlog "+bid, e.ConnID)
-	mu.Lock()
-	bMap[b.ID] = &b
-	mu.Unlock()
+	backlogs.Lock()
+	backlogs.bl[b.ID] = &b
+	backlogs.Unlock()
 	log.Debug("Lock obtained/released for backlog "+bid+" creation.", e.ConnID)
 	return nil
 }

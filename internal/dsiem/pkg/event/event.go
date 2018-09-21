@@ -13,6 +13,9 @@ type NormalizedEvent struct {
 	Sensor       string `json:"sensor"`
 	PluginID     int    `json:"plugin_id"`
 	PluginSID    int    `json:"plugin_sid"`
+	Product      string `json:"product"`
+	Category     string `json:"category"`
+	SubCategory  string `json:"subcategory"`
 	Reliability  int    `json:"reliability"`
 	Priority     int    `json:"priority"`
 	SrcIP        string `json:"src_ip"`
