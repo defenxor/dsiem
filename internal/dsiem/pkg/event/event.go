@@ -9,7 +9,7 @@ import (
 type NormalizedEvent struct {
 	ConnID       uint64
 	EventID      string `json:"event_id"`
-	Timestamp    string `json:"@timestamp"`
+	Timestamp    string `json:"timestamp"`
 	Sensor       string `json:"sensor"`
 	PluginID     int    `json:"plugin_id"`
 	PluginSID    int    `json:"plugin_sid"`
@@ -33,11 +33,17 @@ type NormalizedEvent struct {
 
 // Valid check if event contains valid content for required fields
 func (e *NormalizedEvent) Valid() bool {
-	// fmt.Println(e.Timestamp, ":", e.Sensor, ":", e.PluginID, ":", e.PluginSID, ":", e.EventID, ":", e.SrcIP, ":", e.DstIP)
-	if e.Timestamp == "" || e.Sensor == "" || e.PluginID == 0 || e.PluginSID == 0 || e.EventID == "" ||
-		e.SrcIP == "" || e.DstIP == "" {
+	// fmt.Println(e.Timestamp, ":", e.Sensor, ":", e.EventID, ":", e.SrcIP, ":", e.DstIP, ":", e.PluginID, ":", e.PluginSID)
+	if e.Timestamp == "" || e.Sensor == "" || e.EventID == "" || e.SrcIP == "" || e.DstIP == "" {
 		return false
 	}
+
+	if e.PluginID == 0 || e.PluginSID == 0 {
+		if e.Product == "" || e.Category == "" {
+			return false
+		}
+	}
+
 	return true
 }
 

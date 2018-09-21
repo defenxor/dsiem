@@ -77,16 +77,16 @@ func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint6
 		return pluginRuleCheck(e, r, connID)
 	}
 	if r.Type == "TaxonomyRule" {
-		return taxonomyRuleCheck(e, r)
+		return taxonomyRuleCheck(e, r, connID)
 	}
 	return false
 }
 
-func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule) bool {
+func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
 	// product is required and category is required
 
 	if r.Category != e.Category {
-		return false
+		return
 	}
 
 	prodMatch := false
@@ -97,12 +97,12 @@ func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule) bool {
 		}
 	}
 	if !prodMatch {
-		return false
+		return
 	}
 
 	l := len(r.SubCategory)
 	if l == 0 {
-		return true
+		return
 	}
 
 	scMatch := false
@@ -112,13 +112,17 @@ func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule) bool {
 			break
 		}
 	}
-	return scMatch
+
+	if !scMatch {
+		return
+	}
+	return ipPortCheck(e, r, connID)
 }
 
-func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) bool {
+func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
 
 	if e.PluginID != r.PluginID {
-		return false
+		return
 	}
 
 	sidMatch := false
@@ -128,44 +132,49 @@ func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) 
 			break
 		}
 	}
-	if sidMatch == false {
-		return false
+	if !sidMatch {
+		return
 	}
+
+	return ipPortCheck(e, r, connID)
+}
+
+func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
 
 	eSrcInHomeNet := e.SrcIPInHomeNet()
 	if r.From == "HOME_NET" && eSrcInHomeNet == false {
-		return false
+		return
 	}
 	if r.From == "!HOME_NET" && eSrcInHomeNet == true {
-		return false
+		return
 	}
 	// covers  r.From == "IP", r.From == "IP1, IP2", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2"
 	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
 		!str.CaseInsensitiveContains(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From, connID) {
-		return false
+		return
 	}
 
 	eDstInHomeNet := e.DstIPInHomeNet()
 	if r.To == "HOME_NET" && eDstInHomeNet == false {
-		return false
+		return
 	}
 	if r.To == "!HOME_NET" && eDstInHomeNet == true {
-		return false
+		return
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
 	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
 		!str.CaseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To, connID) {
-		return false
+		return
 	}
 
 	if r.PortFrom != "ANY" && !str.CaseInsensitiveContains(r.PortFrom, strconv.Itoa(e.SrcPort)) {
-		return false
+		return
 	}
 	if r.PortTo != "ANY" && !str.CaseInsensitiveContains(r.PortTo, strconv.Itoa(e.DstPort)) {
-		return false
+		return
 	}
 
-	// PluginID, PluginSID, SrcIP, DstIP, SrcPort, DstPort all match
+	// SrcIP, DstIP, SrcPort, DstPort all match
 	return true
 }
 

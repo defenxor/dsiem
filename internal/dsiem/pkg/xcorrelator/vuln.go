@@ -84,7 +84,7 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 		res, err := c.Do(req)
 		if err != nil {
 			log.Warn("Failed to query "+v.Name+" VS for IP "+term, connID)
-			tx.Result = "Failed to query" + v.Name
+			tx.Result = "Failed to query " + v.Name
 			tx.End()
 			continue
 		}
