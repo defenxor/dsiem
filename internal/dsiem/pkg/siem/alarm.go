@@ -122,6 +122,10 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 		a = &newAlarm
 		alarms.Unlock()
 	}
+
+	a.Lock()
+	defer a.Unlock()
+
 	a.ID = b.ID
 	a.Title = b.Directive.Name
 	if a.Status == "" {
@@ -386,11 +390,11 @@ func (a *alarm) updateElasticsearch(connID uint64) error {
 }
 
 func removeAlarm(m removalChannelMsg) {
-	log.Info("Trying to obtain write lock to remove alarm "+m.ID, m.connID)
+	log.Debug("Trying to obtain write lock to remove alarm "+m.ID, m.connID)
 	alarms.Lock()
-	defer alarms.Unlock()
-	log.Info("Lock obtained. Removing alarm "+m.ID, m.connID)
+	log.Debug("Lock obtained. Removing alarm "+m.ID, m.connID)
 	delete(alarms.al, m.ID)
+	alarms.Unlock()
 }
 
 // to avoid copying mutex

@@ -22,6 +22,7 @@ import (
 var bLogFile string
 
 type backLog struct {
+	sync.RWMutex
 	ID           string    `json:"backlog_id"`
 	StatusTime   int64     `json:"status_time"`
 	Risk         int       `json:"risk"`
@@ -129,7 +130,9 @@ func backlogManager(e *event.NormalizedEvent, d *directive) {
 		// should check for currentStage rule match with event
 		// heuristic, we know stage starts at 1 but rules start at 0
 		idx := cs - 1
+		v.RLock()
 		currRule := v.Directive.Rules[idx]
+		v.RUnlock()
 		if !doesEventMatchRule(e, &currRule, e.ConnID) {
 			continue
 		}
@@ -282,16 +285,22 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	log.Debug("Incoming event for backlog "+b.ID+" with idx: "+strconv.Itoa(idx), e.ConnID)
 	// concurrent write may make events count overflow, so dont append current stage unless needed
 	if !b.isStageReachMaxEvtCount() {
+		b.Lock()
 		b.appendandWriteEvent(e, idx, tx)
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
 		if !b.isStageReachMaxEvtCount() {
 			b.ensureStatusAndStartTime(idx, e.ConnID, tx)
+			b.Unlock()
 			return
 		}
+		b.Unlock()
 	}
 
 	// the new event has caused events_count == occurrence
+	b.Lock()
+	defer b.Unlock()
+
 	b.setStatus("finished", e.ConnID, tx)
 
 	// if it causes the last stage to reach events_count == occurrence, delete it
