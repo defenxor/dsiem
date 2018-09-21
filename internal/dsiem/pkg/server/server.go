@@ -24,7 +24,7 @@ import (
 )
 
 var connCounter uint64
-var progDir, confDir string
+var webDir, confDir string
 var rateCounter *rc.RateCounter
 var wss *wsServer
 
@@ -37,7 +37,7 @@ var eventChannel chan<- event.NormalizedEvent
 
 // Start the HTTP server on addr:port, writing incoming event to ch and reading/writing
 // conf files to confd
-func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int) error {
+func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr string, port int) error {
 	if a := net.ParseIP(addr); a == nil {
 		return errors.New(addr + " is not a valid IP address")
 	}
@@ -47,13 +47,13 @@ func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int)
 
 	// no need to check this, toctou issue
 	confDir = confd
+	webDir = webd
 
 	eventChannel = ch
 	rateCounter = rc.NewRateCounter(1 * time.Second)
 	p := strconv.Itoa(port)
 
 	for {
-		// router := httprouter.New()
 		router := apmhttprouter.New()
 		router.POST("/events", handleEvents)
 		// router.POST("/events", apmhttprouter.Wrap(handleEvents, "/events"))
@@ -62,6 +62,7 @@ func Start(ch chan<- event.NormalizedEvent, confd string, addr string, port int)
 		router.GET("/debug/vars/", expvarHandler)
 		router.POST("/config/:filename", handleConfFileUpload)
 		router.GET("/eps/", wsHandler)
+		router.ServeFiles("/ui/*filepath", http.Dir(webDir))
 		log.Info("Server listening on "+addr+":"+p, 0)
 		initWSServer()
 		err := http.ListenAndServe(addr+":"+p, router)
@@ -109,8 +110,7 @@ func handleConfFileList(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 	clientAddr := r.RemoteAddr
 	log.Info("Request for list of configuration files from "+clientAddr, 0)
 
-	dir := path.Join(progDir, confDir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := ioutil.ReadDir(confDir)
 	if err != nil {
 		http.Error(w, "Error reading config directory.", 500)
 		return
@@ -137,7 +137,7 @@ func handleConfFileDownload(w http.ResponseWriter, r *http.Request, ps httproute
 		return
 	}
 	log.Info("Request for file '"+filename+"' from "+clientAddr, 0)
-	f := path.Join(progDir, confDir, filename)
+	f := path.Join(confDir, filename)
 	log.Info("Getting file "+f, 0)
 	if !fs.FileExist(f) {
 		http.Error(w, filename+" doesnt exist", 404)
@@ -167,7 +167,7 @@ func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.
 		return
 	}
 	log.Info("Upload file request for '"+filename+"' from "+clientAddr, 0)
-	file := path.Join(progDir, confDir, filename)
+	file := path.Join(confDir, filename)
 	b, err := ioutil.ReadAll(r.Body)
 	// bstr := string(b)
 	// logger.Info(bstr)

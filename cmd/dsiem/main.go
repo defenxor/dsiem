@@ -107,6 +107,7 @@ from logstash, and on /config for configuration read/write from UI`,
 		}
 		confDir := path.Join(d, "configs")
 		logDir := path.Join(d, "logs")
+		webDir := path.Join(d, "web", "dist")
 		addr := viper.GetString("address")
 		port := viper.GetInt("port")
 
@@ -145,7 +146,7 @@ from logstash, and on /config for configuration read/write from UI`,
 		if err != nil {
 			exit("Cannot initialize alarm", err)
 		}
-		err = server.Start(eventChannel, confDir, addr, port)
+		err = server.Start(eventChannel, confDir, webDir, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}

@@ -109,12 +109,11 @@
   revision = "69b34d4ec901851247ae7e77d33909caf9df99ed"
 
 [[projects]]
-  digest = "1:ccfa094742ce1c97fd3f6481e1bf98f3d9862510eee2bc0eb56e2745396bd330"
+  digest = "1:f97285a3b0a496dcf8801072622230d513f69175665d94de60eb042d03387f6c"
   name = "github.com/julienschmidt/httprouter"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8c199fb6259ffc1af525cc3ad52ee60ba8359669"
-  version = "v1.1"
+  revision = "348b672cd90d8190f8240323e372ecd1e66b59dc"
 
 [[projects]]
   branch = "master"
@@ -259,7 +258,6 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:cd2cbc2f6693543f47cc53e2b2f9be229f017f6604322d1f0b7306b009059243"
   name = "github.com/yl2chen/cidranger"
   packages = [
@@ -283,11 +281,11 @@
   name = "golang.org/x/net"
   packages = ["websocket"]
   pruneopts = "UT"
-  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
+  revision = "2f5d2388922f370f4355f327fcf4cfe9f5583908"
 
 [[projects]]
   branch = "master"
-  digest = "1:61c58b6fc2879cf88c4af5f383d82d743559f9e2c78b80392d90818666dd4a22"
+  digest = "1:44fd7727f98813d4e46e7b50dc11a80d7d6a25e4145904058562f05b171d1d89"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -295,7 +293,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "d0be0721c37eeb5299f245a996a483160fc36940"
+  revision = "d641721ec2dead6fe5ca284096fe4b1fcd49e427"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"

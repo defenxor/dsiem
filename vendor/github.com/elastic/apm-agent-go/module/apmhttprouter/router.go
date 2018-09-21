@@ -52,7 +52,7 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 func (r *Router) Handler(method, path string, handler http.Handler) {
 	r.Handle(method, path, func(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 		ctx := req.Context()
-		ctx = context.WithValue(ctx, "httprouter.ParamsKey", p)
+		ctx = context.WithValue(ctx, httprouter.ParamsKey, p)
 		req = req.WithContext(ctx)
 		handler.ServeHTTP(w, req)
 	})

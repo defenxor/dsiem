@@ -27,7 +27,7 @@
 
 [[constraint]]
   name = "github.com/julienschmidt/httprouter"
-  version = "1.1.0"
+  revision = "348b672cd90d8190f8240323e372ecd1e66b59dc"
 
 [[constraint]]
   branch = "master"
@@ -46,9 +46,8 @@
   version = "1.0.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/yl2chen/cidranger"
-
+  revision = "928b519e5268fe386d0f7decce320205cc09ca95"
 [prune]
   go-tests = true
   unused-packages = true
