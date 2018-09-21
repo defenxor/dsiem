@@ -29,7 +29,6 @@ var mediumRiskLowerBound int
 var mediumRiskUpperBound int
 var defaultTag string
 var defaultStatus string
-var alarms siemAlarms
 var alarmRemovalChannel chan removalChannelMsg
 var privateIPBlocks []*net.IPNet
 
@@ -57,16 +56,15 @@ type alarmRule struct {
 	directiveRule
 }
 
-type siemAlarms struct {
-	mu     sync.RWMutex
-	Alarms []alarm `json:"alarm"`
-}
+var amu sync.RWMutex
+var alarms map[string]*alarm
 
 // InitAlarm initialize alarm, storing result into logFile
 func InitAlarm(logFile string) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
 	}
+	alarms = make(map[string]*alarm)
 
 	mediumRiskLowerBound = viper.GetInt("medRiskMin")
 	mediumRiskUpperBound = viper.GetInt("medRiskMax")
@@ -107,18 +105,20 @@ func InitAlarm(logFile string) error {
 func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transaction) {
 	var a *alarm
 
-	for i := range alarms.Alarms {
-		c := &alarms.Alarms[i]
+	for _, v := range alarms {
+		c := v
 		if c.ID == b.ID {
-			a = &alarms.Alarms[i]
+			a = c
 			break
 		}
 	}
+	// if not found means new alarm
 	if a == nil {
-		alarms.mu.Lock()
-		alarms.Alarms = append(alarms.Alarms, alarm{})
-		a = &alarms.Alarms[len(alarms.Alarms)-1]
-		alarms.mu.Unlock()
+		amu.Lock()
+		newAlarm := alarm{}
+		alarms[b.ID] = &newAlarm
+		a = &newAlarm
+		amu.Unlock()
 	}
 	a.ID = b.ID
 	a.Title = b.Directive.Name
@@ -385,29 +385,10 @@ func (a *alarm) updateElasticsearch(connID uint64) error {
 
 func removeAlarm(m removalChannelMsg) {
 	log.Info("Trying to obtain write lock to remove alarm "+m.ID, m.connID)
-	alarms.mu.Lock()
-	defer alarms.mu.Unlock()
+	amu.Lock()
+	defer amu.Unlock()
 	log.Info("Lock obtained. Removing alarm "+m.ID, m.connID)
-	idx := -1
-	for i := range alarms.Alarms {
-		if alarms.Alarms[i].ID == m.ID {
-			idx = i
-		}
-	}
-	if idx == -1 {
-		return
-	}
-	// copy last element to idx location
-	alarms.Alarms[len(alarms.Alarms)-1].mu.Lock()
-	alarms.Alarms[idx].mu.Lock()
-	copyAlarm(&alarms.Alarms[idx], &alarms.Alarms[len(alarms.Alarms)-1])
-	alarms.Alarms[idx].mu.Unlock()
-	alarms.Alarms[len(alarms.Alarms)-1].mu.Unlock()
-
-	// write empty to last element
-	alarms.Alarms[len(alarms.Alarms)-1] = alarm{}
-	// truncate slice
-	alarms.Alarms = alarms.Alarms[:len(alarms.Alarms)-1]
+	delete(alarms, m.ID)
 }
 
 // to avoid copying mutex

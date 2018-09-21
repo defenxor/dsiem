@@ -13,5 +13,6 @@ user.xml.tmp
 # nessus files
 *.csv
 
+configs/dsiem_config.json
 logs
 .vscode/

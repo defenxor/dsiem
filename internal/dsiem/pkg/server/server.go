@@ -32,7 +32,7 @@ type configFiles struct {
 	FileName string `json:"filename"`
 }
 
-var epsCounter = expvar.NewInt("counter")
+var epsCounter = expvar.NewInt("eps_counter")
 var eventChannel chan<- event.NormalizedEvent
 
 // Start the HTTP server on addr:port, writing incoming event to ch and reading/writing
@@ -198,6 +198,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	evt := event.NormalizedEvent{}
 	connID := increaseConnCounter()
 	rateCounter.Incr(1)
+	epsCounter.Set(rateCounter.Rate())
 
 	b, err := ioutil.ReadAll(r.Body)
 	// bstr := string(b)

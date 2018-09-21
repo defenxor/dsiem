@@ -9,13 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/elastic/apm-agent-go"
-
+	"expvar"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/elastic/apm-agent-go"
 )
 
 var bLogFile string
@@ -36,24 +37,26 @@ type siemAlarmEvents struct {
 	Stage int    `json:"stage"`
 	Event string `json:"event_id"`
 }
-type backLogs struct {
-	mu       sync.RWMutex
-	BackLogs []backLog `json:"backlogs"`
-}
+
 type removalChannelMsg struct {
 	ID     string
 	connID uint64
 }
 
+var bMap map[string]*backLog
+var mu sync.RWMutex
+var backlogCounter = expvar.NewInt("backlog_counter")
+
 var backLogRemovalChannel chan removalChannelMsg
-var bLogs backLogs
 var ticker *time.Ticker
 
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
-	startBackLogTicker()
+	bMap = make(map[string]*backLog)
 	backLogRemovalChannel = make(chan removalChannelMsg)
+	startBackLogTicker()
+
 	go func() {
 		for {
 			// handle incoming event, id should be the ID to remove
@@ -70,72 +73,66 @@ func startBackLogTicker() {
 	go func() {
 		for {
 			<-ticker.C
-			log.Debug("Ticker started, # of backlogs to check: "+strconv.Itoa(len(bLogs.BackLogs)), 0)
+			bLen := len(bMap)
+			backlogCounter.Set(int64(bLen))
+			log.Debug("Ticker started, # of backlogs to check: "+strconv.Itoa(bLen), 0)
 			now := time.Now().Unix()
-			bLogs.mu.RLock()
-			for i := range bLogs.BackLogs {
-				cs := bLogs.BackLogs[i].CurrentStage
+			mu.RLock()
+			for _, v := range bMap {
+				cs := v.CurrentStage
 				idx := cs - 1
-				start := bLogs.BackLogs[i].Directive.Rules[idx].StartTime
-				timeout := bLogs.BackLogs[i].Directive.Rules[idx].Timeout
+				start := v.Directive.Rules[idx].StartTime
+				timeout := v.Directive.Rules[idx].Timeout
 				maxTime := start + timeout
 				if maxTime > now {
 					continue
 				}
-				log.Info("directive "+strconv.Itoa(bLogs.BackLogs[i].Directive.ID)+" backlog "+bLogs.BackLogs[i].ID+" expired.", 0)
-				bLogs.BackLogs[i].setStatus("timeout", 0, nil)
-				bLogs.BackLogs[i].delete(0)
+				tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
+				tx.Context.SetCustom("backlog_id", v.ID)
+				tx.Context.SetCustom("directive_id", v.Directive.ID)
+				tx.Context.SetCustom("backlog_stage", v.CurrentStage)
+				defer elasticapm.DefaultTracer.Recover(tx)
+				defer tx.End()
+
+				log.Info("directive "+strconv.Itoa(v.Directive.ID)+" backlog "+v.ID+" expired.", 0)
+				v.setStatus("timeout", 0, tx)
+				v.delete(0)
 			}
-			bLogs.mu.RUnlock()
+			mu.RUnlock()
 		}
 	}()
 }
 
 func removeBackLog(m removalChannelMsg) {
 	log.Debug("Trying to obtain write lock to remove backlog "+m.ID, m.connID)
-	bLogs.mu.Lock()
-	defer bLogs.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 	log.Debug("Lock obtained. Removing backlog "+m.ID, m.connID)
-	idx := -1
-	for i := range bLogs.BackLogs {
-		if bLogs.BackLogs[i].ID == m.ID {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		return
-	}
-	// copy last element to idx location
-	bLogs.BackLogs[idx] = bLogs.BackLogs[len(bLogs.BackLogs)-1]
-	// write empty to last element
-	bLogs.BackLogs[len(bLogs.BackLogs)-1] = backLog{}
-	// truncate slice
-	bLogs.BackLogs = bLogs.BackLogs[:len(bLogs.BackLogs)-1]
+	delete(bMap, m.ID)
 }
 
-// BacklogManager
 func backlogManager(e *event.NormalizedEvent, d *directive) {
 	found := false
-	bLogs.mu.RLock()
-	for i := range bLogs.BackLogs {
-		cs := bLogs.BackLogs[i].CurrentStage
+	mu.RLock()
+	for _, v := range bMap {
+		cs := v.CurrentStage
 		// only applicable for non-stage 1, where there's more specific identifier like IP address to match
-		if bLogs.BackLogs[i].Directive.ID != d.ID || cs <= 1 {
+		if v.Directive.ID != d.ID || cs <= 1 {
 			continue
 		}
 		// should check for currentStage rule match with event
 		// heuristic, we know stage starts at 1 but rules start at 0
 		idx := cs - 1
-		currRule := bLogs.BackLogs[i].Directive.Rules[idx]
+		currRule := v.Directive.Rules[idx]
 		if !doesEventMatchRule(e, &currRule, e.ConnID) {
 			continue
 		}
-		log.Debug("Directive "+strconv.Itoa(d.ID)+" backlog "+bLogs.BackLogs[i].ID+" matched. Not creating new backlog.", e.ConnID)
+		log.Debug("Directive "+strconv.Itoa(d.ID)+" backlog "+v.ID+" matched. Not creating new backlog. CurrentStage is "+
+			strconv.Itoa(v.CurrentStage), e.ConnID)
 		found = true
-		bLogs.BackLogs[i].processMatchedEvent(e, idx)
+		bMap[v.ID].processMatchedEvent(e, idx)
 	}
-	bLogs.mu.RUnlock()
+	mu.RUnlock()
 
 	if found {
 		return
@@ -162,9 +159,9 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) error {
 	b.HighestStage = len(d.Rules)
 	b.processMatchedEvent(e, 0)
 	log.Debug("Trying to obtain write lock to create backlog "+bid, e.ConnID)
-	bLogs.mu.Lock()
-	bLogs.BackLogs = append(bLogs.BackLogs, b)
-	bLogs.mu.Unlock()
+	mu.Lock()
+	bMap[b.ID] = &b
+	mu.Unlock()
 	log.Debug("Lock obtained/released for backlog "+bid+" creation.", e.ConnID)
 	return nil
 }
@@ -231,10 +228,23 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 }
 
 func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transaction) {
+	// enforce flow here, cannot go back to active after timeout/finished
 	s := b.CurrentStage
 	idx := s - 1
-	b.Directive.Rules[idx].Status = status
-	upsertAlarmFromBackLog(b, connID, tx)
+	if b.Directive.Rules[idx].Status == "timeout" || b.Directive.Rules[idx].Status == "finished" {
+		return
+	}
+	allowed := []string{"timeout", "finished"}
+	if b.Directive.Rules[idx].Status == "inactive" {
+		allowed = append(allowed, "active")
+	}
+	for i := range allowed {
+		if allowed[i] == status {
+			b.Directive.Rules[idx].Status = status
+			upsertAlarmFromBackLog(b, connID, tx)
+			break
+		}
+	}
 }
 
 func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticapm.Transaction) {
@@ -261,14 +271,18 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	tx.Context.SetCustom("directive_id", b.Directive.ID)
 	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
 	defer tx.End()
+	defer elasticapm.DefaultTracer.Recover(tx)
 
-	b.appendandWriteEvent(e, idx, tx)
-
-	// exit early if the newly added event hasnt caused events_count == occurrence
-	// for the current stage
+	log.Debug("Incoming event for backlog "+b.ID+" with idx: "+strconv.Itoa(idx), e.ConnID)
+	// concurrent write may make events count overflow, so dont append current stage unless needed
 	if !b.isStageReachMaxEvtCount() {
-		b.ensureStatusAndStartTime(idx, e.ConnID, tx)
-		return
+		b.appendandWriteEvent(e, idx, tx)
+		// exit early if the newly added event hasnt caused events_count == occurrence
+		// for the current stage
+		if !b.isStageReachMaxEvtCount() {
+			b.ensureStatusAndStartTime(idx, e.ConnID, tx)
+			return
+		}
 	}
 
 	// the new event has caused events_count == occurrence
@@ -298,6 +312,7 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 }
 
 func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int, tx *elasticapm.Transaction) {
+
 	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
 	b.SrcIPs = str.AppendUniq(b.SrcIPs, e.SrcIP)
 	b.DstIPs = str.AppendUniq(b.DstIPs, e.DstIP)
@@ -323,7 +338,7 @@ func (b *backLog) isStageReachMaxEvtCount() (reachMaxEvtCount bool) {
 	idx := s - 1
 	currRule := b.Directive.Rules[idx]
 	nEvents := len(b.Directive.Rules[idx].Events)
-	if nEvents == currRule.Occurrence {
+	if nEvents >= currRule.Occurrence {
 		reachMaxEvtCount = true
 	}
 	return
@@ -331,6 +346,10 @@ func (b *backLog) isStageReachMaxEvtCount() (reachMaxEvtCount bool) {
 
 func (b *backLog) increaseStage(connID uint64) {
 	b.CurrentStage++
+	// make sure its not over the higheststage, concurrency may cause this
+	if b.CurrentStage > b.HighestStage {
+		b.CurrentStage = b.HighestStage
+	}
 	log.Info("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" increased stage to "+strconv.Itoa(b.CurrentStage), connID)
 	idx := b.CurrentStage - 1
 	b.Directive.Rules[idx].StartTime = time.Now().Unix()
