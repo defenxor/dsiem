@@ -36,7 +36,7 @@ func init() {
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port to listen on")
 	serverCmd.Flags().Bool("dev", false, "Enable development environment specific setting")
 	serverCmd.Flags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
-	serverCmd.Flags().String("pprof", "cpu", "Generate performance profiling information for either cpu, mutex, memory, or block.")
+	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().StringSliceP("tags", "t", []string{"Identified Threat", "False Positive", "Valid Threat", "Security Incident"},
 		"Alarm tags to use, the first one will be assigned to new alarms")
 	serverCmd.Flags().Int("medRiskMin", 3,
@@ -116,7 +116,11 @@ from logstash, and on /config for configuration read/write from UI`,
 		pp := viper.GetString("pprof")
 
 		if pp != "" {
-			defer pprof.GetProfiler(pp).Stop()
+			f, err := pprof.GetProfiler(pp)
+			if err != nil {
+				exit("Cannot start profiler", err)
+			}
+			defer f.Stop()
 		}
 
 		// saving the config for UI to read

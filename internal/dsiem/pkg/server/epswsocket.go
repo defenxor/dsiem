@@ -66,12 +66,10 @@ func (s *wsServer) onClientConnected(ws *websocket.Conn) {
 	defer func() {
 		_ = ws.Close()
 	}()
-
 	id, err := s.add(ws)
 	if err != nil {
 		return
 	}
-
 	for {
 		select {
 		// send message to client

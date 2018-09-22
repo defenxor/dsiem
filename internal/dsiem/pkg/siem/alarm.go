@@ -336,7 +336,7 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 
 }
 
-func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
+func (a *alarm) asyncIntelCheck2(connID uint64, tx *elasticapm.Transaction) {
 	defer elasticapm.DefaultTracer.Recover(tx)
 	go func() {
 
@@ -420,10 +420,68 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 }
 
+func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
+	defer elasticapm.DefaultTracer.Recover(tx)
+	go func() {
+
+		IPIntel := a.ThreatIntels
+
+		a.RLock()
+
+		// loop over srcips and dstips
+		p := append(a.SrcIPs, a.DstIPs...)
+		p = removeDuplicatesUnordered(p)
+
+		for i := range p {
+			// skip private IP
+			if isPrivateIP(p[i]) {
+				continue
+			}
+			// skip existing entries
+			alreadyExist := false
+			for _, v := range a.ThreatIntels {
+				if v.Term == p[i] {
+					alreadyExist = true
+					break
+				}
+			}
+			if alreadyExist {
+				continue
+			}
+			if found, res := xc.CheckIntelIP(p[i], connID); found {
+				a.RUnlock()
+				a.Lock()
+				a.ThreatIntels = append(a.ThreatIntels, res...)
+				a.Unlock()
+				a.RLock()
+				log.Info(log.M{Msg: "Found intel result for " + p[i], CId: connID, BId: a.ID})
+			}
+		}
+
+		// compare content of slice
+		if reflect.DeepEqual(IPIntel, a.ThreatIntels) {
+			a.RUnlock()
+			return
+		}
+
+		a.RUnlock()
+
+		err := a.updateElasticsearch(connID)
+		if err != nil {
+			a.RLock()
+			log.Warn(log.M{Msg: "failed to update Elasticsearch after TI check! " + err.Error(), BId: a.ID, CId: connID})
+			a.RUnlock()
+			e := elasticapm.DefaultTracer.NewError(err)
+			e.Transaction = tx
+			e.Send()
+		}
+	}()
+
+}
+
 func (a *alarm) updateElasticsearch(connID uint64) error {
 	a.RLock()
 	log.Info(log.M{Msg: "updating Elasticsearch", BId: a.ID, CId: connID})
-
 	aJSON, _ := json.Marshal(a)
 	a.RUnlock()
 

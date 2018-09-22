@@ -35,8 +35,8 @@ type configFiles struct {
 var epsCounter = expvar.NewInt("eps_counter")
 var eventChannel chan<- event.NormalizedEvent
 
-// Start the HTTP server on addr:port, writing incoming event to ch and reading/writing
-// conf files to confd
+// Start the HTTP server on addr:port, writing incoming event to ch, reading/writing
+// conf files to confd, serving ws connection for eps rate, serving /debug/vars, and the angular UI
 func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr string, port int) error {
 	if a := net.ParseIP(addr); a == nil {
 		return errors.New(addr + " is not a valid IP address")
@@ -56,7 +56,6 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr stri
 	for {
 		router := apmhttprouter.New()
 		router.POST("/events", handleEvents)
-		// router.POST("/events", apmhttprouter.Wrap(handleEvents, "/events"))
 		router.GET("/config/:filename", handleConfFileDownload)
 		router.GET("/config/", handleConfFileList)
 		router.GET("/debug/vars/", expvarHandler)
@@ -70,13 +69,13 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr stri
 			log.Warn(log.M{Msg: "error from http.ListenAndServe: " + err.Error()})
 		}
 	}
-
 	return nil
 }
 
 func expvarHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	expvar.Handler().ServeHTTP(w, r)
 }
+
 func wsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	s := websocket.Server{Handler: websocket.Handler(wss.onClientConnected)}
 	s.ServeHTTP(w, r)
@@ -100,10 +99,8 @@ func initWSServer() {
 }
 
 func increaseConnCounter() uint64 {
-	// increase counter to differentiate entries in log
 	atomic.AddUint64(&connCounter, 1)
-	myID := atomic.LoadUint64(&connCounter)
-	return myID
+	return atomic.LoadUint64(&connCounter)
 }
 
 func handleConfFileList(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -167,12 +164,9 @@ func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.
 		http.Error(w, "requires /config/filename", 500)
 		return
 	}
-
 	log.Info(log.M{Msg: "Upload file request for '" + filename + "' from " + clientAddr})
 	file := path.Join(confDir, filename)
 	b, err := ioutil.ReadAll(r.Body)
-	// bstr := string(b)
-	// logger.Info(bstr)
 	if err != nil {
 		log.Warn(log.M{Msg: "Error reading message from " + clientAddr + ". Returning HTTP 500."})
 		http.Error(w, "Cannot read posted body content", 500)
@@ -184,7 +178,6 @@ func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.
 		http.Error(w, "Cannot open target file location", 500)
 		return
 	}
-
 	_, err = f.Write(b)
 	if err != nil {
 		http.Error(w, "Cannot write to target file location", 500)
@@ -203,33 +196,24 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	epsCounter.Set(rateCounter.Rate())
 
 	b, err := ioutil.ReadAll(r.Body)
-	// bstr := string(b)
-	// logger.Info(bstr)
 	if err != nil {
 		log.Warn(log.M{Msg: "Error reading message from " + clientAddr + ". Returning HTTP 500.", CId: connID})
 		http.Error(w, "Cannot read posted body content", 500)
 		return
 	}
-
 	err = evt.FromBytes(b)
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot parse normalizedEvent from " + clientAddr + ". err: " + err.Error(), CId: connID})
 		http.Error(w, "Cannot parse the submitted event", 400)
-		// bstr := string(b)
-		// log.Warn(bstr,connID)
 		return
 	}
-
 	if !evt.Valid() {
 		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding.", CId: connID})
 		http.Error(w, "Not a valid event", 418)
 		return
 	}
-
 	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt
-	// log.Debug("Pushed event ID: "+evt.EventID, connID)
-
 }
