@@ -66,7 +66,9 @@ func InitAlarm(logFile string) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
 	}
+	alarms.Lock()
 	alarms.al = make(map[string]*alarm)
+	alarms.Unlock()
 
 	mediumRiskLowerBound = viper.GetInt("medRiskMin")
 	mediumRiskUpperBound = viper.GetInt("medRiskMax")
@@ -237,7 +239,9 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 		for _, v := range a.Rules {
 			sIps := uniqStringSlice(v.From)
 			ports := uniqStringSlice(v.PortFrom)
+			b.RLock()
 			sPort := strconv.Itoa(b.LastEvent.SrcPort)
+			b.RUnlock()
 			for _, z := range sIps {
 				if z == "ANY" || z == "HOME_NET" || z == "!HOME_NET" || strings.Contains(z, "/") {
 					continue
@@ -256,7 +260,9 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 
 			dIps := uniqStringSlice(v.To)
 			ports = uniqStringSlice(v.PortTo)
+			b.RLock()
 			dPort := strconv.Itoa(b.LastEvent.DstPort)
+			b.RUnlock()
 			for _, z := range dIps {
 				if z == "ANY" || z == "HOME_NET" || z == "!HOME_NET" || strings.Contains(z, "/") {
 					continue
