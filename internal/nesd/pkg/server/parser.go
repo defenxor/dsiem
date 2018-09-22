@@ -74,7 +74,7 @@ func InitCSV(dir string) error {
 	if total == 0 {
 		return errors.New("cannot find valid nessus scan results to load from " + dir)
 	}
-	log.Info("Loaded "+strconv.Itoa(total)+" scan entries.", 0)
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " scan entries."})
 
 	return nil
 }

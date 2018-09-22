@@ -27,11 +27,9 @@ func init() {
 	serverCmd.Flags().StringP("address", "a", "127.0.0.1", "IP address to listen on")
 	serverCmd.Flags().IntP("port", "p", 8081, "TCP port to listen on")
 	serverCmd.Flags().StringP("csvdir", "d", "127.0.0.1", "directory of Nessus CSV scan results")
-	serverCmd.Flags().Bool("dev", false, "Enable development environment specific setting")
 	serverCmd.Flags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
-	viper.BindPFlag("dev", serverCmd.Flags().Lookup("dev"))
 	viper.BindPFlag("debug", serverCmd.Flags().Lookup("debug"))
 	viper.BindPFlag("csvdir", serverCmd.Flags().Lookup("csvdir"))
 }
@@ -87,7 +85,7 @@ Start server listening on for vulnerability lookup request`,
 
 		log.Setup(viper.GetBool("debug"))
 
-		log.Info("Starting "+progName+" "+version, 0)
+		log.Info(log.M{Msg: "Starting " + progName + " " + version})
 
 		err := server.InitCSV(csvDir)
 		if err != nil {

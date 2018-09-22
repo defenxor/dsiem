@@ -20,7 +20,7 @@ func findMatch(ip string, port int) (found bool, vs vulnerabilities) {
 		if v.Host != ip || v.Port != port {
 			continue
 		}
-		log.Debug("Found match: "+v.CVE+": "+v.Risk+": "+v.Name, 0)
+		log.Debug(log.M{Msg: "Found match: " + v.Risk + " - " + v.Name + " - " + v.CVE})
 		vs.v = append(vs.v, vulnerability{v.CVE, v.Risk, v.Name})
 		found = true
 	}
