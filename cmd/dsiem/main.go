@@ -120,7 +120,7 @@ from logstash, and on /config for configuration read/write from UI`,
 		eventChannel = make(chan event.NormalizedEvent)
 
 		log.Setup(viper.GetBool("debug"))
-		log.Info("Starting "+progName+" "+versionCmd.Version, 0)
+		log.Info(log.M{Msg: "Starting " + progName + " " + versionCmd.Version})
 
 		err = asset.Init(confDir)
 		if err != nil {

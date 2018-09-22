@@ -109,9 +109,7 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 
 	var a *alarm
 
-	log.Debug("alarm1", 0)
 	alarms.RLock()
-	log.Debug("alarm1b", 0)
 
 	for _, v := range alarms.al {
 		c := v
@@ -120,9 +118,7 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 			break
 		}
 	}
-	log.Debug("alarm2", 0)
 	alarms.RUnlock()
-	log.Debug("alarm2b", 0)
 
 	// if not found means new alarm
 	if a == nil {
@@ -133,9 +129,7 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 		alarms.Unlock()
 	}
 
-	log.Debug("alarm3", 0)
 	a.Lock()
-	log.Debug("alarm4", 0)
 
 	a.ID = b.ID
 	a.Title = b.Directive.Name
@@ -164,19 +158,15 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 	a.SrcIPs = b.SrcIPs
 	a.DstIPs = b.DstIPs
 
-	log.Debug("alarm5", 0)
-
 	if xc.IntelEnabled {
 		// do intel check in the background
 		a.asyncIntelCheck(connID, tx)
 	}
-	log.Debug("alarm6", 0)
 
 	if xc.VulnEnabled {
 		// do vuln check in the background
 		a.asyncVulnCheck(b, connID, tx)
 	}
-	log.Debug("alarm7", 0)
 
 	for i := range a.SrcIPs {
 		a.Networks = append(a.Networks, asset.GetAssetNetworks(a.SrcIPs[i])...)
@@ -192,27 +182,21 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 		rule.Events = []string{} // so it will be omited during json marshaling
 		a.Rules = append(a.Rules, rule)
 	}
-	log.Debug("alarm8", 0)
 
 	a.Unlock()
-	log.Debug("alarm9", 0)
+
 	err := a.updateElasticsearch(connID)
 	if err != nil {
 		tx.Result = "Alarm failed to update ES"
-		log.Debug("alarm10", 0)
 		a.RLock()
-		log.Debug("alarm11", 0)
-		log.Warn("Alarm "+a.ID+" failed to update Elasticsearch! "+err.Error(), connID)
-		log.Debug("alarm12", 0)
+		log.Warn(log.M{Msg: "failed to update Elasticsearch! " + err.Error(), BId: a.ID, CId: connID})
 		a.RUnlock()
-		log.Debug("alarm13", 0)
 		e := elasticapm.DefaultTracer.NewError(err)
 		e.Transaction = tx
 		e.Send()
 	} else {
 		tx.Result = "Alarm updated"
 	}
-	log.Debug("alarmfinal", 0)
 }
 
 func uniqStringSlice(cslist string) (result []string) {
@@ -249,9 +233,7 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 
 		// build IP:Port list
 		terms := []vulnSearchTerm{}
-		log.Debug("vuln1", 0)
 		a.RLock()
-		log.Debug("vuln2", 0)
 		for _, v := range a.Rules {
 			sIps := uniqStringSlice(v.From)
 			ports := uniqStringSlice(v.PortFrom)
@@ -291,18 +273,14 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 				}
 			}
 		}
-		log.Debug("vuln3", 0)
 		a.RUnlock()
-		log.Debug("vuln4", 0)
 
 		terms = sliceUniqMap(terms)
 		for i := range terms {
-			log.Debug("Evaluating "+terms[i].ip+":"+terms[i].port, connID)
+			log.Debug(log.M{Msg: "Evaluating " + terms[i].ip + ":" + terms[i].port, BId: a.ID, CId: connID})
 			// skip existing entries
 			alreadyExist := false
-			log.Debug("vuln5", 0)
 			a.RLock()
-			log.Debug("vuln6", 0)
 			for _, v := range a.Vulnerabilities {
 				s := terms[i].ip + ":" + terms[i].port
 				if v.Term == s {
@@ -310,11 +288,9 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 					break
 				}
 			}
-			log.Debug("vuln7", 0)
 			a.RUnlock()
-			log.Debug("vuln8", 0)
 			if alreadyExist {
-				log.Debug("vuln checker: "+terms[i].ip+":"+terms[i].port+" already exist", connID)
+				log.Debug(log.M{Msg: "vuln checker: " + terms[i].ip + ":" + terms[i].port + " already exist", BId: a.ID, CId: connID})
 				continue
 			}
 
@@ -323,42 +299,33 @@ func (a *alarm) asyncVulnCheck(b *backLog, connID uint64, tx *elasticapm.Transac
 				continue
 			}
 
-			log.Debug("actually checking vuln for "+terms[i].ip+":"+terms[i].port, connID)
+			log.Debug(log.M{Msg: "actually checking vuln for " + terms[i].ip + ":" + terms[i].port, BId: a.ID, CId: connID})
 
-			if found, res := xc.CheckVulnIPPort(terms[i].ip, p, connID); found {
-				log.Debug("vuln9", 0)
+			if found, res := xc.CheckVulnIPPort(terms[i].ip, p); found {
 				a.Lock()
 				a.Vulnerabilities = append(a.Vulnerabilities, res...)
 				a.Unlock()
-				log.Debug("vuln10", 0)
-				log.Info("Found vulnerability for "+terms[i].ip+":"+terms[i].port, connID)
+				log.Info(log.M{Msg: "found vulnerability for " + terms[i].ip + ":" + terms[i].port, CId: connID, BId: a.ID})
 			}
 		}
 
 		// compare content of slice
-		log.Debug("vuln11", 0)
 		a.RLock()
-		log.Debug("vuln11b", 0)
 
 		if reflect.DeepEqual(pVulnerabilities, a.Vulnerabilities) {
 			a.RUnlock()
 			return
 		}
-		log.Debug("vuln12a", 0)
 		a.RUnlock()
-		log.Debug("vuln12", 0)
 		err := a.updateElasticsearch(connID)
 		if err != nil {
-			log.Debug("vuln13", 0)
 			a.RLock()
-			log.Warn("Alarm "+a.ID+" failed to update Elasticsearch after vulnerability check! "+err.Error(), connID)
+			log.Warn(log.M{Msg: "failed to update Elasticsearch after vulnerability check! " + err.Error(), BId: a.ID, CId: connID})
 			a.RUnlock()
-			log.Debug("vuln14", 0)
 			e := elasticapm.DefaultTracer.NewError(err)
 			e.Transaction = tx
 			e.Send()
 		}
-		log.Debug("vuln15", 0)
 	}()
 
 }
@@ -369,9 +336,7 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 		IPIntel := a.ThreatIntels
 
-		log.Debug("intel1", 0)
 		a.RLock()
-		log.Debug("intel2", 0)
 
 		for i := range a.SrcIPs {
 			// skip private IP
@@ -391,14 +356,13 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 			}
 
 			if found, res := xc.CheckIntelIP(a.SrcIPs[i], connID); found {
-				log.Debug("intel3", 0)
 				a.RUnlock()
 				a.Lock()
 				a.ThreatIntels = append(a.ThreatIntels, res...)
 				a.Unlock()
 				a.RLock()
-				log.Debug("intel4", 0)
-				log.Info("Found intel result for "+a.SrcIPs[i], connID)
+				log.Info(log.M{Msg: "Found intel result for " + a.SrcIPs[i], CId: connID, BId: a.ID})
+
 			}
 		}
 
@@ -419,37 +383,29 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 				continue
 			}
 			if found, res := xc.CheckIntelIP(a.DstIPs[i], connID); found {
-				log.Debug("intel5", 0)
 				a.RUnlock()
 				a.Lock()
 				a.ThreatIntels = append(a.ThreatIntels, res...)
 				a.Unlock()
 				a.RLock()
-				log.Debug("intel6", 0)
 
-				log.Info("Found intel result for "+a.DstIPs[i], connID)
+				log.Info(log.M{Msg: "Found intel result for " + a.DstIPs[i], CId: connID})
 			}
 		}
 
 		// compare content of slice
 		if reflect.DeepEqual(IPIntel, a.ThreatIntels) {
-			log.Debug("intel7", 0)
 			a.RUnlock()
-			log.Debug("intel8", 0)
 			return
 		}
 
-		log.Debug("intel9", 0)
 		a.RUnlock()
-		log.Debug("intel10", 0)
 
 		err := a.updateElasticsearch(connID)
 		if err != nil {
-			log.Debug("intel11", 0)
 			a.RLock()
-			log.Warn("Alarm "+a.ID+" failed to update Elasticsearch after TI check! "+err.Error(), connID)
+			log.Warn(log.M{Msg: "failed to update Elasticsearch after TI check! " + err.Error(), BId: a.ID, CId: connID})
 			a.RUnlock()
-			log.Debug("intel12", 0)
 			e := elasticapm.DefaultTracer.NewError(err)
 			e.Transaction = tx
 			e.Send()
@@ -460,7 +416,8 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 func (a *alarm) updateElasticsearch(connID uint64) error {
 	a.RLock()
-	log.Info("alarm "+a.ID+" updating Elasticsearch.", connID)
+	log.Info(log.M{Msg: "updating Elasticsearch", BId: a.ID, CId: connID})
+
 	aJSON, _ := json.Marshal(a)
 	a.RUnlock()
 
@@ -476,7 +433,7 @@ func (a *alarm) updateElasticsearch(connID uint64) error {
 
 func removeAlarm(m removalChannelMsg) {
 	alarms.Lock()
-	log.Debug("Lock obtained. Removing alarm "+m.ID, m.connID)
+	log.Debug(log.M{Msg: "Lock obtained. Removing alarm", BId: m.ID, CId: m.connID})
 	delete(alarms.al, m.ID)
 	alarms.Unlock()
 }

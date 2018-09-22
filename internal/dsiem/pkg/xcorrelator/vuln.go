@@ -54,10 +54,10 @@ type VulnResult struct {
 var vulns vulnSources
 
 // CheckVulnIPPort lookup ip-port pair on vulnerability scan result references
-func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []VulnResult) {
+func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn("Panic occurred while checking vulnerability scan result for "+ip, connID)
+			log.Warn(log.M{Msg: "Panic occurred while checking vulnerability scan result for " + ip})
 		}
 	}()
 
@@ -65,7 +65,7 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 		p := strconv.Itoa(port)
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
 		url = strings.Replace(url, "${port}", p, 1)
-		log.Debug("result url "+url, 0)
+		log.Debug(log.M{Msg: "result url " + url})
 		term := ip + ":" + p
 
 		tx := elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
@@ -76,28 +76,28 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
-			log.Warn("Cannot create new HTTP request for "+v.Name+" VS.", connID)
+			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " VS."})
 			tx.Result = "Cannot create HTTP request"
 			tx.End()
 			continue
 		}
 		res, err := c.Do(req)
 		if err != nil {
-			log.Warn("Failed to query "+v.Name+" VS for IP "+term, connID)
+			log.Warn(log.M{Msg: "Failed to query " + v.Name + " VS for IP " + term})
 			tx.Result = "Failed to query " + v.Name
 			tx.End()
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
 		if readErr != nil {
-			log.Warn("Cannot read result from "+v.Name+" VS for IP "+term, connID)
+			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " VS for IP " + term})
 			tx.Result = "Cannot create read result from " + v.Name
 			tx.End()
 			continue
 		}
 
 		if v.Matcher == "regex" {
-			f, r := matcherRegexVuln(body, v.Name, term, v.ResultRegex, connID)
+			f, r := matcherRegexVuln(body, v.Name, term, v.ResultRegex)
 			if f {
 				found = true
 				results = append(results, r...)
@@ -105,7 +105,7 @@ func CheckVulnIPPort(ip string, port int, connID uint64) (found bool, results []
 		}
 
 		if v.Matcher == "nesd" {
-			f, r := matcherNesd(body, v.Name, term, connID)
+			f, r := matcherNesd(body, v.Name, term)
 			if f {
 				found = true
 				results = append(results, r...)
@@ -156,7 +156,7 @@ func InitVuln(confDir string) error {
 	if total > 0 {
 		VulnEnabled = true
 	}
-	log.Info("Loaded "+strconv.Itoa(total)+" vulnerability scan result sources.", 0)
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " vulnerability scan result sources."})
 
 	return nil
 }

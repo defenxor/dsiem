@@ -51,7 +51,7 @@ var intels intelSources
 func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn("Panic occurred while checking intel for "+ip, connID)
+			log.Warn(log.M{Msg: "Panic occurred while checking intel for " + ip})
 		}
 	}()
 
@@ -68,28 +68,28 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 		tx.Context.SetCustom("Url", url)
 
 		if err != nil {
-			log.Warn("Cannot create new HTTP request for "+v.Name+" TI.", connID)
+			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " TI."})
 			tx.Result = "Cannot create HTTP request"
 			tx.End()
 			continue
 		}
 		res, err := c.Do(req)
 		if err != nil {
-			log.Warn("Failed to query "+v.Name+" TI for IP "+ip, connID)
+			log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip})
 			tx.Result = "Failed to query " + v.Name
 			tx.End()
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
 		if readErr != nil {
-			log.Warn("Cannot read result from "+v.Name+" TI for IP "+ip, connID)
+			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " TI for IP " + ip})
 			tx.Result = "Cannot read result from " + v.Name
 			tx.End()
 			continue
 		}
 
 		if v.Matcher == "regex" {
-			f, r := matcherRegexIntel(body, v.Name, term, v.ResultRegex, connID)
+			f, r := matcherRegexIntel(body, v.Name, term, v.ResultRegex)
 			if f {
 				found = true
 				results = append(results, r...)
@@ -140,7 +140,7 @@ func InitIntel(confDir string) error {
 	if total > 0 {
 		IntelEnabled = true
 	}
-	log.Info("Loaded "+strconv.Itoa(total)+" threat intelligence sources.", 0)
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " threat intelligence sources."})
 
 	return nil
 }

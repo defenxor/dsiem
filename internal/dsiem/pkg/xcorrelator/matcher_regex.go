@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func matcherRegexIntel(body []byte, provider string, term string, strRegex []string, connID uint64) (found bool, results []IntelResult) {
+func matcherRegexIntel(body []byte, provider string, term string, strRegex []string) (found bool, results []IntelResult) {
 	vResult := string(body)
 	// loop over strRegex, applying it one by one to vResult
 	for _, v := range strRegex {
@@ -38,7 +38,7 @@ func matcherRegexIntel(body []byte, provider string, term string, strRegex []str
 	return
 }
 
-func matcherRegexVuln(body []byte, provider string, term string, strRegex []string, connID uint64) (found bool, results []VulnResult) {
+func matcherRegexVuln(body []byte, provider string, term string, strRegex []string) (found bool, results []VulnResult) {
 	vResult := string(body)
 	// loop over strRegex, applying it one by one to vResult
 	for _, v := range strRegex {

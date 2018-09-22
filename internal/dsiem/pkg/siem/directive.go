@@ -67,7 +67,7 @@ func startDirective(d directive, c chan event.NormalizedEvent) {
 			continue
 		}
 
-		log.Info("directive "+strconv.Itoa(d.ID)+" found matched event.", evt.ConnID)
+		log.Info(log.M{Msg: "found matching event", DId: d.ID, CId: evt.ConnID})
 		go backlogManager(&evt, &d)
 	}
 }
@@ -150,7 +150,7 @@ func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret
 	}
 	// covers  r.From == "IP", r.From == "IP1, IP2", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2"
 	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
-		!str.CaseInsensitiveContains(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From, connID) {
+		!str.CaseInsensitiveContains(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From) {
 		return
 	}
 
@@ -163,7 +163,7 @@ func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
 	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
-		!str.CaseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To, connID) {
+		!str.CaseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To) {
 		return
 	}
 
@@ -211,7 +211,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	if total == 0 {
 		return errors.New("cannot find any directive to load from conf dir")
 	}
-	log.Info("Loaded "+strconv.Itoa(total)+" directives.", 0)
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " directives."})
 
 	/*
 		for i := range uCases.Directives {
@@ -236,14 +236,6 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		}()
 	}
 	return nil
-}
-
-func printDirective(d directive) {
-	log.Info("Directive ID: "+strconv.Itoa(d.ID)+" Name: "+d.Name, 0)
-	for j := 0; j < len(d.Rules); j++ {
-		log.Info("- Rule "+strconv.Itoa(d.Rules[j].Stage)+" Name: "+d.Rules[j].Name+
-			" From: "+d.Rules[j].From+" To: "+d.Rules[j].To, 0)
-	}
 }
 
 func copyDirective(dst *directive, src *directive, e *event.NormalizedEvent) {
@@ -278,7 +270,7 @@ func copyDirective(dst *directive, src *directive, e *event.NormalizedEvent) {
 	}
 }
 
-func isIPinCIDR(ip string, netcidr string, connID uint64) (found bool) {
+func isIPinCIDR(ip string, netcidr string) (found bool) {
 	// first convert to slice, because netcidr maybe in a form of "cidr1,cidr2..."
 	cleaned := strings.Replace(netcidr, ",", " ", -1)
 	cidrSlice := strings.Fields(cleaned)
@@ -289,7 +281,7 @@ func isIPinCIDR(ip string, netcidr string, connID uint64) (found bool) {
 	}
 	ipB, _, err := net.ParseCIDR(ip)
 	if err != nil {
-		log.Warn("Unable to parse IP address: "+ip+". Make sure the plugin is configured correctly!", connID)
+		log.Warn(log.M{Msg: "Unable to parse IP address: " + ip + ". Make sure the plugin is configured correctly!"})
 		return
 	}
 
@@ -299,7 +291,7 @@ func isIPinCIDR(ip string, netcidr string, connID uint64) (found bool) {
 		}
 		_, ipnetA, err := net.ParseCIDR(v)
 		if err != nil {
-			log.Warn("Unable to parse CIDR address: "+v+". Make sure the directive is configured correctly!", connID)
+			log.Warn(log.M{Msg: "Unable to parse CIDR address: " + v + ". Make sure the directive is configured correctly!"})
 			return
 		}
 		if ipnetA.Contains(ipB) {

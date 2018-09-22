@@ -1,8 +1,8 @@
 package asset
 
 import (
-	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/fs"
+	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 
 	"encoding/json"
@@ -96,19 +96,19 @@ func Init(confDir string) error {
 
 		_, net, err := net.ParseCIDR(cidr)
 		if err != nil {
-			log.Info("Cannot parse "+cidr+"!", 0)
+			// log.Info("Cannot parse "+cidr+"!", 0)
+			log.Info(log.M{Msg: "Cannot parse " + cidr + "!"})
 			return err
 		}
 
-		// log.Info("Inserting "+cidr+" network into HOME_NET.", 0)
 		err = ranger.Insert(newAssetEntry(*net, value, name))
 		if err != nil {
-			log.Warn("Cannot insert "+cidr+" to HOME_NET!", 0)
+			log.Warn(log.M{Msg: "Cannot insert " + cidr + " to HOME_NET!"})
 			return err
 		}
 	}
 
-	log.Info("Loaded "+strconv.Itoa(total)+" host and/or network assets.", 0)
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " host and/or network assets."})
 
 	return nil
 }

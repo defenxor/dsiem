@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 )
 
-func matcherNesd(body []byte, provider string, term string, connID uint64) (found bool, results []VulnResult) {
+func matcherNesd(body []byte, provider string, term string) (found bool, results []VulnResult) {
 	vResult := string(body)
 	if vResult == "no vulnerability found\n" {
-		log.Debug("nesd: no vulnerability found for "+term, connID)
+		log.Debug(log.M{Msg: "nesd: no vulnerability found for " + term})
 		return
 	}
 	var n = []nesdResult{}
 	err := json.Unmarshal([]byte(vResult), &n)
 	if err != nil {
-		log.Debug("Error unmarshalling nesd result "+err.Error(), connID)
+		log.Debug(log.M{Msg: "Error unmarshalling nesd result " + err.Error()})
 		return
 	}
 	for _, v := range n {

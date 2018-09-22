@@ -37,10 +37,10 @@ func newWSServer() *wsServer {
 func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
 	id, err = idgen.GenerateID()
 	if err != nil {
-		log.Debug("Cannot create an ID for WS client!"+id, 0)
+		log.Debug(log.M{Msg: "cannot create an ID for WS client!" + id})
 		return "", err
 	}
-	log.Debug("Adding WS client "+id, 0)
+	log.Debug(log.M{Msg: "adding WS client " + id})
 	c := client{}
 	c.id = id
 	c.ws = ws
@@ -54,7 +54,7 @@ func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
 }
 
 func (s *wsServer) del(cID string) {
-	log.Debug("Deleting WS client "+cID, 0)
+	log.Debug(log.M{Msg: "deleting WS client " + cID})
 	delete(s.clients, cID)
 }
 
@@ -78,12 +78,12 @@ func (s *wsServer) onClientConnected(ws *websocket.Conn) {
 		case msg := <-s.sendAllCh:
 			b, err := json.Marshal(msg)
 			if err != nil {
-				log.Debug("failed to marshal msg", 0)
+				log.Debug(log.M{Msg: "failed to marshal msg"})
 				continue
 			}
 			_, err = ws.Write(b)
 			if err != nil {
-				log.Debug("Failed to write to "+id+", assuming client is disconnected.", 0)
+				log.Debug(log.M{Msg: "failed to write to " + id + ", assuming client is disconnected."})
 				s.del(id)
 				return
 			}

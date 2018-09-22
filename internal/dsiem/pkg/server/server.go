@@ -63,11 +63,11 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr stri
 		router.POST("/config/:filename", handleConfFileUpload)
 		router.GET("/eps/", wsHandler)
 		router.ServeFiles("/ui/*filepath", http.Dir(webDir))
-		log.Info("Server listening on "+addr+":"+p, 0)
+		log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
 		initWSServer()
 		err := http.ListenAndServe(addr+":"+p, router)
 		if err != nil {
-			log.Warn("Error from http.ListenAndServe: "+err.Error(), 0)
+			log.Warn(log.M{Msg: "error from http.ListenAndServe: " + err.Error()})
 		}
 	}
 
@@ -89,7 +89,7 @@ func initWSServer() {
 		for {
 			c = len(wss.clients)
 			if c == 0 {
-				log.Debug("WS server waiting for client connection.", 0)
+				log.Debug(log.M{Msg: "WS server waiting for client connection."})
 				// wait until new client connected
 				<-wss.cConnectedCh
 			}
@@ -108,7 +108,7 @@ func increaseConnCounter() uint64 {
 
 func handleConfFileList(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	clientAddr := r.RemoteAddr
-	log.Info("Request for list of configuration files from "+clientAddr, 0)
+	log.Info(log.M{Msg: "Request for list of configuration files from " + clientAddr})
 
 	files, err := ioutil.ReadDir(confDir)
 	if err != nil {
@@ -136,9 +136,10 @@ func handleConfFileDownload(w http.ResponseWriter, r *http.Request, ps httproute
 		http.Error(w, "requires /config/filename", 400)
 		return
 	}
-	log.Info("Request for file '"+filename+"' from "+clientAddr, 0)
+	log.Info(log.M{Msg: "Request for file '" + filename + "' from " + clientAddr})
 	f := path.Join(confDir, filename)
-	log.Info("Getting file "+f, 0)
+	log.Info(log.M{Msg: "Getting file " + f})
+
 	if !fs.FileExist(f) {
 		http.Error(w, filename+" doesnt exist", 404)
 		return
@@ -166,13 +167,14 @@ func handleConfFileUpload(w http.ResponseWriter, r *http.Request, ps httprouter.
 		http.Error(w, "requires /config/filename", 500)
 		return
 	}
-	log.Info("Upload file request for '"+filename+"' from "+clientAddr, 0)
+
+	log.Info(log.M{Msg: "Upload file request for '" + filename + "' from " + clientAddr})
 	file := path.Join(confDir, filename)
 	b, err := ioutil.ReadAll(r.Body)
 	// bstr := string(b)
 	// logger.Info(bstr)
 	if err != nil {
-		log.Warn("Error reading message from "+clientAddr+". Returning HTTP 500.", 0)
+		log.Warn(log.M{Msg: "Error reading message from " + clientAddr + ". Returning HTTP 500."})
 		http.Error(w, "Cannot read posted body content", 500)
 		return
 	}
@@ -204,14 +206,14 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	// bstr := string(b)
 	// logger.Info(bstr)
 	if err != nil {
-		log.Warn("Error reading message from "+clientAddr+". Returning HTTP 500.", connID)
+		log.Warn(log.M{Msg: "Error reading message from " + clientAddr + ". Returning HTTP 500.", CId: connID})
 		http.Error(w, "Cannot read posted body content", 500)
 		return
 	}
 
 	err = evt.FromBytes(b)
 	if err != nil {
-		log.Warn("Cannot parse normalizedEvent from "+clientAddr+". err: "+err.Error(), connID)
+		log.Warn(log.M{Msg: "Cannot parse normalizedEvent from " + clientAddr + ". err: " + err.Error(), CId: connID})
 		http.Error(w, "Cannot parse the submitted event", 400)
 		// bstr := string(b)
 		// log.Warn(bstr,connID)
@@ -219,12 +221,12 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	}
 
 	if !evt.Valid() {
-		log.Warn("l337 or epic fail attempt from "+clientAddr+" detected. Discarding.", connID)
+		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding.", CId: connID})
 		http.Error(w, "Not a valid event", 418)
 		return
 	}
 
-	log.Debug("Received event ID: "+evt.EventID, connID)
+	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt

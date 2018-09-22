@@ -78,18 +78,14 @@ func startBackLogTicker() {
 	go func() {
 		for {
 			<-ticker.C
-			//			log.Debug("t Locking alarm", 0)
 			alarms.RLock()
-			//			log.Debug("t Locking alarm success", 0)
 			aLen := len(alarms.al)
 			alarmCounter.Set(int64(aLen))
 			alarms.RUnlock()
-			//			log.Debug("t Locking blogs", 0)
 			backlogs.RLock()
-			//			log.Debug("t Locking blogs success", 0)
 			bLen := len(backlogs.bl)
 			backlogCounter.Set(int64(bLen))
-			log.Debug("Ticker started, # of backlogs to check: "+strconv.Itoa(bLen), 0)
+			log.Debug(log.M{Msg: "Ticker started, # of backlogs to check: " + strconv.Itoa(bLen)})
 			now := time.Now().Unix()
 			for _, v := range backlogs.bl {
 				v.RLock()
@@ -121,7 +117,7 @@ func startBackLogTicker() {
 func removeBackLog(m removalChannelMsg) {
 	backlogs.Lock()
 	defer backlogs.Unlock()
-	log.Debug("Lock obtained. Removing backlog "+m.ID, m.connID)
+	log.Debug(log.M{Msg: "Lock obtained. Removing backlog", BId: m.ID, CId: m.connID})
 	delete(backlogs.bl, m.ID)
 }
 
@@ -155,8 +151,8 @@ func backlogManager(e *event.NormalizedEvent, d *directive) {
 		//		log.Debug("trying to lock v again 2", 0)
 		v.RLock()
 		//		log.Debug("v success again 2", 0)
-		log.Debug("Directive "+strconv.Itoa(d.ID)+" backlog "+v.ID+" matched. Not creating new backlog. CurrentStage is "+
-			strconv.Itoa(v.CurrentStage), e.ConnID)
+		log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " + strconv.Itoa(v.CurrentStage),
+			DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
 		v.RUnlock()
 		found = true
 		backlogs.bl[v.ID].processMatchedEvent(e, idx)
@@ -175,7 +171,7 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Directive "+strconv.Itoa(d.ID)+" creating new backlog "+bid, e.ConnID)
+	log.Info(log.M{Msg: "Creating new backlog", DId: d.ID, CId: e.ConnID})
 	b := backLog{}
 	b.ID = bid
 	b.Directive = directive{}
@@ -256,41 +252,29 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 
 func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transaction) {
 	// enforce flow here, cannot go back to active after timeout/finished
-	log.Debug("status1", 0)
 	b.RLock()
-	log.Debug("status2", 0)
 	s := b.CurrentStage
 	idx := s - 1
 	if b.Directive.Rules[idx].Status == "timeout" || b.Directive.Rules[idx].Status == "finished" {
-		log.Debug("status3", 0)
 		b.RUnlock()
-		log.Debug("status4", 0)
 		return
 	}
 	allowed := []string{"timeout", "finished"}
 	if b.Directive.Rules[idx].Status == "inactive" {
 		allowed = append(allowed, "active")
 	}
-	log.Debug("status5", 0)
 	b.RUnlock()
-	log.Debug("status6", 0)
 	for i := range allowed {
 		if allowed[i] == status {
-			log.Debug("status7", 0)
 			b.Lock()
-			log.Debug("status8", 0)
 			b.Directive.Rules[idx].Status = status
 			b.Unlock()
-			log.Debug("status9", 0)
 			b.RLock()
-			log.Debug("status10", 0)
 			upsertAlarmFromBackLog(b, connID, tx)
-			log.Debug("status11", 0)
 			b.RUnlock()
 			break
 		}
 	}
-	log.Debug("status12", 0)
 }
 
 func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticapm.Transaction) {
@@ -328,27 +312,20 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 
 	b.debug("Incoming event with idx: "+strconv.Itoa(idx), e.ConnID)
 	// concurrent write may make events count overflow, so dont append current stage unless needed
-	log.Debug("here1", e.ConnID)
 	if !b.isStageReachMaxEvtCount() {
-		log.Debug("here2", e.ConnID)
 		b.appendandWriteEvent(e, idx, tx)
-		log.Debug("here3", e.ConnID)
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
 		if !b.isStageReachMaxEvtCount() {
-			log.Debug("here4", e.ConnID)
 			b.ensureStatusAndStartTime(idx, e.ConnID, tx)
-			log.Debug("here5", e.ConnID)
 			return
 		}
 	}
-	log.Debug("here6", e.ConnID)
 	// the new event has caused events_count == occurrence
 	b.setStatus("finished", e.ConnID, tx)
 
 	// if it causes the last stage to reach events_count == occurrence, delete it
 	if b.isLastStage() {
-		log.Debug("here7", e.ConnID)
 		b.info("reached max stage and occurrence, deleting.", e.ConnID)
 		b.delete(e.ConnID)
 		tx.Result = "Backlog removed (max reached)"
@@ -356,11 +333,8 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	}
 
 	// reach max occurrence, but not in last stage. Increase stage.
-	log.Debug("here8", e.ConnID)
 	b.increaseStage(e.ConnID)
-	log.Debug("here9", e.ConnID)
 	b.setStatus("active", e.ConnID, tx)
-	log.Debug("here10", e.ConnID)
 	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
 	tx.Result = "Stage increased"
 
@@ -368,24 +342,20 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	riskChanged := b.calcRisk(e.ConnID)
 	if riskChanged {
 		// this LastEvent is used to get ports by alarm
-		log.Debug("here11", e.ConnID)
 		b.setLastEvent(e)
-		log.Debug("here12", e.ConnID)
 		b.updateAlarm(e.ConnID, tx)
-		log.Debug("here13", e.ConnID)
 	}
-	log.Debug("here14", e.ConnID)
 }
 
 func (b *backLog) info(msg string, connID uint64) {
 	b.RLock()
-	log.Info("Backlog "+b.ID+": "+msg, connID)
+	log.Info(log.M{Msg: msg, BId: b.ID, CId: connID})
 	b.RUnlock()
 }
 
 func (b *backLog) debug(msg string, connID uint64) {
 	b.RLock()
-	log.Debug("Backlog "+b.ID+": "+msg, connID)
+	log.Debug(log.M{Msg: "Backlog " + b.ID + ": " + msg, BId: b.ID, CId: connID})
 	b.RUnlock()
 }
 
@@ -409,7 +379,7 @@ func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int, tx *ela
 	b.Unlock()
 	if err := b.updateElasticsearch(e); err != nil {
 		b.RLock()
-		log.Warn("Backlog "+b.ID+" failed to update Elasticsearch! "+err.Error(), e.ConnID)
+		log.Warn(log.M{Msg: "failed to update Elasticsearch! " + err.Error(), BId: b.ID, CId: e.ConnID})
 		b.RUnlock()
 		e := elasticapm.DefaultTracer.NewError(err)
 		e.Transaction = tx
@@ -442,14 +412,10 @@ func (b *backLog) isStageReachMaxEvtCount() (reachMaxEvtCount bool) {
 }
 
 func (b *backLog) increaseStage(connID uint64) {
-	//	log.Debug("trying to lock for increasing stage", connID)
 
 	b.Lock()
-	//	log.Debug("success locking for increasing stage", connID)
 	n := int32(b.CurrentStage)
 	b.CurrentStage = int(atomic.AddInt32(&n, 1))
-	//	b.CurrentStage++
-	// make sure its not over the higheststage, concurrency may cause this
 	if b.CurrentStage > b.HighestStage {
 		b.CurrentStage = b.HighestStage
 	}
@@ -498,7 +464,7 @@ func (b *backLog) delete(connID uint64) {
 
 func (b *backLog) updateElasticsearch(e *event.NormalizedEvent) error {
 	b.Lock()
-	log.Debug("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" updating Elasticsearch.", e.ConnID)
+	log.Debug(log.M{Msg: "updating Elasticsearch.", DId: b.Directive.ID, BId: b.ID, CId: e.ConnID})
 	b.StatusTime = time.Now().Unix()
 	b.Unlock()
 	f, err := os.OpenFile(bLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
