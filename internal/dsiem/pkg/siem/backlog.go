@@ -121,40 +121,50 @@ func removeBackLog(m removalChannelMsg) {
 	delete(backlogs.bl, m.ID)
 }
 
-func backlogManager(e *event.NormalizedEvent, d *directive) {
-	found := false
-	backlogs.RLock()
-	for _, v := range backlogs.bl {
-		v.RLock()
-		cs := v.CurrentStage
-		// only applicable for non-stage 1, where there's more specific identifier like IP address to match
-		if v.Directive.ID != d.ID || cs <= 1 {
-			v.RUnlock()
-			continue
-		}
-		v.RUnlock()
-		// should check for currentStage rule match with event
-		// heuristic, we know stage starts at 1 but rules start at 0
-		idx := cs - 1
-		v.RLock()
-		currRule := v.Directive.Rules[idx]
-		v.RUnlock()
-		if !doesEventMatchRule(e, &currRule, e.ConnID) {
-			continue
-		}
-		v.RLock()
-		log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " + strconv.Itoa(v.CurrentStage),
-			DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
-		v.RUnlock()
-		found = true
-		backlogs.bl[v.ID].processMatchedEvent(e, idx)
-	}
-	backlogs.RUnlock()
+func backlogManager(d *directive, ch <-chan event.NormalizedEvent) {
+	for {
+		// handle incoming event
+		e := <-ch
 
-	if found {
-		return
+		// first check existing backlog
+		found := false
+		backlogs.RLock()
+		for _, v := range backlogs.bl {
+			v.RLock()
+			cs := v.CurrentStage
+			// only applicable for non-stage 1, where there's more specific identifier like IP address to match
+			if v.Directive.ID != d.ID || cs <= 1 {
+				v.RUnlock()
+				continue
+			}
+			v.RUnlock()
+			// should check for currentStage rule match with event
+			// heuristic, we know stage starts at 1 but rules start at 0
+			idx := cs - 1
+			v.RLock()
+			currRule := v.Directive.Rules[idx]
+			v.RUnlock()
+			if !doesEventMatchRule(&e, &currRule, e.ConnID) {
+				continue
+			}
+			v.RLock()
+			log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " + strconv.Itoa(v.CurrentStage),
+				DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
+			v.RUnlock()
+			found = true
+			go backlogs.bl[v.ID].processMatchedEvent(&e, idx)
+		}
+		backlogs.RUnlock()
+		if found {
+			continue
+		}
+
+		// now for new backlog
+		if !doesEventMatchRule(&e, &d.Rules[0], e.ConnID) {
+			continue
+		}
+		go createNewBackLog(d, &e)
 	}
-	createNewBackLog(d, e)
 }
 
 func createNewBackLog(d *directive, e *event.NormalizedEvent) error {

@@ -13,6 +13,7 @@ user.xml.tmp
 # nessus files
 *.csv
 
+temp/
 test/pprof_results
 configs/dsiem_config.json
 logs

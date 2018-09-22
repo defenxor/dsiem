@@ -98,7 +98,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 
 	for i := 0; i < total; i++ {
 		dirchan = append(dirchan, make(chan event.NormalizedEvent))
-		go startDirective(uCases.Directives[i], dirchan[i])
+		go backlogManager(&uCases.Directives[i], dirchan[i])
 
 		// copy incoming events to all directive channels
 		go func() {
@@ -111,18 +111,6 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		}()
 	}
 	return nil
-}
-
-func startDirective(d directive, ch <-chan event.NormalizedEvent) {
-	for {
-		// handle incoming event
-		evt := <-ch
-		if !doesEventMatchRule(&evt, &d.Rules[0], 0) {
-			continue
-		}
-		log.Info(log.M{Msg: "found matching event", DId: d.ID, CId: evt.ConnID})
-		go backlogManager(&evt, &d)
-	}
 }
 
 func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint64) bool {
