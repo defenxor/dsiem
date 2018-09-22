@@ -123,13 +123,9 @@ func removeBackLog(m removalChannelMsg) {
 
 func backlogManager(e *event.NormalizedEvent, d *directive) {
 	found := false
-	//	log.Debug("blogmgr trying lock", 0)
 	backlogs.RLock()
-	//	log.Debug("blogmgr success", 0)
 	for _, v := range backlogs.bl {
-		//		log.Debug("trying to lock v", 0)
 		v.RLock()
-		//		log.Debug("v success", 0)
 		cs := v.CurrentStage
 		// only applicable for non-stage 1, where there's more specific identifier like IP address to match
 		if v.Directive.ID != d.ID || cs <= 1 {
@@ -140,17 +136,13 @@ func backlogManager(e *event.NormalizedEvent, d *directive) {
 		// should check for currentStage rule match with event
 		// heuristic, we know stage starts at 1 but rules start at 0
 		idx := cs - 1
-		//		log.Debug("trying to lock v again", 0)
 		v.RLock()
-		//		log.Debug("v success again", 0)
 		currRule := v.Directive.Rules[idx]
 		v.RUnlock()
 		if !doesEventMatchRule(e, &currRule, e.ConnID) {
 			continue
 		}
-		//		log.Debug("trying to lock v again 2", 0)
 		v.RLock()
-		//		log.Debug("v success again 2", 0)
 		log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " + strconv.Itoa(v.CurrentStage),
 			DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
 		v.RUnlock()

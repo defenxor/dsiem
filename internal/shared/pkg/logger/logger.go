@@ -23,7 +23,6 @@ func Setup(enableDebugMessage bool) (err error) {
 		zlog, err = cfg.Build()
 	}
 	if err == nil {
-
 		zlog.Sync()
 	}
 	return

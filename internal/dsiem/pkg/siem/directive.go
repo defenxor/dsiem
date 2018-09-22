@@ -59,6 +59,60 @@ type directives struct {
 var uCases directives
 var eventChannel chan event.NormalizedEvent
 
+// InitDirectives initialize directive from directive_*.json files in confDir
+func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
+	p := path.Join(confDir, directiveFileGlob)
+	files, err := filepath.Glob(p)
+	if err != nil {
+		return err
+	}
+
+	for i := range files {
+		var d directives
+		if !fs.FileExist(files[i]) {
+			return errors.New("Cannot find " + files[i])
+		}
+		file, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		byteValue, _ := ioutil.ReadAll(file)
+		err = json.Unmarshal(byteValue, &d)
+		if err != nil {
+			return err
+		}
+		for j := range d.Directives {
+			uCases.Directives = append(uCases.Directives, d.Directives[j])
+		}
+	}
+
+	total := len(uCases.Directives)
+	if total == 0 {
+		return errors.New("cannot find directory to load from " + confDir)
+	}
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " directives."})
+
+	var dirchan []chan event.NormalizedEvent
+
+	for i := 0; i < total; i++ {
+		dirchan = append(dirchan, make(chan event.NormalizedEvent))
+		go startDirective(uCases.Directives[i], dirchan[i])
+
+		// copy incoming events to all directive channels
+		go func() {
+			for {
+				evt := <-ch
+				for i := range dirchan {
+					dirchan[i] <- evt
+				}
+			}
+		}()
+	}
+	return nil
+}
+
 func startDirective(d directive, ch <-chan event.NormalizedEvent) {
 	for {
 		// handle incoming event
@@ -66,7 +120,6 @@ func startDirective(d directive, ch <-chan event.NormalizedEvent) {
 		if !doesEventMatchRule(&evt, &d.Rules[0], 0) {
 			continue
 		}
-
 		log.Info(log.M{Msg: "found matching event", DId: d.ID, CId: evt.ConnID})
 		go backlogManager(&evt, &d)
 	}
@@ -178,66 +231,6 @@ func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret
 
 	// SrcIP, DstIP, SrcPort, DstPort all match
 	return true
-}
-
-// InitDirectives initialize directive from directive_*.json files in confDir
-func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
-	p := path.Join(confDir, directiveFileGlob)
-	files, err := filepath.Glob(p)
-	if err != nil {
-		return err
-	}
-
-	for i := range files {
-		var d directives
-		if !fs.FileExist(files[i]) {
-			return errors.New("Cannot find " + files[i])
-		}
-		file, err := os.Open(files[i])
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		byteValue, _ := ioutil.ReadAll(file)
-		err = json.Unmarshal(byteValue, &d)
-		if err != nil {
-			return err
-		}
-		for j := range d.Directives {
-			uCases.Directives = append(uCases.Directives, d.Directives[j])
-		}
-	}
-
-	total := len(uCases.Directives)
-	if total == 0 {
-		return errors.New("cannot find any directive to load from conf dir")
-	}
-	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " directives."})
-
-	/*
-		for i := range uCases.Directives {
-			printDirective(uCases.Directives[i])
-		}
-	*/
-
-	var dirchan []chan event.NormalizedEvent
-
-	for i := 0; i < total; i++ {
-		dirchan = append(dirchan, make(chan event.NormalizedEvent))
-		go startDirective(uCases.Directives[i], dirchan[i])
-
-		// copy incoming events to all directive channels
-		go func() {
-			for {
-				evt := <-ch
-				for i := range dirchan {
-					dirchan[i] <- evt
-				}
-			}
-		}()
-	}
-	return nil
 }
 
 func copyDirective(dst *directive, src *directive, e *event.NormalizedEvent) {
