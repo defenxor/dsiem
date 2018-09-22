@@ -116,7 +116,6 @@
   revision = "348b672cd90d8190f8240323e372ecd1e66b59dc"
 
 [[projects]]
-  branch = "master"
   digest = "1:caf6db28595425c0e0f2301a00257d11712f65c1878e12cffc42f6b9a9cf3f23"
   name = "github.com/kardianos/osext"
   packages = ["."]
@@ -164,6 +163,14 @@
   version = "v0.8.0"
 
 [[projects]]
+  digest = "1:cfa0d7741863a0e1d30e0ccdd4b48a96a471cdb47892303de8b92c3713af3e77"
+  name = "github.com/pkg/profile"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5b67d428864e92711fcbd2f8629456121a56d91f"
+  version = "v1.2.1"
+
+[[projects]]
   branch = "master"
   digest = "1:ef1dd9945e58ee9b635273d28c0ef3fa3742a7dedc038ebe207fd63e6ce000ef"
   name = "github.com/prometheus/procfs"
@@ -189,14 +196,6 @@
   pruneopts = "UT"
   revision = "1471bfd74cff003b1e329d46a4de4487e88cc47b"
   version = "v1.2.2"
-
-[[projects]]
-  digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
-  name = "github.com/sirupsen/logrus"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
-  version = "v1.0.6"
 
 [[projects]]
   digest = "1:6a4a11ba764a56d2758899ec6f3848d24698d48442ebce85ee7a3f63284526cd"
@@ -300,14 +299,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
-  name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
-  pruneopts = "UT"
-  revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
-
-[[projects]]
-  branch = "master"
   digest = "1:7427036b6d926b3d1fa0773771820735b35554a98296f1074df440ee30a97296"
   name = "golang.org/x/net"
   packages = ["websocket"]
@@ -368,13 +359,13 @@
     "github.com/julienschmidt/httprouter",
     "github.com/kardianos/osext",
     "github.com/paulbellamy/ratecounter",
-    "github.com/pkg/errors",
-    "github.com/sirupsen/logrus",
+    "github.com/pkg/profile",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/teris-io/shortid",
     "github.com/yl2chen/cidranger",
     "go.uber.org/zap",
+    "go.uber.org/zap/zapcore",
     "golang.org/x/net/websocket",
   ]
   solver-name = "gps-cdcl"
