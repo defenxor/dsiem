@@ -59,10 +59,10 @@ type directives struct {
 var uCases directives
 var eventChannel chan event.NormalizedEvent
 
-func startDirective(d directive, c chan event.NormalizedEvent) {
+func startDirective(d directive, ch <-chan event.NormalizedEvent) {
 	for {
 		// handle incoming event
-		evt := <-c
+		evt := <-ch
 		if !doesEventMatchRule(&evt, &d.Rules[0], 0) {
 			continue
 		}
@@ -116,7 +116,8 @@ func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64
 	if !scMatch {
 		return
 	}
-	return ipPortCheck(e, r, connID)
+	ret = ipPortCheck(e, r, connID)
+	return
 }
 
 func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
@@ -136,7 +137,8 @@ func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) 
 		return
 	}
 
-	return ipPortCheck(e, r, connID)
+	ret = ipPortCheck(e, r, connID)
+	return
 }
 
 func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {

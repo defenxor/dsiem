@@ -100,7 +100,8 @@ func initWSServer() {
 
 func increaseConnCounter() uint64 {
 	atomic.AddUint64(&connCounter, 1)
-	return atomic.LoadUint64(&connCounter)
+	i := atomic.LoadUint64(&connCounter)
+	return i
 }
 
 func handleConfFileList(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

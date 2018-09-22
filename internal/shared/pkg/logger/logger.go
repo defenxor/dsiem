@@ -54,12 +54,13 @@ func Debug(m M) {
 
 func parseFields(m *M) (f []zapcore.Field) {
 	f = []zapcore.Field{}
-	switch {
-	case m.DId != 0:
+	if m.DId != 0 {
 		f = append(f, zap.Int("directive", m.DId))
-	case m.CId != 0:
+	}
+	if m.CId != 0 {
 		f = append(f, zap.Uint64("connId", m.CId))
-	case m.BId != "":
+	}
+	if m.BId != "" {
 		f = append(f, zap.String("backlog", m.BId))
 	}
 	return
