@@ -8,12 +8,12 @@ import (
 	"dsiem/internal/shared/pkg/str"
 	"encoding/json"
 	"errors"
-
 	"expvar"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/elastic/apm-agent-go"
@@ -78,11 +78,15 @@ func startBackLogTicker() {
 	go func() {
 		for {
 			<-ticker.C
+			//			log.Debug("t Locking alarm", 0)
 			alarms.RLock()
+			//			log.Debug("t Locking alarm success", 0)
 			aLen := len(alarms.al)
 			alarmCounter.Set(int64(aLen))
 			alarms.RUnlock()
+			//			log.Debug("t Locking blogs", 0)
 			backlogs.RLock()
+			//			log.Debug("t Locking blogs success", 0)
 			bLen := len(backlogs.bl)
 			backlogCounter.Set(int64(bLen))
 			log.Debug("Ticker started, # of backlogs to check: "+strconv.Itoa(bLen), 0)
@@ -104,8 +108,8 @@ func startBackLogTicker() {
 				tx.Context.SetCustom("backlog_stage", v.CurrentStage)
 				defer elasticapm.DefaultTracer.Recover(tx)
 				defer tx.End()
-				log.Info("directive "+strconv.Itoa(v.Directive.ID)+" backlog "+v.ID+" expired.", 0)
 				v.RUnlock()
+				v.info("expired", 0)
 				v.setStatus("timeout", 0, tx)
 				v.delete(0)
 			}
@@ -123,9 +127,13 @@ func removeBackLog(m removalChannelMsg) {
 
 func backlogManager(e *event.NormalizedEvent, d *directive) {
 	found := false
+	//	log.Debug("blogmgr trying lock", 0)
 	backlogs.RLock()
+	//	log.Debug("blogmgr success", 0)
 	for _, v := range backlogs.bl {
+		//		log.Debug("trying to lock v", 0)
 		v.RLock()
+		//		log.Debug("v success", 0)
 		cs := v.CurrentStage
 		// only applicable for non-stage 1, where there's more specific identifier like IP address to match
 		if v.Directive.ID != d.ID || cs <= 1 {
@@ -136,13 +144,17 @@ func backlogManager(e *event.NormalizedEvent, d *directive) {
 		// should check for currentStage rule match with event
 		// heuristic, we know stage starts at 1 but rules start at 0
 		idx := cs - 1
+		//		log.Debug("trying to lock v again", 0)
 		v.RLock()
+		//		log.Debug("v success again", 0)
 		currRule := v.Directive.Rules[idx]
 		v.RUnlock()
 		if !doesEventMatchRule(e, &currRule, e.ConnID) {
 			continue
 		}
+		//		log.Debug("trying to lock v again 2", 0)
 		v.RLock()
+		//		log.Debug("v success again 2", 0)
 		log.Debug("Directive "+strconv.Itoa(d.ID)+" backlog "+v.ID+" matched. Not creating new backlog. CurrentStage is "+
 			strconv.Itoa(v.CurrentStage), e.ConnID)
 		v.RUnlock()
@@ -244,44 +256,63 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 
 func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transaction) {
 	// enforce flow here, cannot go back to active after timeout/finished
+	log.Debug("status1", 0)
 	b.RLock()
+	log.Debug("status2", 0)
 	s := b.CurrentStage
 	idx := s - 1
 	if b.Directive.Rules[idx].Status == "timeout" || b.Directive.Rules[idx].Status == "finished" {
+		log.Debug("status3", 0)
+		b.RUnlock()
+		log.Debug("status4", 0)
 		return
 	}
 	allowed := []string{"timeout", "finished"}
 	if b.Directive.Rules[idx].Status == "inactive" {
 		allowed = append(allowed, "active")
 	}
+	log.Debug("status5", 0)
 	b.RUnlock()
+	log.Debug("status6", 0)
 	for i := range allowed {
 		if allowed[i] == status {
+			log.Debug("status7", 0)
 			b.Lock()
+			log.Debug("status8", 0)
 			b.Directive.Rules[idx].Status = status
 			b.Unlock()
+			log.Debug("status9", 0)
+			b.RLock()
+			log.Debug("status10", 0)
 			upsertAlarmFromBackLog(b, connID, tx)
+			log.Debug("status11", 0)
+			b.RUnlock()
 			break
 		}
 	}
+	log.Debug("status12", 0)
 }
 
 func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticapm.Transaction) {
 	// this reinsert status and startDate for the currentStage rule if the first attempt failed
 	updateFlag := false
-	b.RLock()
+	b.Lock()
 	if b.Directive.Rules[idx].StartTime == 0 {
 		b.Directive.Rules[idx].StartTime = time.Now().Unix()
 		updateFlag = true
 	}
 	s := b.Directive.Rules[idx].Status
-	b.RUnlock()
-	if s != "active" {
+	b.Unlock()
+
+	if s == "inactive" {
 		b.setStatus("active", connID, tx)
 		updateFlag = true
 	}
+
 	if updateFlag {
+		b.RLock()
 		upsertAlarmFromBackLog(b, connID, tx)
+		b.RUnlock()
 	}
 }
 
@@ -295,36 +326,41 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	defer tx.End()
 	defer elasticapm.DefaultTracer.Recover(tx)
 
-	b.RLock()
-	log.Debug("Incoming event for backlog "+b.ID+" with idx: "+strconv.Itoa(idx), e.ConnID)
-	b.RUnlock()
+	b.debug("Incoming event with idx: "+strconv.Itoa(idx), e.ConnID)
 	// concurrent write may make events count overflow, so dont append current stage unless needed
+	log.Debug("here1", e.ConnID)
 	if !b.isStageReachMaxEvtCount() {
+		log.Debug("here2", e.ConnID)
 		b.appendandWriteEvent(e, idx, tx)
+		log.Debug("here3", e.ConnID)
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
 		if !b.isStageReachMaxEvtCount() {
+			log.Debug("here4", e.ConnID)
 			b.ensureStatusAndStartTime(idx, e.ConnID, tx)
+			log.Debug("here5", e.ConnID)
 			return
 		}
 	}
-
+	log.Debug("here6", e.ConnID)
 	// the new event has caused events_count == occurrence
 	b.setStatus("finished", e.ConnID, tx)
 
 	// if it causes the last stage to reach events_count == occurrence, delete it
 	if b.isLastStage() {
-		b.RLock()
-		log.Info("Backlog "+b.ID+" has reached its max stage and occurrence. Deleting it.", e.ConnID)
-		b.RUnlock()
+		log.Debug("here7", e.ConnID)
+		b.info("reached max stage and occurrence, deleting.", e.ConnID)
 		b.delete(e.ConnID)
 		tx.Result = "Backlog removed (max reached)"
 		return
 	}
 
 	// reach max occurrence, but not in last stage. Increase stage.
+	log.Debug("here8", e.ConnID)
 	b.increaseStage(e.ConnID)
+	log.Debug("here9", e.ConnID)
 	b.setStatus("active", e.ConnID, tx)
+	log.Debug("here10", e.ConnID)
 	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
 	tx.Result = "Stage increased"
 
@@ -332,11 +368,37 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	riskChanged := b.calcRisk(e.ConnID)
 	if riskChanged {
 		// this LastEvent is used to get ports by alarm
-		b.Lock()
-		b.LastEvent = *e
-		b.Unlock()
-		upsertAlarmFromBackLog(b, e.ConnID, tx)
+		log.Debug("here11", e.ConnID)
+		b.setLastEvent(e)
+		log.Debug("here12", e.ConnID)
+		b.updateAlarm(e.ConnID, tx)
+		log.Debug("here13", e.ConnID)
 	}
+	log.Debug("here14", e.ConnID)
+}
+
+func (b *backLog) info(msg string, connID uint64) {
+	b.RLock()
+	log.Info("Backlog "+b.ID+": "+msg, connID)
+	b.RUnlock()
+}
+
+func (b *backLog) debug(msg string, connID uint64) {
+	b.RLock()
+	log.Debug("Backlog "+b.ID+": "+msg, connID)
+	b.RUnlock()
+}
+
+func (b *backLog) setLastEvent(e *event.NormalizedEvent) {
+	b.Lock()
+	b.LastEvent = *e
+	b.Unlock()
+}
+
+func (b *backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
+	b.RLock()
+	upsertAlarmFromBackLog(b, connID, tx)
+	b.RUnlock()
 }
 
 func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int, tx *elasticapm.Transaction) {
@@ -380,17 +442,22 @@ func (b *backLog) isStageReachMaxEvtCount() (reachMaxEvtCount bool) {
 }
 
 func (b *backLog) increaseStage(connID uint64) {
+	//	log.Debug("trying to lock for increasing stage", connID)
+
 	b.Lock()
-	b.CurrentStage++
+	//	log.Debug("success locking for increasing stage", connID)
+	n := int32(b.CurrentStage)
+	b.CurrentStage = int(atomic.AddInt32(&n, 1))
+	//	b.CurrentStage++
 	// make sure its not over the higheststage, concurrency may cause this
 	if b.CurrentStage > b.HighestStage {
 		b.CurrentStage = b.HighestStage
 	}
-	log.Info("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+b.ID+" increased stage to "+strconv.Itoa(b.CurrentStage), connID)
 	idx := b.CurrentStage - 1
 	b.Directive.Rules[idx].StartTime = time.Now().Unix()
 	b.StatusTime = b.Directive.Rules[idx].StartTime
 	b.Unlock()
+	b.info("stage increased", connID)
 	return
 }
 
@@ -415,10 +482,9 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 
 	if risk != pRisk {
 		b.Lock()
-		defer b.Unlock()
 		b.Risk = risk
-		log.Info("directive "+strconv.Itoa(b.Directive.ID)+" backlog "+
-			b.ID+" risk changed from "+strconv.Itoa(pRisk)+" to "+strconv.Itoa(risk), connID)
+		b.Unlock()
+		b.info("risk changed.", connID)
 		riskChanged = true
 	}
 	return
