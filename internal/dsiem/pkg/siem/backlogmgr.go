@@ -103,7 +103,7 @@ func startBackLogTicker() {
 				}
 				allBacklogs[i].RUnlock()
 			}
-			log.Debug(log.M{Msg: "Ticker ends, # of backlogs checked: " + strconv.Itoa(bLen)})
+			log.Info(log.M{Msg: "Expiration check ended, # of backlogs checked: " + strconv.Itoa(bLen)})
 			backlogCounter.Set(int64(bLen))
 		}
 	}()
@@ -115,7 +115,8 @@ func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 		e := <-ch
 		// first check existing backlog
 		found := false
-		blogs.RLock()
+		// blogs.RLock()
+		blogs.Lock() // test using writelock, to prevent double entry
 		for _, v := range blogs.bl {
 			v.RLock()
 			cs := v.CurrentStage
@@ -142,28 +143,33 @@ func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 			break
 		}
 		if found {
-			blogs.RUnlock()
+			// blogs.RUnlock()
+			blogs.Unlock()
 			continue // back to chan loop
 		}
 
 		// now for new backlog
 		if !doesEventMatchRule(&e, &d.Rules[0], e.ConnID) {
-			blogs.RUnlock()
+			// blogs.RUnlock()
+			blogs.Unlock()
 			continue // back to chan loop
 		}
 
 		b, err := createNewBackLog(d, &e)
 		if err != nil {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: e.ConnID})
-			blogs.RUnlock()
+			// blogs.RUnlock()
+			blogs.Unlock()
 			continue
 		}
 		b.bLogs = blogs
-		blogs.RUnlock()
-		blogs.Lock()
+		// blogs.RUnlock()
+		// blogs.Lock()
 		blogs.bl[b.ID] = b
 		blogs.Unlock()
-		go blogs.bl[b.ID].processMatchedEvent(&e, 0)
+		// should let first event processing finished before taking another event,
+		// hence, not using go routine here
+		blogs.bl[b.ID].processMatchedEvent(&e, 0)
 	}
 }
 

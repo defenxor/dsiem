@@ -90,9 +90,11 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 
 	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
 	tx.Context.SetCustom("event_id", e.EventID)
+	b.RLock()
 	tx.Context.SetCustom("backlog_id", b.ID)
 	tx.Context.SetCustom("directive_id", b.Directive.ID)
 	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+	b.RUnlock()
 	defer tx.End()
 	defer elasticapm.DefaultTracer.Recover(tx)
 

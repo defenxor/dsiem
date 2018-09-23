@@ -115,10 +115,13 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 
 	for _, v := range alarms.al {
 		c := v
-		if c.ID == b.ID {
+		b.RLock()
+		if c.ID == b.ID { //drace read?
 			a = c
+			b.RUnlock()
 			break
 		}
+		b.RUnlock()
 	}
 	alarms.RUnlock()
 
@@ -133,7 +136,7 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 
 	a.Lock()
 
-	a.ID = b.ID
+	a.ID = b.ID //drace write?
 	a.Title = b.Directive.Name
 	if a.Status == "" {
 		a.Status = defaultStatus

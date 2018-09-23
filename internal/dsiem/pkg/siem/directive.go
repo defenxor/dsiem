@@ -196,7 +196,7 @@ func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret
 	}
 	// covers  r.From == "IP", r.From == "IP1, IP2", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2"
 	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
-		!str.CaseInsensitiveContains(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From) {
+		!str.IsInCSVList(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From) {
 		return
 	}
 
@@ -209,14 +209,14 @@ func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
 	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
-		!str.CaseInsensitiveContains(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To) {
+		!str.IsInCSVList(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To) {
 		return
 	}
 
-	if r.PortFrom != "ANY" && !str.CaseInsensitiveContains(r.PortFrom, strconv.Itoa(e.SrcPort)) {
+	if r.PortFrom != "ANY" && !str.IsInCSVList(r.PortFrom, strconv.Itoa(e.SrcPort)) {
 		return
 	}
-	if r.PortTo != "ANY" && !str.CaseInsensitiveContains(r.PortTo, strconv.Itoa(e.DstPort)) {
+	if r.PortTo != "ANY" && !str.IsInCSVList(r.PortTo, strconv.Itoa(e.DstPort)) {
 		return
 	}
 
