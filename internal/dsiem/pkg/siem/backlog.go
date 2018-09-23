@@ -242,9 +242,11 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 }
 
 func (b *backLog) delete(connID uint64) {
+	/* no op, perhaps let ticker handle deletion
 	m := removalChannelMsg{b.ID, connID}
 	backLogRemovalChannel <- m
 	alarmRemovalChannel <- m
+	*/
 }
 
 func (b *backLog) updateElasticsearch(e *event.NormalizedEvent) error {

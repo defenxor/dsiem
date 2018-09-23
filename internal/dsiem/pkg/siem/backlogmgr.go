@@ -14,17 +14,21 @@ import (
 	"github.com/elastic/apm-agent-go"
 )
 
-var backlogs struct {
+type backlogs struct {
 	sync.RWMutex
 	bl map[string]*backLog
 }
+
+// allBacklogs doesnt need a lock, its size is fixed to the number
+// of all loaded directives
+var allBacklogs []backlogs
 
 var backlogCounter = expvar.NewInt("backlog_counter")
 var alarmCounter = expvar.NewInt("alarm_counter")
 
 type removalChannelMsg struct {
-	ID     string
-	connID uint64
+	blogs *backlogs
+	ID    string
 }
 
 var backLogRemovalChannel chan removalChannelMsg
@@ -33,7 +37,6 @@ var ticker *time.Ticker
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
-	backlogs.bl = make(map[string]*backLog)
 	backLogRemovalChannel = make(chan removalChannelMsg)
 	startBackLogTicker()
 
@@ -47,6 +50,13 @@ func InitBackLog(logFile string) (err error) {
 	return
 }
 
+func removeBackLog(m removalChannelMsg) {
+	m.blogs.Lock()
+	defer m.blogs.Unlock()
+	log.Debug(log.M{Msg: "Lock obtained. Removing backlog", BId: m.ID})
+	delete(m.blogs.bl, m.ID)
+}
+
 // this checks for timed-out backlog and discard it
 func startBackLogTicker() {
 	ticker = time.NewTicker(time.Second * 10)
@@ -57,100 +67,101 @@ func startBackLogTicker() {
 			aLen := len(alarms.al)
 			alarmCounter.Set(int64(aLen))
 			alarms.RUnlock()
-			backlogs.RLock()
-			bLen := len(backlogs.bl)
-			backlogCounter.Set(int64(bLen))
-			log.Debug(log.M{Msg: "Ticker started, # of backlogs to check: " + strconv.Itoa(bLen)})
-			now := time.Now().Unix()
-			for _, v := range backlogs.bl {
-				v.RLock()
-				cs := v.CurrentStage
-				idx := cs - 1
-				start := v.Directive.Rules[idx].StartTime
-				timeout := v.Directive.Rules[idx].Timeout
-				maxTime := start + timeout
-				if maxTime > now {
-					v.RUnlock()
+
+			bLen := 0
+			for i := range allBacklogs {
+				allBacklogs[i].RLock()
+				l := len(allBacklogs[i].bl)
+				if l == 0 {
+					allBacklogs[i].RUnlock()
 					continue
 				}
-				tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
-				tx.Context.SetCustom("backlog_id", v.ID)
-				tx.Context.SetCustom("directive_id", v.Directive.ID)
-				tx.Context.SetCustom("backlog_stage", v.CurrentStage)
-				defer elasticapm.DefaultTracer.Recover(tx)
-				defer tx.End()
-				v.RUnlock()
-				v.info("expired", 0)
-				v.setStatus("timeout", 0, tx)
-				v.delete(0)
+				bLen += l
+				now := time.Now().Unix()
+				for _, v := range allBacklogs[i].bl {
+					v.RLock()
+					cs := v.CurrentStage
+					idx := cs - 1
+					start := v.Directive.Rules[idx].StartTime
+					timeout := v.Directive.Rules[idx].Timeout
+					maxTime := start + timeout
+					if maxTime > now {
+						v.RUnlock()
+						continue
+					}
+					tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
+					tx.Context.SetCustom("backlog_id", v.ID)
+					tx.Context.SetCustom("directive_id", v.Directive.ID)
+					tx.Context.SetCustom("backlog_stage", v.CurrentStage)
+					defer elasticapm.DefaultTracer.Recover(tx)
+					defer tx.End()
+					v.RUnlock()
+					v.info("expired", 0)
+					v.setStatus("timeout", 0, tx)
+					removeBackLog(removalChannelMsg{&allBacklogs[i], v.ID})
+					// v.delete(0)
+				}
 			}
-			backlogs.RUnlock()
+			log.Debug(log.M{Msg: "Ticker started, # of backlogs checked: " + strconv.Itoa(bLen)})
+			backlogCounter.Set(int64(bLen))
 		}
 	}()
 }
 
-func removeBackLog(m removalChannelMsg) {
-	backlogs.Lock()
-	defer backlogs.Unlock()
-	log.Debug(log.M{Msg: "Lock obtained. Removing backlog", BId: m.ID, CId: m.connID})
-	delete(backlogs.bl, m.ID)
-}
-
-func backlogManager(d *directive, ch <-chan event.NormalizedEvent) {
+func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 	for {
 		// handle incoming event
 		e := <-ch
 		// first check existing backlog
 		found := false
-		backlogs.RLock()
-		for _, v := range backlogs.bl {
+		blogs.RLock()
+		for _, v := range blogs.bl {
 			v.RLock()
 			cs := v.CurrentStage
-			// only applicable for non-stage 1, where there's more specific identifier like IP address to match
+			// only applicable for non-stage 1,
+			// where there's more specific identifier like IP address to match
+			// by convention, stage 1 rule *must* always have occurrence = 1
 			if v.Directive.ID != d.ID || cs <= 1 {
 				v.RUnlock()
 				continue
 			}
-			v.RUnlock()
 			// should check for currentStage rule match with event
 			// heuristic, we know stage starts at 1 but rules start at 0
 			idx := cs - 1
-			v.RLock()
 			currRule := v.Directive.Rules[idx]
-			v.RUnlock()
 			if !doesEventMatchRule(&e, &currRule, e.ConnID) {
+				v.RUnlock()
 				continue
 			}
-			v.RLock()
-			log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " + strconv.Itoa(v.CurrentStage),
-				DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
+			log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " +
+				strconv.Itoa(v.CurrentStage), DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
 			v.RUnlock()
 			found = true
-			go backlogs.bl[v.ID].processMatchedEvent(&e, idx)
+			go blogs.bl[v.ID].processMatchedEvent(&e, idx)
 			break
 		}
 		if found {
-			backlogs.RUnlock()
-			continue
+			blogs.RUnlock()
+			continue // back to chan loop
 		}
 
 		// now for new backlog
 		if !doesEventMatchRule(&e, &d.Rules[0], e.ConnID) {
-			backlogs.RUnlock()
-			continue
+			blogs.RUnlock()
+			continue // back to chan loop
 		}
 
 		b, err := createNewBackLog(d, &e)
 		if err != nil {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: e.ConnID})
-			backlogs.RUnlock()
+			blogs.RUnlock()
 			continue
 		}
-		backlogs.RUnlock()
-		backlogs.Lock()
-		backlogs.bl[b.ID] = b
-		backlogs.Unlock()
-		go backlogs.bl[b.ID].processMatchedEvent(&e, 0)
+		blogs.RUnlock()
+		blogs.Lock()
+		blogs.bl[b.ID] = b
+		blogs.Unlock()
+		go blogs.bl[b.ID].processMatchedEvent(&e, 0)
 	}
 }
 

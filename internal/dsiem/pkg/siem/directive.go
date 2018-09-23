@@ -98,7 +98,10 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 
 	for i := 0; i < total; i++ {
 		dirchan = append(dirchan, make(chan event.NormalizedEvent))
-		go backlogManager(&uCases.Directives[i], dirchan[i])
+		blogs := backlogs{}
+		blogs.bl = make(map[string]*backLog) // have to do it here before the append
+		allBacklogs = append(allBacklogs, blogs)
+		go blogs.manager(&uCases.Directives[i], dirchan[i])
 
 		// copy incoming events to all directive channels
 		go func() {

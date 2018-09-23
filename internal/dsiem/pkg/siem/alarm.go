@@ -497,7 +497,7 @@ func (a *alarm) updateElasticsearch(connID uint64) error {
 
 func removeAlarm(m removalChannelMsg) {
 	alarms.Lock()
-	log.Debug(log.M{Msg: "Lock obtained. Removing alarm", BId: m.ID, CId: m.connID})
+	log.Debug(log.M{Msg: "Lock obtained. Removing alarm", BId: m.ID})
 	delete(alarms.al, m.ID)
 	alarms.Unlock()
 }

@@ -1,2 +1,2 @@
 #!/bin/bash
-wc -l $(find ./ -name "vendor" -prune -o -name "*.go" -print)
+wc -l $(find ./ \( -name vendor -o -name temp \) -prune -o -name "*.go" -print)
