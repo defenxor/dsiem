@@ -21,8 +21,7 @@ func CaseInsensitiveContains(s, substr string) bool {
 // IsInCSVList find term in s, where s is in the form of "string, string,string ..."
 func IsInCSVList(s string, term string) (found bool) {
 	// first convert to slice, because netcidr maybe in a form of "cidr1,cidr2..."
-	cleaned := strings.Replace(s, ",", " ", -1)
-	sSlice := strings.Fields(cleaned)
+	sSlice := CsvToSlice(s)
 	for _, v := range sSlice {
 		if v != term {
 			continue
@@ -31,4 +30,11 @@ func IsInCSVList(s string, term string) (found bool) {
 		break
 	}
 	return
+}
+
+// CsvToSlice convert s to []string; where s is in the form of string, string, string
+func CsvToSlice(s string) []string {
+	cleaned := strings.Replace(s, ",", " ", -1)
+	sSlice := strings.Fields(cleaned)
+	return sSlice
 }

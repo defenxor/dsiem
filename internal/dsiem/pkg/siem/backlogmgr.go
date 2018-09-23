@@ -38,7 +38,7 @@ var ticker *time.Ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
 	backLogRemovalChannel = make(chan removalChannelMsg)
-	startBackLogTicker()
+	startWatchdogTicker()
 
 	go func() {
 		for {
@@ -58,12 +58,12 @@ func removeBackLog(m removalChannelMsg) {
 }
 
 // this checks for timed-out backlog and discard it
-func startBackLogTicker() {
+func startWatchdogTicker() {
 	ticker = time.NewTicker(time.Second * 10)
 	go func() {
 		for {
 			<-ticker.C
-			log.Debug(log.M{Msg: "Ticker started."})
+			log.Debug(log.M{Msg: "Watchdog tick started."})
 			alarms.RLock()
 			aLen := len(alarms.al)
 			alarmCounter.Set(int64(aLen))
@@ -103,10 +103,19 @@ func startBackLogTicker() {
 				}
 				allBacklogs[i].RUnlock()
 			}
-			log.Info(log.M{Msg: "Expiration check ended, # of backlogs checked: " + strconv.Itoa(bLen)})
 			backlogCounter.Set(int64(bLen))
+			eps := readEPS()
+			log.Info(log.M{Msg: "Watchdog tick ended, # of backlogs:" + strconv.Itoa(bLen) +
+				" alarms:" + strconv.Itoa(aLen) + eps})
 		}
 	}()
+}
+
+func readEPS() (res string) {
+	if x := expvar.Get("eps_counter"); x != nil {
+		res = " events/sec:" + x.String()
+	}
+	return
 }
 
 func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
