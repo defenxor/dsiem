@@ -28,6 +28,7 @@ type backLog struct {
 	SrcIPs       []string  `json:"src_ips"`
 	DstIPs       []string  `json:"dst_ips"`
 	LastEvent    event.NormalizedEvent
+	bLogs        *backlogs // pointer to parent
 }
 type siemAlarmEvents struct {
 	ID    string `json:"alarm_id"`
@@ -112,7 +113,7 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	// if it causes the last stage to reach events_count == occurrence, delete it
 	if b.isLastStage() {
 		b.info("reached max stage and occurrence, deleting.", e.ConnID)
-		b.delete(e.ConnID)
+		b.delete()
 		tx.Result = "Backlog removed (max reached)"
 		return
 	}
@@ -241,12 +242,10 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	return
 }
 
-func (b *backLog) delete(connID uint64) {
-	/* no op, perhaps let ticker handle deletion
-	m := removalChannelMsg{b.ID, connID}
+func (b *backLog) delete() {
+	m := removalChannelMsg{b.bLogs, b.ID}
 	backLogRemovalChannel <- m
 	alarmRemovalChannel <- m
-	*/
 }
 
 func (b *backLog) updateElasticsearch(e *event.NormalizedEvent) error {

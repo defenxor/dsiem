@@ -63,6 +63,7 @@ func startBackLogTicker() {
 	go func() {
 		for {
 			<-ticker.C
+			log.Debug(log.M{Msg: "Ticker started."})
 			alarms.RLock()
 			aLen := len(alarms.al)
 			alarmCounter.Set(int64(aLen))
@@ -98,11 +99,11 @@ func startBackLogTicker() {
 					v.RUnlock()
 					v.info("expired", 0)
 					v.setStatus("timeout", 0, tx)
-					removeBackLog(removalChannelMsg{&allBacklogs[i], v.ID})
-					// v.delete(0)
+					v.delete()
 				}
+				allBacklogs[i].RUnlock()
 			}
-			log.Debug(log.M{Msg: "Ticker started, # of backlogs checked: " + strconv.Itoa(bLen)})
+			log.Debug(log.M{Msg: "Ticker ends, # of backlogs checked: " + strconv.Itoa(bLen)})
 			backlogCounter.Set(int64(bLen))
 		}
 	}()
@@ -157,6 +158,7 @@ func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 			blogs.RUnlock()
 			continue
 		}
+		b.bLogs = blogs
 		blogs.RUnlock()
 		blogs.Lock()
 		blogs.bl[b.ID] = b
