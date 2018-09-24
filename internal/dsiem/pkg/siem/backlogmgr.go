@@ -10,12 +10,11 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/elastic/apm-agent-go"
 )
 
 type backlogs struct {
 	sync.RWMutex
+	id int
 	bl map[string]*backLog
 }
 
@@ -34,19 +33,13 @@ type removalChannelMsg struct {
 var backLogRemovalChannel chan removalChannelMsg
 var ticker *time.Ticker
 
+var glock = &sync.RWMutex{}
+
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
 	backLogRemovalChannel = make(chan removalChannelMsg)
 	startWatchdogTicker()
-
-	go func() {
-		for {
-			// handle incoming event, id should be the ID to remove
-			msg := <-backLogRemovalChannel
-			go removeBackLog(msg)
-		}
-	}()
 	return
 }
 
@@ -54,54 +47,52 @@ func removeBackLog(m removalChannelMsg) {
 	m.blogs.Lock()
 	defer m.blogs.Unlock()
 	log.Debug(log.M{Msg: "Lock obtained. Removing backlog", BId: m.ID})
+	glock.Lock()
 	delete(m.blogs.bl, m.ID)
+	glock.Unlock()
+}
+
+func updateAlarmCounter() (count int) {
+	alarms.RLock()
+	count = len(alarms.al)
+	alarmCounter.Set(int64(count))
+	alarms.RUnlock()
+	return
 }
 
 // this checks for timed-out backlog and discard it
 func startWatchdogTicker() {
+	go func() {
+		for {
+			// handle incoming event, id should be the ID to remove
+			msg := <-backLogRemovalChannel
+			go removeBackLog(msg)
+		}
+	}()
+
 	ticker = time.NewTicker(time.Second * 10)
 	go func() {
 		for {
 			<-ticker.C
 			log.Debug(log.M{Msg: "Watchdog tick started."})
-			alarms.RLock()
-			aLen := len(alarms.al)
-			alarmCounter.Set(int64(aLen))
-			alarms.RUnlock()
-
+			aLen := updateAlarmCounter()
 			bLen := 0
 			for i := range allBacklogs {
-				allBacklogs[i].RLock()
+				glock.RLock()
+				allBacklogs[i].RLock() // for length reading
+				log.Debug(log.M{Msg: "ticker locked backlogs " + strconv.Itoa(allBacklogs[i].id)})
 				l := len(allBacklogs[i].bl)
 				if l == 0 {
 					allBacklogs[i].RUnlock()
+					glock.RUnlock()
 					continue
 				}
 				bLen += l
-				now := time.Now().Unix()
-				for _, v := range allBacklogs[i].bl {
-					v.RLock()
-					cs := v.CurrentStage
-					idx := cs - 1
-					start := v.Directive.Rules[idx].StartTime
-					timeout := v.Directive.Rules[idx].Timeout
-					maxTime := start + timeout
-					if maxTime > now {
-						v.RUnlock()
-						continue
-					}
-					tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
-					tx.Context.SetCustom("backlog_id", v.ID)
-					tx.Context.SetCustom("directive_id", v.Directive.ID)
-					tx.Context.SetCustom("backlog_stage", v.CurrentStage)
-					defer elasticapm.DefaultTracer.Recover(tx)
-					defer tx.End()
-					v.RUnlock()
-					v.info("expired", 0)
-					v.setStatus("timeout", 0, tx)
-					v.delete()
+				for j := range allBacklogs[i].bl {
+					allBacklogs[i].bl[j].checkExpired()
 				}
 				allBacklogs[i].RUnlock()
+				glock.RUnlock()
 			}
 			backlogCounter.Set(int64(bLen))
 			eps := readEPS()
@@ -126,6 +117,8 @@ func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 		found := false
 		// blogs.RLock()
 		blogs.Lock() // test using writelock, to prevent double entry
+		log.Debug(log.M{Msg: "manager locked backlogs " + strconv.Itoa(blogs.id)})
+
 		for _, v := range blogs.bl {
 			v.RLock()
 			cs := v.CurrentStage
@@ -171,22 +164,23 @@ func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 			blogs.Unlock()
 			continue
 		}
-		b.bLogs = blogs
-		// blogs.RUnlock()
-		// blogs.Lock()
-		blogs.bl[b.ID] = b
+		glock.Lock()
+		blogs.bl[b.ID] = &b
+		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
+
 		// should let first event processing finished before taking another event,
 		// hence, not using go routine here
 		blogs.bl[b.ID].processMatchedEvent(&e, 0)
+		glock.Unlock()
 	}
 }
 
-func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp *backLog, err error) {
+func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp backLog, err error) {
 	// create new backlog here, passing the event as the 1st event for the backlog
 	bid, err := idgen.GenerateID()
 	if err != nil {
-		return nil, err
+		return
 	}
 	log.Info(log.M{Msg: "Creating new backlog", DId: d.ID, CId: e.ConnID})
 	b := backLog{}
@@ -199,7 +193,8 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp *backLog, err 
 
 	b.CurrentStage = 1
 	b.HighestStage = len(d.Rules)
-	return &b, nil
+	bp = b
+	return
 }
 
 func initBackLogRules(d *directive, e *event.NormalizedEvent) {

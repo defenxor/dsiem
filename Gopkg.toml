@@ -13,6 +13,10 @@
   version = "1.0.0"
 
 [[constraint]]
+  name = "github.com/satori/go.uuid"
+  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
+
+[[constraint]]
   name = "github.com/yl2chen/cidranger"
   revision = "928b519e5268fe386d0f7decce320205cc09ca95"
 [prune]

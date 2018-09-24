@@ -19,7 +19,7 @@ import (
 
 const (
 	intelFileGlob           = "intel_*.json"
-	maxSecondToWaitForIntel = 2
+	maxSecondToWaitForIntel = 5
 )
 
 // IntelEnabled mark whether intel lookup is enabled
@@ -81,6 +81,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
+		res.Body.Close()
 		if readErr != nil {
 			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " TI for IP " + ip})
 			tx.Result = "Cannot read result from " + v.Name

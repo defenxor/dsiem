@@ -7,7 +7,7 @@ import (
 
 // NormalizedEvent represents data received from logstash
 type NormalizedEvent struct {
-	ConnID       uint64
+	ConnID       uint64 `json:"conn_id,omitempty"`
 	EventID      string `json:"event_id"`
 	Timestamp    string `json:"timestamp"`
 	Sensor       string `json:"sensor"`
@@ -15,20 +15,18 @@ type NormalizedEvent struct {
 	PluginSID    int    `json:"plugin_sid"`
 	Product      string `json:"product"`
 	Category     string `json:"category"`
-	SubCategory  string `json:"subcategory"`
-	Reliability  int    `json:"reliability"`
-	Priority     int    `json:"priority"`
+	SubCategory  string `json:"subcategory,omitempty"`
 	SrcIP        string `json:"src_ip"`
 	SrcPort      int    `json:"src_port"`
 	DstIP        string `json:"dst_ip"`
 	DstPort      int    `json:"dst_port"`
 	Protocol     string `json:"protocol"`
-	CustomData1  string `json:"custom_data1"`
-	CustomLabel1 string `json:"custom_label1"`
-	CustomData2  string `json:"custom_data2"`
-	CustomLabel2 string `json:"custom_label2"`
-	CustomData3  string `json:"custom_data3"`
-	CustomLabel3 string `json:"custom_label3"`
+	CustomData1  string `json:"custom_data1,omitempty"`
+	CustomLabel1 string `json:"custom_label1,omitempty"`
+	CustomData2  string `json:"custom_data2,omitempty"`
+	CustomLabel2 string `json:"custom_label2,omitempty"`
+	CustomData3  string `json:"custom_data3,omitempty"`
+	CustomLabel3 string `json:"custom_label3,omitempty"`
 }
 
 // Valid check if event contains valid content for required fields

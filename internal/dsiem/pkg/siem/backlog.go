@@ -56,11 +56,35 @@ func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transac
 			b.Directive.Rules[idx].Status = status
 			b.Unlock()
 			b.RLock()
-			upsertAlarmFromBackLog(b, connID, tx)
+			upsertAlarmFromBackLog(*b, connID, tx)
 			b.RUnlock()
 			break
 		}
 	}
+}
+
+func (b *backLog) checkExpired() {
+	b.RLock()
+	now := time.Now().Unix()
+	cs := b.CurrentStage
+	idx := cs - 1
+	start := b.Directive.Rules[idx].StartTime
+	timeout := b.Directive.Rules[idx].Timeout
+	maxTime := start + timeout
+	if maxTime > now {
+		b.RUnlock()
+		return
+	}
+	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
+	tx.Context.SetCustom("backlog_id", b.ID)
+	tx.Context.SetCustom("directive_id", b.Directive.ID)
+	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+	defer elasticapm.DefaultTracer.Recover(tx)
+	defer tx.End()
+	b.info("expired", 0)
+	b.RUnlock()
+	b.setStatus("timeout", 0, tx)
+	b.delete()
 }
 
 func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticapm.Transaction) {
@@ -81,7 +105,7 @@ func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticap
 
 	if updateFlag {
 		b.RLock()
-		upsertAlarmFromBackLog(b, connID, tx)
+		upsertAlarmFromBackLog(*b, connID, tx)
 		b.RUnlock()
 	}
 }
@@ -155,7 +179,7 @@ func (b *backLog) setLastEvent(e *event.NormalizedEvent) {
 
 func (b *backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
 	b.RLock()
-	upsertAlarmFromBackLog(b, connID, tx)
+	upsertAlarmFromBackLog(*b, connID, tx)
 	b.RUnlock()
 }
 
@@ -252,7 +276,7 @@ func (b *backLog) delete() {
 
 func (b *backLog) updateElasticsearch(e *event.NormalizedEvent) error {
 	b.Lock()
-	log.Debug(log.M{Msg: "updating Elasticsearch.", DId: b.Directive.ID, BId: b.ID, CId: e.ConnID})
+	log.Debug(log.M{Msg: "backlog updating Elasticsearch", DId: b.Directive.ID, BId: b.ID, CId: e.ConnID})
 	b.StatusTime = time.Now().Unix()
 	b.Unlock()
 	f, err := os.OpenFile(bLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)

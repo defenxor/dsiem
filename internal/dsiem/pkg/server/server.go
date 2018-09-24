@@ -64,9 +64,17 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr stri
 		router.ServeFiles("/ui/*filepath", http.Dir(webDir))
 		log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
 		initWSServer()
-		err := http.ListenAndServe(addr+":"+p, router)
+		// we're expecting fast clients only
+		srv := &http.Server{
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+			IdleTimeout:  5 * time.Second,
+			Addr:         addr + ":" + p,
+			Handler:      router,
+		}
+		err := srv.ListenAndServe()
 		if err != nil {
-			log.Warn(log.M{Msg: "error from http.ListenAndServe: " + err.Error()})
+			log.Warn(log.M{Msg: "error from ListenAndServe: " + err.Error()})
 		}
 	}
 	return nil

@@ -106,37 +106,40 @@ func InitAlarm(logFile string) error {
 	return nil
 }
 
-func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transaction) {
-	defer elasticapm.DefaultTracer.Recover(tx)
-
-	var a *alarm
-
+func findOrCreateAlarm(id string) (a *alarm) {
 	alarms.RLock()
-
-	for _, v := range alarms.al {
-		c := v
-		b.RLock()
-		if c.ID == b.ID { //drace read?
-			a = c
-			b.RUnlock()
-			break
+	for k := range alarms.al {
+		if alarms.al[k].ID == id {
+			a = alarms.al[id]
+			alarms.RUnlock()
+			return
 		}
-		b.RUnlock()
 	}
 	alarms.RUnlock()
+	alarms.Lock()
+	alarms.al[id] = &alarm{}
+	alarms.al[id].ID = id
+	a = alarms.al[id]
+	alarms.Unlock()
+	return
+}
 
-	// if not found means new alarm
-	if a == nil {
-		alarms.Lock()
-		newAlarm := alarm{}
-		alarms.al[b.ID] = &newAlarm
-		a = &newAlarm
-		alarms.Unlock()
-	}
+// upsertAlarmFromBackLog create alarm from backlog.
+// the backlog isnt modified here so its passed by-val to avoid concurrency issue
+func upsertAlarmFromBackLog(b backLog, connID uint64, tx *elasticapm.Transaction) {
+	defer elasticapm.DefaultTracer.Recover(tx)
 
+	// b.ID
+	// b.Directive.Kingdom
+	// b.Directive.Category
+	// b.StatusTime
+	// b.Risk
+	// b.SrcIPs
+	// b.DstIPs
+
+	a := findOrCreateAlarm(b.ID)
 	a.Lock()
 
-	a.ID = b.ID //drace write?
 	a.Title = b.Directive.Name
 	if a.Status == "" {
 		a.Status = defaultStatus
@@ -170,7 +173,7 @@ func upsertAlarmFromBackLog(b *backLog, connID uint64, tx *elasticapm.Transactio
 
 	if xc.VulnEnabled {
 		// do vuln check in the background
-		a.asyncVulnCheck(b, connID, tx)
+		a.asyncVulnCheck(&b, connID, tx)
 	}
 
 	for i := range a.SrcIPs {
@@ -400,7 +403,7 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 func (a *alarm) updateElasticsearch(connID uint64) error {
 	a.RLock()
-	log.Info(log.M{Msg: "updating Elasticsearch", BId: a.ID, CId: connID})
+	log.Info(log.M{Msg: "alarm updating Elasticsearch", BId: a.ID, CId: connID})
 	aJSON, _ := json.Marshal(a)
 	a.RUnlock()
 

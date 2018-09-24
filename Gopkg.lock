@@ -184,6 +184,14 @@
   revision = "418d78d0b9a7b7de3a6bbc8a23def624cc977bb2"
 
 [[projects]]
+  branch = "master"
+  digest = "1:bb90467981c5e812c4d1c78e498a1416b04cb5149dc5fa2200ab758c37488f6f"
+  name = "github.com/remeh/sizedwaitgroup"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5e7302b12ccef91dce9fde2f5bda6d5c7ea5d2eb"
+
+[[projects]]
   digest = "1:f097bdc9d9421ef00dcc50b7f8f9e89042af3c2ca16546aa91853a0a26187193"
   name = "github.com/santhosh-tekuri/jsonschema"
   packages = [
@@ -196,6 +204,13 @@
   pruneopts = "UT"
   revision = "1471bfd74cff003b1e329d46a4de4487e88cc47b"
   version = "v1.2.2"
+
+[[projects]]
+  digest = "1:ff6b0586c0621a76832cf783eee58cbb9d9795d2ce8acbc199a4131db11c42a9"
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
 
 [[projects]]
   digest = "1:6a4a11ba764a56d2758899ec6f3848d24698d48442ebce85ee7a3f63284526cd"
@@ -307,7 +322,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:41c13cada29d953aedd6e98918f11d662e8a84af9a4374df5f2cc9dbb4731664"
+  digest = "1:c62492cf500a7b66d0dcf4cad364b4a4d782967fcc97596d4ed358f881297720"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -315,7 +330,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "d47a0f3392421c5624713c9a19fe781f651f8a50"
+  revision = "c01370cb5c9b7812800ec97eb5692a14fb8d577c"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -360,6 +375,8 @@
     "github.com/kardianos/osext",
     "github.com/paulbellamy/ratecounter",
     "github.com/pkg/profile",
+    "github.com/remeh/sizedwaitgroup",
+    "github.com/satori/go.uuid",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/teris-io/shortid",

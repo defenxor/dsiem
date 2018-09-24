@@ -52,65 +52,35 @@ type directive struct {
 	Rules    []directiveRule `json:"rules"`
 }
 
-type directives struct {
-	Directives []directive `json:"directives"`
+// Directives group directive together
+type Directives struct {
+	Dirs []directive `json:"directives"`
 }
 
-var uCases directives
+var uCases Directives
 var eventChannel chan event.NormalizedEvent
 
-// InitDirectives initialize directive from directive_*.json files in confDir
+// InitDirectives initialize directive from directive_*.json files in confDir then start
+// backlog manager for each directive
 func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
-	p := path.Join(confDir, directiveFileGlob)
-	files, err := filepath.Glob(p)
+	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob)
 	if err != nil {
 		return err
 	}
-
-	totalFromFile := 0
-	for i := range files {
-		var d directives
-		if !fs.FileExist(files[i]) {
-			return errors.New("Cannot find " + files[i])
-		}
-		file, err := os.Open(files[i])
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		byteValue, _ := ioutil.ReadAll(file)
-		err = json.Unmarshal(byteValue, &d)
-		if err != nil {
-			return err
-		}
-		totalFromFile += len(d.Directives)
-		for j := range d.Directives {
-			err = validateDirective(&d.Directives[j])
-			if err != nil {
-				log.Warn(log.M{Msg: "Skipping directive ID " +
-					strconv.Itoa(d.Directives[j].ID) +
-					" '" + d.Directives[j].Name + "' due to error: " + err.Error()})
-				continue
-			}
-			uCases.Directives = append(uCases.Directives, d.Directives[j])
-		}
-	}
-
-	total := len(uCases.Directives)
+	total := len(uCases.Dirs)
 	if total == 0 {
-		return errors.New("cannot find directives to load from " + confDir)
+		return errors.New("Cannot find valid directive from " + confDir)
 	}
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
 	var dirchan []chan event.NormalizedEvent
-
 	for i := 0; i < total; i++ {
 		dirchan = append(dirchan, make(chan event.NormalizedEvent))
 		blogs := backlogs{}
+		blogs.id = i
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
 		allBacklogs = append(allBacklogs, blogs)
-		go blogs.manager(&uCases.Directives[i], dirchan[i])
+		go blogs.manager(&uCases.Dirs[i], dirchan[i])
 
 		// copy incoming events to all directive channels
 		go func() {
@@ -125,8 +95,50 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	return nil
 }
 
+// LoadDirectivesFromFile load directive from namePattern (glob) files in confDir
+func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives, totalFromFile int, err error) {
+	p := path.Join(confDir, namePattern)
+	files, err := filepath.Glob(p)
+	if err != nil {
+		return res, 0, err
+	}
+	totalFromFile = 0
+	for i := range files {
+		var d Directives
+		if !fs.FileExist(files[i]) {
+			return res, 0, errors.New("Cannot find " + files[i])
+		}
+		file, err := os.Open(files[i])
+		if err != nil {
+			return res, 0, err
+		}
+		defer file.Close()
+
+		byteValue, _ := ioutil.ReadAll(file)
+		err = json.Unmarshal(byteValue, &d)
+		if err != nil {
+			return res, 0, err
+		}
+		totalFromFile += len(d.Dirs)
+		for j := range d.Dirs {
+			err = validateDirective(&d.Dirs[j])
+			if err != nil {
+				log.Warn(log.M{Msg: "Skipping directive ID " +
+					strconv.Itoa(d.Dirs[j].ID) +
+					" '" + d.Dirs[j].Name + "' due to error: " + err.Error()})
+				continue
+			}
+			res.Dirs = append(res.Dirs, d.Dirs[j])
+		}
+	}
+	if len(res.Dirs) == 0 {
+		return res, 0, errors.New("Cannot load any directive from " + namePattern)
+	}
+	return
+}
+
 func validateDirective(d *directive) (err error) {
-	for _, v := range uCases.Directives {
+	for _, v := range uCases.Dirs {
 		if v.ID == d.ID {
 			return errors.New(strconv.Itoa(d.ID) + " is already used as an ID by other directive")
 		}

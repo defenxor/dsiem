@@ -1,6 +1,8 @@
 package str
 
-import "strings"
+import (
+	"strings"
+)
 
 // AppendUniq append string to slice if it its not there yet
 func AppendUniq(slice []string, i string) []string {

@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	vulnFileGlob = "vuln_*.json"
+	vulnFileGlob           = "vuln_*.json"
+	maxSecondToWaitForVuln = 5
 )
 
 // VulnEnabled mark whether intel lookup is enabled
@@ -73,7 +74,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 		tx.Context.SetCustom("provider", v.Name)
 		tx.Context.SetCustom("Url", url)
 
-		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
+		c := http.Client{Timeout: time.Second * maxSecondToWaitForVuln}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " VS."})
@@ -89,6 +90,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
+		res.Body.Close()
 		if readErr != nil {
 			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " VS for IP " + term})
 			tx.Result = "Cannot create read result from " + v.Name
