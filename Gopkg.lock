@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:652880afc6b57ce0a67173f552cb35ccda816493a1da6ca20e5074a66bcd083f"
+  name = "github.com/buaazp/fasthttprouter"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ade4e2031af3aed7fffd241084aad80a58faf421"
+  version = "v0.1.1"
+
+[[projects]]
   branch = "master"
   digest = "1:2d2ce323231b09b3e1caab2436fab061cde6d9fe85cc407dec05551fea3ab64c"
   name = "github.com/dogenzaka/tsv"
@@ -56,6 +64,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "bb1581babc04d5cb29a2bfa7a9ac6781c730c8dd"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1a78ea50e885467aab392cc7bdba0dd0a0acfe9de3fe979127b8051c7baddbfa"
+  name = "github.com/fasthttp-contrib/websocket"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1f3b11f56072ffc1b0d71659cb0162ccb1b60ac5"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -121,6 +137,26 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
+
+[[projects]]
+  digest = "1:cdbed6a7b574b13bbabcd8c36c5be56d6444789bab21fcd37d39655eab0b2141"
+  name = "github.com/klauspost/compress"
+  packages = [
+    "flate",
+    "gzip",
+    "zlib",
+  ]
+  pruneopts = "UT"
+  revision = "b939724e787a27c0005cabe3f78e7ed7987ac74f"
+  version = "v1.4.0"
+
+[[projects]]
+  digest = "1:4ea0668d490ca32a38366453a486e2e8c60fbdaf1f2607c96b4a093d8a5c8de7"
+  name = "github.com/klauspost/cpuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ae7887de9fa5d2db4eaa8174a7eff2c1ac00f2da"
+  version = "v1.1"
 
 [[projects]]
   digest = "1:c568d7727aa262c32bdf8a3f7db83614f7af0ed661474b24588de635c20024c7"
@@ -272,6 +308,27 @@
   version = "v1.0"
 
 [[projects]]
+  digest = "1:c468422f334a6b46a19448ad59aaffdfc0a36b08fdcc1c749a0b29b6453d7e59"
+  name = "github.com/valyala/bytebufferpool"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:4c01180af83764c84f34ba46dcd90633fa7ae510e98ae1316a3b12556da330c9"
+  name = "github.com/valyala/fasthttp"
+  packages = [
+    ".",
+    "expvarhandler",
+    "fasthttputil",
+    "stackless",
+  ]
+  pruneopts = "UT"
+  revision = "e5f51c11919d4f66400334047b897ef0a94c6f3c"
+  version = "v20180529"
+
+[[projects]]
   digest = "1:cd2cbc2f6693543f47cc53e2b2f9be229f017f6604322d1f0b7306b009059243"
   name = "github.com/yl2chen/cidranger"
   packages = [
@@ -318,11 +375,11 @@
   name = "golang.org/x/net"
   packages = ["websocket"]
   pruneopts = "UT"
-  revision = "2f5d2388922f370f4355f327fcf4cfe9f5583908"
+  revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
 
 [[projects]]
   branch = "master"
-  digest = "1:c62492cf500a7b66d0dcf4cad364b4a4d782967fcc97596d4ed358f881297720"
+  digest = "1:8bd0e05907bb95c61ea35e9c7fea5a6f8f81fa11ffab5b4fe87f9154ded67bd8"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -330,7 +387,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "c01370cb5c9b7812800ec97eb5692a14fb8d577c"
+  revision = "90868a75fefd03942536221d7c0e2f84ec62a668"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -367,9 +424,11 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/buaazp/fasthttprouter",
     "github.com/dogenzaka/tsv",
     "github.com/elastic/apm-agent-go",
     "github.com/elastic/apm-agent-go/module/apmhttprouter",
+    "github.com/fasthttp-contrib/websocket",
     "github.com/gocarina/gocsv",
     "github.com/julienschmidt/httprouter",
     "github.com/kardianos/osext",
@@ -380,6 +439,8 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/teris-io/shortid",
+    "github.com/valyala/fasthttp",
+    "github.com/valyala/fasthttp/expvarhandler",
     "github.com/yl2chen/cidranger",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",

@@ -160,7 +160,7 @@ from logstash, and on /config for configuration read/write from UI`,
 		if err != nil {
 			exit("Cannot initialize alarm", err)
 		}
-		err = server.Start(eventChannel, confDir, webDir, addr, port)
+		err = server.StartFastHTTP(eventChannel, confDir, webDir, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}

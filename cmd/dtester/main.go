@@ -114,8 +114,8 @@ func sender(d *siem.Directives, addr string, port int) {
 	swg := sizedwaitgroup.New(conc)
 
 	for _, v := range d.Dirs {
-		var prevPortTo string
-		var prevPortFrom string
+		var prevPortTo int
+		var prevPortFrom int
 		var prevFrom string
 		var prevTo string
 		for _, j := range v.Rules {
@@ -127,10 +127,10 @@ func sender(d *siem.Directives, addr string, port int) {
 			e.Sensor = progName
 			e.Timestamp = time.Now().UTC().Format(time.RFC3339)
 			e.EventID = genUUID()
-			e.SrcIP = genIP(j.From)
-			e.DstIP = genIP(j.To)
-			e.SrcPort = genPort(j.PortFrom, false)
-			e.DstPort = genPort(j.PortTo, true)
+			e.SrcIP = genIP(j.From, prevFrom)
+			e.DstIP = genIP(j.To, prevTo)
+			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
+			e.DstPort = genPort(j.PortTo, prevPortTo, true)
 			e.Protocol = genProto(j.Protocol)
 			e.PluginID = j.PluginID
 			e.PluginSID = pickOneFromIntSlice(j.PluginSID)
@@ -193,7 +193,12 @@ func randInt(min int, max int) int {
 	return rand.Intn(m) + min
 }
 
-func genPort(portList string, useLowPort bool) int {
+func genPort(portList string, prev int, useLowPort bool) int {
+
+	if _, ok := str.RefToDigit(portList); ok {
+		return prev
+	}
+
 	if portList == "ANY" {
 		if useLowPort {
 			return randInt(20, 1024)
@@ -212,10 +217,20 @@ func genPort(portList string, useLowPort bool) int {
 	return n
 }
 
-func genIP(ruleAddr string) string {
+func genIP(ruleAddr string, prev string) string {
 	if ruleAddr == "HOME_NET" {
 		return viper.GetString("homenet")
 	}
+
+	if _, ok := str.RefToDigit(ruleAddr); ok {
+		return prev
+	}
+
+	// testing, always return prev
+	if prev != "" {
+		return prev
+	}
+
 	var octet [4]int
 	for octet[0] == 0 || octet[0] == 10 || octet[0] == 127 || octet[0] == 192 || octet[0] == 172 {
 		octet[0] = randInt(1, 254)

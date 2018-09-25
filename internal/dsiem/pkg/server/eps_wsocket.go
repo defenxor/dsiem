@@ -3,9 +3,9 @@ package server
 import (
 	"dsiem/internal/shared/pkg/idgen"
 	log "dsiem/internal/shared/pkg/logger"
-	"encoding/json"
 
-	"golang.org/x/net/websocket"
+	"github.com/fasthttp-contrib/websocket"
+	// "golang.org/x/net/websocket"
 )
 
 type client struct {
@@ -74,13 +74,14 @@ func (s *wsServer) onClientConnected(ws *websocket.Conn) {
 		select {
 		// send message to client
 		case msg := <-s.sendAllCh:
-			b, err := json.Marshal(msg)
-			if err != nil {
-				log.Debug(log.M{Msg: "failed to marshal msg"})
-				continue
-			}
-			_, err = ws.Write(b)
-			if err != nil {
+			/*
+				_, err := json.Marshal(msg)
+				if err != nil {
+					log.Debug(log.M{Msg: "failed to marshal msg"})
+					continue
+				}
+			*/
+			if err := ws.WriteJSON(msg); err != nil {
 				log.Debug(log.M{Msg: "failed to write to " + id + ", assuming client is disconnected."})
 				s.del(id)
 				return
