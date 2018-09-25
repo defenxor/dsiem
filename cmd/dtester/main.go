@@ -114,8 +114,12 @@ func sender(d *siem.Directives, addr string, port int) {
 	swg := sizedwaitgroup.New(conc)
 
 	for _, v := range d.Dirs {
+		var prevPortTo string
+		var prevPortFrom string
+		var prevFrom string
+		var prevTo string
 		for _, j := range v.Rules {
-			amt := j.Occurrence + 1
+			amt := j.Occurrence
 			if amt > max {
 				amt = max
 			}
@@ -133,6 +137,12 @@ func sender(d *siem.Directives, addr string, port int) {
 			e.Product = pickOneFromStrSlice(j.Product)
 			e.Category = j.Category
 			e.SubCategory = pickOneFromStrSlice(j.SubCategory)
+
+			prevPortTo = e.DstPort
+			prevPortFrom = e.SrcPort
+			prevFrom = e.SrcIP
+			prevTo = e.DstIP
+
 			for i := 0; i < amt; i++ {
 				swg.Add()
 				go func(st int, iter int) {

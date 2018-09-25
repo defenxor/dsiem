@@ -221,7 +221,7 @@ func validatePort(s string) error {
 	if s == "ANY" {
 		return nil
 	}
-	if _, err := reftoDigit(s); err == nil {
+	if _, ok := str.RefToDigit(s); ok {
 		return nil
 	}
 	sSlice := str.CsvToSlice(s)
@@ -242,7 +242,7 @@ func validateFromTo(s string, isFirstRule bool) (err error) {
 		return nil
 	}
 	if !isFirstRule {
-		if _, err := reftoDigit(s); err == nil {
+		if _, ok := str.RefToDigit(s); ok {
 			return nil
 		}
 	}

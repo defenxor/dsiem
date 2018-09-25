@@ -1,6 +1,7 @@
 package str
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -39,4 +40,18 @@ func CsvToSlice(s string) []string {
 	cleaned := strings.Replace(s, ",", " ", -1)
 	sSlice := strings.Fields(cleaned)
 	return sSlice
+}
+
+// RefToDigit convert references in rules like :1 :2 :3 to 1 2 3
+func RefToDigit(v string) (ret int64, ok bool) {
+	i := strings.Index(v, ":")
+	if i == -1 {
+		return
+	}
+	v = strings.Trim(v, ":")
+	ret, err := strconv.ParseInt(v, 10, 64)
+	if err == nil {
+		ok = true
+	}
+	return
 }

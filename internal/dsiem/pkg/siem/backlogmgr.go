@@ -4,10 +4,9 @@ import (
 	"dsiem/internal/dsiem/pkg/event"
 	"dsiem/internal/shared/pkg/idgen"
 	log "dsiem/internal/shared/pkg/logger"
-	"errors"
+	"dsiem/internal/shared/pkg/str"
 	"expvar"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -212,8 +211,7 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 		// :ref
 
 		r := d.Rules[i].From
-		v, err := reftoDigit(r)
-		if err == nil {
+		if v, ok := str.RefToDigit(r); ok {
 			vmin1 := v - 1
 			ref := d.Rules[vmin1].From
 			if ref != "ANY" && ref != "HOME_NET" && ref != "!HOME_NET" {
@@ -222,9 +220,9 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 				d.Rules[i].From = e.SrcIP
 			}
 		}
+
 		r = d.Rules[i].To
-		v, err = reftoDigit(r)
-		if err == nil {
+		if v, ok := str.RefToDigit(r); ok {
 			vmin1 := v - 1
 			ref := d.Rules[vmin1].To
 			if ref != "ANY" && ref != "HOME_NET" && ref != "!HOME_NET" {
@@ -233,9 +231,9 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 				d.Rules[i].To = e.DstIP
 			}
 		}
+
 		r = d.Rules[i].PortFrom
-		v, err = reftoDigit(r)
-		if err == nil {
+		if v, ok := str.RefToDigit(r); ok {
 			vmin1 := v - 1
 			ref := d.Rules[vmin1].PortFrom
 			if ref != "ANY" {
@@ -244,9 +242,9 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 				d.Rules[i].PortFrom = strconv.Itoa(e.SrcPort)
 			}
 		}
+
 		r = d.Rules[i].PortTo
-		v, err = reftoDigit(r)
-		if err == nil {
+		if v, ok := str.RefToDigit(r); ok {
 			vmin1 := v - 1
 			ref := d.Rules[vmin1].PortTo
 			if ref != "ANY" {
@@ -255,14 +253,6 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 				d.Rules[i].PortTo = strconv.Itoa(e.DstPort)
 			}
 		}
-	}
-}
 
-func reftoDigit(v string) (int64, error) {
-	i := strings.Index(v, ":")
-	if i == -1 {
-		return 0, errors.New("not a reference")
 	}
-	v = strings.Trim(v, ":")
-	return strconv.ParseInt(v, 10, 64)
 }

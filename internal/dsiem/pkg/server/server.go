@@ -16,6 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/apm-agent-go/module/apmhttprouter"
+	"github.com/spf13/viper"
+
 	rc "github.com/paulbellamy/ratecounter"
 	"golang.org/x/net/websocket"
 
@@ -52,32 +55,50 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr stri
 	rateCounter = rc.NewRateCounter(1 * time.Second)
 	p := strconv.Itoa(port)
 
+	apmEnabled := viper.GetBool("apm")
+
 	for {
 		// router := apmhttprouter.New()
-		router := httprouter.New()
-		router.POST("/events", handleEvents)
-		router.GET("/config/:filename", handleConfFileDownload)
-		router.GET("/config/", handleConfFileList)
-		router.GET("/debug/vars/", expvarHandler)
-		router.POST("/config/:filename", handleConfFileUpload)
-		router.GET("/eps/", wsHandler)
-		router.ServeFiles("/ui/*filepath", http.Dir(webDir))
-		log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
-		initWSServer()
-		// we're expecting fast clients only
-		srv := &http.Server{
-			ReadTimeout:  5 * time.Second,
-			WriteTimeout: 5 * time.Second,
-			IdleTimeout:  5 * time.Second,
-			Addr:         addr + ":" + p,
-			Handler:      router,
-		}
-		err := srv.ListenAndServe()
-		if err != nil {
-			log.Warn(log.M{Msg: "error from ListenAndServe: " + err.Error()})
+		if apmEnabled {
+			router := apmhttprouter.New()
+			router.POST("/events", handleEvents)
+			router.GET("/config/:filename", handleConfFileDownload)
+			router.GET("/config/", handleConfFileList)
+			router.GET("/debug/vars/", expvarHandler)
+			router.POST("/config/:filename", handleConfFileUpload)
+			router.GET("/eps/", wsHandler)
+			router.ServeFiles("/ui/*filepath", http.Dir(webDir))
+			serve(router, addr+":"+p)
+		} else {
+			router := httprouter.New()
+			router.POST("/events", handleEvents)
+			router.GET("/config/:filename", handleConfFileDownload)
+			router.GET("/config/", handleConfFileList)
+			router.GET("/debug/vars/", expvarHandler)
+			router.POST("/config/:filename", handleConfFileUpload)
+			router.GET("/eps/", wsHandler)
+			router.ServeFiles("/ui/*filepath", http.Dir(webDir))
+			serve(router, addr+":"+p)
 		}
 	}
 	return nil
+}
+
+func serve(router http.Handler, listenAddr string) {
+	log.Info(log.M{Msg: "Server listening on " + listenAddr})
+	initWSServer()
+	// we're expecting fast clients only
+	srv := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  5 * time.Second,
+		Addr:         listenAddr,
+		Handler:      router,
+	}
+	err := srv.ListenAndServe()
+	if err != nil {
+		log.Warn(log.M{Msg: "error from ListenAndServe: " + err.Error()})
+	}
 }
 
 func expvarHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
