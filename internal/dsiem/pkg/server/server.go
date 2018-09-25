@@ -19,7 +19,6 @@ import (
 	rc "github.com/paulbellamy/ratecounter"
 	"golang.org/x/net/websocket"
 
-	"github.com/elastic/apm-agent-go/module/apmhttprouter"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -54,7 +53,8 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string, addr stri
 	p := strconv.Itoa(port)
 
 	for {
-		router := apmhttprouter.New()
+		// router := apmhttprouter.New()
+		router := httprouter.New()
 		router.POST("/events", handleEvents)
 		router.GET("/config/:filename", handleConfFileDownload)
 		router.GET("/config/", handleConfFileList)
@@ -225,4 +225,5 @@ func handleEvents(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	evt.ConnID = connID
 	// push the event
 	eventChannel <- evt
+	log.Debug(log.M{Msg: "Event pushed", CId: connID})
 }

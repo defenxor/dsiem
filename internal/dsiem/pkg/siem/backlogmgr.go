@@ -117,7 +117,7 @@ func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
 		found := false
 		// blogs.RLock()
 		blogs.Lock() // test using writelock, to prevent double entry
-		log.Debug(log.M{Msg: "manager locked backlogs " + strconv.Itoa(blogs.id)})
+		// log.Debug(log.M{Msg: "manager locked backlogs " + strconv.Itoa(blogs.id)})
 
 		for _, v := range blogs.bl {
 			v.RLock()
