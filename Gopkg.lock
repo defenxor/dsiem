@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:6a6429b70b6af595b3c0212a4ee02d87ae11b1d95eed28bb95ce794374330cbe"
+  name = "github.com/bbengfort/x"
+  packages = ["lock"]
+  pruneopts = "UT"
+  revision = "c83f46b29237402b163c04bdc025c023ec46d45c"
+
+[[projects]]
   digest = "1:652880afc6b57ce0a67173f552cb35ccda816493a1da6ca20e5074a66bcd083f"
   name = "github.com/buaazp/fasthttprouter"
   packages = ["."]
@@ -18,7 +26,7 @@
   revision = "8e02e611b1fb06f657b075f37e8770db156a101a"
 
 [[projects]]
-  digest = "1:9e969f0769a19e86e62c7415fbf303377143563660ade650143a6645022dae8a"
+  digest = "1:c02ec52fbc8f6df015b862b5a5aa9ea3c50156432e03bb63259322af5cefeb3a"
   name = "github.com/elastic/apm-agent-go"
   packages = [
     ".",
@@ -32,8 +40,6 @@
     "internal/pretty",
     "internal/radix",
     "model",
-    "module/apmhttp",
-    "module/apmhttprouter",
     "stacktrace",
     "transport",
   ]
@@ -72,6 +78,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "1f3b11f56072ffc1b0d71659cb0162ccb1b60ac5"
+
+[[projects]]
+  digest = "1:51d3c70fce5f054c5934988892eae7d660f421cf00394302192e3fd5a1565131"
+  name = "github.com/francoispqt/gojay"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f5587822347e46494d4d53e918709c4db4ec2de2"
+  version = "1.2.4"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -371,15 +385,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7427036b6d926b3d1fa0773771820735b35554a98296f1074df440ee30a97296"
-  name = "golang.org/x/net"
-  packages = ["websocket"]
-  pruneopts = "UT"
-  revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
-
-[[projects]]
-  branch = "master"
-  digest = "1:8bd0e05907bb95c61ea35e9c7fea5a6f8f81fa11ffab5b4fe87f9154ded67bd8"
+  digest = "1:1d35bb9f4c6ef12c5783281d6c5c97b1c6955842efb32fa8351a92aa20e0ba9e"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -387,7 +393,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "90868a75fefd03942536221d7c0e2f84ec62a668"
+  revision = "b09afc3d579e346c4a7e4705953acaf6f9e551bd"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -424,11 +430,12 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/bbengfort/x/lock",
     "github.com/buaazp/fasthttprouter",
     "github.com/dogenzaka/tsv",
     "github.com/elastic/apm-agent-go",
-    "github.com/elastic/apm-agent-go/module/apmhttprouter",
     "github.com/fasthttp-contrib/websocket",
+    "github.com/francoispqt/gojay",
     "github.com/gocarina/gocsv",
     "github.com/julienschmidt/httprouter",
     "github.com/kardianos/osext",
@@ -444,7 +451,6 @@
     "github.com/yl2chen/cidranger",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
-    "golang.org/x/net/websocket",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

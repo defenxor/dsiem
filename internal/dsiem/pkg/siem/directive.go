@@ -73,9 +73,9 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	}
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
-	var dirchan []chan event.NormalizedEvent
+	var dirchan []chan *event.NormalizedEvent
 	for i := 0; i < total; i++ {
-		dirchan = append(dirchan, make(chan event.NormalizedEvent))
+		dirchan = append(dirchan, make(chan *event.NormalizedEvent))
 		blogs := backlogs{}
 		blogs.id = i
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
@@ -87,7 +87,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 			for {
 				evt := <-ch
 				for i := range dirchan {
-					dirchan[i] <- evt
+					dirchan[i] <- &evt
 				}
 			}
 		}()
@@ -193,14 +193,14 @@ func validateDirective(d *directive) (err error) {
 			return err
 		}
 		if v.Type == "PluginRule" {
-			if v.PluginID <= 1 {
+			if v.PluginID < 1 {
 				return errors.New("PluginRule requires PluginID to be 1 or higher")
 			}
 			if len(v.PluginSID) == 0 {
 				return errors.New("PluginRule requires PluginSID to be defined")
 			}
 			for i := range v.PluginSID {
-				if v.PluginSID[i] <= 1 {
+				if v.PluginSID[i] < 1 {
 					return errors.New("PluginRule requires PluginSID to be 1 or higher")
 				}
 			}

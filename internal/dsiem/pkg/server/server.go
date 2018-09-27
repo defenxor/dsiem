@@ -57,20 +57,18 @@ func StartFastHTTP(ch chan<- event.NormalizedEvent, confd string, webd string, a
 	rateCounter = rc.NewRateCounter(1 * time.Second)
 	p := strconv.Itoa(port)
 
-	for {
-		log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
-		initWSServer()
-		router := fasthttprouter.New()
-		router.POST("/events", handleEvents)
-		router.GET("/config/:filename", handleConfFileDownload)
-		router.GET("/config/", handleConfFileList)
-		router.GET("/debug/vars/", expVarHandler)
-		router.POST("/config/:filename", handleConfFileUpload)
-		router.GET("/eps/", wsHandler)
-		router.ServeFiles("/ui/*filepath", webDir)
-		fasthttp.ListenAndServe(addr+":"+p, router.Handler)
-	}
-	return nil
+	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
+	initWSServer()
+	router := fasthttprouter.New()
+	router.POST("/events", handleEvents)
+	router.GET("/config/:filename", handleConfFileDownload)
+	router.GET("/config/", handleConfFileList)
+	router.GET("/debug/vars/", expVarHandler)
+	router.POST("/config/:filename", handleConfFileUpload)
+	router.GET("/eps/", wsHandler)
+	router.ServeFiles("/ui/*filepath", webDir)
+	err := fasthttp.ListenAndServe(addr+":"+p, router.Handler)
+	return err
 }
 
 func wsHandler(ctx *fasthttp.RequestCtx) {
@@ -230,6 +228,8 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	epsCounter.Set(rateCounter.Rate())
 
 	err := evt.FromBytes(ctx.PostBody())
+	// err := gojay.Unmarshal(ctx.PostBody(), &evt)
+
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot parse normalizedEvent from " + clientAddr + ". err: " + err.Error(), CId: connID})
 		fmt.Fprintf(ctx, "Cannot parse the submitted event\n")
@@ -244,7 +244,12 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	}
 	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 	evt.ConnID = connID
-	// push the event
-	eventChannel <- evt
-	log.Debug(log.M{Msg: "Event pushed", CId: connID})
+	// push the event, timeout in 10s to avoid open fd overload
+	select {
+	case <-time.After(10 * time.Second):
+		log.Info(log.M{Msg: "event channel timed out!", CId: connID})
+		ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
+	case eventChannel <- evt:
+		log.Debug(log.M{Msg: "Event pushed", CId: connID})
+	}
 }

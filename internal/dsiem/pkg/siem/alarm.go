@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bbengfort/x/lock"
 	"github.com/elastic/apm-agent-go"
 
 	"github.com/spf13/viper"
@@ -23,6 +24,10 @@ import (
 const (
 	alarmLogs = "siem_alarms.json"
 )
+
+type removalChannelMsg struct {
+	ID string
+}
 
 var aLogFile string
 var mediumRiskLowerBound int
@@ -33,7 +38,8 @@ var alarmRemovalChannel chan removalChannelMsg
 var privateIPBlocks []*net.IPNet
 
 type alarm struct {
-	sync.RWMutex
+	// sync.RWMutex
+	lock.RWMutexD
 	ID              string           `json:"alarm_id"`
 	Title           string           `json:"title"`
 	Status          string           `json:"status"`

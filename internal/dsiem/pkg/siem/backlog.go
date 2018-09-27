@@ -6,11 +6,14 @@ import (
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/elastic/apm-agent-go"
 )
@@ -28,12 +31,97 @@ type backLog struct {
 	SrcIPs       []string  `json:"src_ips"`
 	DstIPs       []string  `json:"dst_ips"`
 	LastEvent    event.NormalizedEvent
-	bLogs        *backlogs // pointer to parent
+	chData       chan *event.NormalizedEvent
+	chDone       chan struct{}
+	chFound      chan bool
+	bLogs        *backlogs // pointer to parent, for locking delete operation?
 }
+
 type siemAlarmEvents struct {
 	ID    string `json:"alarm_id"`
 	Stage int    `json:"stage"`
 	Event string `json:"event_id"`
+}
+
+func (b *backLog) worker(initialEvent *event.NormalizedEvent) {
+
+	debug := viper.GetBool("debug")
+	// first, process the initial event
+	b.processMatchedEvent(initialEvent, 0)
+	// b.info("after processmatchedevent", initialEvent.ConnID)
+
+	go func() {
+		for {
+			evt, ok := <-b.chData
+			if !ok {
+				b.debug("worker chData closed, exiting", 0)
+				return
+			}
+			// b.info("backlog incoming event", evt.ConnID)
+			cs := b.CurrentStage
+			if cs <= 1 {
+				// b.info("backlog cs <= 1", evt.ConnID)
+				continue
+			}
+			// should check for currentStage rule match with event
+			// heuristic, we know stage starts at 1 but rules start at 0
+			idx := cs - 1
+			currRule := b.Directive.Rules[idx]
+			if !doesEventMatchRule(evt, &currRule, evt.ConnID) {
+				// b.info("backlog doeseventmatch false", evt.ConnID)
+				b.chFound <- false
+				continue
+			}
+			b.chFound <- true // answer quickly
+			// this should be under go routine, but chFound need sync access
+			b.processMatchedEvent(evt, idx)
+			// b.info("setting found to true", evt.ConnID)
+		}
+	}()
+
+	go func() {
+		// create own ticker here
+		ticker := time.NewTicker(time.Second * 10)
+		for {
+			<-ticker.C
+			b.debug("backlog tick started.", 0)
+			select {
+			case <-b.chDone:
+				b.debug("backlog tick exiting, chDone.", 0)
+				return
+			default:
+			}
+			if debug {
+				b.dumpCurrentRule(false)
+			}
+			if !b.isExpired() {
+				continue
+			}
+			ticker.Stop() // prevent next signal, we're exiting the go routine
+			b.info("backlog expired, deleting it", 0)
+			tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
+			b.RLock()
+			tx.Context.SetCustom("backlog_id", b.ID)
+			tx.Context.SetCustom("directive_id", b.Directive.ID)
+			tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+			b.RUnlock()
+			b.setStatus("timeout", 0, tx)
+			b.delete()
+		}
+	}()
+	b.debug("exiting worker, leaving routine behind", initialEvent.ConnID)
+
+}
+
+func (b *backLog) dumpCurrentRule(listEvent bool) {
+	fmt.Println("Directive ID:", b.Directive.ID, "backlog ID: ", b.ID)
+	for i := range b.Directive.Rules {
+		if listEvent {
+			fmt.Println("Rule:", i, ":", b.Directive.Rules[i].Events)
+		} else {
+			fmt.Println("Rule:", i, "length:", len(b.Directive.Rules[i].Events))
+		}
+	}
 }
 
 func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transaction) {
@@ -63,28 +151,19 @@ func (b *backLog) setStatus(status string, connID uint64, tx *elasticapm.Transac
 	}
 }
 
-func (b *backLog) checkExpired() {
+func (b *backLog) isExpired() bool {
 	b.RLock()
+	defer b.RUnlock()
 	now := time.Now().Unix()
 	cs := b.CurrentStage
 	idx := cs - 1
 	start := b.Directive.Rules[idx].StartTime
 	timeout := b.Directive.Rules[idx].Timeout
 	maxTime := start + timeout
-	if maxTime > now {
-		b.RUnlock()
-		return
+	if maxTime >= now {
+		return false
 	}
-	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
-	tx.Context.SetCustom("backlog_id", b.ID)
-	tx.Context.SetCustom("directive_id", b.Directive.ID)
-	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
-	defer elasticapm.DefaultTracer.Recover(tx)
-	defer tx.End()
-	b.info("expired", 0)
-	b.RUnlock()
-	b.setStatus("timeout", 0, tx)
-	b.delete()
+	return true
 }
 
 func (b *backLog) ensureStatusAndStartTime(idx int, connID uint64, tx *elasticapm.Transaction) {
@@ -133,6 +212,8 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 			return
 		}
 	}
+	b.info("setting status to finish", e.ConnID)
+
 	// the new event has caused events_count == occurrence
 	b.setStatus("finished", e.ConnID, tx)
 
@@ -147,7 +228,9 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	// reach max occurrence, but not in last stage. Increase stage.
 	b.increaseStage(e.ConnID)
 	b.setStatus("active", e.ConnID, tx)
-	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+	b.RLock()
+	tx.Context.SetCustom("backlog_stage", b.CurrentStage) // race b
+	b.RUnlock()
 	tx.Result = "Stage increased"
 
 	// recalc risk, the new stage will have a different reliability
@@ -161,13 +244,14 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 
 func (b *backLog) info(msg string, connID uint64) {
 	b.RLock()
+	defer b.RUnlock()
+
 	log.Info(log.M{Msg: msg, BId: b.ID, CId: connID})
-	b.RUnlock()
 }
 
 func (b *backLog) debug(msg string, connID uint64) {
 	b.RLock()
-	log.Debug(log.M{Msg: "Backlog " + b.ID + ": " + msg, BId: b.ID, CId: connID})
+	log.Debug(log.M{Msg: msg, BId: b.ID, CId: connID})
 	b.RUnlock()
 }
 
@@ -184,11 +268,9 @@ func (b *backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
 }
 
 func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int, tx *elasticapm.Transaction) {
-	b.Lock()
 	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
 	b.SrcIPs = str.AppendUniq(b.SrcIPs, e.SrcIP)
 	b.DstIPs = str.AppendUniq(b.DstIPs, e.DstIP)
-	b.Unlock()
 	if err := b.updateElasticsearch(e); err != nil {
 		b.RLock()
 		log.Warn(log.M{Msg: "failed to update Elasticsearch! " + err.Error(), BId: b.ID, CId: e.ConnID})
@@ -211,8 +293,8 @@ func (b *backLog) isLastStage() (ret bool) {
 }
 
 func (b *backLog) isStageReachMaxEvtCount() (reachMaxEvtCount bool) {
-	b.RLock()
-	defer b.RUnlock()
+	//b.RLock()
+	//defer b.RUnlock()
 	s := b.CurrentStage
 	idx := s - 1
 	currRule := b.Directive.Rules[idx]
@@ -227,7 +309,7 @@ func (b *backLog) increaseStage(connID uint64) {
 
 	b.Lock()
 	n := int32(b.CurrentStage)
-	b.CurrentStage = int(atomic.AddInt32(&n, 1))
+	b.CurrentStage = int(atomic.AddInt32(&n, 1)) // race b
 	if b.CurrentStage > b.HighestStage {
 		b.CurrentStage = b.HighestStage
 	}
@@ -269,9 +351,12 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 }
 
 func (b *backLog) delete() {
-	m := removalChannelMsg{b.bLogs, b.ID}
-	backLogRemovalChannel <- m
-	alarmRemovalChannel <- m
+	b.debug("delete sending chdone", 0)
+	// no need to do this, let it gc'ed
+	// close(b.chFound)
+	close(b.chDone)
+	//	b.chDone <- struct{}{}
+	b.bLogs.delete(b)
 }
 
 func (b *backLog) updateElasticsearch(e *event.NormalizedEvent) error {
@@ -287,8 +372,12 @@ func (b *backLog) updateElasticsearch(e *event.NormalizedEvent) error {
 	b.RLock()
 	v := siemAlarmEvents{b.ID, b.CurrentStage, e.EventID}
 	b.RUnlock()
-	vJSON, _ := json.Marshal(v)
+	vJSON, err := json.Marshal(v)
+	if err != nil {
+		fmt.Println(v)
+		return err
+	}
 
-	_, err = f.WriteString(string(vJSON) + "\n")
+	_, err = f.WriteString(string(vJSON) + "\n") //race a
 	return err
 }

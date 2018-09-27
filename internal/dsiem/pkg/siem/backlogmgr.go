@@ -7,6 +7,7 @@ import (
 	"dsiem/internal/shared/pkg/str"
 	"expvar"
 	"strconv"
+
 	"sync"
 	"time"
 )
@@ -24,35 +25,16 @@ var allBacklogs []backlogs
 var backlogCounter = expvar.NewInt("backlog_counter")
 var alarmCounter = expvar.NewInt("alarm_counter")
 
-type removalChannelMsg struct {
-	blogs *backlogs
-	ID    string
-}
-
-var backLogRemovalChannel chan removalChannelMsg
-var ticker *time.Ticker
-
-var glock = &sync.RWMutex{}
-
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string) (err error) {
 	bLogFile = logFile
-	backLogRemovalChannel = make(chan removalChannelMsg)
 	startWatchdogTicker()
 	return
 }
 
-func removeBackLog(m removalChannelMsg) {
-	m.blogs.Lock()
-	defer m.blogs.Unlock()
-	log.Debug(log.M{Msg: "Lock obtained. Removing backlog", BId: m.ID})
-	glock.Lock()
-	delete(m.blogs.bl, m.ID)
-	glock.Unlock()
-}
-
 func updateAlarmCounter() (count int) {
 	alarms.RLock()
+	log.Debug(log.M{Msg: "counter obtained alarm lock"})
 	count = len(alarms.al)
 	alarmCounter.Set(int64(count))
 	alarms.RUnlock()
@@ -61,42 +43,13 @@ func updateAlarmCounter() (count int) {
 
 // this checks for timed-out backlog and discard it
 func startWatchdogTicker() {
-	go func() {
-		for {
-			// handle incoming event, id should be the ID to remove
-			msg := <-backLogRemovalChannel
-			go removeBackLog(msg)
-		}
-	}()
-
-	ticker = time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		for {
 			<-ticker.C
 			log.Debug(log.M{Msg: "Watchdog tick started."})
 			aLen := updateAlarmCounter()
-			bLen := 0
-			for i := range allBacklogs {
-				glock.RLock()
-				allBacklogs[i].RLock() // for length reading
-				log.Debug(log.M{Msg: "ticker locked backlogs " + strconv.Itoa(allBacklogs[i].id)})
-				l := len(allBacklogs[i].bl)
-				if l == 0 {
-					allBacklogs[i].RUnlock()
-					glock.RUnlock()
-					continue
-				}
-				bLen += l
-				for j := range allBacklogs[i].bl {
-					allBacklogs[i].bl[j].checkExpired()
-				}
-				allBacklogs[i].RUnlock()
-				glock.RUnlock()
-			}
-			backlogCounter.Set(int64(bLen))
-			eps := readEPS()
-			log.Info(log.M{Msg: "Watchdog tick ended, # of backlogs:" + strconv.Itoa(bLen) +
-				" alarms:" + strconv.Itoa(aLen) + eps})
+			log.Info(log.M{Msg: "Watchdog tick ended, # alarms:" + strconv.Itoa(aLen)})
 		}
 	}()
 }
@@ -108,75 +61,75 @@ func readEPS() (res string) {
 	return
 }
 
-func (blogs *backlogs) manager(d *directive, ch <-chan event.NormalizedEvent) {
+func (blogs *backlogs) delete(b *backLog) {
+	log.Info(log.M{Msg: "backlog manager removing backlog in 10s", DId: b.Directive.ID, BId: b.ID})
+	go func() {
+		time.Sleep(3 * time.Second)
+		log.Debug(log.M{Msg: "backlog manager closing data channel", DId: b.Directive.ID, BId: b.ID})
+		close(b.chData)
+		time.Sleep(5 * time.Second)
+		blogs.Lock()
+		delete(blogs.bl, b.ID)
+		blogs.Unlock()
+		alarmRemovalChannel <- removalChannelMsg{b.ID}
+	}()
+}
+
+func (blogs *backlogs) manager(d *directive, ch <-chan *event.NormalizedEvent) {
+	blogs.bl = make(map[string]*backLog)
+
 	for {
-		// handle incoming event
-		e := <-ch
-		// first check existing backlog
+		evt := <-ch
 		found := false
-		// blogs.RLock()
-		blogs.Lock() // test using writelock, to prevent double entry
-		// log.Debug(log.M{Msg: "manager locked backlogs " + strconv.Itoa(blogs.id)})
+		blogs.RLock() // to prevent concurrent r/w with delete()
+		for k := range blogs.bl {
+			// go try-receive pattern
+			select {
+			case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
+				continue
+			default:
+			}
 
-		for _, v := range blogs.bl {
-			v.RLock()
-			cs := v.CurrentStage
-			// only applicable for non-stage 1,
-			// where there's more specific identifier like IP address to match
-			// by convention, stage 1 rule *must* always have occurrence = 1
-			if v.Directive.ID != d.ID || cs <= 1 {
-				v.RUnlock()
+			select {
+			case <-blogs.bl[k].chDone: // exit early if done
 				continue
+			case blogs.bl[k].chData <- evt: // fwd to backlog
+				select {
+				case <-blogs.bl[k].chDone: // exit early if done
+					continue
+				// wait for the result
+				case f := <-blogs.bl[k].chFound:
+					if f {
+						found = true
+					}
+				}
 			}
-			// should check for currentStage rule match with event
-			// heuristic, we know stage starts at 1 but rules start at 0
-			idx := cs - 1
-			currRule := v.Directive.Rules[idx]
-			if !doesEventMatchRule(&e, &currRule, e.ConnID) {
-				v.RUnlock()
-				continue
-			}
-			log.Debug(log.M{Msg: " Event match with existing backlog. CurrentStage is " +
-				strconv.Itoa(v.CurrentStage), DId: v.Directive.ID, BId: v.ID, CId: e.ConnID})
-			v.RUnlock()
-			found = true
-			go blogs.bl[v.ID].processMatchedEvent(&e, idx)
-			break
 		}
+		blogs.RUnlock()
+
 		if found {
-			// blogs.RUnlock()
-			blogs.Unlock()
-			continue // back to chan loop
-		}
-
-		// now for new backlog
-		if !doesEventMatchRule(&e, &d.Rules[0], e.ConnID) {
-			// blogs.RUnlock()
-			blogs.Unlock()
-			continue // back to chan loop
-		}
-
-		b, err := createNewBackLog(d, &e)
-		if err != nil {
-			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: e.ConnID})
-			// blogs.RUnlock()
-			blogs.Unlock()
 			continue
 		}
-		glock.Lock()
+		// now for new backlog
+		if !doesEventMatchRule(evt, &d.Rules[0], evt.ConnID) {
+			continue // back to chan loop
+		}
+
+		b, err := createNewBackLog(d, evt)
+		if err != nil {
+			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
+			continue
+		}
+		// we're in a loop, no one gonna mess with blogs, no need to lock
+		// blogs.Lock()
 		blogs.bl[b.ID] = &b
 		blogs.bl[b.ID].bLogs = blogs
-		blogs.Unlock()
-
-		// should let first event processing finished before taking another event,
-		// hence, not using go routine here
-		blogs.bl[b.ID].processMatchedEvent(&e, 0)
-		glock.Unlock()
+		// blogs.Unlock()
+		blogs.bl[b.ID].worker(evt)
 	}
 }
 
 func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp backLog, err error) {
-	// create new backlog here, passing the event as the 1st event for the backlog
 	bid, err := idgen.GenerateID()
 	if err != nil {
 		return
@@ -189,10 +142,14 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp backLog, err e
 	copyDirective(&b.Directive, d, e)
 	initBackLogRules(&b.Directive, e)
 	b.Directive.Rules[0].StartTime = time.Now().Unix()
+	b.chData = make(chan *event.NormalizedEvent)
+	b.chFound = make(chan bool)
+	b.chDone = make(chan struct{}, 1)
 
 	b.CurrentStage = 1
 	b.HighestStage = len(d.Rules)
 	bp = b
+
 	return
 }
 
@@ -253,6 +210,5 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 				d.Rules[i].PortTo = strconv.Itoa(e.DstPort)
 			}
 		}
-
 	}
 }

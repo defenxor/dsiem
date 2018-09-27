@@ -51,10 +51,6 @@ func (e *NormalizedEvent) FromBytes(b []byte) error {
 	return err
 }
 
-func (e *NormalizedEvent) FromBytesFast(b []byte) error {
-
-}
-
 // SrcIPInHomeNet check if event SrcIP is is HOME_NET
 func (e *NormalizedEvent) SrcIPInHomeNet() bool {
 	res, _ := asset.IsInHomeNet(e.SrcIP)
