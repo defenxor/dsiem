@@ -120,11 +120,10 @@ func (blogs *backlogs) manager(d *directive, ch <-chan *event.NormalizedEvent) {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
 			continue
 		}
-		// we're in a loop, no one gonna mess with blogs, no need to lock
-		// blogs.Lock()
+		blogs.Lock() // got hit with concurrent map write here
 		blogs.bl[b.ID] = &b
 		blogs.bl[b.ID].bLogs = blogs
-		// blogs.Unlock()
+		blogs.Unlock()
 		blogs.bl[b.ID].worker(evt)
 	}
 }

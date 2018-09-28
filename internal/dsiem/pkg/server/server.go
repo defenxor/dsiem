@@ -17,9 +17,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/matryer/vice/queues/nats"
+
 	"github.com/fasthttp-contrib/websocket"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/expvarhandler"
+	"github.com/valyala/fasthttp/reuseport"
 
 	"github.com/buaazp/fasthttprouter"
 
@@ -31,22 +34,37 @@ var webDir, confDir string
 var rateCounter *rc.RateCounter
 var wss *wsServer
 var upgrader websocket.Upgrader
-
-type configFiles struct {
-	FileName string `json:"filename"`
-}
-
+var mode string
+var transport nats.Transport
+var sender chan<- []byte
+var errchan <-chan error
+var msq string
 var epsCounter = expvar.NewInt("eps_counter")
 var eventChannel chan<- event.NormalizedEvent
 
-// StartFastHTTP start the server
-func StartFastHTTP(ch chan<- event.NormalizedEvent, confd string, webd string, addr string, port int) error {
+type configFile struct {
+	Filename string `json:"filename"`
+}
+type configFiles struct {
+	Files []configFile `json:"files"`
+}
+
+// Start starts the server
+func Start(ch chan<- event.NormalizedEvent, confd string, webd string,
+	serverMode string, msqServer string, msqPrefix string, nodeName string, addr string, port int) error {
 
 	if a := net.ParseIP(addr); a == nil {
 		return errors.New(addr + " is not a valid IP address")
 	}
 	if port < 1 || port > 65535 {
 		return errors.New("Invalid TCP port number")
+	}
+
+	mode = serverMode
+	msq = msqServer
+
+	if mode == "cluster-frontend" {
+		initMsgQueue(msqServer, msqPrefix, nodeName)
 	}
 
 	// no need to check this, toctou issue
@@ -60,15 +78,30 @@ func StartFastHTTP(ch chan<- event.NormalizedEvent, confd string, webd string, a
 	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
 	initWSServer()
 	router := fasthttprouter.New()
-	router.POST("/events", handleEvents)
 	router.GET("/config/:filename", handleConfFileDownload)
 	router.GET("/config/", handleConfFileList)
 	router.GET("/debug/vars/", expVarHandler)
 	router.POST("/config/:filename", handleConfFileUpload)
-	router.GET("/eps/", wsHandler)
-	router.ServeFiles("/ui/*filepath", webDir)
-	err := fasthttp.ListenAndServe(addr+":"+p, router.Handler)
+	if mode != "cluster-backend" {
+		router.POST("/events", handleEvents)
+		router.GET("/eps/", wsHandler)
+		router.ServeFiles("/ui/*filepath", webDir)
+	}
+	ln, err := reuseport.Listen("tcp4", addr+":"+p)
+	if err != nil {
+		return err
+	}
+
+	err = fasthttp.Serve(ln, router.Handler)
 	return err
+}
+
+func initMsgQueue(msq string, prefix, nodeName string) {
+	opt := nats.WithStreaming(msq, prefix+"-"+nodeName)
+	transport := nats.New(opt)
+	//transport := nats.New()
+	sender = transport.Send(prefix + "_" + "events")
+	errchan = transport.ErrChan()
 }
 
 func wsHandler(ctx *fasthttp.RequestCtx) {
@@ -116,10 +149,10 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		return
 	}
-	c := []configFiles{}
+	c := configFiles{}
 
 	for _, f := range files {
-		c = append(c, configFiles{f.Name()})
+		c.Files = append(c.Files, configFile{f.Name()})
 	}
 	byteVal, err := json.MarshalIndent(&c, "", "  ")
 	if err != nil {
@@ -227,7 +260,8 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	rateCounter.Incr(1)
 	epsCounter.Set(rateCounter.Rate())
 
-	err := evt.FromBytes(ctx.PostBody())
+	msg := ctx.PostBody()
+	err := evt.FromBytes(msg)
 	// err := gojay.Unmarshal(ctx.PostBody(), &evt)
 
 	if err != nil {
@@ -244,12 +278,29 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	}
 	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 	evt.ConnID = connID
-	// push the event, timeout in 10s to avoid open fd overload
+
+	if mode == "standalone" {
+		// push the event, timeout in 10s to avoid open fd overload
+		select {
+		case <-time.After(10 * time.Second):
+			log.Info(log.M{Msg: "event channel timed out!", CId: connID})
+			ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
+		case eventChannel <- evt:
+			log.Debug(log.M{Msg: "Event pushed", CId: connID})
+		}
+		return
+	}
+
+	// mode = cluster-frontend
 	select {
 	case <-time.After(10 * time.Second):
-		log.Info(log.M{Msg: "event channel timed out!", CId: connID})
+		log.Info(log.M{Msg: "message queue timed out!", CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
-	case eventChannel <- evt:
+	case sender <- msg:
 		log.Debug(log.M{Msg: "Event pushed", CId: connID})
+		//fmt.Println("msg pushed:\n", string(msg))
+	case err := <-errchan:
+		log.Info(log.M{Msg: "Error from message queue:" + err.Error(), CId: connID})
+		// fmt.Println("msg queue error on sender: ", err)
 	}
 }

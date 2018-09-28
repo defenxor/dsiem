@@ -7,7 +7,7 @@
   name = "github.com/bbengfort/x"
   packages = ["lock"]
   pruneopts = "UT"
-  revision = "c83f46b29237402b163c04bdc025c023ec46d45c"
+  revision = "35255fd288d0e8314c6be637d738b68f85b2bc13"
 
 [[projects]]
   digest = "1:652880afc6b57ce0a67173f552cb35ccda816493a1da6ca20e5074a66bcd083f"
@@ -104,6 +104,18 @@
   revision = "b8c38cb1ba36857e7f9c1ef75c6e59e11ed93e37"
 
 [[projects]]
+  digest = "1:bfc758d5a03d57d97226fac6934551c01bd76612adb119c177395b057a0a46db"
+  name = "github.com/gogo/protobuf"
+  packages = [
+    "gogoproto",
+    "proto",
+    "protoc-gen-gogo/descriptor",
+  ]
+  pruneopts = "UT"
+  revision = "636bf0302bc95575d69441b25a2603156ffdddf1"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
   name = "github.com/hashicorp/hcl"
   packages = [
@@ -181,11 +193,53 @@
   version = "v1.8.0"
 
 [[projects]]
+  digest = "1:574450f59591c12b82c615f92c852aca30177f51aa7dc7d6b87cfe925ce02484"
+  name = "github.com/matryer/vice"
+  packages = [
+    ".",
+    "queues/nats",
+  ]
+  pruneopts = "UT"
+  revision = "15e138b209b31d038163b1e33b83fb1da5e1157d"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:645110e089152bd0f4a011a2648fbb0e4df5977be73ca605781157ac297f50c4"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   pruneopts = "UT"
   revision = "fa473d140ef3c6adf42d6b391fe76707f1f243c8"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:4ce94f3d2074662c04677db471456feb56078244ebcfe3789e6e95901c085bc5"
+  name = "github.com/nats-io/go-nats"
+  packages = [
+    ".",
+    "encoders/builtin",
+    "util",
+  ]
+  pruneopts = "UT"
+  revision = "fb0396ee0bdb8018b0fef30d6d1de798ce99cd05"
+  version = "v1.6.0"
+
+[[projects]]
+  digest = "1:cf80370e775e26aa54b8d87304244ad56e19886b422f4ede3bb4aec7ff3f83cc"
+  name = "github.com/nats-io/go-nats-streaming"
+  packages = [
+    ".",
+    "pb",
+  ]
+  pruneopts = "UT"
+  revision = "e15a53f85e4932540600a16b56f6c4f65f58176f"
+  version = "v0.4.0"
+
+[[projects]]
+  digest = "1:c3cd663f2f30b92536b9f290ac85c6310dae36a14cb8961553ae9ccf0d85ae41"
+  name = "github.com/nats-io/nuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "289cccf02c178dc782430d534e3c1f5b72af807f"
   version = "v1.0.0"
 
 [[projects]]
@@ -306,12 +360,12 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:6e30a27eac59a148b3f7a32e0ba54706b31dcde5a42f63b22cb47873b62fa343"
+  digest = "1:214775c11fd26da94a100111a62daa25339198a4f9c57cb4aab352da889f5b93"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8fb642006536c8d3760c99d4fa2389f5e2205631"
-  version = "v1.2.0"
+  revision = "2c12c60302a5a0e62ee102ca9bc996277c2f64f5"
+  version = "v1.2.1"
 
 [[projects]]
   digest = "1:c08f5d8cc28ed4dccb098121d5f1f19f708bf04e3bbd4b772ce6461de6ef1ca2"
@@ -330,17 +384,26 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:4c01180af83764c84f34ba46dcd90633fa7ae510e98ae1316a3b12556da330c9"
+  digest = "1:9a6b53bc485700206243399243a1c53e06abe65a8c10db7f0b74f4927cb330f1"
   name = "github.com/valyala/fasthttp"
   packages = [
     ".",
     "expvarhandler",
     "fasthttputil",
+    "reuseport",
     "stackless",
   ]
   pruneopts = "UT"
   revision = "e5f51c11919d4f66400334047b897ef0a94c6f3c"
   version = "v20180529"
+
+[[projects]]
+  branch = "master"
+  digest = "1:8507835fade46d48a94828b351e1f8fb83df1aa65ba1e67c9493b0a1b47abc73"
+  name = "github.com/valyala/tcplisten"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ceec8f93295a060cdb565ec25e4ccf17941dbd55"
 
 [[projects]]
   digest = "1:cd2cbc2f6693543f47cc53e2b2f9be229f017f6604322d1f0b7306b009059243"
@@ -385,7 +448,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1d35bb9f4c6ef12c5783281d6c5c97b1c6955842efb32fa8351a92aa20e0ba9e"
+  digest = "1:a5d0b5268c4bc7aafe009423f10c1b4183ff953af4612a8b480f2932041f0b84"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -393,7 +456,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "b09afc3d579e346c4a7e4705953acaf6f9e551bd"
+  revision = "dad3d9fb7b6e83d0f9ac8f54670f6334c3a287b4"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -439,6 +502,7 @@
     "github.com/gocarina/gocsv",
     "github.com/julienschmidt/httprouter",
     "github.com/kardianos/osext",
+    "github.com/matryer/vice/queues/nats",
     "github.com/paulbellamy/ratecounter",
     "github.com/pkg/profile",
     "github.com/remeh/sizedwaitgroup",
@@ -448,6 +512,7 @@
     "github.com/teris-io/shortid",
     "github.com/valyala/fasthttp",
     "github.com/valyala/fasthttp/expvarhandler",
+    "github.com/valyala/fasthttp/reuseport",
     "github.com/yl2chen/cidranger",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",

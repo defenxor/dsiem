@@ -41,7 +41,6 @@ func (e *NormalizedEvent) Valid() bool {
 			return false
 		}
 	}
-
 	return true
 }
 

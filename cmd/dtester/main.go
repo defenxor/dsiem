@@ -126,7 +126,6 @@ func sender(d *siem.Directives, addr string, port int) {
 			e := event.NormalizedEvent{}
 			e.Sensor = progName
 			e.Timestamp = time.Now().UTC().Format(time.RFC3339)
-			e.EventID = genUUID()
 			e.SrcIP = genIP(j.From, prevFrom)
 			e.DstIP = genIP(j.To, prevTo)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
@@ -156,6 +155,7 @@ func sender(d *siem.Directives, addr string, port int) {
 }
 
 func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, iter int, verbose bool) error {
+	e.EventID = genUUID()
 	b, err := json.Marshal(e)
 	if err != nil {
 		return err
@@ -165,7 +165,6 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(b))
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
-	req.Header.Set("Connection", "close")
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot create new HTTP request, " + err.Error()})
 		return err

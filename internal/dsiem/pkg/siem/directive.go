@@ -86,9 +86,11 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		go func() {
 			for {
 				evt := <-ch
-				for i := range dirchan {
-					dirchan[i] <- &evt
-				}
+				go func() {
+					for i := range dirchan {
+						dirchan[i] <- &evt
+					}
+				}()
 			}
 		}()
 	}
