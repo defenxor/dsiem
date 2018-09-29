@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bbengfort/x/lock"
 	"github.com/elastic/apm-agent-go"
 
 	"github.com/spf13/viper"
@@ -38,8 +37,8 @@ var alarmRemovalChannel chan removalChannelMsg
 var privateIPBlocks []*net.IPNet
 
 type alarm struct {
-	// sync.RWMutex
-	lock.RWMutexD
+	sync.RWMutex
+	// lock.RWMutexD
 	ID              string           `json:"alarm_id"`
 	Title           string           `json:"title"`
 	Status          string           `json:"status"`
@@ -407,11 +406,9 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 }
 
-func (a *alarm) updateElasticsearch(connID uint64) error {
-	a.RLock()
+func (a alarm) updateElasticsearch(connID uint64) error {
 	log.Info(log.M{Msg: "alarm updating Elasticsearch", BId: a.ID, CId: connID})
 	aJSON, _ := json.Marshal(a)
-	a.RUnlock()
 
 	f, err := os.OpenFile(aLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {

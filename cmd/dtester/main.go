@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -110,7 +113,18 @@ func sender(d *siem.Directives, addr string, port int) {
 	max := viper.GetInt("max")
 	conc := viper.GetInt("concurrency")
 	verbose := viper.GetBool("verbose")
-	c := http.Client{Timeout: time.Second * 5}
+
+	keepAliveTimeout := 600 * time.Second
+	timeout := 5 * time.Second
+	defaultTransport := &http.Transport{
+		Dial:                (&net.Dialer{KeepAlive: keepAliveTimeout}).Dial,
+		MaxIdleConns:        conc + 100,
+		MaxIdleConnsPerHost: conc + 100,
+	}
+	c := &http.Client{
+		Transport: defaultTransport,
+		Timeout:   timeout,
+	}
 	swg := sizedwaitgroup.New(conc)
 
 	for _, v := range d.Dirs {
@@ -125,7 +139,6 @@ func sender(d *siem.Directives, addr string, port int) {
 			}
 			e := event.NormalizedEvent{}
 			e.Sensor = progName
-			e.Timestamp = time.Now().UTC().Format(time.RFC3339)
 			e.SrcIP = genIP(j.From, prevFrom)
 			e.DstIP = genIP(j.To, prevTo)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
@@ -146,7 +159,14 @@ func sender(d *siem.Directives, addr string, port int) {
 				swg.Add()
 				go func(st int, iter int) {
 					defer swg.Done()
-					sendHTTPSingleConn(&e, &c, st, iter, verbose)
+					for {
+						err := sendHTTPSingleConn(&e, c, st, iter, verbose)
+						if err == nil {
+							break
+						}
+						log.Info(log.M{Msg: "Retrying in 3 second."})
+						time.Sleep(3 * time.Second)
+					}
 				}(j.Stage, i)
 			}
 		}
@@ -156,6 +176,7 @@ func sender(d *siem.Directives, addr string, port int) {
 
 func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, iter int, verbose bool) error {
 	e.EventID = genUUID()
+	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	b, err := json.Marshal(e)
 	if err != nil {
 		return err
@@ -170,11 +191,15 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 		return err
 	}
 	resp, err := c.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		log.Warn(log.M{Msg: "Failed to send event to dsiem, consider lowering concurrency setting: " + err.Error()})
 		return err
 	}
-	resp.Body.Close()
+
+	_, _ = io.Copy(ioutil.Discard, resp.Body) // read the body to avoid mem leak?
 
 	if verbose {
 		fmt.Println("stage:", stage, "iter:", iter)

@@ -39,8 +39,9 @@ type directiveRule struct {
 	Reliability int      `json:"reliability"`
 	Timeout     int64    `json:"timeout"`
 	StartTime   int64    `json:"start_time"`
+	EndTime     int64    `json:"end_time"`
 	Events      []string `json:"events,omitempty"`
-	Status      string   `json:"status"`
+	//	Status      string   `json:"status"`
 }
 
 type directive struct {
@@ -134,7 +135,7 @@ func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives,
 		}
 	}
 	if len(res.Dirs) == 0 {
-		return res, 0, errors.New("Cannot load any directive from " + namePattern)
+		return res, 0, errors.New("Cannot load any directive from " + path.Join(confDir, namePattern))
 	}
 	return
 }
@@ -154,6 +155,10 @@ func validateDirective(d *directive) (err error) {
 			" has wrong priority set (" + strconv.Itoa(d.Priority) + "), configuring it to 1"})
 		d.Priority = 1
 	}
+	if len(d.Rules) == 1 {
+		return errors.New(strconv.Itoa(d.ID) + " has only 1 rule and therefore will never expire")
+	}
+
 	stages := []int{}
 	for j, v := range d.Rules {
 		if v.Stage == 0 {
@@ -263,6 +268,7 @@ func validateFromTo(s string, isFirstRule bool) (err error) {
 }
 
 func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint64) bool {
+
 	if r.Type == "PluginRule" {
 		return pluginRuleCheck(e, r, connID)
 	}

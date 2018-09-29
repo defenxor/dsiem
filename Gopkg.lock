@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:6a6429b70b6af595b3c0212a4ee02d87ae11b1d95eed28bb95ce794374330cbe"
-  name = "github.com/bbengfort/x"
-  packages = ["lock"]
-  pruneopts = "UT"
-  revision = "35255fd288d0e8314c6be637d738b68f85b2bc13"
-
-[[projects]]
   digest = "1:652880afc6b57ce0a67173f552cb35ccda816493a1da6ca20e5074a66bcd083f"
   name = "github.com/buaazp/fasthttprouter"
   packages = ["."]
@@ -384,18 +376,20 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:9a6b53bc485700206243399243a1c53e06abe65a8c10db7f0b74f4927cb330f1"
+  branch = "master"
+  digest = "1:15ff3385d86ac9f94fb2a9b3d9feecbd2ed68f7705149ebec14cfb3b258d0667"
   name = "github.com/valyala/fasthttp"
   packages = [
     ".",
     "expvarhandler",
+    "fasthttpadaptor",
     "fasthttputil",
+    "pprofhandler",
     "reuseport",
     "stackless",
   ]
   pruneopts = "UT"
-  revision = "e5f51c11919d4f66400334047b897ef0a94c6f3c"
-  version = "v20180529"
+  revision = "761788a34bb692702c1447e149476362e8038a5a"
 
 [[projects]]
   branch = "master"
@@ -448,7 +442,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a5d0b5268c4bc7aafe009423f10c1b4183ff953af4612a8b480f2932041f0b84"
+  digest = "1:637f41358e1e8af072991b5b45bab7a9965659dfce96c5910a33ddb4c84a513e"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -456,7 +450,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "dad3d9fb7b6e83d0f9ac8f54670f6334c3a287b4"
+  revision = "e4b3c5e9061176387e7cea65e4dc5853801f3fb7"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -493,7 +487,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/bbengfort/x/lock",
     "github.com/buaazp/fasthttprouter",
     "github.com/dogenzaka/tsv",
     "github.com/elastic/apm-agent-go",
@@ -512,6 +505,7 @@
     "github.com/teris-io/shortid",
     "github.com/valyala/fasthttp",
     "github.com/valyala/fasthttp/expvarhandler",
+    "github.com/valyala/fasthttp/pprofhandler",
     "github.com/valyala/fasthttp/reuseport",
     "github.com/yl2chen/cidranger",
     "go.uber.org/zap",

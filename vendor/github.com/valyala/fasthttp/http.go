@@ -722,7 +722,7 @@ func marshalMultipartForm(f *multipart.Form, boundary string) ([]byte, error) {
 // boundary to w.
 func WriteMultipartForm(w io.Writer, f *multipart.Form, boundary string) error {
 	// Do not care about memory allocations here, since multipart
-	// form processing is slooow.
+	// form processing is slow.
 	if len(boundary) == 0 {
 		panic("BUG: form boundary cannot be empty")
 	}
@@ -881,10 +881,6 @@ func (req *Request) readLimitBody(r *bufio.Reader, maxBodySize int, getOnly bool
 		return errGetOnly
 	}
 
-	if req.Header.noBody() {
-		return nil
-	}
-
 	if req.MayContinue() {
 		// 'Expect: 100-continue' header found. Let the caller deciding
 		// whether to read request body or
@@ -918,7 +914,7 @@ func (req *Request) MayContinue() bool {
 // then ErrBodyTooLarge is returned.
 func (req *Request) ContinueReadBody(r *bufio.Reader, maxBodySize int) error {
 	var err error
-	contentLength := req.Header.ContentLength()
+	contentLength := req.Header.realContentLength()
 	if contentLength > 0 {
 		if maxBodySize > 0 && contentLength > maxBodySize {
 			return ErrBodyTooLarge
@@ -1109,8 +1105,11 @@ func (req *Request) Write(w *bufio.Writer) error {
 		req.Header.SetMultipartFormBoundary(req.multipartFormBoundary)
 	}
 
-	hasBody := !req.Header.noBody()
+	hasBody := !req.Header.ignoreBody()
 	if hasBody {
+		if len(body) == 0 {
+			body = req.postArgs.QueryString()
+		}
 		req.Header.SetContentLength(len(body))
 	}
 	if err = req.Header.Write(w); err != nil {
@@ -1683,14 +1682,21 @@ func parseChunkSize(r *bufio.Reader) (int, error) {
 	if err != nil {
 		return -1, err
 	}
+	for {
+		c, err := r.ReadByte()
+		if err != nil {
+			return -1, fmt.Errorf("cannot read '\r' char at the end of chunk size: %s", err)
+		}
+		// Skip any trailing whitespace after chunk size.
+		if c == ' ' {
+			continue
+		}
+		if c != '\r' {
+			return -1, fmt.Errorf("unexpected char %q at the end of chunk size. Expected %q", c, '\r')
+		}
+		break
+	}
 	c, err := r.ReadByte()
-	if err != nil {
-		return -1, fmt.Errorf("cannot read '\r' char at the end of chunk size: %s", err)
-	}
-	if c != '\r' {
-		return -1, fmt.Errorf("unexpected char %q at the end of chunk size. Expected %q", c, '\r')
-	}
-	c, err = r.ReadByte()
 	if err != nil {
 		return -1, fmt.Errorf("cannot read '\n' char at the end of chunk size: %s", err)
 	}

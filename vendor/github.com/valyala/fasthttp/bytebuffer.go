@@ -12,7 +12,11 @@ import (
 //
 // Use AcquireByteBuffer for obtaining an empty byte buffer.
 //
-// ByteBuffer is deprecated. Use github.com/valyala/bytebufferpool instead.
+// Deprecated: use github.com/valyala/bytebufferpool instead.
+//
+// WARNING: This type is going to be removed on 2018-10-01!!!
+// See https://github.com/valyala/fasthttp/pull/415 for more infomation.
+//
 type ByteBuffer bytebufferpool.ByteBuffer
 
 // Write implements io.Writer - it appends p to ByteBuffer.B

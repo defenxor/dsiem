@@ -22,6 +22,8 @@ import (
 	"github.com/fasthttp-contrib/websocket"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/expvarhandler"
+	"github.com/valyala/fasthttp/pprofhandler"
+
 	"github.com/valyala/fasthttp/reuseport"
 
 	"github.com/buaazp/fasthttprouter"
@@ -81,6 +83,8 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string,
 	router.GET("/config/:filename", handleConfFileDownload)
 	router.GET("/config/", handleConfFileList)
 	router.GET("/debug/vars/", expVarHandler)
+	router.GET("/debug/pprof/:name", pprofHandler)
+	router.GET("/debug/pprof/", pprofHandler)
 	router.POST("/config/:filename", handleConfFileUpload)
 	if mode != "cluster-backend" {
 		router.POST("/events", handleEvents)
@@ -110,6 +114,10 @@ func wsHandler(ctx *fasthttp.RequestCtx) {
 	if err != nil {
 		log.Warn(log.M{Msg: "error returned from websocket: " + err.Error()})
 	}
+}
+
+func pprofHandler(ctx *fasthttp.RequestCtx) {
+	pprofhandler.PprofHandler(ctx)
 }
 
 func expVarHandler(ctx *fasthttp.RequestCtx) {

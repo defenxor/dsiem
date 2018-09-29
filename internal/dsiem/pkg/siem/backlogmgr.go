@@ -49,7 +49,9 @@ func startWatchdogTicker() {
 			<-ticker.C
 			log.Debug(log.M{Msg: "Watchdog tick started."})
 			aLen := updateAlarmCounter()
-			log.Info(log.M{Msg: "Watchdog tick ended, # alarms:" + strconv.Itoa(aLen)})
+			log.Info(log.M{Msg: "Watchdog tick ended, # alarms:" +
+				strconv.Itoa(aLen) + readEPS()})
+			// debug.FreeOSMemory()
 		}
 	}()
 }
@@ -64,10 +66,27 @@ func readEPS() (res string) {
 func (blogs *backlogs) delete(b *backLog) {
 	log.Info(log.M{Msg: "backlog manager removing backlog in 10s", DId: b.Directive.ID, BId: b.ID})
 	go func() {
-		time.Sleep(3 * time.Second)
+		// first prevent another blogs.delete to enter here
+		blogs.Lock() // to protect bl.Lock??
+		b.Lock()
+		if b.deleted {
+			// already in the closing process
+			b.Unlock()
+			blogs.Unlock()
+			return
+		}
+		log.Debug(log.M{Msg: "backlog manager setting status to deleted", DId: b.Directive.ID, BId: b.ID})
+		b.deleted = true
+		b.Unlock()
+		blogs.Unlock()
+		// prevent further event write by manager, and stop backlog ticker
+		close(b.chDone)
+		time.Sleep(30 * time.Second)
+		// signal backlog worker to exit
 		log.Debug(log.M{Msg: "backlog manager closing data channel", DId: b.Directive.ID, BId: b.ID})
 		close(b.chData)
-		time.Sleep(5 * time.Second)
+		time.Sleep(30 * time.Second)
+		log.Debug(log.M{Msg: "backlog manager deleting backlog from map", DId: b.Directive.ID, BId: b.ID})
 		blogs.Lock()
 		delete(blogs.bl, b.ID)
 		blogs.Unlock()
@@ -140,7 +159,11 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp backLog, err e
 
 	copyDirective(&b.Directive, d, e)
 	initBackLogRules(&b.Directive, e)
-	b.Directive.Rules[0].StartTime = time.Now().Unix()
+	t, err := time.Parse(time.RFC3339, e.Timestamp)
+	if err != nil {
+		return
+	}
+	b.Directive.Rules[0].StartTime = t.Unix()
 	b.chData = make(chan *event.NormalizedEvent)
 	b.chFound = make(chan bool)
 	b.chDone = make(chan struct{}, 1)
@@ -156,11 +179,11 @@ func initBackLogRules(d *directive, e *event.NormalizedEvent) {
 	for i := range d.Rules {
 		// the first rule cannot use reference to other
 		if i == 0 {
-			d.Rules[i].Status = "active"
+			// d.Rules[i].Status = "active"
 			continue
 		}
 
-		d.Rules[i].Status = "inactive"
+		// d.Rules[i].Status = "inactive"
 
 		// for the rest, refer to the referenced stage if its not ANY or HOME_NET or !HOME_NET
 		// if the reference is ANY || HOME_NET || !HOME_NET then refer to event if its in the format of

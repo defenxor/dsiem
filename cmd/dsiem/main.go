@@ -33,17 +33,18 @@ var eventChannel chan event.NormalizedEvent
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(serverCmd)
+	rootCmd.PersistentFlags().Bool("dev", false, "Enable development environment specific setting")
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
-	serverCmd.Flags().Bool("dev", false, "Enable development environment specific setting")
-	serverCmd.Flags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
-	serverCmd.Flags().StringP("mode", "m", "standalone", "deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
-	serverCmd.Flags().String("msq", "", "nats-streaming cluster name to use for frontend - backend communication.")
-	serverCmd.Flags().String("frontend", "", "frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).")
-	serverCmd.Flags().String("node", "", "unique node name to use when deployed in cluster mode.")
+	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
+	serverCmd.Flags().String("msq", "", "Nats-streaming cluster name to use for frontend - backend communication.")
+	serverCmd.Flags().String("frontend", "", "Frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).")
+	serverCmd.Flags().String("node", "", "Unique node name to use when deployed in cluster mode.")
 	serverCmd.Flags().StringSliceP("tags", "t", []string{"Identified Threat", "False Positive", "Valid Threat", "Security Incident"},
 		"Alarm tags to use, the first one will be assigned to new alarms")
 	serverCmd.Flags().Int("medRiskMin", 3,
@@ -52,10 +53,11 @@ func init() {
 		"Maximum alarm risk value to be classified as Medium risk. Higher value than this will be classified as High risk")
 	serverCmd.Flags().StringSliceP("status", "s", []string{"Open", "In-Progress", "Closed"},
 		"Alarm status to use, the first one will be assigned to new alarms")
+	validateCmd.Flags().StringP("filePattern", "f", "directives_*.json", "Directive file pattern glob to validate")
+	viper.BindPFlag("dev", rootCmd.PersistentFlags().Lookup("dev"))
+	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
-	viper.BindPFlag("dev", serverCmd.Flags().Lookup("dev"))
-	viper.BindPFlag("debug", serverCmd.Flags().Lookup("debug"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
@@ -66,6 +68,7 @@ func init() {
 	viper.BindPFlag("status", serverCmd.Flags().Lookup("status"))
 	viper.BindPFlag("medRiskMin", serverCmd.Flags().Lookup("medRiskMin"))
 	viper.BindPFlag("medRiskMax", serverCmd.Flags().Lookup("medRiskMax"))
+	viper.BindPFlag("filePattern", validateCmd.Flags().Lookup("filePattern"))
 }
 
 func initConfig() {
@@ -105,6 +108,25 @@ var versionCmd = &cobra.Command{
 	Long:  `Print the version and build information`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version, buildTime)
+	},
+}
+
+var validateCmd = &cobra.Command{
+	Use:   "validate",
+	Short: "Validate directive files",
+	Long:  `Test loading and parsing directives from specified configuration files`,
+	Run: func(cmd *cobra.Command, args []string) {
+		log.Setup(viper.GetBool("debug"))
+		pattern := viper.GetString("filePattern")
+		d, err := fs.GetDir(viper.GetBool("dev"))
+		if err != nil {
+			exit("Cannot get current directory??", err)
+		}
+		confDir := path.Join(d, "configs")
+		_, _, err = siem.LoadDirectivesFromFile(confDir, pattern)
+		if err != nil {
+			exit("Error occur", err)
+		}
 	},
 }
 
