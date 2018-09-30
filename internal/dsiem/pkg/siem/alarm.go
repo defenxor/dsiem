@@ -171,12 +171,14 @@ func upsertAlarmFromBackLog(b backLog, connID uint64, tx *elasticapm.Transaction
 	a.SrcIPs = b.SrcIPs
 	a.DstIPs = b.DstIPs
 
-	if xc.IntelEnabled {
+	// only do these if tx is not nil, if it is that means this is just a timeout signal update
+	// from backlog ticker
+	if xc.IntelEnabled && tx != nil {
 		// do intel check in the background
 		a.asyncIntelCheck(connID, tx)
 	}
 
-	if xc.VulnEnabled {
+	if xc.VulnEnabled && tx != nil {
 		// do vuln check in the background
 		a.asyncVulnCheck(&b, connID, tx)
 	}

@@ -58,7 +58,7 @@ func (b *backLog) worker(initialEvent *event.NormalizedEvent) {
 				b.debug("worker chData closed, exiting", 0)
 				return
 			}
-			// b.info("backlog incoming event", evt.ConnID)
+			b.debug("backlog incoming event", evt.ConnID)
 			b.RLock()
 			cs := b.CurrentStage
 			if cs <= 1 {
@@ -79,10 +79,18 @@ func (b *backLog) worker(initialEvent *event.NormalizedEvent) {
 			b.chFound <- true // answer quickly
 			b.RUnlock()
 
-			if !b.isTimeInOrder(evt) { // discard out of order event
+			// validate date conversion
+			ts, err := str.TimeStampToUnix(evt.Timestamp)
+			if err != nil {
+				b.warn("cannot parse event timestamp, discarding it", evt.ConnID)
 				continue
 			}
-
+			// discard out of order event
+			if !b.isTimeInOrder(idx, ts) {
+				b.warn("event timestamp out of order, discarding it", evt.ConnID)
+				continue
+			}
+			b.debug("processing incoming event", evt.ConnID)
 			// this should be under go routine, but chFound need sync access (for first match, backlog creation)
 			if cs == 1 {
 				b.processMatchedEvent(evt, idx)
@@ -113,7 +121,8 @@ func (b *backLog) worker(initialEvent *event.NormalizedEvent) {
 			}
 			ticker.Stop() // prevent next signal, we're exiting the go routine
 			b.info("backlog expired, deleting it", 0)
-			// b.setStatus("timeout", 0, tx)
+			b.setRuleStatus("timeout", 0)
+			b.updateAlarm(0, nil)
 			b.delete()
 		}
 	}()
@@ -122,21 +131,14 @@ func (b *backLog) worker(initialEvent *event.NormalizedEvent) {
 }
 
 // no modification so use value receiver
-func (b backLog) isTimeInOrder(e *event.NormalizedEvent) bool {
+func (b backLog) isTimeInOrder(idx int, ts int64) bool {
 	// exit if in first stage
-	cs := b.CurrentStage
-	if cs == 1 {
+	if idx == 0 {
 		return true
 	}
-	prevStageTime := b.Directive.Rules[cs-1].EndTime
-	t, err := time.Parse(time.RFC3339, e.Timestamp)
-	if err != nil {
-		b.warn("Cannot parse the event timestamp: "+err.Error(), e.ConnID)
-		return false
-	}
-	currTime := t.Unix() + 5 // allow up to 5 seconds diff to compensate for concurrent write
-	if prevStageTime > currTime {
-		fmt.Println("Event discarded prevTime:", prevStageTime, " eventTime:", t.Unix())
+	prevStageTime := b.Directive.Rules[idx-1].EndTime
+	ts = ts + 5 // allow up to 5 seconds diff to compensate for concurrent write
+	if prevStageTime > ts {
 		return false
 	}
 	return true
@@ -166,6 +168,15 @@ func (b backLog) isExpired() bool {
 	return true
 }
 
+func (b *backLog) setRuleEndTime(e *event.NormalizedEvent) {
+	b.Lock()
+	s := b.CurrentStage
+	idx := s - 1
+	ts, _ := str.TimeStampToUnix(e.Timestamp)
+	b.Directive.Rules[idx].EndTime = ts
+	b.Unlock()
+}
+
 func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 
 	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
@@ -192,8 +203,8 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	}
 	// b.info("setting status to finish", e.ConnID)
 	// the new event has caused events_count == occurrence
-	// b.setStatus("finished", e.ConnID, tx)
-	b.setRuleEndTime(idx)
+	b.setRuleStatus("finished", e.ConnID)
+	b.setRuleEndTime(e)
 	b.updateAlarm(e.ConnID, tx)
 
 	// if it causes the last stage to reach events_count == occurrence, delete it
@@ -205,9 +216,11 @@ func (b *backLog) processMatchedEvent(e *event.NormalizedEvent, idx int) {
 	}
 
 	// reach max occurrence, but not in last stage. Increase stage.
-	if err := b.increaseStage(e); err != nil {
-		return
-	}
+	b.increaseStage(e)
+	// set rule startTime for the new stage
+	b.setRuleStartTime(e)
+
+	// stageIncreased, update alarm to publish new stage startTime
 	b.updateAlarm(e.ConnID, tx)
 
 	// b.setStatus("active", e.ConnID, tx)
@@ -247,6 +260,14 @@ func (b *backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
 	upsertAlarmFromBackLog(*b, connID, tx)
 }
 
+func (b *backLog) setRuleStatus(status string, connID uint64) {
+	b.Lock()
+	s := b.CurrentStage
+	idx := s - 1
+	b.Directive.Rules[idx].Status = status
+	b.Unlock()
+}
+
 func (b *backLog) appendandWriteEvent(e *event.NormalizedEvent, idx int, tx *elasticapm.Transaction) {
 	b.Lock()
 	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
@@ -280,31 +301,24 @@ func (b backLog) isStageReachMaxEvtCount(idx int) (reachMaxEvtCount bool) {
 	return
 }
 
-func (b *backLog) setRuleEndTime(idx int) {
-	b.Lock()
-	b.Directive.Rules[idx].EndTime = time.Now().Unix()
-	b.Unlock()
-}
-
-func (b *backLog) increaseStage(e *event.NormalizedEvent) error {
+func (b *backLog) increaseStage(e *event.NormalizedEvent) {
 	b.Lock()
 	n := int32(b.CurrentStage)
 	b.CurrentStage = int(atomic.AddInt32(&n, 1))
 	if b.CurrentStage > b.HighestStage {
 		b.CurrentStage = b.HighestStage
 	}
-	idx := b.CurrentStage - 1
-	t, err := time.Parse(time.RFC3339, e.Timestamp)
-	if err != nil {
-		b.Unlock()
-		b.warn("cannot parse event timestamp "+e.Timestamp, e.ConnID)
-		return err
-	}
-	b.Directive.Rules[idx].StartTime = t.Unix()
-	b.StatusTime = time.Now().Unix()
 	b.Unlock()
 	b.info("stage increased", e.ConnID)
-	return nil
+}
+
+func (b *backLog) setRuleStartTime(e *event.NormalizedEvent) {
+	b.Lock()
+	idx := b.CurrentStage - 1
+	t, _ := str.TimeStampToUnix(e.Timestamp)
+	b.Directive.Rules[idx].StartTime = t
+	b.StatusTime = time.Now().Unix()
+	b.Unlock()
 }
 
 func (b backLog) calcRisk(connID uint64) (riskChanged bool) {

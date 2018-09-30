@@ -41,7 +41,7 @@ type directiveRule struct {
 	StartTime   int64    `json:"start_time"`
 	EndTime     int64    `json:"end_time"`
 	Events      []string `json:"events,omitempty"`
-	//	Status      string   `json:"status"`
+	Status      string   `json:"status"`
 }
 
 type directive struct {

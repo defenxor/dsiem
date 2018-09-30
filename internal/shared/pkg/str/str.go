@@ -3,6 +3,7 @@ package str
 import (
 	"strconv"
 	"strings"
+	"time"
 )
 
 // AppendUniq append string to slice if it its not there yet
@@ -54,4 +55,13 @@ func RefToDigit(v string) (ret int64, ok bool) {
 		ok = true
 	}
 	return
+}
+
+// TimeStampToUnix converts s in RFC3339 format to epoch
+func TimeStampToUnix(s string) (int64, error) {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return 0, err
+	}
+	return t.Unix(), nil
 }

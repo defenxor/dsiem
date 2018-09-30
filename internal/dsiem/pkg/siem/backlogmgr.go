@@ -18,8 +18,6 @@ type backlogs struct {
 	bl map[string]*backLog
 }
 
-// allBacklogs doesnt need a lock, its size is fixed to the number
-// of all loaded directives
 var allBacklogs []backlogs
 
 var backlogCounter = expvar.NewInt("backlog_counter")
@@ -34,10 +32,9 @@ func InitBackLog(logFile string) (err error) {
 
 func updateAlarmCounter() (count int) {
 	alarms.RLock()
-	log.Debug(log.M{Msg: "counter obtained alarm lock"})
 	count = len(alarms.al)
-	alarmCounter.Set(int64(count))
 	alarms.RUnlock()
+	alarmCounter.Set(int64(count))
 	return
 }
 
@@ -64,7 +61,7 @@ func readEPS() (res string) {
 }
 
 func (blogs *backlogs) delete(b *backLog) {
-	log.Info(log.M{Msg: "backlog manager removing backlog in 10s", DId: b.Directive.ID, BId: b.ID})
+	log.Info(log.M{Msg: "backlog manager removing backlog in 60s", DId: b.Directive.ID, BId: b.ID})
 	go func() {
 		// first prevent another blogs.delete to enter here
 		blogs.Lock() // to protect bl.Lock??
