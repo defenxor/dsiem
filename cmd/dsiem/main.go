@@ -29,6 +29,7 @@ const (
 var version string
 var buildTime string
 var eventChannel chan event.NormalizedEvent
+var backPressureChannel chan bool
 
 func init() {
 	cobra.OnInitialize(initConfig)
@@ -39,6 +40,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
+	serverCmd.Flags().IntP("maxDelay", "d", 300, "Maximum processing delay in seconds before new connection from logstash will be rejected")
 	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
@@ -58,6 +60,7 @@ func init() {
 	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
+	viper.BindPFlag("maxDelay", serverCmd.Flags().Lookup("maxDelay"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
@@ -181,6 +184,7 @@ external message queue.`,
 		}
 
 		eventChannel = make(chan event.NormalizedEvent)
+		backPressureChannel = make(chan bool)
 
 		log.Setup(viper.GetBool("debug"))
 		log.Info(log.M{Msg: "Starting " + progName + " " + versionCmd.Version +
@@ -209,7 +213,7 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}
-			err = siem.InitBackLog(path.Join(logDir, aEventsLogs))
+			err = siem.InitBackLog(path.Join(logDir, aEventsLogs), backPressureChannel)
 			if err != nil {
 				exit("Cannot initialize backlog", err)
 			}
@@ -219,7 +223,7 @@ external message queue.`,
 			}
 		}
 
-		err = server.Start(eventChannel, confDir, webDir, mode, msq, progName, node, addr, port)
+		err = server.Start(eventChannel, backPressureChannel, confDir, webDir, mode, msq, progName, node, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}

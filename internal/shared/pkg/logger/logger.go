@@ -13,13 +13,16 @@ func Setup(enableDebugMessage bool) (err error) {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		cfg.DisableStacktrace = true
 		cfg.DisableCaller = true
-		zlog, err = cfg.Build()
+		zlog, err = cfg.Build(zap.AddStacktrace(zap.ErrorLevel))
 	} else {
 		cfg := zap.NewProductionConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 		cfg.DisableCaller = true
+		cfg.OutputPaths = []string{"stdout"}
+		cfg.ErrorOutputPaths = []string{"stderr"}
 		zlog, err = cfg.Build()
 	}
 	if err == nil {
@@ -49,6 +52,11 @@ func Warn(m M) {
 // Debug log with info level
 func Debug(m M) {
 	zlog.Debug(m.Msg, parseFields(&m)...)
+}
+
+// Error log with error level
+func Error(m M) {
+	zlog.Error(m.Msg, parseFields(&m)...)
 }
 
 func parseFields(m *M) (f []zapcore.Field) {

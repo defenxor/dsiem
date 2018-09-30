@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/elastic/apm-agent-go"
 
@@ -417,6 +418,7 @@ func (a alarm) updateElasticsearch(connID uint64) error {
 		return err
 	}
 	defer f.Close()
+	f.SetDeadline(time.Now().Add(60 * time.Second))
 
 	_, err = f.WriteString(string(aJSON) + "\n")
 	return err

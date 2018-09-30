@@ -74,14 +74,14 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	}
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
-	var dirchan []chan *event.NormalizedEvent
+	var dirchan []chan event.NormalizedEvent
 	for i := 0; i < total; i++ {
-		dirchan = append(dirchan, make(chan *event.NormalizedEvent))
+		dirchan = append(dirchan, make(chan event.NormalizedEvent))
 		blogs := backlogs{}
 		blogs.id = i
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
 		allBacklogs = append(allBacklogs, blogs)
-		go blogs.manager(&uCases.Dirs[i], dirchan[i])
+		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i])
 
 		// copy incoming events to all directive channels
 		go func() {
@@ -89,7 +89,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 				evt := <-ch
 				go func() {
 					for i := range dirchan {
-						dirchan[i] <- &evt
+						dirchan[i] <- evt
 					}
 				}()
 			}
@@ -267,7 +267,7 @@ func validateFromTo(s string, isFirstRule bool) (err error) {
 	return nil
 }
 
-func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint64) bool {
+func doesEventMatchRule(e event.NormalizedEvent, r directiveRule, connID uint64) bool {
 
 	if r.Type == "PluginRule" {
 		return pluginRuleCheck(e, r, connID)
@@ -278,7 +278,7 @@ func doesEventMatchRule(e *event.NormalizedEvent, r *directiveRule, connID uint6
 	return false
 }
 
-func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
+func taxonomyRuleCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (ret bool) {
 	// product is required and category is required
 	if r.Category != e.Category {
 		return
@@ -312,7 +312,7 @@ func taxonomyRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64
 	return
 }
 
-func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
+func pluginRuleCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (ret bool) {
 	if e.PluginID != r.PluginID {
 		return
 	}
@@ -330,7 +330,7 @@ func pluginRuleCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) 
 	return
 }
 
-func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret bool) {
+func ipPortCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (ret bool) {
 	eSrcInHomeNet := e.SrcIPInHomeNet()
 	if r.From == "HOME_NET" && eSrcInHomeNet == false {
 		return
@@ -365,7 +365,7 @@ func ipPortCheck(e *event.NormalizedEvent, r *directiveRule, connID uint64) (ret
 	return true
 }
 
-func copyDirective(dst *directive, src *directive, e *event.NormalizedEvent) {
+func copyDirective(dst *directive, src directive, e event.NormalizedEvent) {
 	dst.ID = src.ID
 	dst.Priority = src.Priority
 	dst.Kingdom = src.Kingdom

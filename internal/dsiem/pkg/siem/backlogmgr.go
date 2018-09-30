@@ -14,8 +14,9 @@ import (
 
 type backlogs struct {
 	sync.RWMutex
-	id int
-	bl map[string]*backLog
+	id   int
+	bl   map[string]*backLog
+	bpCh chan bool
 }
 
 var allBacklogs []backlogs
@@ -24,9 +25,9 @@ var backlogCounter = expvar.NewInt("backlog_counter")
 var alarmCounter = expvar.NewInt("alarm_counter")
 
 // InitBackLog initialize backlog and ticker
-func InitBackLog(logFile string) (err error) {
+func InitBackLog(logFile string, backPressureChannel chan<- bool) (err error) {
 	bLogFile = logFile
-	startWatchdogTicker()
+	startWatchdog(backPressureChannel)
 	return
 }
 
@@ -38,8 +39,7 @@ func updateAlarmCounter() (count int) {
 	return
 }
 
-// this checks for timed-out backlog and discard it
-func startWatchdogTicker() {
+func startWatchdog(backPressureChannel chan<- bool) {
 	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		for {
@@ -51,6 +51,47 @@ func startWatchdogTicker() {
 			// debug.FreeOSMemory()
 		}
 	}()
+
+	// note, initDirective must have completed before this
+	go func() {
+		sWait := time.Duration(30)
+		timer := time.NewTimer(time.Second * sWait)
+		go func() {
+			for {
+				<-timer.C
+				backPressureChannel <- false
+				timer.Reset(time.Second * sWait)
+			}
+		}()
+		out := mergeWait()
+		for range out {
+			n := <-out
+			if n == true {
+				backPressureChannel <- true
+				timer.Reset(time.Second * sWait)
+			}
+		}
+	}()
+}
+
+func mergeWait() <-chan bool {
+	out := make(chan bool)
+	var wg sync.WaitGroup
+	l := len(allBacklogs)
+	wg.Add(l)
+	for i := range allBacklogs {
+		go func(i int) {
+			for v := range allBacklogs[i].bpCh {
+				out <- v
+			}
+			wg.Done()
+		}(i)
+	}
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
 }
 
 func readEPS() (res string) {
@@ -60,39 +101,19 @@ func readEPS() (res string) {
 	return
 }
 
-func (blogs *backlogs) delete(b *backLog) {
-	log.Info(log.M{Msg: "backlog manager removing backlog in 60s", DId: b.Directive.ID, BId: b.ID})
+func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
+	blogs.bpCh = make(chan bool)
+	ticker := time.NewTicker(time.Second)
 	go func() {
-		// first prevent another blogs.delete to enter here
-		blogs.Lock() // to protect bl.Lock??
-		b.Lock()
-		if b.deleted {
-			// already in the closing process
-			b.Unlock()
-			blogs.Unlock()
-			return
+		for {
+			<-ticker.C
+			select {
+			case blogs.bpCh <- false:
+				ticker.Stop()
+			default:
+			}
 		}
-		log.Debug(log.M{Msg: "backlog manager setting status to deleted", DId: b.Directive.ID, BId: b.ID})
-		b.deleted = true
-		b.Unlock()
-		blogs.Unlock()
-		// prevent further event write by manager, and stop backlog ticker
-		close(b.chDone)
-		time.Sleep(30 * time.Second)
-		// signal backlog worker to exit
-		log.Debug(log.M{Msg: "backlog manager closing data channel", DId: b.Directive.ID, BId: b.ID})
-		close(b.chData)
-		time.Sleep(30 * time.Second)
-		log.Debug(log.M{Msg: "backlog manager deleting backlog from map", DId: b.Directive.ID, BId: b.ID})
-		blogs.Lock()
-		delete(blogs.bl, b.ID)
-		blogs.Unlock()
-		alarmRemovalChannel <- removalChannelMsg{b.ID}
 	}()
-}
-
-func (blogs *backlogs) manager(d *directive, ch <-chan *event.NormalizedEvent) {
-	blogs.bl = make(map[string]*backLog)
 
 	for {
 		evt := <-ch
@@ -127,7 +148,7 @@ func (blogs *backlogs) manager(d *directive, ch <-chan *event.NormalizedEvent) {
 			continue
 		}
 		// now for new backlog
-		if !doesEventMatchRule(evt, &d.Rules[0], evt.ConnID) {
+		if !doesEventMatchRule(evt, d.Rules[0], evt.ConnID) {
 			continue // back to chan loop
 		}
 
@@ -137,14 +158,46 @@ func (blogs *backlogs) manager(d *directive, ch <-chan *event.NormalizedEvent) {
 			continue
 		}
 		blogs.Lock() // got hit with concurrent map write here
-		blogs.bl[b.ID] = &b
+		blogs.bl[b.ID] = b
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
 		blogs.bl[b.ID].worker(evt)
 	}
 }
 
-func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp backLog, err error) {
+func (blogs *backlogs) delete(b *backLog) {
+	log.Info(log.M{Msg: "backlog manager removing backlog in 60s", DId: b.Directive.ID, BId: b.ID})
+	go func() {
+		// first prevent another blogs.delete to enter here
+		blogs.Lock() // to protect bl.Lock??
+		b.Lock()
+		if b.deleted {
+			// already in the closing process
+			b.Unlock()
+			blogs.Unlock()
+			return
+		}
+		log.Debug(log.M{Msg: "backlog manager setting status to deleted", DId: b.Directive.ID, BId: b.ID})
+		b.deleted = true
+		b.Unlock()
+		blogs.Unlock()
+		// prevent further event write by manager, and stop backlog ticker
+		close(b.chDone)
+		time.Sleep(30 * time.Second)
+		// signal backlog worker to exit
+		log.Debug(log.M{Msg: "backlog manager closing data channel", DId: b.Directive.ID, BId: b.ID})
+		close(b.chData)
+		time.Sleep(30 * time.Second)
+		log.Debug(log.M{Msg: "backlog manager deleting backlog from map", DId: b.Directive.ID, BId: b.ID})
+		blogs.Lock()
+		blogs.bl[b.ID].bLogs = nil
+		delete(blogs.bl, b.ID)
+		blogs.Unlock()
+		alarmRemovalChannel <- removalChannelMsg{b.ID}
+	}()
+}
+
+func createNewBackLog(d directive, e event.NormalizedEvent) (bp *backLog, err error) {
 	bid, err := idgen.GenerateID()
 	if err != nil {
 		return
@@ -161,18 +214,18 @@ func createNewBackLog(d *directive, e *event.NormalizedEvent) (bp backLog, err e
 		return
 	}
 	b.Directive.Rules[0].StartTime = t.Unix()
-	b.chData = make(chan *event.NormalizedEvent)
+	b.chData = make(chan event.NormalizedEvent)
 	b.chFound = make(chan bool)
 	b.chDone = make(chan struct{}, 1)
 
 	b.CurrentStage = 1
 	b.HighestStage = len(d.Rules)
-	bp = b
+	bp = &b
 
 	return
 }
 
-func initBackLogRules(d *directive, e *event.NormalizedEvent) {
+func initBackLogRules(d *directive, e event.NormalizedEvent) {
 	for i := range d.Rules {
 		// the first rule cannot use reference to other
 		if i == 0 {

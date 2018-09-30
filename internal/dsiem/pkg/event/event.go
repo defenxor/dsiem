@@ -27,6 +27,7 @@ type NormalizedEvent struct {
 	CustomLabel2 string `json:"custom_label2,omitempty"`
 	CustomData3  string `json:"custom_data3,omitempty"`
 	CustomLabel3 string `json:"custom_label3,omitempty"`
+	RcvdTime     int64  `json:"rcvd_time"` // for backpressure control
 }
 
 // Valid check if event contains valid content for required fields
@@ -48,6 +49,12 @@ func (e *NormalizedEvent) Valid() bool {
 func (e *NormalizedEvent) FromBytes(b []byte) error {
 	err := json.Unmarshal(b, &e)
 	return err
+}
+
+// ToBytes return byte rep of event
+func (e *NormalizedEvent) ToBytes() (b []byte, err error) {
+	b, err = json.Marshal(e)
+	return
 }
 
 // SrcIPInHomeNet check if event SrcIP is is HOME_NET

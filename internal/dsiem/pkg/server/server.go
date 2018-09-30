@@ -43,6 +43,7 @@ var errchan <-chan error
 var msq string
 var epsCounter = expvar.NewInt("eps_counter")
 var eventChannel chan<- event.NormalizedEvent
+var overloadFlag bool
 
 type configFile struct {
 	Filename string `json:"filename"`
@@ -51,8 +52,18 @@ type configFiles struct {
 	Files []configFile `json:"files"`
 }
 
+func initEPSTicker() {
+	ticker := time.NewTicker(time.Second)
+	go func() {
+		for {
+			<-ticker.C
+			epsCounter.Set(rateCounter.Rate())
+		}
+	}()
+}
+
 // Start starts the server
-func Start(ch chan<- event.NormalizedEvent, confd string, webd string,
+func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
 	serverMode string, msqServer string, msqPrefix string, nodeName string, addr string, port int) error {
 
 	if a := net.ParseIP(addr); a == nil {
@@ -79,6 +90,8 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string,
 
 	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
 	initWSServer()
+	initEPSTicker()
+	initOverLoadDetector(bpCh)
 	router := fasthttprouter.New()
 	router.GET("/config/:filename", handleConfFileDownload)
 	router.GET("/config/", handleConfFileList)
@@ -98,6 +111,19 @@ func Start(ch chan<- event.NormalizedEvent, confd string, webd string,
 
 	err = fasthttp.Serve(ln, router.Handler)
 	return err
+}
+
+func initOverLoadDetector(ch <-chan bool) {
+	go func() {
+		for {
+			overloadFlag = <-ch
+			if overloadFlag {
+				log.Warn(log.M{Msg: "Received overload signal from backend"})
+			} else {
+				log.Debug(log.M{Msg: "Received not overload signal from backend"})
+			}
+		}
+	}()
 }
 
 func initMsgQueue(msq string, prefix, nodeName string) {
@@ -263,10 +289,17 @@ func isCfgFileNameValid(filename string) (ok bool) {
 func handleEvents(ctx *fasthttp.RequestCtx) {
 
 	clientAddr := ctx.RemoteAddr().String()
-	evt := event.NormalizedEvent{}
 	connID := increaseConnCounter()
 	rateCounter.Incr(1)
-	epsCounter.Set(rateCounter.Rate())
+
+	if overloadFlag {
+		log.Info(log.M{Msg: "Overload condition, rejecting request from " + clientAddr, CId: connID})
+		fmt.Fprintf(ctx, "backend overloaded")
+		ctx.SetStatusCode(fasthttp.StatusTooManyRequests)
+		return
+	}
+
+	evt := event.NormalizedEvent{}
 
 	msg := ctx.PostBody()
 	err := evt.FromBytes(msg)
@@ -284,8 +317,11 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(fasthttp.StatusTeapot)
 		return
 	}
-	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
+
 	evt.ConnID = connID
+	evt.RcvdTime = time.Now().Unix()
+
+	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 
 	if mode == "standalone" {
 		// push the event, timeout in 10s to avoid open fd overload
@@ -300,11 +336,21 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	}
 
 	// mode = cluster-frontend
+
+	// TODO: replace this, inefficient but needed to keep connID and rcvdTime in msg
+	bEvt, err := evt.ToBytes()
+	if err != nil {
+		log.Warn(log.M{Msg: "Cannot convert event from " + clientAddr + " to message queue format. err: " + err.Error(), CId: connID})
+		fmt.Fprintf(ctx, "Cannot parse the submitted event\n")
+		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
+		return
+	}
+
 	select {
 	case <-time.After(10 * time.Second):
 		log.Info(log.M{Msg: "message queue timed out!", CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
-	case sender <- msg:
+	case sender <- bEvt:
 		log.Debug(log.M{Msg: "Event pushed", CId: connID})
 		//fmt.Println("msg pushed:\n", string(msg))
 	case err := <-errchan:
