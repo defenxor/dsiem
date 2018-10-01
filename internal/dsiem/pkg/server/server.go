@@ -26,7 +26,10 @@ import (
 
 	"github.com/valyala/fasthttp/reuseport"
 
+	"context"
+
 	"github.com/buaazp/fasthttprouter"
+	"golang.org/x/time/rate"
 
 	rc "github.com/paulbellamy/ratecounter"
 )
@@ -64,7 +67,7 @@ func initEPSTicker() {
 
 // Start starts the server
 func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
-	serverMode string, msqServer string, msqPrefix string, nodeName string, addr string, port int) error {
+	serverMode string, maxEPS int, msqServer string, msqPrefix string, nodeName string, addr string, port int) error {
 
 	if a := net.ParseIP(addr); a == nil {
 		return errors.New(addr + " is not a valid IP address")
@@ -92,6 +95,7 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	initWSServer()
 	initEPSTicker()
 	initOverLoadDetector(bpCh)
+
 	router := fasthttprouter.New()
 	router.GET("/config/:filename", handleConfFileDownload)
 	router.GET("/config/", handleConfFileList)
@@ -100,7 +104,11 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	router.GET("/debug/pprof/", pprofHandler)
 	router.POST("/config/:filename", handleConfFileUpload)
 	if mode != "cluster-backend" {
-		router.POST("/events", handleEvents)
+		if maxEPS == 0 {
+			router.POST("/events", handleEvents)
+		} else {
+			router.POST("/events", rateLimit(maxEPS, maxEPS, 3 * time.Second, handleEvents))
+		}
 		router.GET("/eps/", wsHandler)
 		router.ServeFiles("/ui/*filepath", webDir)
 	}
@@ -116,14 +124,33 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 func initOverLoadDetector(ch <-chan bool) {
 	go func() {
 		for {
-			overloadFlag = <-ch
-			if overloadFlag {
-				log.Warn(log.M{Msg: "Received overload signal from backend"})
-			} else {
-				log.Debug(log.M{Msg: "Received not overload signal from backend"})
+			m := <-ch
+			if m != overloadFlag {
+				log.Info(log.M{Msg: "Received overload status " + strconv.FormatBool(m) + " from backend."})
 			}
+			overloadFlag = m
 		}
 	}()
+}
+
+func rateLimit(rps, burst int, wait time.Duration, h fasthttp.RequestHandler) fasthttp.RequestHandler {
+	l := rate.NewLimiter(rate.Limit(rps), burst)
+
+	return func(c *fasthttp.RequestCtx) {
+		// create a new context from the request with the wait timeout
+		ctx, cancel := context.WithTimeout(context.Background(), wait)
+		defer cancel() // always cancel the context!
+
+		// Wait errors out if the request cannot be processed within
+		// the deadline. This is preemptive, instead of waiting the
+		// entire duration.
+		if err := l.Wait(ctx); err != nil {
+			fmt.Fprintf(c, "Too many requests\n")
+			c.SetStatusCode(fasthttp.StatusTooManyRequests)
+			return
+		}
+		h(c)
+	}
 }
 
 func initMsgQueue(msq string, prefix, nodeName string) {

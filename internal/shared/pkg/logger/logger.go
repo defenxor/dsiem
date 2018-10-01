@@ -41,22 +41,22 @@ type M struct {
 
 // Info log with info level
 func Info(m M) {
-	zlog.Info(m.Msg, parseFields(&m)...)
+	go zlog.Info(m.Msg, parseFields(&m)...)
 }
 
 // Warn log with info level
 func Warn(m M) {
-	zlog.Warn(m.Msg, parseFields(&m)...)
+	go zlog.Warn(m.Msg, parseFields(&m)...)
 }
 
 // Debug log with info level
 func Debug(m M) {
-	zlog.Debug(m.Msg, parseFields(&m)...)
+	go zlog.Debug(m.Msg, parseFields(&m)...)
 }
 
 // Error log with error level
 func Error(m M) {
-	zlog.Error(m.Msg, parseFields(&m)...)
+	go zlog.Error(m.Msg, parseFields(&m)...)
 }
 
 func parseFields(m *M) (f []zapcore.Field) {

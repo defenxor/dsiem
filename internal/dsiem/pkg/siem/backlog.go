@@ -93,7 +93,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			}
 
 			if b.isUnderPressure(evt.RcvdTime, int64(maxDelay)) {
-				b.warn("backlog is under pressure", evt.ConnID)
+				b.debug("backlog is under pressure", evt.ConnID)
 				select {
 				case b.bLogs.bpCh <- true:
 				default:
@@ -105,7 +105,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			if cs == 1 {
 				b.processMatchedEvent(evt, idx)
 			} else {
-				b.processMatchedEvent(evt, idx) // use go routine later
+				go b.processMatchedEvent(evt, idx) // use go routine later
 			}
 			// b.info("setting found to true", evt.ConnID)
 		}

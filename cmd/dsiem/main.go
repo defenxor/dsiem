@@ -40,7 +40,8 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
-	serverCmd.Flags().IntP("maxDelay", "d", 300, "Maximum processing delay in seconds before new connection from logstash will be rejected")
+	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before new connection from logstash will be rejected")
+	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. events/second before new connection from logstash will be rejected")
 	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
@@ -61,6 +62,7 @@ func init() {
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
 	viper.BindPFlag("maxDelay", serverCmd.Flags().Lookup("maxDelay"))
+	viper.BindPFlag("maxEPS", serverCmd.Flags().Lookup("maxEPS"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
@@ -164,6 +166,7 @@ external message queue.`,
 		msq := viper.GetString("msq")
 		node := viper.GetString("node")
 		frontend := viper.GetString("frontend")
+		maxEPS := viper.GetInt("maxEPS")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -223,7 +226,9 @@ external message queue.`,
 			}
 		}
 
-		err = server.Start(eventChannel, backPressureChannel, confDir, webDir, mode, msq, progName, node, addr, port)
+		err = server.Start(
+			eventChannel, backPressureChannel, confDir, webDir,
+			mode, maxEPS, msq, progName, node, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}

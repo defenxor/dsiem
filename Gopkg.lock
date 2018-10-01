@@ -196,12 +196,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:645110e089152bd0f4a011a2648fbb0e4df5977be73ca605781157ac297f50c4"
+  digest = "1:044bb363b17077710e79605aec51f6d41d43c84c4a7cb1399ec4d3b76c566771"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   pruneopts = "UT"
-  revision = "fa473d140ef3c6adf42d6b391fe76707f1f243c8"
-  version = "v1.0.0"
+  revision = "4632c4f49fb352596def0d4005bcbe7f38fe9008"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:4ce94f3d2074662c04677db471456feb56078244ebcfe3789e6e95901c085bc5"
@@ -377,7 +377,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:15ff3385d86ac9f94fb2a9b3d9feecbd2ed68f7705149ebec14cfb3b258d0667"
+  digest = "1:b6208702dc4b0f8cbefb7656c8b868b03d138311cea3e9eeb5ead7284e3f37dd"
   name = "github.com/valyala/fasthttp"
   packages = [
     ".",
@@ -389,7 +389,7 @@
     "stackless",
   ]
   pruneopts = "UT"
-  revision = "761788a34bb692702c1447e149476362e8038a5a"
+  revision = "4087354082e1ab9a610705ec9f7949603d3c46ab"
 
 [[projects]]
   branch = "master"
@@ -442,6 +442,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:76ee51c3f468493aff39dbacc401e8831fbb765104cbf613b89bef01cf4bad70"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  pruneopts = "UT"
+  revision = "4dfa2610cdf3b287375bbba5b8f2a14d3b01d8de"
+
+[[projects]]
+  branch = "master"
   digest = "1:637f41358e1e8af072991b5b45bab7a9965659dfce96c5910a33ddb4c84a513e"
   name = "golang.org/x/sys"
   packages = [
@@ -466,6 +474,14 @@
   pruneopts = "UT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:c9e7a4b4d47c0ed205d257648b0e5b0440880cb728506e318f8ac7cd36270bc4"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "UT"
+  revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
 
 [[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
@@ -510,6 +526,7 @@
     "github.com/yl2chen/cidranger",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
+    "golang.org/x/time/rate",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

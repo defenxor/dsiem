@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,13 +14,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/remeh/sizedwaitgroup"
+	"golang.org/x/time/rate"
 
 	"dsiem/internal/dsiem/pkg/event"
 	"dsiem/internal/dsiem/pkg/siem"
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 
+	"github.com/remeh/sizedwaitgroup"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,14 +43,16 @@ func init() {
 	testCmd.Flags().IntP("max", "m", 1000, "Maximum number of events to send per rule")
 	testCmd.Flags().StringP("homenet", "i", "192.168.0.1", "IP address to use to represent HOME_NET. This IP must already be defined in dsiem assets configuration")
 	testCmd.Flags().StringP("file", "f", "directives_*.json", "file glob pattern to load directives from")
-	testCmd.Flags().IntP("concurrency", "c", 500, "number of HTTP post to send concurrently")
+	testCmd.Flags().IntP("rps", "r", 500, "number of HTTP post request per second")
+	testCmd.Flags().IntP("concurrency", "c", 50, "number of concurrent HTTP post to submit")
 	testCmd.Flags().BoolP("verbose", "v", false, "print sent events to console")
 	viper.BindPFlag("address", testCmd.Flags().Lookup("address"))
-	viper.BindPFlag("concurrency", testCmd.Flags().Lookup("concurrency"))
 	viper.BindPFlag("port", testCmd.Flags().Lookup("port"))
 	viper.BindPFlag("homenet", testCmd.Flags().Lookup("homenet"))
 	viper.BindPFlag("file", testCmd.Flags().Lookup("file"))
 	viper.BindPFlag("max", testCmd.Flags().Lookup("max"))
+	viper.BindPFlag("rps", testCmd.Flags().Lookup("rps"))
+	viper.BindPFlag("concurrency", testCmd.Flags().Lookup("concurrency"))
 	viper.BindPFlag("verbose", testCmd.Flags().Lookup("verbose"))
 }
 
@@ -64,13 +68,8 @@ func main() {
 }
 
 func exit(msg string, err error) {
-	if viper.GetBool("debug") {
-		fmt.Println(msg)
-		panic(err)
-	} else {
-		fmt.Println("Exiting: " + msg + ": " + err.Error())
-		os.Exit(1)
-	}
+	fmt.Println("Exiting: " + msg + ": " + err.Error())
+	os.Exit(1)
 }
 
 var rootCmd = &cobra.Command{
@@ -95,7 +94,7 @@ var testCmd = &cobra.Command{
 Send events to dsiem at defined address and port`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		log.Setup(false)
+		log.Setup(true)
 
 		addr := viper.GetString("address")
 		port := viper.GetInt("port")
@@ -111,11 +110,18 @@ Send events to dsiem at defined address and port`,
 
 func sender(d *siem.Directives, addr string, port int) {
 	max := viper.GetInt("max")
+	// conc := viper.GetInt("concurrency")
+	rps := viper.GetInt("rps")
 	conc := viper.GetInt("concurrency")
 	verbose := viper.GetBool("verbose")
-
+	// conc := rps / 50
+	//conc = 1
+	//time.Sleep(3 * time.Second)
+	//fmt.Println("using conc: ", conc)
+	//time.Sleep(5 * time.Second)
 	keepAliveTimeout := 600 * time.Second
 	timeout := 5 * time.Second
+
 	defaultTransport := &http.Transport{
 		Dial:                (&net.Dialer{KeepAlive: keepAliveTimeout}).Dial,
 		MaxIdleConns:        conc + 100,
@@ -126,6 +132,7 @@ func sender(d *siem.Directives, addr string, port int) {
 		Timeout:   timeout,
 	}
 	swg := sizedwaitgroup.New(conc)
+	fn := rateLimit(rps, rps, timeout, sendHTTPSingleConn)
 
 	for _, v := range d.Dirs {
 		var prevPortTo int
@@ -160,18 +167,42 @@ func sender(d *siem.Directives, addr string, port int) {
 				go func(st int, iter int) {
 					defer swg.Done()
 					for {
-						err := sendHTTPSingleConn(&e, c, st, iter, verbose)
-						if err == nil {
+						for {
+							//	err := fn(&e, c, st, iter, verbose)
+							err := fn(&e, c, j.Stage, i, verbose)
+							if err != nil {
+								log.Info(log.M{Msg: "Received error: " + err.Error() + ". Retrying in 3 second."})
+								time.Sleep(3 * time.Second)
+								continue
+							}
 							break
 						}
-						log.Info(log.M{Msg: "Retrying in 3 second."})
-						time.Sleep(3 * time.Second)
 					}
 				}(j.Stage, i)
 			}
 		}
 	}
 	swg.Wait()
+}
+
+type eventPoster func(e *event.NormalizedEvent, c *http.Client, stage int, iter int, verbose bool) error
+
+func rateLimit(rps, burst int, wait time.Duration, h eventPoster) eventPoster {
+	l := rate.NewLimiter(rate.Limit(rps), burst)
+
+	return func(e *event.NormalizedEvent, c *http.Client, stage int, iter int, verbose bool) error {
+		// create a new context from the request with the wait timeout
+		ctx, cancel := context.WithTimeout(context.Background(), wait)
+		defer cancel() // always cancel the context!
+
+		// Wait errors out if the request cannot be processed within
+		// the deadline. This is preemptive, instead of waiting the
+		// entire duration.
+		if err := l.Wait(ctx); err != nil {
+			return err
+		}
+		return h(e, c, stage, iter, verbose)
+	}
 }
 
 func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, iter int, verbose bool) error {
@@ -187,7 +218,7 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 	if err != nil {
-		log.Warn(log.M{Msg: "Cannot create new HTTP request, " + err.Error()})
+		//log.Warn(log.M{Msg: "Cannot create new HTTP request, " + err.Error()})
 		return err
 	}
 	resp, err := c.Do(req)
@@ -195,14 +226,14 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		log.Warn(log.M{Msg: "Failed to send event to dsiem, consider lowering concurrency setting: " + err.Error()})
+		//log.Warn(log.M{Msg: "Failed to send event to dsiem, consider lowering EPS or concurrency setting: " + err.Error()})
 		return err
 	}
 
 	_, _ = io.Copy(ioutil.Discard, resp.Body) // read the body to avoid mem leak?
 
 	if verbose {
-		fmt.Println("stage:", stage, "iter:", iter)
+		fmt.Println("Sent event for stage:", stage, "order #:", iter)
 		fmt.Println(evt)
 	}
 	return nil
