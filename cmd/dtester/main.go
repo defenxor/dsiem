@@ -167,16 +167,14 @@ func sender(d *siem.Directives, addr string, port int) {
 				go func(st int, iter int) {
 					defer swg.Done()
 					for {
-						for {
-							//	err := fn(&e, c, st, iter, verbose)
-							err := fn(&e, c, j.Stage, i, verbose)
-							if err != nil {
-								log.Info(log.M{Msg: "Received error: " + err.Error() + ". Retrying in 3 second."})
-								time.Sleep(3 * time.Second)
-								continue
-							}
-							break
+						//	err := fn(&e, c, st, iter, verbose)
+						err := fn(&e, c, j.Stage, i, verbose)
+						if err != nil {
+							log.Info(log.M{Msg: "Received error: " + err.Error() + ". Retrying in 3 second."})
+							time.Sleep(3 * time.Second)
+							continue
 						}
+						break
 					}
 				}(j.Stage, i)
 			}
@@ -191,13 +189,8 @@ func rateLimit(rps, burst int, wait time.Duration, h eventPoster) eventPoster {
 	l := rate.NewLimiter(rate.Limit(rps), burst)
 
 	return func(e *event.NormalizedEvent, c *http.Client, stage int, iter int, verbose bool) error {
-		// create a new context from the request with the wait timeout
 		ctx, cancel := context.WithTimeout(context.Background(), wait)
-		defer cancel() // always cancel the context!
-
-		// Wait errors out if the request cannot be processed within
-		// the deadline. This is preemptive, instead of waiting the
-		// entire duration.
+		defer cancel()
 		if err := l.Wait(ctx); err != nil {
 			return err
 		}
