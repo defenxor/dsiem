@@ -28,9 +28,10 @@ type configFiles struct {
 	Files []configFile `json:"files"`
 }
 
-func initMsgQueue(msq string, prefix string, nodeName string) {
+func initMsgQueue(msqURL string, msq string, prefix string, nodeName string) {
 	opt := nats.WithStreaming(msq, prefix+"-"+nodeName)
 	transport := nats.New(opt)
+	transport.NatsAddr = msqURL
 	// transport := nats.New()
 	receiver = transport.Receive(prefix + "_" + "events")
 	errchan = transport.ErrChan()
@@ -45,11 +46,12 @@ func getConfigFileList(frontendAddr string) (*configFiles, error) {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body))
 	if err != nil {
 		return nil, err
 	}
 	cf := configFiles{}
-	err = json.Unmarshal(body, &cf.Files)
+	err = json.Unmarshal(body, &cf)
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +82,13 @@ func downloadConfigFiles(confDir string, frontendAddr string, node string) error
 }
 
 // InitWorker start worker
-func InitWorker(ch chan<- event.NormalizedEvent, msq string, msqPrefix string,
+func InitWorker(ch chan<- event.NormalizedEvent, msqURL string, msq string, msqPrefix string,
 	nodeName string, confDir string, frontend string) error {
 	if err := downloadConfigFiles(confDir, frontend, nodeName); err != nil {
 		return err
 	}
 
-	initMsgQueue(msq, msqPrefix, nodeName)
+	initMsgQueue(msqURL, msq, msqPrefix, nodeName)
 
 	go func() {
 		for {
@@ -106,14 +108,13 @@ func InitWorker(ch chan<- event.NormalizedEvent, msq string, msqPrefix string,
 	}()
 	go func() {
 		for err := range errchan {
-			log.Warn(log.M{Msg: "Error received from from receive message queue: " + err.Error()})
+			log.Warn(log.M{Msg: "Error received from receive message queue: " + err.Error()})
 		}
 	}()
 
 	return nil
 }
 
-// https://golangcode.com/download-a-file-from-a-url/
 func downloadFile(filepath string, url string) error {
 	resp, err := http.Get(url)
 	if err != nil {

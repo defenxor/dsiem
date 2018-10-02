@@ -39,6 +39,77 @@ type M struct {
 	CId uint64 // conn ID
 }
 
+//Info log with info level
+func Info(m M) {
+	/*
+		var f [3]zapcore.Field{}
+		if m.DId != 0 {
+			f[0] = zap.Int("directive", m.DId)
+		}
+		if m.BId != "" {
+			f[1] = zap.String("backlog", m.BId)
+		}
+		if m.CId != 0 {
+			f[2] = zap.Uint64("connId", m.CId)
+		}
+		s := f[0:2]
+	*/
+	go zlog.Info(m.Msg)
+}
+
+//Warn log with warn level
+func Warn(m M) {
+	/*
+		var f [3]zapcore.Field
+		if m.DId != 0 {
+			f[0] = zap.Int("directive", m.DId)
+		}
+		if m.BId != "" {
+			f[1] = zap.String("backlog", m.BId)
+		}
+		if m.CId != 0 {
+			f[2] = zap.Uint64("connId", m.CId)
+		}
+		s := f[0:2]
+	*/
+	go zlog.Warn(m.Msg)
+}
+
+//Debug log with warn level
+func Debug(m M) {
+	/*
+		var f [3]zapcore.Field
+		if m.DId != 0 {
+			f[0] = zap.Int("directive", m.DId)
+		}
+		if m.BId != "" {
+			f[1] = zap.String("backlog", m.BId)
+		}
+		if m.CId != 0 {
+			f[2] = zap.Uint64("connId", m.CId)
+		}
+		s := f[0:2]
+	*/
+	go zlog.Debug(m.Msg)
+}
+
+//Error log with warn level
+func Error(m M) {
+	var f [3]zapcore.Field
+	if m.DId != 0 {
+		f[0] = zap.Int("directive", m.DId)
+	}
+	if m.BId != "" {
+		f[1] = zap.String("backlog", m.BId)
+	}
+	if m.CId != 0 {
+		f[2] = zap.Uint64("connId", m.CId)
+	}
+	s := f[0:2]
+	go zlog.Error(m.Msg, s...)
+}
+
+/* nice to look at but too expensive
 // Info log with info level
 func Info(m M) {
 	go zlog.Info(m.Msg, parseFields(&m)...)
@@ -72,3 +143,4 @@ func parseFields(m *M) (f []zapcore.Field) {
 	}
 	return
 }
+*/

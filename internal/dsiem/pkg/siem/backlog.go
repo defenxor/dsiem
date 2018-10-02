@@ -124,7 +124,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			default:
 			}
 			if debug {
-				b.dumpCurrentRule(false)
+				//	b.dumpCurrentRule(false)
 			}
 			if !b.isExpired() {
 				continue

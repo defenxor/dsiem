@@ -25,21 +25,9 @@ var backlogCounter = expvar.NewInt("backlog_counter")
 var alarmCounter = expvar.NewInt("alarm_counter")
 
 // InitBackLog initialize backlog and ticker
-func InitBackLog(logFile string, backPressureChannel chan<- bool) (err error) {
+func InitBackLog(logFile string, backPressureChannel chan<- bool, holdDuration int) (err error) {
 	bLogFile = logFile
-	startWatchdog(backPressureChannel)
-	return
-}
 
-func updateAlarmCounter() (count int) {
-	alarms.RLock()
-	count = len(alarms.al)
-	alarms.RUnlock()
-	alarmCounter.Set(int64(count))
-	return
-}
-
-func startWatchdog(backPressureChannel chan<- bool) {
 	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		for {
@@ -54,7 +42,7 @@ func startWatchdog(backPressureChannel chan<- bool) {
 
 	// note, initDirective must have completed before this
 	go func() {
-		sWait := time.Duration(30)
+		sWait := time.Duration(holdDuration)
 		timer := time.NewTimer(time.Second * sWait)
 		go func() {
 			for {
@@ -72,6 +60,7 @@ func startWatchdog(backPressureChannel chan<- bool) {
 			}
 		}
 	}()
+	return
 }
 
 func mergeWait() <-chan bool {
@@ -92,6 +81,14 @@ func mergeWait() <-chan bool {
 		close(out)
 	}()
 	return out
+}
+
+func updateAlarmCounter() (count int) {
+	alarms.RLock()
+	count = len(alarms.al)
+	alarms.RUnlock()
+	alarmCounter.Set(int64(count))
+	return
 }
 
 func readEPS() (res string) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -114,11 +115,6 @@ func sender(d *siem.Directives, addr string, port int) {
 	rps := viper.GetInt("rps")
 	conc := viper.GetInt("concurrency")
 	verbose := viper.GetBool("verbose")
-	// conc := rps / 50
-	//conc = 1
-	//time.Sleep(3 * time.Second)
-	//fmt.Println("using conc: ", conc)
-	//time.Sleep(5 * time.Second)
 	keepAliveTimeout := 600 * time.Second
 	timeout := 5 * time.Second
 
@@ -170,7 +166,7 @@ func sender(d *siem.Directives, addr string, port int) {
 						//	err := fn(&e, c, st, iter, verbose)
 						err := fn(&e, c, j.Stage, i, verbose)
 						if err != nil {
-							log.Info(log.M{Msg: "Received error: " + err.Error() + ". Retrying in 3 second."})
+							log.Info(log.M{Msg: "Error: " + err.Error() + ". Retrying in 3 second."})
 							time.Sleep(3 * time.Second)
 							continue
 						}
@@ -211,7 +207,6 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 	if err != nil {
-		//log.Warn(log.M{Msg: "Cannot create new HTTP request, " + err.Error()})
 		return err
 	}
 	resp, err := c.Do(req)
@@ -219,11 +214,13 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		//log.Warn(log.M{Msg: "Failed to send event to dsiem, consider lowering EPS or concurrency setting: " + err.Error()})
 		return err
 	}
+	_, _ = io.Copy(ioutil.Discard, resp.Body) // read the body to avoid mem leak? internet says we has to do this
 
-	_, _ = io.Copy(ioutil.Discard, resp.Body) // read the body to avoid mem leak?
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("Received HTTP " + strconv.Itoa(resp.StatusCode) + " status")
+	}
 
 	if verbose {
 		fmt.Println("Sent event for stage:", stage, "order #:", iter)

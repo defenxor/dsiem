@@ -42,10 +42,12 @@ func init() {
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
 	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before new connection from logstash will be rejected")
 	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. events/second before new connection from logstash will be rejected")
+	serverCmd.Flags().IntP("holdDuration", "n", 60, "Min. number of seconds that incoming events will be blocked during overload")
 	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
-	serverCmd.Flags().String("msq", "", "Nats-streaming cluster name to use for frontend - backend communication.")
+	serverCmd.Flags().String("msqUrl", "nats://dsiem-nats:4222", "Nats-streaming URL to use for frontend - backend communication.")
+	serverCmd.Flags().String("msq", "test-cluster", "Nats-streaming cluster name to use for frontend - backend communication.")
 	serverCmd.Flags().String("frontend", "", "Frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).")
 	serverCmd.Flags().String("node", "", "Unique node name to use when deployed in cluster mode.")
 	serverCmd.Flags().StringSliceP("tags", "t", []string{"Identified Threat", "False Positive", "Valid Threat", "Security Incident"},
@@ -63,9 +65,11 @@ func init() {
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
 	viper.BindPFlag("maxDelay", serverCmd.Flags().Lookup("maxDelay"))
 	viper.BindPFlag("maxEPS", serverCmd.Flags().Lookup("maxEPS"))
+	viper.BindPFlag("holdDuration", serverCmd.Flags().Lookup("holdDuration"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
+	viper.BindPFlag("msqUrl", serverCmd.Flags().Lookup("msqUrl"))
 	viper.BindPFlag("msq", serverCmd.Flags().Lookup("msq"))
 	viper.BindPFlag("node", serverCmd.Flags().Lookup("node"))
 	viper.BindPFlag("frontend", serverCmd.Flags().Lookup("frontend"))
@@ -101,10 +105,10 @@ var rootCmd = &cobra.Command{
 	Use:   "dsiem",
 	Short: "SIEM for ELK stack",
 	Long: `
-DSiem is a security event correlation engine for ELK stack.
+DSiem is an event correlation engine for ELK stack.
 
-DSiem provides OSSIM-style event correlation, and relies on Filebeat, Logstash, 
-and Elasticsearch to do the rest.`,
+DSiem provides OSSIM-style correlation for normalized logs/events, and relies on 
+Filebeat, Logstash, and Elasticsearch to do the rest.`,
 }
 
 var versionCmd = &cobra.Command{
@@ -163,10 +167,12 @@ external message queue.`,
 		port := viper.GetInt("port")
 		pp := viper.GetString("pprof")
 		mode := viper.GetString("mode")
+		msqURL := viper.GetString("msqUrl")
 		msq := viper.GetString("msq")
 		node := viper.GetString("node")
 		frontend := viper.GetString("frontend")
 		maxEPS := viper.GetInt("maxEPS")
+		holdDuration := viper.GetInt("holdDuration")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -194,7 +200,7 @@ external message queue.`,
 			" in " + mode + " mode."})
 
 		if mode == "cluster-backend" {
-			if err := worker.InitWorker(eventChannel, msq, progName, node, confDir, frontend); err != nil {
+			if err := worker.InitWorker(eventChannel, msqURL, msq, progName, node, confDir, frontend); err != nil {
 				exit("Cannot start backend worker process", err)
 			}
 		}
@@ -216,7 +222,8 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}
-			err = siem.InitBackLog(path.Join(logDir, aEventsLogs), backPressureChannel)
+			err = siem.InitBackLog(path.Join(logDir, aEventsLogs),
+				backPressureChannel, holdDuration)
 			if err != nil {
 				exit("Cannot initialize backlog", err)
 			}
@@ -228,7 +235,7 @@ external message queue.`,
 
 		err = server.Start(
 			eventChannel, backPressureChannel, confDir, webDir,
-			mode, maxEPS, msq, progName, node, addr, port)
+			mode, maxEPS, msqURL, msq, progName, node, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}

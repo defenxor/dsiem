@@ -67,7 +67,7 @@ func initEPSTicker() {
 
 // Start starts the server
 func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
-	serverMode string, maxEPS int, msqServer string, msqPrefix string, nodeName string, addr string, port int) error {
+	serverMode string, maxEPS int, msqURL string, msqCluster string, msqPrefix string, nodeName string, addr string, port int) error {
 
 	if a := net.ParseIP(addr); a == nil {
 		return errors.New(addr + " is not a valid IP address")
@@ -77,10 +77,10 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	}
 
 	mode = serverMode
-	msq = msqServer
+	msq = msqCluster
 
 	if mode == "cluster-frontend" {
-		initMsgQueue(msqServer, msqPrefix, nodeName)
+		initMsgQueue(msqURL, msq, msqPrefix, nodeName)
 	}
 
 	// no need to check this, toctou issue
@@ -107,7 +107,7 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 		if maxEPS == 0 {
 			router.POST("/events", handleEvents)
 		} else {
-			router.POST("/events", rateLimit(maxEPS, maxEPS, 3 * time.Second, handleEvents))
+			router.POST("/events", rateLimit(maxEPS, maxEPS, 3*time.Second, handleEvents))
 		}
 		router.GET("/eps/", wsHandler)
 		router.ServeFiles("/ui/*filepath", webDir)
@@ -126,7 +126,8 @@ func initOverLoadDetector(ch <-chan bool) {
 		for {
 			m := <-ch
 			if m != overloadFlag {
-				log.Info(log.M{Msg: "Received overload status " + strconv.FormatBool(m) + " from backend."})
+				log.Info(log.M{Msg: "Received overload status change from " + strconv.FormatBool(overloadFlag) +
+					" to " + strconv.FormatBool(m) + " from backend"})
 			}
 			overloadFlag = m
 		}
@@ -153,10 +154,10 @@ func rateLimit(rps, burst int, wait time.Duration, h fasthttp.RequestHandler) fa
 	}
 }
 
-func initMsgQueue(msq string, prefix, nodeName string) {
+func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
 	opt := nats.WithStreaming(msq, prefix+"-"+nodeName)
 	transport := nats.New(opt)
-	//transport := nats.New()
+	transport.NatsAddr = msqURL
 	sender = transport.Send(prefix + "_" + "events")
 	errchan = transport.ErrChan()
 }
@@ -321,7 +322,7 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 
 	if overloadFlag {
 		log.Info(log.M{Msg: "Overload condition, rejecting request from " + clientAddr, CId: connID})
-		fmt.Fprintf(ctx, "backend overloaded")
+		fmt.Fprintf(ctx, "backend overloaded\n")
 		ctx.SetStatusCode(fasthttp.StatusTooManyRequests)
 		return
 	}
