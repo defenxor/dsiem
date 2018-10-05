@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"bytes"
 	"dsiem/internal/dsiem/pkg/event"
 	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
@@ -14,7 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/matryer/vice/queues/nats"
+	"github.com/francoispqt/gojay"
+
+	"dsiem/internal/vice/pkg/nats"
 )
 
 var transport nats.Transport
@@ -32,6 +33,7 @@ func initMsgQueue(msqURL string, msq string, prefix string, nodeName string) {
 	opt := nats.WithStreaming(msq, prefix+"-"+nodeName)
 	transport := nats.New(opt)
 	transport.NatsAddr = msqURL
+	transport.NatsStreamingQGroup = nodeName
 	// transport := nats.New()
 	receiver = transport.Receive(prefix + "_" + "events")
 	errchan = transport.ErrChan()
@@ -91,18 +93,20 @@ func InitWorker(ch chan<- event.NormalizedEvent, msqURL string, msq string, msqP
 	initMsgQueue(msqURL, msq, msqPrefix, nodeName)
 
 	go func() {
+		defer transport.Stop()
 		for {
 			msg := <-receiver
 			evt := event.NormalizedEvent{}
-			err := json.NewDecoder(bytes.NewReader(msg)).Decode(&evt)
+			// err := json.NewDecoder(bytes.NewReader(msg)).Decode(&evt)
 			// err := evt.FromBytes(msg)
+			err := gojay.Unmarshal(msg, &evt)
 			if err != nil {
 				// log.Warn(log.M{Msg: "Error decoding event from message queue: " + err.Error()})
 				fmt.Println("Error decoding json on receiver: ", err.Error())
 				fmt.Println(string(msg))
 				continue
 			}
-			//		fmt.Println("msg recevd:\n", string(msg))
+			// fmt.Println("msg recevd:\n", string(msg))
 			ch <- evt
 		}
 	}()

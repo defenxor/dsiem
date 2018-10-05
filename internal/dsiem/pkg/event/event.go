@@ -7,27 +7,27 @@ import (
 
 // NormalizedEvent represents data received from logstash
 type NormalizedEvent struct {
-	ConnID       uint64 `json:"conn_id,omitempty"`
-	EventID      string `json:"event_id"`
-	Timestamp    string `json:"timestamp"`
-	Sensor       string `json:"sensor"`
-	PluginID     int    `json:"plugin_id"`
-	PluginSID    int    `json:"plugin_sid"`
-	Product      string `json:"product"`
-	Category     string `json:"category"`
-	SubCategory  string `json:"subcategory,omitempty"`
-	SrcIP        string `json:"src_ip"`
-	SrcPort      int    `json:"src_port"`
-	DstIP        string `json:"dst_ip"`
-	DstPort      int    `json:"dst_port"`
-	Protocol     string `json:"protocol"`
-	CustomData1  string `json:"custom_data1,omitempty"`
-	CustomLabel1 string `json:"custom_label1,omitempty"`
-	CustomData2  string `json:"custom_data2,omitempty"`
-	CustomLabel2 string `json:"custom_label2,omitempty"`
-	CustomData3  string `json:"custom_data3,omitempty"`
-	CustomLabel3 string `json:"custom_label3,omitempty"`
-	RcvdTime     int64  `json:"rcvd_time"` // for backpressure control
+	ConnID       uint64 `gojay:"conn_id,omitempty"`
+	EventID      string `gojay:"event_id"`
+	Timestamp    string `gojay:"timestamp"`
+	Sensor       string `gojay:"sensor"`
+	PluginID     int    `gojay:"plugin_id,omitempty"`
+	PluginSID    int    `gojay:"plugin_sid,omitempty"`
+	Product      string `gojay:"product,omitempty"`
+	Category     string `gojay:"category,omitempty"`
+	SubCategory  string `gojay:"subcategory,omitempty"`
+	SrcIP        string `gojay:"src_ip"`
+	SrcPort      int    `gojay:"src_port"`
+	DstIP        string `gojay:"dst_ip"`
+	DstPort      int    `gojay:"dst_port"`
+	Protocol     string `gojay:"protocol"`
+	CustomData1  string `gojay:"custom_data1,omitempty"`
+	CustomLabel1 string `gojay:"custom_label1,omitempty"`
+	CustomData2  string `gojay:"custom_data2,omitempty"`
+	CustomLabel2 string `gojay:"custom_label2,omitempty"`
+	CustomData3  string `gojay:"custom_data3,omitempty"`
+	CustomLabel3 string `gojay:"custom_label3,omitempty"`
+	RcvdTime     int64  `gojay:"rcvd_time,omitempty"` // for backpressure control
 }
 
 // Valid check if event contains valid content for required fields

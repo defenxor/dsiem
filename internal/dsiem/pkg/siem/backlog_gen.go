@@ -7,11 +7,11 @@ import "github.com/francoispqt/gojay"
 // UnmarshalJSONObject implements gojay's UnmarshalerJSONObject
 func (v *siemAlarmEvents) UnmarshalJSONObject(dec *gojay.Decoder, k string) error {
 	switch k {
-	case "alarm_id":
+	case "iD":
 		return dec.String(&v.ID)
 	case "stage":
 		return dec.Int(&v.Stage)
-	case "event_id":
+	case "event":
 		return dec.String(&v.Event)
 	}
 	return nil
@@ -22,9 +22,9 @@ func (v *siemAlarmEvents) NKeys() int { return 3 }
 
 // MarshalJSONObject implements gojay's MarshalerJSONObject
 func (v *siemAlarmEvents) MarshalJSONObject(enc *gojay.Encoder) {
-	enc.StringKey("alarm_id", v.ID)
+	enc.StringKey("iD", v.ID)
 	enc.IntKey("stage", v.Stage)
-	enc.StringKey("event_id", v.Event)
+	enc.StringKey("event", v.Event)
 }
 
 // IsNil returns wether the structure is nil value or not

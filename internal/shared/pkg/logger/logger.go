@@ -6,9 +6,11 @@ import (
 )
 
 var zlog *zap.Logger
+var enableDebugMessage bool
 
 // Setup initialize logger
-func Setup(enableDebugMessage bool) (err error) {
+func Setup(dbg bool) (err error) {
+	enableDebugMessage = dbg
 	if enableDebugMessage {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -107,6 +109,9 @@ func Warn(m M) {
 
 //Debug log with warn level
 func Debug(m M) {
+	if !enableDebugMessage {
+		return
+	}
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		go zlog.Debug(m.Msg)
 		return
@@ -175,21 +180,6 @@ func Error(m M) {
 // Info log with info level
 func Info(m M) {
 	go zlog.Info(m.Msg, parseFields(&m)...)
-}
-
-// Warn log with info level
-func Warn(m M) {
-	go zlog.Warn(m.Msg, parseFields(&m)...)
-}
-
-// Debug log with info level
-func Debug(m M) {
-	go zlog.Debug(m.Msg, parseFields(&m)...)
-}
-
-// Error log with error level
-func Error(m M) {
-	go zlog.Error(m.Msg, parseFields(&m)...)
 }
 
 func parseFields(m *M) (f []zapcore.Field) {

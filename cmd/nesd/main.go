@@ -26,7 +26,7 @@ func init() {
 	rootCmd.AddCommand(serverCmd)
 	serverCmd.Flags().StringP("address", "a", "127.0.0.1", "IP address to listen on")
 	serverCmd.Flags().IntP("port", "p", 8081, "TCP port to listen on")
-	serverCmd.Flags().StringP("csvdir", "d", "127.0.0.1", "directory of Nessus CSV scan results")
+	serverCmd.Flags().StringP("csvdir", "d", "", "directory of Nessus CSV scan results")
 	serverCmd.Flags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))

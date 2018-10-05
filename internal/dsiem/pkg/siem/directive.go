@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jonhoo/drwmutex"
 )
 
 const (
@@ -78,6 +80,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	for i := 0; i < total; i++ {
 		dirchan = append(dirchan, make(chan event.NormalizedEvent))
 		blogs := backlogs{}
+		blogs.DRWMutex = drwmutex.New()
 		blogs.id = i
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
 		allBacklogs = append(allBacklogs, blogs)

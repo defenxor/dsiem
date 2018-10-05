@@ -143,6 +143,14 @@
   revision = "69b34d4ec901851247ae7e77d33909caf9df99ed"
 
 [[projects]]
+  branch = "master"
+  digest = "1:098cb714c6c9d8612cf12959d7ed698f18242ae69ecc4f9679822552236a4020"
+  name = "github.com/jonhoo/drwmutex"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8d084fc627fc57d3cf4a2b4b8804a64e8bee10d4"
+
+[[projects]]
   digest = "1:f97285a3b0a496dcf8801072622230d513f69175665d94de60eb042d03387f6c"
   name = "github.com/julienschmidt/httprouter"
   packages = ["."]
@@ -185,23 +193,20 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:574450f59591c12b82c615f92c852aca30177f51aa7dc7d6b87cfe925ce02484"
+  digest = "1:e477efb98f2d11c7164be732e08d3757352d50faead8b1f07ccfe103a51d7fe2"
   name = "github.com/matryer/vice"
-  packages = [
-    ".",
-    "queues/nats",
-  ]
+  packages = ["."]
   pruneopts = "UT"
   revision = "15e138b209b31d038163b1e33b83fb1da5e1157d"
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:044bb363b17077710e79605aec51f6d41d43c84c4a7cb1399ec4d3b76c566771"
+  digest = "1:e32dfc6abff6a3633ef4d9a1022fd707c8ef26f1e1e8f855dc58dc415ce7c8f3"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   pruneopts = "UT"
-  revision = "4632c4f49fb352596def0d4005bcbe7f38fe9008"
-  version = "v1.1.0"
+  revision = "fe40af7a9c397fa3ddba203c38a5042c5d0475ad"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:4ce94f3d2074662c04677db471456feb56078244ebcfe3789e6e95901c085bc5"
@@ -376,7 +381,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:b6208702dc4b0f8cbefb7656c8b868b03d138311cea3e9eeb5ead7284e3f37dd"
   name = "github.com/valyala/fasthttp"
   packages = [
@@ -390,6 +394,7 @@
   ]
   pruneopts = "UT"
   revision = "4087354082e1ab9a610705ec9f7949603d3c46ab"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -509,9 +514,12 @@
     "github.com/fasthttp-contrib/websocket",
     "github.com/francoispqt/gojay",
     "github.com/gocarina/gocsv",
+    "github.com/jonhoo/drwmutex",
     "github.com/julienschmidt/httprouter",
     "github.com/kardianos/osext",
-    "github.com/matryer/vice/queues/nats",
+    "github.com/matryer/vice",
+    "github.com/nats-io/go-nats",
+    "github.com/nats-io/go-nats-streaming",
     "github.com/paulbellamy/ratecounter",
     "github.com/pkg/profile",
     "github.com/remeh/sizedwaitgroup",

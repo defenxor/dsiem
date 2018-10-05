@@ -47,12 +47,14 @@ func (v *NormalizedEvent) UnmarshalJSONObject(dec *gojay.Decoder, k string) erro
 		return dec.String(&v.CustomData3)
 	case "custom_label3":
 		return dec.String(&v.CustomLabel3)
+	case "rcvd_time":
+		return dec.Int64(&v.RcvdTime)
 	}
 	return nil
 }
 
 // NKeys returns the number of keys to unmarshal
-func (v *NormalizedEvent) NKeys() int { return 20 }
+func (v *NormalizedEvent) NKeys() int { return 21 }
 
 // MarshalJSONObject implements gojay's MarshalerJSONObject
 func (v *NormalizedEvent) MarshalJSONObject(enc *gojay.Encoder) {
@@ -60,10 +62,10 @@ func (v *NormalizedEvent) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("event_id", v.EventID)
 	enc.StringKey("timestamp", v.Timestamp)
 	enc.StringKey("sensor", v.Sensor)
-	enc.IntKey("plugin_id", v.PluginID)
-	enc.IntKey("plugin_sid", v.PluginSID)
-	enc.StringKey("product", v.Product)
-	enc.StringKey("category", v.Category)
+	enc.IntKeyOmitEmpty("plugin_id", v.PluginID)
+	enc.IntKeyOmitEmpty("plugin_sid", v.PluginSID)
+	enc.StringKeyOmitEmpty("product", v.Product)
+	enc.StringKeyOmitEmpty("category", v.Category)
 	enc.StringKeyOmitEmpty("subcategory", v.SubCategory)
 	enc.StringKey("src_ip", v.SrcIP)
 	enc.IntKey("src_port", v.SrcPort)
@@ -76,6 +78,7 @@ func (v *NormalizedEvent) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKeyOmitEmpty("custom_label2", v.CustomLabel2)
 	enc.StringKeyOmitEmpty("custom_data3", v.CustomData3)
 	enc.StringKeyOmitEmpty("custom_label3", v.CustomLabel3)
+	enc.Int64KeyOmitEmpty("rcvd_time", v.RcvdTime)
 }
 
 // IsNil returns wether the structure is nil value or not

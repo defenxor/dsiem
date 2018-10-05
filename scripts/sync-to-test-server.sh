@@ -6,5 +6,5 @@ rsync -avz --delete \
       ./ mgmt184:/home/systemadm/dev/siem/src/dsiem/
 pods=$(ssh mgmt184 -C "sudo kubectl get pods | grep dsiem | grep -v nats | grep -v apm | cut -d' ' -f1")
 for p in $pods; do
-ssh mgmt184 -C "sudo kubectl cp /home/systemadm/dev/siem/src/dsiem $p:/go/src/"
+ssh mgmt184 -C "sudo kubectl cp /home/systemadm/dev/siem/src/dsiem $p:/go/src/" &
 done

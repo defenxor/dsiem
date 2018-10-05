@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/signal"
 	"path"
+	"runtime/trace"
 
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
@@ -45,6 +49,7 @@ func init() {
 	serverCmd.Flags().IntP("holdDuration", "n", 60, "Min. number of seconds that incoming events will be blocked during overload")
 	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
+	serverCmd.Flags().Bool("trace", false, "Generate trace file for debugging.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
 	serverCmd.Flags().String("msqUrl", "nats://dsiem-nats:4222", "Nats-streaming URL to use for frontend - backend communication.")
 	serverCmd.Flags().String("msq", "test-cluster", "Nats-streaming cluster name to use for frontend - backend communication.")
@@ -68,6 +73,7 @@ func init() {
 	viper.BindPFlag("holdDuration", serverCmd.Flags().Lookup("holdDuration"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
+	viper.BindPFlag("trace", serverCmd.Flags().Lookup("trace"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
 	viper.BindPFlag("msqUrl", serverCmd.Flags().Lookup("msqUrl"))
 	viper.BindPFlag("msq", serverCmd.Flags().Lookup("msq"))
@@ -170,6 +176,7 @@ external message queue.`,
 		msqURL := viper.GetString("msqUrl")
 		msq := viper.GetString("msq")
 		node := viper.GetString("node")
+		traceFlag := viper.GetBool("trace")
 		frontend := viper.GetString("frontend")
 		maxEPS := viper.GetInt("maxEPS")
 		holdDuration := viper.GetInt("holdDuration")
@@ -184,6 +191,17 @@ external message queue.`,
 				exit("Cannot start profiler", err)
 			}
 			defer f.Stop()
+		}
+
+		if traceFlag {
+			fo, err := ioutil.TempFile(os.TempDir(), progName+"*.trace")
+			if err != nil {
+				exit("Cannot create temp file for tracer", err)
+			}
+			defer fo.Close()
+			wrt := bufio.NewWriter(fo)
+			trace.Start(wrt)
+			defer trace.Stop()
 		}
 
 		// saving the config for UI to read
@@ -240,6 +258,9 @@ external message queue.`,
 			exit("Cannot start server", err)
 		}
 
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, os.Interrupt)
+		<-signalChan
 	},
 }
 

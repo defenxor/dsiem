@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/jonhoo/drwmutex"
 	"github.com/spf13/viper"
 
 	"github.com/elastic/apm-agent-go"
@@ -21,7 +22,7 @@ import (
 var bLogFile string
 
 type backLog struct {
-	sync.RWMutex
+	drwmutex.DRWMutex
 	ID           string    `json:"backlog_id"`
 	StatusTime   int64     `json:"status_time"`
 	Risk         int       `json:"risk"`
@@ -45,7 +46,6 @@ type siemAlarmEvents struct {
 }
 
 func (b *backLog) worker(initialEvent event.NormalizedEvent) {
-
 	maxDelay := viper.GetInt("maxDelay")
 	debug := viper.GetBool("debug")
 	// first, process the initial event
@@ -60,11 +60,12 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 				return
 			}
 			b.debug("backlog incoming event", evt.ConnID)
-			b.RLock()
+			l := b.RLock()
 			cs := b.CurrentStage
 			if cs <= 1 {
 				// b.info("backlog cs <= 1", evt.ConnID)
-				b.RUnlock()
+
+				l.Unlock()
 				continue
 			}
 			// should check for currentStage rule match with event
@@ -74,11 +75,11 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			if !doesEventMatchRule(evt, currRule, evt.ConnID) {
 				// b.info("backlog doeseventmatch false", evt.ConnID)
 				b.chFound <- false
-				b.RUnlock()
+				l.Unlock()
 				continue
 			}
 			b.chFound <- true // answer quickly
-			b.RUnlock()
+			l.Unlock()
 
 			// validate date conversion
 			ts, err := str.TimeStampToUnix(evt.Timestamp)
@@ -105,6 +106,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			if cs == 1 {
 				b.processMatchedEvent(evt, idx)
 			} else {
+				runtime.Gosched()                  // let the main go routine work
 				go b.processMatchedEvent(evt, idx) // use go routine later
 			}
 			// b.info("setting found to true", evt.ConnID)
@@ -199,11 +201,11 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
 	tx.Context.SetCustom("event_id", e.EventID)
-	b.RLock()
+	l := b.RLock()
 	tx.Context.SetCustom("backlog_id", b.ID)
 	tx.Context.SetCustom("directive_id", b.Directive.ID)
 	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
-	b.RUnlock()
+	l.Unlock()
 	defer tx.End()
 	defer elasticapm.DefaultTracer.Recover(tx)
 
@@ -242,9 +244,9 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	b.updateAlarm(e.ConnID, tx)
 
 	// b.setStatus("active", e.ConnID, tx)
-	b.RLock()
+	l = b.RLock()
 	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
-	b.RUnlock()
+	l.Unlock()
 	tx.Result = "Stage increased"
 
 	// recalc risk, the new stage will have a different reliability
@@ -343,7 +345,7 @@ func (b *backLog) setRuleStartTime(e event.NormalizedEvent) {
 }
 
 func (b backLog) calcRisk(connID uint64) (riskChanged bool) {
-	b.RLock()
+	l := b.RLock()
 	s := b.CurrentStage
 	idx := s - 1
 	from := b.Directive.Rules[idx].From
@@ -358,7 +360,7 @@ func (b backLog) calcRisk(connID uint64) (riskChanged bool) {
 
 	reliability := b.Directive.Rules[idx].Reliability
 	priority := b.Directive.Priority
-	b.RUnlock()
+	l.Unlock()
 	risk := priority * reliability * value / 25
 
 	if risk != pRisk {
@@ -373,8 +375,8 @@ func (b backLog) calcRisk(connID uint64) (riskChanged bool) {
 
 // need to use ptr receiver for bLogs.delete
 func (b *backLog) delete() {
-	b.RLock()
-	defer b.RUnlock()
+	l := b.RLock()
+	defer l.Unlock()
 	if b.deleted {
 		return
 	}

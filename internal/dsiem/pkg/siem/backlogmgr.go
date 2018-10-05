@@ -8,12 +8,14 @@ import (
 	"expvar"
 	"strconv"
 
+	"github.com/jonhoo/drwmutex"
+
 	"sync"
 	"time"
 )
 
 type backlogs struct {
-	sync.RWMutex
+	drwmutex.DRWMutex
 	id   int
 	bl   map[string]*backLog
 	bpCh chan bool
@@ -32,7 +34,6 @@ func InitBackLog(logFile string, backPressureChannel chan<- bool, holdDuration i
 	go func() {
 		for {
 			<-ticker.C
-			log.Debug(log.M{Msg: "Watchdog tick started."})
 			aLen := updateAlarmCounter()
 			log.Info(log.M{Msg: "Watchdog tick ended, # alarms:" +
 				strconv.Itoa(aLen) + readEPS()})
@@ -84,9 +85,10 @@ func mergeWait() <-chan bool {
 }
 
 func updateAlarmCounter() (count int) {
-	alarms.RLock()
+
+	l := alarms.RLock()
 	count = len(alarms.al)
-	alarms.RUnlock()
+	l.Unlock()
 	alarmCounter.Set(int64(count))
 	return
 }
@@ -115,7 +117,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 	for {
 		evt := <-ch
 		found := false
-		blogs.RLock() // to prevent concurrent r/w with delete()
+		l := blogs.RLock() // to prevent concurrent r/w with delete()
 		for k := range blogs.bl {
 			// go try-receive pattern
 			select {
@@ -139,7 +141,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 				}
 			}
 		}
-		blogs.RUnlock()
+		l.Unlock()
 
 		if found {
 			continue
@@ -156,6 +158,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		}
 		blogs.Lock() // got hit with concurrent map write here
 		blogs.bl[b.ID] = b
+		blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
 		blogs.bl[b.ID].worker(evt)

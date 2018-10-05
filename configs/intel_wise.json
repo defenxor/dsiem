@@ -1,10 +1,22 @@
 {
   "intel_sources": [
     {
+      "name": "Wise-Local",
+      "type": "IP",
+      "enabled": false,
+      "url": "http://frontend.appl184.mss.defenxor.com:8081/ip/${ip}",
+      "matcher": "regex",
+      "result_regex": [
+        "match: value.*", 
+        "match:\"(.*?)\"", 
+        "remove:\""
+      ]
+    },
+    {
       "name": "Wise",
       "type": "IP",
       "enabled": true,
-      "url": "http://frontend.appl184.mss.defenxor.com:8081/ip/${ip}",
+      "url": "http://wise:8081/ip/${ip}",
       "matcher": "regex",
       "result_regex": [
         "match: value.*", 

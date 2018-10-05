@@ -17,7 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/matryer/vice/queues/nats"
+	"github.com/francoispqt/gojay"
+
+	"dsiem/internal/vice/pkg/nats"
 
 	"github.com/fasthttp-contrib/websocket"
 	"github.com/valyala/fasthttp"
@@ -237,7 +239,7 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 
 	if !isCfgFileNameValid(filename) {
 		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding."})
-		fmt.Fprintf(ctx, "Not a valid filename, should be in any_N4m3_you_want.json format\n")
+		fmt.Fprintf(ctx, "Not a valid filename, should be in any_N4m3-that_you_want.json format\n")
 		ctx.SetStatusCode(fasthttp.StatusTeapot)
 		return
 	}
@@ -306,7 +308,7 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 }
 
 func isCfgFileNameValid(filename string) (ok bool) {
-	r, err := regexp.Compile(`[a-zA-Z0-9_]+.json`)
+	r, err := regexp.Compile(`[a-zA-Z0-9_-]+.json`)
 	if err != nil {
 		return
 	}
@@ -327,11 +329,15 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	evt := event.NormalizedEvent{}
+	evt := &event.NormalizedEvent{}
 
-	msg := ctx.PostBody()
-	err := evt.FromBytes(msg)
-	// err := gojay.Unmarshal(ctx.PostBody(), &evt)
+	// msg := ctx.PostBody()
+	// err := evt.FromBytes(msg)
+	err := gojay.Unmarshal(ctx.PostBody(), evt)
+	// dec := gojay.NewDecoder(bytes.NewReader(ctx.PostBody()))
+	// err := dec.DecodeObject(d, &evt)
+	//fmt.Println(string(ctx.PostBody()))
+	//	err := gojay.UnmarshalJSONObject(msg, &evt)
 
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot parse normalizedEvent from " + clientAddr + ". err: " + err.Error(), CId: connID})
@@ -357,7 +363,7 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		case <-time.After(10 * time.Second):
 			log.Info(log.M{Msg: "event channel timed out!", CId: connID})
 			ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
-		case eventChannel <- evt:
+		case eventChannel <- *evt:
 			log.Debug(log.M{Msg: "Event pushed", CId: connID})
 		}
 		return
@@ -366,7 +372,8 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	// mode = cluster-frontend
 
 	// TODO: replace this, inefficient but needed to keep connID and rcvdTime in msg
-	bEvt, err := evt.ToBytes()
+	// bEvt, err := evt.ToBytes()
+	bEvt, err := gojay.Marshal(evt)
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot convert event from " + clientAddr + " to message queue format. err: " + err.Error(), CId: connID})
 		fmt.Fprintf(ctx, "Cannot parse the submitted event\n")
