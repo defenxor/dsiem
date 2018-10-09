@@ -72,14 +72,6 @@
   revision = "1f3b11f56072ffc1b0d71659cb0162ccb1b60ac5"
 
 [[projects]]
-  digest = "1:51d3c70fce5f054c5934988892eae7d660f421cf00394302192e3fd5a1565131"
-  name = "github.com/francoispqt/gojay"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "f5587822347e46494d4d53e918709c4db4ec2de2"
-  version = "1.2.4"
-
-[[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
@@ -314,6 +306,14 @@
   revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
 
 [[projects]]
+  branch = "master"
+  digest = "1:b450e7e26884b4aea569d00db31e6309a236ebbcec07e8ad1d869a37be66ee37"
+  name = "github.com/sebdah/goldie"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8784dd1ab561dcf43d141f6678e9e41f3d0dff55"
+
+[[projects]]
   digest = "1:6a4a11ba764a56d2758899ec6f3848d24698d48442ebce85ee7a3f63284526cd"
   name = "github.com/spf13/afero"
   packages = [
@@ -512,7 +512,6 @@
     "github.com/dogenzaka/tsv",
     "github.com/elastic/apm-agent-go",
     "github.com/fasthttp-contrib/websocket",
-    "github.com/francoispqt/gojay",
     "github.com/gocarina/gocsv",
     "github.com/jonhoo/drwmutex",
     "github.com/julienschmidt/httprouter",
@@ -524,6 +523,7 @@
     "github.com/pkg/profile",
     "github.com/remeh/sizedwaitgroup",
     "github.com/satori/go.uuid",
+    "github.com/sebdah/goldie",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/teris-io/shortid",
