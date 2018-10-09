@@ -1,17 +1,19 @@
 package siem
 
 import (
+	"dsiem/internal/dsiem/pkg/alarm"
 	"dsiem/internal/dsiem/pkg/event"
 	"dsiem/internal/shared/pkg/idgen"
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 	"expvar"
+	"runtime"
 	"strconv"
-
-	"github.com/jonhoo/drwmutex"
 
 	"sync"
 	"time"
+
+	"github.com/jonhoo/drwmutex"
 )
 
 type backlogs struct {
@@ -24,17 +26,18 @@ type backlogs struct {
 var allBacklogs []backlogs
 
 var backlogCounter = expvar.NewInt("backlog_counter")
-var alarmCounter = expvar.NewInt("alarm_counter")
+var goRoutineCounter = expvar.NewInt("goroutine_counter")
 
 // InitBackLog initialize backlog and ticker
-func InitBackLog(logFile string, backPressureChannel chan<- bool, holdDuration int) (err error) {
+func InitBackLog(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
 	bLogFile = logFile
 
 	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		for {
 			<-ticker.C
-			aLen := updateAlarmCounter()
+			goRoutineCounter.Set(int64(runtime.NumGoroutine()))
+			aLen := alarm.UpdateCount()
 			log.Info(log.M{Msg: "Watchdog tick ended, # alarms:" +
 				strconv.Itoa(aLen) + readEPS()})
 			// debug.FreeOSMemory()
@@ -48,7 +51,7 @@ func InitBackLog(logFile string, backPressureChannel chan<- bool, holdDuration i
 		go func() {
 			for {
 				<-timer.C
-				backPressureChannel <- false
+				bpChan <- false
 				timer.Reset(time.Second * sWait)
 			}
 		}()
@@ -56,7 +59,7 @@ func InitBackLog(logFile string, backPressureChannel chan<- bool, holdDuration i
 		for range out {
 			n := <-out
 			if n == true {
-				backPressureChannel <- true
+				bpChan <- true
 				timer.Reset(time.Second * sWait)
 			}
 		}
@@ -84,15 +87,6 @@ func mergeWait() <-chan bool {
 	return out
 }
 
-func updateAlarmCounter() (count int) {
-
-	l := alarms.RLock()
-	count = len(alarms.al)
-	l.Unlock()
-	alarmCounter.Set(int64(count))
-	return
-}
-
 func readEPS() (res string) {
 	if x := expvar.Get("eps_counter"); x != nil {
 		res = " events/sec:" + x.String()
@@ -100,7 +94,9 @@ func readEPS() (res string) {
 	return
 }
 
-func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
+// send false each second to backpressure channel
+// to reset the trues detected and sent by member backlog
+func (blogs *backlogs) backPressureTick() {
 	blogs.bpCh = make(chan bool)
 	ticker := time.NewTicker(time.Second)
 	go func() {
@@ -113,6 +109,10 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 			}
 		}
 	}()
+}
+
+func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
+	blogs.backPressureTick()
 
 	for {
 		evt := <-ch
@@ -193,7 +193,8 @@ func (blogs *backlogs) delete(b *backLog) {
 		blogs.bl[b.ID].bLogs = nil
 		delete(blogs.bl, b.ID)
 		blogs.Unlock()
-		alarmRemovalChannel <- removalChannelMsg{b.ID}
+		ch := alarm.RemovalChannel()
+		ch <- b.ID
 	}()
 }
 
@@ -229,16 +230,11 @@ func initBackLogRules(d *directive, e event.NormalizedEvent) {
 	for i := range d.Rules {
 		// the first rule cannot use reference to other
 		if i == 0 {
-			// d.Rules[i].Status = "active"
 			continue
 		}
-
-		// d.Rules[i].Status = "inactive"
-
 		// for the rest, refer to the referenced stage if its not ANY or HOME_NET or !HOME_NET
 		// if the reference is ANY || HOME_NET || !HOME_NET then refer to event if its in the format of
 		// :ref
-
 		r := d.Rules[i].From
 		if v, ok := str.RefToDigit(r); ok {
 			vmin1 := v - 1

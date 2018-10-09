@@ -3,6 +3,8 @@ package siem
 import (
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
+	"dsiem/internal/dsiem/pkg/rule"
+
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
@@ -23,36 +25,13 @@ const (
 	directiveFileGlob = "directives_*.json"
 )
 
-type directiveRule struct {
-	Name        string   `json:"name"`
-	Stage       int      `json:"stage"`
-	PluginID    int      `json:"plugin_id"`
-	PluginSID   []int    `json:"plugin_sid"`
-	Product     []string `json:"product"`
-	Category    string   `json:"category"`
-	SubCategory []string `json:"subcategory"`
-	Occurrence  int      `json:"occurrence"`
-	From        string   `json:"from"`
-	To          string   `json:"to"`
-	Type        string   `json:"type"`
-	PortFrom    string   `json:"port_from"`
-	PortTo      string   `json:"port_to"`
-	Protocol    string   `json:"protocol"`
-	Reliability int      `json:"reliability"`
-	Timeout     int64    `json:"timeout"`
-	StartTime   int64    `json:"start_time"`
-	EndTime     int64    `json:"end_time"`
-	Events      []string `json:"events,omitempty"`
-	Status      string   `json:"status"`
-}
-
 type directive struct {
-	ID       int             `json:"id"`
-	Name     string          `json:"name"`
-	Priority int             `json:"priority"`
-	Kingdom  string          `json:"kingdom"`
-	Category string          `json:"category"`
-	Rules    []directiveRule `json:"rules"`
+	ID       int                  `json:"id"`
+	Name     string               `json:"name"`
+	Priority int                  `json:"priority"`
+	Kingdom  string               `json:"kingdom"`
+	Category string               `json:"category"`
+	Rules    []rule.DirectiveRule `json:"rules"`
 }
 
 // Directives group directive together
@@ -78,26 +57,30 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 
 	var dirchan []chan event.NormalizedEvent
 	for i := 0; i < total; i++ {
-		dirchan = append(dirchan, make(chan event.NormalizedEvent))
+		dirchan = append(dirchan, make(chan event.NormalizedEvent, 10)) // allow lagging behind up to 10 events
 		blogs := backlogs{}
 		blogs.DRWMutex = drwmutex.New()
 		blogs.id = i
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
 		allBacklogs = append(allBacklogs, blogs)
 		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i])
-
-		// copy incoming events to all directive channels
-		go func() {
-			for {
-				evt := <-ch
-				go func() {
-					for i := range dirchan {
-						dirchan[i] <- evt
-					}
-				}()
-			}
-		}()
 	}
+
+	// copy incoming events to all directive channels
+	copier := func() {
+		for {
+			evt := <-ch
+			// running under go routine easily bottleneck under heavy load
+			// this however will cause single dirchan to block the loop
+			// should investigate to use buffered channel here
+			// go func() {
+			for i := range dirchan {
+				dirchan[i] <- evt
+			}
+			// }()
+		}
+	}
+	go copier()
 	return nil
 }
 
@@ -270,7 +253,7 @@ func validateFromTo(s string, isFirstRule bool) (err error) {
 	return nil
 }
 
-func doesEventMatchRule(e event.NormalizedEvent, r directiveRule, connID uint64) bool {
+func doesEventMatchRule(e event.NormalizedEvent, r rule.DirectiveRule, connID uint64) bool {
 
 	if r.Type == "PluginRule" {
 		return pluginRuleCheck(e, r, connID)
@@ -281,7 +264,7 @@ func doesEventMatchRule(e event.NormalizedEvent, r directiveRule, connID uint64)
 	return false
 }
 
-func taxonomyRuleCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (ret bool) {
+func taxonomyRuleCheck(e event.NormalizedEvent, r rule.DirectiveRule, connID uint64) (ret bool) {
 	// product is required and category is required
 	if r.Category != e.Category {
 		return
@@ -315,7 +298,7 @@ func taxonomyRuleCheck(e event.NormalizedEvent, r directiveRule, connID uint64) 
 	return
 }
 
-func pluginRuleCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (ret bool) {
+func pluginRuleCheck(e event.NormalizedEvent, r rule.DirectiveRule, connID uint64) (ret bool) {
 	if e.PluginID != r.PluginID {
 		return
 	}
@@ -333,7 +316,7 @@ func pluginRuleCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (r
 	return
 }
 
-func ipPortCheck(e event.NormalizedEvent, r directiveRule, connID uint64) (ret bool) {
+func ipPortCheck(e event.NormalizedEvent, r rule.DirectiveRule, connID uint64) (ret bool) {
 	eSrcInHomeNet := e.SrcIPInHomeNet()
 	if r.From == "HOME_NET" && eSrcInHomeNet == false {
 		return

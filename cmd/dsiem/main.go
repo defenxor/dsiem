@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
 	"path"
 	"runtime/trace"
+	"time"
 
+	"dsiem/internal/dsiem/pkg/alarm"
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
 	"dsiem/internal/dsiem/pkg/server"
@@ -32,8 +33,8 @@ const (
 
 var version string
 var buildTime string
-var eventChannel chan event.NormalizedEvent
-var backPressureChannel chan bool
+var eventChan chan event.NormalizedEvent
+var bpChan chan bool
 
 func init() {
 	cobra.OnInitialize(initConfig)
@@ -44,9 +45,10 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
-	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before new connection from logstash will be rejected")
-	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. events/second before new connection from logstash will be rejected")
-	serverCmd.Flags().IntP("holdDuration", "n", 60, "Min. number of seconds that incoming events will be blocked during overload")
+	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling iconming events")
+	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. number of incoming events/second")
+	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
+	serverCmd.Flags().IntP("holdDuration", "n", 10, "Duration in seconds before resetting overload condition state")
 	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().Bool("trace", false, "Generate trace file for debugging.")
@@ -70,6 +72,7 @@ func init() {
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
 	viper.BindPFlag("maxDelay", serverCmd.Flags().Lookup("maxDelay"))
 	viper.BindPFlag("maxEPS", serverCmd.Flags().Lookup("maxEPS"))
+	viper.BindPFlag("minEPS", serverCmd.Flags().Lookup("minEPS"))
 	viper.BindPFlag("holdDuration", serverCmd.Flags().Lookup("holdDuration"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
@@ -98,13 +101,8 @@ func main() {
 }
 
 func exit(msg string, err error) {
-	if viper.GetBool("debug") {
-		fmt.Println(msg)
-		panic(err)
-	} else {
-		fmt.Println(msg + ": " + err.Error())
-		os.Exit(1)
-	}
+	fmt.Println(msg+":", err)
+	os.Exit(1)
 }
 
 var rootCmd = &cobra.Command{
@@ -179,10 +177,15 @@ external message queue.`,
 		traceFlag := viper.GetBool("trace")
 		frontend := viper.GetString("frontend")
 		maxEPS := viper.GetInt("maxEPS")
+		minEPS := viper.GetInt("minEPS")
 		holdDuration := viper.GetInt("holdDuration")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
+		}
+
+		if minEPS > maxEPS {
+			exit("Incorrect EPS setting", errors.New("minEPS must be <= than maxEPS"))
 		}
 
 		if pp != "" {
@@ -201,7 +204,13 @@ external message queue.`,
 			defer fo.Close()
 			wrt := bufio.NewWriter(fo)
 			trace.Start(wrt)
-			defer trace.Stop()
+			t := time.NewTimer(10 * time.Second)
+			go func() {
+				<-t.C
+				trace.Stop()
+				t.Stop()
+				fmt.Println("Done writing trace file.")
+			}()
 		}
 
 		// saving the config for UI to read
@@ -210,17 +219,22 @@ external message queue.`,
 			exit("Error writing config file", err)
 		}
 
-		eventChannel = make(chan event.NormalizedEvent)
-		backPressureChannel = make(chan bool)
+		eventChan = make(chan event.NormalizedEvent)
+		bpChan = make(chan bool)
+		var sendBpChan chan<- bool
 
 		log.Setup(viper.GetBool("debug"))
 		log.Info(log.M{Msg: "Starting " + progName + " " + versionCmd.Version +
 			" in " + mode + " mode."})
 
 		if mode == "cluster-backend" {
-			if err := worker.InitWorker(eventChannel, msqURL, msq, progName, node, confDir, frontend); err != nil {
+			if err := worker.Start(eventChan, msqURL,
+				msq, progName, node, confDir, frontend); err != nil {
 				exit("Cannot start backend worker process", err)
 			}
+			sendBpChan = worker.GetBackPressureChannel()
+		} else {
+			sendBpChan = bpChan
 		}
 
 		if mode != "cluster-frontend" {
@@ -236,31 +250,28 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize Vulnerability scan result", err)
 			}
-			err = siem.InitDirectives(confDir, eventChannel)
+			err = siem.InitDirectives(confDir, eventChan)
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}
 			err = siem.InitBackLog(path.Join(logDir, aEventsLogs),
-				backPressureChannel, holdDuration)
+				sendBpChan, holdDuration)
 			if err != nil {
 				exit("Cannot initialize backlog", err)
 			}
-			err = siem.InitAlarm(path.Join(logDir, alarmLogs))
+			err = alarm.Init(path.Join(logDir, alarmLogs))
 			if err != nil {
 				exit("Cannot initialize alarm", err)
 			}
 		}
 
 		err = server.Start(
-			eventChannel, backPressureChannel, confDir, webDir,
-			mode, maxEPS, msqURL, msq, progName, node, addr, port)
+			eventChan, bpChan, confDir, webDir,
+			mode, maxEPS, minEPS, msqURL, msq, progName, node, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}
 
-		signalChan := make(chan os.Signal, 1)
-		signal.Notify(signalChan, os.Interrupt)
-		<-signalChan
 	},
 }
 

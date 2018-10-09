@@ -10,33 +10,24 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/francoispqt/gojay"
 
 	"dsiem/internal/vice/pkg/nats"
 )
 
+// var receiver <-chan []byte
 var transport nats.Transport
-var receiver <-chan []byte
-var errchan <-chan error
+var eventChan <-chan event.NormalizedEvent
+var bpChan chan<- bool
+var errChan <-chan error
 
 type configFile struct {
 	Filename string `json:"filename"`
 }
 type configFiles struct {
 	Files []configFile `json:"files"`
-}
-
-func initMsgQueue(msqURL string, msq string, prefix string, nodeName string) {
-	opt := nats.WithStreaming(msq, prefix+"-"+nodeName)
-	transport := nats.New(opt)
-	transport.NatsAddr = msqURL
-	transport.NatsStreamingQGroup = nodeName
-	// transport := nats.New()
-	receiver = transport.Receive(prefix + "_" + "events")
-	errchan = transport.ErrChan()
 }
 
 func getConfigFileList(frontendAddr string) (*configFiles, error) {
@@ -83,8 +74,39 @@ func downloadConfigFiles(confDir string, frontendAddr string, node string) error
 	return nil
 }
 
-// InitWorker start worker
-func InitWorker(ch chan<- event.NormalizedEvent, msqURL string, msq string, msqPrefix string,
+//GetBackPressureChannel returns channel for sending backpressure bool messages
+func GetBackPressureChannel() chan<- bool {
+	return bpChan
+}
+
+func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
+	const reconnectSecond = 3
+	initMsq := func() (err error) {
+		transport := nats.New()
+		transport.NatsAddr = msqURL
+		eventChan = transport.Receive(prefix + "_" + "events")
+		errChan = transport.ErrChan()
+		bpChan = transport.SendBool(prefix + "_" + "overload_signals")
+		select {
+		case err = <-errChan:
+		default:
+		}
+		return err
+	}
+	for {
+		err := initMsq()
+		if err == nil {
+			log.Info(log.M{Msg: "Successfully connected to message queue " + msqURL})
+			break
+		}
+		log.Info(log.M{Msg: "Error from message queue " + err.Error()})
+		log.Info(log.M{Msg: "Reconnecting in " + strconv.Itoa(reconnectSecond) + " seconds.."})
+		time.Sleep(reconnectSecond * time.Second)
+	}
+}
+
+// Start start worker
+func Start(ch chan<- event.NormalizedEvent, msqURL string, msq string, msqPrefix string,
 	nodeName string, confDir string, frontend string) error {
 	if err := downloadConfigFiles(confDir, frontend, nodeName); err != nil {
 		return err
@@ -95,23 +117,12 @@ func InitWorker(ch chan<- event.NormalizedEvent, msqURL string, msq string, msqP
 	go func() {
 		defer transport.Stop()
 		for {
-			msg := <-receiver
-			evt := event.NormalizedEvent{}
-			// err := json.NewDecoder(bytes.NewReader(msg)).Decode(&evt)
-			// err := evt.FromBytes(msg)
-			err := gojay.Unmarshal(msg, &evt)
-			if err != nil {
-				// log.Warn(log.M{Msg: "Error decoding event from message queue: " + err.Error()})
-				fmt.Println("Error decoding json on receiver: ", err.Error())
-				fmt.Println(string(msg))
-				continue
-			}
-			// fmt.Println("msg recevd:\n", string(msg))
+			evt := <-eventChan
 			ch <- evt
 		}
 	}()
 	go func() {
-		for err := range errchan {
+		for err := range errChan {
 			log.Warn(log.M{Msg: "Error received from receive message queue: " + err.Error()})
 		}
 	}()

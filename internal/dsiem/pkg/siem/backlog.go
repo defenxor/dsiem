@@ -1,6 +1,7 @@
 package siem
 
 import (
+	"dsiem/internal/dsiem/pkg/alarm"
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
 	log "dsiem/internal/shared/pkg/logger"
@@ -47,10 +48,9 @@ type siemAlarmEvents struct {
 
 func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 	maxDelay := viper.GetInt("maxDelay")
-	debug := viper.GetBool("debug")
+	//	debug := viper.GetBool("debug")
 	// first, process the initial event
 	b.processMatchedEvent(initialEvent, 0)
-	// b.info("after processmatchedevent", initialEvent.ConnID)
 
 	go func() {
 		for {
@@ -63,8 +63,6 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			l := b.RLock()
 			cs := b.CurrentStage
 			if cs <= 1 {
-				// b.info("backlog cs <= 1", evt.ConnID)
-
 				l.Unlock()
 				continue
 			}
@@ -94,7 +92,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			}
 
 			if b.isUnderPressure(evt.RcvdTime, int64(maxDelay)) {
-				b.debug("backlog is under pressure", evt.ConnID)
+				b.warn("backlog is under pressure", evt.ConnID)
 				select {
 				case b.bLogs.bpCh <- true:
 				default:
@@ -118,15 +116,12 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 		ticker := time.NewTicker(time.Second * 10)
 		for {
 			<-ticker.C
-			b.debug("backlog tick started.", 0)
 			select {
 			case <-b.chDone:
 				b.debug("backlog tick exiting, chDone.", 0)
+				ticker.Stop()
 				return
 			default:
-			}
-			if debug {
-				//	b.dumpCurrentRule(false)
 			}
 			if !b.isExpired() {
 				continue
@@ -136,6 +131,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			b.setRuleStatus("timeout", 0)
 			b.updateAlarm(0, nil)
 			b.delete()
+			return
 		}
 	}()
 	b.debug("exiting worker, leaving routine behind", initialEvent.ConnID)
@@ -216,12 +212,9 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
 		if !b.isStageReachMaxEvtCount(idx) {
-			// deprecate this
-			// b.ensureStatusAndStartTime(idx, e.ConnID, tx)
 			return
 		}
 	}
-	// b.info("setting status to finish", e.ConnID)
 	// the new event has caused events_count == occurrence
 	b.setRuleStatus("finished", e.ConnID)
 	b.setRuleEndTime(e)
@@ -277,7 +270,10 @@ func (b *backLog) setLastEvent(e event.NormalizedEvent) {
 }
 
 func (b *backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
-	go upsertAlarmFromBackLog(*b, connID, tx)
+	go alarm.Upsert(b.ID, b.Directive.Name, b.Directive.Kingdom,
+		b.Directive.Category, b.SrcIPs, b.DstIPs, b.LastEvent.SrcPort,
+		b.LastEvent.DstPort, b.Risk, b.StatusTime, b.Directive.Rules,
+		connID, tx)
 }
 
 func (b *backLog) setRuleStatus(status string, connID uint64) {
@@ -381,10 +377,6 @@ func (b *backLog) delete() {
 		return
 	}
 	b.debug("delete sending signal to bLogs", 0)
-	// no need to do this, let it gc'ed
-	// close(b.chFound)
-	// close(b.chDone) // <-- closing twice causes panic, avoid this
-	// b.chDone <- struct{}{}
 	b.bLogs.delete(b)
 }
 
@@ -409,6 +401,6 @@ func (b backLog) updateElasticsearch(e event.NormalizedEvent) error {
 		return err
 	}
 	f.SetDeadline(time.Now().Add(60 * time.Second))
-	_, err = f.WriteString(string(vJSON) + "\n") //race a
+	_, err = f.WriteString(string(vJSON) + "\n")
 	return err
 }
