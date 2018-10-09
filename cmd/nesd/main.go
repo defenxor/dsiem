@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dsiem/internal/nesd/pkg/server"
-	log "dsiem/internal/shared/pkg/logger"
+	"dsiem/internal/pkg/nesd"
+	log "dsiem/internal/pkg/shared/logger"
 
 	"fmt"
 	"os"
@@ -87,12 +87,12 @@ Start server listening on for vulnerability lookup request`,
 
 		log.Info(log.M{Msg: "Starting " + progName + " " + version})
 
-		err := server.InitCSV(csvDir)
+		err := nesd.InitCSV(csvDir)
 		if err != nil {
 			exit("Cannot read Nessus CSV from "+csvDir, err)
 		}
 
-		err = server.Start(addr, port)
+		err = nesd.Start(addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}

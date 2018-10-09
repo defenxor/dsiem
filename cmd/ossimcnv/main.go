@@ -1,7 +1,7 @@
 package main
 
 import (
-	conv "dsiem/internal/ossimcnv/pkg/ossimcnv"
+	"dsiem/internal/pkg/ossimcnv"
 	"flag"
 	"fmt"
 	"os"
@@ -33,17 +33,17 @@ func exit(msg string, err error) {
 }
 
 func main() {
-	filename, err := conv.CreateTempOSSIMFile(srcFile)
+	filename, err := ossimcnv.CreateTempOSSIMFile(srcFile)
 	if err != nil {
 		exit("Cannot create temporary XML file", err)
 		return
 	}
-	err = conv.ParseOSSIMTSVs(ossimRefDir)
+	err = ossimcnv.ParseOSSIMTSVs(ossimRefDir)
 	if err != nil {
 		exit("Cannot parse ossim reference TSV from "+ossimRefDir, err)
 		return
 	}
-	err = conv.CreateSIEMDirective(filename, dstFile)
+	err = ossimcnv.CreateSIEMDirective(filename, dstFile)
 	if err != nil {
 		exit("Cannot create SIEM json directive", err)
 		return

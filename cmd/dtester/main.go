@@ -17,10 +17,10 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"dsiem/internal/dsiem/pkg/event"
-	"dsiem/internal/dsiem/pkg/siem"
-	log "dsiem/internal/shared/pkg/logger"
-	"dsiem/internal/shared/pkg/str"
+	"dsiem/internal/pkg/dsiem/event"
+	"dsiem/internal/pkg/dsiem/siem"
+	log "dsiem/internal/pkg/shared/logger"
+	"dsiem/internal/pkg/shared/str"
 
 	"github.com/remeh/sizedwaitgroup"
 	uuid "github.com/satori/go.uuid"
