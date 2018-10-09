@@ -4,6 +4,7 @@ import (
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/rule"
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
+	"dsiem/internal/shared/pkg/apm"
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
@@ -70,7 +71,9 @@ var alarms struct {
 }
 
 func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *elasticapm.Transaction) {
-	defer elasticapm.DefaultTracer.Recover(tx)
+	if apm.Enabled() && tx != nil {
+		defer elasticapm.DefaultTracer.Recover(tx)
+	}
 
 	go func() {
 		// record prev value
@@ -167,16 +170,21 @@ func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *elastica
 			l := a.RLock()
 			log.Warn(log.M{Msg: "failed to update Elasticsearch after vulnerability check! " + err.Error(), BId: a.ID, CId: connID})
 			l.Unlock()
-			e := elasticapm.DefaultTracer.NewError(err)
-			e.Transaction = tx
-			e.Send()
+			if apm.Enabled() && tx != nil {
+				e := elasticapm.DefaultTracer.NewError(err)
+				e.Transaction = tx
+				e.Send()
+			}
 		}
 	}()
 
 }
 
 func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
-	defer elasticapm.DefaultTracer.Recover(tx)
+	if apm.Enabled() && tx != nil {
+		defer elasticapm.DefaultTracer.Recover(tx)
+	}
+
 	go func() {
 
 		IPIntel := a.ThreatIntels
@@ -226,9 +234,11 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 			l := a.RLock()
 			log.Warn(log.M{Msg: "failed to update Elasticsearch after TI check! " + err.Error(), BId: a.ID, CId: connID})
 			l.Unlock()
-			e := elasticapm.DefaultTracer.NewError(err)
-			e.Transaction = tx
-			e.Send()
+			if apm.Enabled() && tx != nil {
+				e := elasticapm.DefaultTracer.NewError(err)
+				e.Transaction = tx
+				e.Send()
+			}
 		}
 	}()
 
@@ -345,7 +355,10 @@ func Upsert(id, name, kingdom, category string,
 	srcIPs, dstIPs []string, lastSrcPort, lastDstPort, risk int, statusTime int64,
 	rules []rule.DirectiveRule, connID uint64,
 	tx *elasticapm.Transaction) {
-	defer elasticapm.DefaultTracer.Recover(tx)
+
+	if apm.Enabled() {
+		defer elasticapm.DefaultTracer.Recover(tx)
+	}
 
 	a := findOrCreateAlarm(id)
 	a.Lock()
@@ -411,11 +424,13 @@ func Upsert(id, name, kingdom, category string,
 		l := a.RLock()
 		log.Warn(log.M{Msg: "failed to update Elasticsearch! " + err.Error(), BId: a.ID, CId: connID})
 		l.Unlock()
-		e := elasticapm.DefaultTracer.NewError(err)
-		e.Transaction = tx
-		e.Send()
+		if apm.Enabled() && tx != nil {
+			e := elasticapm.DefaultTracer.NewError(err)
+			e.Transaction = tx
+			e.Send()
+		}
 	} else {
-		if tx != nil {
+		if apm.Enabled() && tx != nil {
 			tx.Result = "Alarm updated"
 		}
 	}

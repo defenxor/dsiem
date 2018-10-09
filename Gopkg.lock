@@ -2,6 +2,16 @@
 
 
 [[projects]]
+  digest = "1:9907426b190ec6326769cf3569cc7bd92207047db81a4a4752c70d11c903ac8f"
+  name = "github.com/allegro/bigcache"
+  packages = [
+    ".",
+    "queue",
+  ]
+  pruneopts = "UT"
+  revision = "70fdb6c1fbb8ef895f9222fa4552f88913cc05e4"
+
+[[projects]]
   digest = "1:652880afc6b57ce0a67173f552cb35ccda816493a1da6ca20e5074a66bcd083f"
   name = "github.com/buaazp/fasthttprouter"
   packages = ["."]
@@ -508,6 +518,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/allegro/bigcache",
     "github.com/buaazp/fasthttprouter",
     "github.com/dogenzaka/tsv",
     "github.com/elastic/apm-agent-go",

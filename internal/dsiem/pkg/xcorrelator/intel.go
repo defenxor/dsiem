@@ -1,6 +1,7 @@
 package xcorrelator
 
 import (
+	"dsiem/internal/shared/pkg/apm"
 	"dsiem/internal/shared/pkg/cache"
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
@@ -81,31 +82,40 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 
-		tx := elasticapm.DefaultTracer.StartTransaction("Threat Intel Lookup", "SIEM")
-		tx.Context.SetCustom("term", term)
-		tx.Context.SetCustom("provider", v.Name)
-		tx.Context.SetCustom("Url", url)
+		var tx *elasticapm.Transaction
+		if apm.Enabled() {
+			tx = elasticapm.DefaultTracer.StartTransaction("Threat Intel Lookup", "SIEM")
+			tx.Context.SetCustom("term", term)
+			tx.Context.SetCustom("provider", v.Name)
+			tx.Context.SetCustom("Url", url)
+		}
 
 		if err != nil {
 			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " TI."})
-			tx.Result = "Cannot create HTTP request"
-			tx.End()
+			if apm.Enabled() {
+				tx.Result = "Cannot create HTTP request"
+				tx.End()
+			}
 			continue
 		}
 		res, err := c.Do(req)
 		if err != nil {
 			// log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip + ": " + err.Error()})
 			log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip})
-			tx.Result = "Failed to query " + v.Name
-			tx.End()
+			if apm.Enabled() {
+				tx.Result = "Failed to query " + v.Name
+				tx.End()
+			}
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
 		res.Body.Close()
 		if readErr != nil {
 			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " TI for IP " + ip})
-			tx.Result = "Cannot read result from " + v.Name
-			tx.End()
+			if apm.Enabled() {
+				tx.Result = "Cannot read result from " + v.Name
+				tx.End()
+			}
 			continue
 		}
 
@@ -119,12 +129,14 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 			}
 		}
 
-		if found {
-			tx.Result = "Intel found"
-		} else {
-			tx.Result = "Intel not found"
+		if apm.Enabled() {
+			if found {
+				tx.Result = "Intel found"
+			} else {
+				tx.Result = "Intel not found"
+			}
+			tx.End()
 		}
-		tx.End()
 	}
 
 	if !successQuery {

@@ -19,10 +19,13 @@
 [[constraint]]
   name = "github.com/yl2chen/cidranger"
   revision = "928b519e5268fe386d0f7decce320205cc09ca95"
+
+[[constraint]]
+  name = "github.com/allegro/bigcache"
+  revision = "70fdb6c1fbb8ef895f9222fa4552f88913cc05e4"
+
 [prune]
   go-tests = true
   unused-packages = true
 
-# [[constraint]]
-#  branch = "master"
-#  name = "github.com/bbengfort/x"
+

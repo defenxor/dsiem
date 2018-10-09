@@ -40,7 +40,6 @@ type Directives struct {
 }
 
 var uCases Directives
-var eventChannel chan event.NormalizedEvent
 
 // InitDirectives initialize directive from directive_*.json files in confDir then start
 // backlog manager for each directive

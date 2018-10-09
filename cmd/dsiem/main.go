@@ -17,6 +17,7 @@ import (
 	"dsiem/internal/dsiem/pkg/siem"
 	"dsiem/internal/dsiem/pkg/worker"
 	xc "dsiem/internal/dsiem/pkg/xcorrelator"
+	"dsiem/internal/shared/pkg/apm"
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/pprof"
@@ -49,7 +50,7 @@ func init() {
 	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. number of incoming events/second")
 	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
 	serverCmd.Flags().IntP("holdDuration", "n", 10, "Duration in seconds before resetting overload condition state")
-	serverCmd.Flags().Bool("apm", true, "Enable elastic APM instrumentation")
+	serverCmd.Flags().Bool("apm", false, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().Bool("trace", false, "Generate trace file for debugging.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
@@ -179,6 +180,7 @@ external message queue.`,
 		minEPS := viper.GetInt("minEPS")
 		holdDuration := viper.GetInt("holdDuration")
 		cacheDuration := viper.GetInt("cacheDuration")
+		esapm := viper.GetBool("apm")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -212,6 +214,8 @@ external message queue.`,
 				fmt.Println("Done writing trace file.")
 			}()
 		}
+
+		apm.Enable(esapm)
 
 		// saving the config for UI to read
 		err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))

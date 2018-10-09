@@ -4,6 +4,7 @@ import (
 	"dsiem/internal/dsiem/pkg/alarm"
 	"dsiem/internal/dsiem/pkg/asset"
 	"dsiem/internal/dsiem/pkg/event"
+	"dsiem/internal/shared/pkg/apm"
 	log "dsiem/internal/shared/pkg/logger"
 	"dsiem/internal/shared/pkg/str"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -195,15 +197,20 @@ func (b *backLog) setRuleEndTime(e event.NormalizedEvent) {
 
 func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
-	tx := elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
-	tx.Context.SetCustom("event_id", e.EventID)
-	l := b.RLock()
-	tx.Context.SetCustom("backlog_id", b.ID)
-	tx.Context.SetCustom("directive_id", b.Directive.ID)
-	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
-	l.Unlock()
-	defer tx.End()
-	defer elasticapm.DefaultTracer.Recover(tx)
+	var tx *elasticapm.Transaction
+	var l sync.Locker
+
+	if apm.Enabled() {
+		tx = elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
+		tx.Context.SetCustom("event_id", e.EventID)
+		l = b.RLock()
+		tx.Context.SetCustom("backlog_id", b.ID)
+		tx.Context.SetCustom("directive_id", b.Directive.ID)
+		tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+		l.Unlock()
+		defer tx.End()
+		defer elasticapm.DefaultTracer.Recover(tx)
+	}
 
 	b.debug("Incoming event with idx: "+strconv.Itoa(idx), e.ConnID)
 	// concurrent write may make events count overflow, so dont append current stage unless needed
@@ -224,7 +231,9 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	if b.isLastStage() {
 		b.info("reached max stage and occurrence, deleting.", e.ConnID)
 		b.delete()
-		tx.Result = "Backlog removed (max reached)"
+		if apm.Enabled() {
+			tx.Result = "Backlog removed (max reached)"
+		}
 		return
 	}
 
@@ -237,10 +246,12 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	b.updateAlarm(e.ConnID, tx)
 
 	// b.setStatus("active", e.ConnID, tx)
-	l = b.RLock()
-	tx.Context.SetCustom("backlog_stage", b.CurrentStage)
-	l.Unlock()
-	tx.Result = "Stage increased"
+	if apm.Enabled() {
+		l = b.RLock()
+		tx.Context.SetCustom("backlog_stage", b.CurrentStage)
+		l.Unlock()
+		tx.Result = "Stage increased"
+	}
 
 	// recalc risk, the new stage will have a different reliability
 	riskChanged := b.calcRisk(e.ConnID)
@@ -295,12 +306,16 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *elas
 	go func() {
 		if err := b.updateElasticsearch(e); err != nil {
 			b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
-			e := elasticapm.DefaultTracer.NewError(err)
-			e.Transaction = tx
-			e.Send()
-			tx.Result = "Failed to append and write event"
+			if apm.Enabled() {
+				e := elasticapm.DefaultTracer.NewError(err)
+				e.Transaction = tx
+				e.Send()
+				tx.Result = "Failed to append and write event"
+			}
 		} else {
-			tx.Result = "Event appended to backlog"
+			if apm.Enabled() {
+				tx.Result = "Event appended to backlog"
+			}
 		}
 	}()
 	return

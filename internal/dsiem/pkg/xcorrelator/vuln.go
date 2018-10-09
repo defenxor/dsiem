@@ -1,7 +1,9 @@
 package xcorrelator
 
 import (
+	"dsiem/internal/shared/pkg/apm"
 	"dsiem/internal/shared/pkg/cache"
+
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"net/http"
@@ -89,32 +91,41 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 		url = strings.Replace(url, "${port}", p, 1)
 		log.Debug(log.M{Msg: "result url " + url})
 
-		tx := elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
-		tx.Context.SetCustom("term", term)
-		tx.Context.SetCustom("provider", v.Name)
-		tx.Context.SetCustom("Url", url)
+		var tx *elasticapm.Transaction
+		if apm.Enabled() {
+			tx = elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
+			tx.Context.SetCustom("term", term)
+			tx.Context.SetCustom("provider", v.Name)
+			tx.Context.SetCustom("Url", url)
+		}
 
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForVuln}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " VS."})
-			tx.Result = "Cannot create HTTP request"
-			tx.End()
+			if apm.Enabled() {
+				tx.Result = "Cannot create HTTP request"
+				tx.End()
+			}
 			continue
 		}
 		res, err := c.Do(req)
 		if err != nil {
 			log.Warn(log.M{Msg: "Failed to query " + v.Name + " VS for IP " + term})
-			tx.Result = "Failed to query " + v.Name
-			tx.End()
+			if apm.Enabled() {
+				tx.Result = "Failed to query " + v.Name
+				tx.End()
+			}
 			continue
 		}
 		body, readErr := ioutil.ReadAll(res.Body)
 		res.Body.Close()
 		if readErr != nil {
 			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " VS for IP " + term})
-			tx.Result = "Cannot create read result from " + v.Name
-			tx.End()
+			if apm.Enabled() {
+				tx.Result = "Cannot create read result from " + v.Name
+				tx.End()
+			}
 			continue
 		}
 
@@ -135,12 +146,14 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 				results = append(results, r...)
 			}
 		}
-		if found {
-			tx.Result = "Vuln found"
-		} else {
-			tx.Result = "Vuln not found"
+		if apm.Enabled() {
+			if found {
+				tx.Result = "Vuln found"
+			} else {
+				tx.Result = "Vuln not found"
+			}
+			tx.End()
 		}
-		tx.End()
 	}
 
 	if !successQuery {

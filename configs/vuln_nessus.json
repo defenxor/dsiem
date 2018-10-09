@@ -3,14 +3,14 @@
     {
       "name": "Nessus-Local",
       "type": "IP-Port",
-      "enabled": true,
+      "enabled": false,
       "url": "http://127.0.0.1:8081/?ip=${ip}&port=${port}",
       "matcher": "nesd"
     },
     {
       "name": "Nessus",
       "type": "IP-Port",
-      "enabled": false,
+      "enabled": true,
       "url": "http://dsiem-nesd:8081/?ip=${ip}&port=${port}",
       "matcher": "nesd"
     }
