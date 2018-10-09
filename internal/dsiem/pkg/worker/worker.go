@@ -79,11 +79,11 @@ func GetBackPressureChannel() chan<- bool {
 	return bpChan
 }
 
-func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
+func initMsgQueue(msq string, prefix, nodeName string) {
 	const reconnectSecond = 3
 	initMsq := func() (err error) {
 		transport := nats.New()
-		transport.NatsAddr = msqURL
+		transport.NatsAddr = msq
 		eventChan = transport.Receive(prefix + "_" + "events")
 		errChan = transport.ErrChan()
 		bpChan = transport.SendBool(prefix + "_" + "overload_signals")
@@ -96,7 +96,7 @@ func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
 	for {
 		err := initMsq()
 		if err == nil {
-			log.Info(log.M{Msg: "Successfully connected to message queue " + msqURL})
+			log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
 			break
 		}
 		log.Info(log.M{Msg: "Error from message queue " + err.Error()})
@@ -106,13 +106,13 @@ func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
 }
 
 // Start start worker
-func Start(ch chan<- event.NormalizedEvent, msqURL string, msq string, msqPrefix string,
+func Start(ch chan<- event.NormalizedEvent, msq string, msqPrefix string,
 	nodeName string, confDir string, frontend string) error {
 	if err := downloadConfigFiles(confDir, frontend, nodeName); err != nil {
 		return err
 	}
 
-	initMsgQueue(msqURL, msq, msqPrefix, nodeName)
+	initMsgQueue(msq, msqPrefix, nodeName)
 
 	go func() {
 		defer transport.Stop()

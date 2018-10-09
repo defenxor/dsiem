@@ -39,13 +39,13 @@ var errChan <-chan error
 var eventChan chan<- event.NormalizedEvent
 var bpChan <-chan bool
 
-var msq string
+// var msq string
 var epsCounter = expvar.NewInt("eps_counter")
 var overloadFlag bool
 
 // Start starts the server
 func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
-	serverMode string, maxEPS int, minEPS int, msqURL string, msqCluster string,
+	serverMode string, maxEPS int, minEPS int, msqCluster string,
 	msqPrefix string, nodeName string, addr string, port int) error {
 
 	if a := net.ParseIP(addr); a == nil {
@@ -56,10 +56,10 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	}
 
 	mode = serverMode
-	msq = msqCluster
+	// msq = msqCluster
 
 	if mode == "cluster-frontend" {
-		initMsgQueue(msqURL, msq, msqPrefix, nodeName)
+		initMsgQueue(msqCluster, msqPrefix, nodeName)
 	} else {
 		eventChan = ch
 		bpChan = bpCh
@@ -174,11 +174,11 @@ func rateLimit(rps int, wait time.Duration, h fasthttp.RequestHandler) fasthttp.
 	}
 }
 
-func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
+func initMsgQueue(msq string, prefix, nodeName string) {
 	const reconnectSecond = 3
 	initMsq := func() (err error) {
 		transport := nats.New()
-		transport.NatsAddr = msqURL
+		transport.NatsAddr = msq
 		eventChan = transport.Send(prefix + "_" + "events")
 		errChan = transport.ErrChan()
 		bpChan = transport.ReceiveBool(prefix + "_" + "overload_signals")
@@ -191,7 +191,7 @@ func initMsgQueue(msqURL string, msq string, prefix, nodeName string) {
 	for {
 		err := initMsq()
 		if err == nil {
-			log.Info(log.M{Msg: "Successfully connected to message queue " + msqURL})
+			log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
 			break
 		}
 		log.Info(log.M{Msg: "Error from message queue " + err.Error()})

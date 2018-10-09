@@ -53,8 +53,8 @@ func init() {
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
 	serverCmd.Flags().Bool("trace", false, "Generate trace file for debugging.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
-	serverCmd.Flags().String("msqUrl", "nats://dsiem-nats:4222", "Nats-streaming URL to use for frontend - backend communication.")
-	serverCmd.Flags().String("msq", "test-cluster", "Nats-streaming cluster name to use for frontend - backend communication.")
+	serverCmd.Flags().IntP("cacheDuration", "c", 10, "Cache expiration time in minutes for intel and vuln query results")
+	serverCmd.Flags().String("msq", "nats://dsiem-nats:4222", "Nats address to use for frontend - backend communication.")
 	serverCmd.Flags().String("frontend", "", "Frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).")
 	serverCmd.Flags().String("node", "", "Unique node name to use when deployed in cluster mode.")
 	serverCmd.Flags().StringSliceP("tags", "t", []string{"Identified Threat", "False Positive", "Valid Threat", "Security Incident"},
@@ -74,11 +74,11 @@ func init() {
 	viper.BindPFlag("maxEPS", serverCmd.Flags().Lookup("maxEPS"))
 	viper.BindPFlag("minEPS", serverCmd.Flags().Lookup("minEPS"))
 	viper.BindPFlag("holdDuration", serverCmd.Flags().Lookup("holdDuration"))
+	viper.BindPFlag("cacheDuration", serverCmd.Flags().Lookup("cacheDuration"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
 	viper.BindPFlag("trace", serverCmd.Flags().Lookup("trace"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
-	viper.BindPFlag("msqUrl", serverCmd.Flags().Lookup("msqUrl"))
 	viper.BindPFlag("msq", serverCmd.Flags().Lookup("msq"))
 	viper.BindPFlag("node", serverCmd.Flags().Lookup("node"))
 	viper.BindPFlag("frontend", serverCmd.Flags().Lookup("frontend"))
@@ -171,7 +171,6 @@ external message queue.`,
 		port := viper.GetInt("port")
 		pp := viper.GetString("pprof")
 		mode := viper.GetString("mode")
-		msqURL := viper.GetString("msqUrl")
 		msq := viper.GetString("msq")
 		node := viper.GetString("node")
 		traceFlag := viper.GetBool("trace")
@@ -179,6 +178,7 @@ external message queue.`,
 		maxEPS := viper.GetInt("maxEPS")
 		minEPS := viper.GetInt("minEPS")
 		holdDuration := viper.GetInt("holdDuration")
+		cacheDuration := viper.GetInt("cacheDuration")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -228,8 +228,8 @@ external message queue.`,
 			" in " + mode + " mode."})
 
 		if mode == "cluster-backend" {
-			if err := worker.Start(eventChan, msqURL,
-				msq, progName, node, confDir, frontend); err != nil {
+			if err := worker.Start(eventChan, msq,
+				progName, node, confDir, frontend); err != nil {
 				exit("Cannot start backend worker process", err)
 			}
 			sendBpChan = worker.GetBackPressureChannel()
@@ -242,11 +242,11 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize assets from "+confDir, err)
 			}
-			err = xc.InitIntel(confDir)
+			err = xc.InitIntel(confDir, cacheDuration)
 			if err != nil {
 				exit("Cannot initialize threat intel", err)
 			}
-			err = xc.InitVuln(confDir)
+			err = xc.InitVuln(confDir, cacheDuration)
 			if err != nil {
 				exit("Cannot initialize Vulnerability scan result", err)
 			}
@@ -267,7 +267,7 @@ external message queue.`,
 
 		err = server.Start(
 			eventChan, bpChan, confDir, webDir,
-			mode, maxEPS, minEPS, msqURL, msq, progName, node, addr, port)
+			mode, maxEPS, minEPS, msq, progName, node, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
 		}
@@ -275,7 +275,7 @@ external message queue.`,
 	},
 }
 
-func checkMode(mode, msq, node, frontend string) error {
+func checkMode(mode, node, msq, frontend string) error {
 	if mode != "standalone" &&
 		mode != "cluster-frontend" &&
 		mode != "cluster-backend" {

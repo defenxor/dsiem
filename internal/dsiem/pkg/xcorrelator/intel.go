@@ -1,6 +1,7 @@
 package xcorrelator
 
 import (
+	"dsiem/internal/shared/pkg/cache"
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"encoding/json"
@@ -24,6 +25,7 @@ const (
 
 // IntelEnabled mark whether intel lookup is enabled
 var IntelEnabled bool
+var intelCache *cache.Cache
 
 type intelSource struct {
 	Name        string   `json:"name"`
@@ -57,6 +59,23 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 
 	term := ip
 
+	if res, err := intelCache.Get(term); err == nil {
+		if string(res) == "n/f" {
+			log.Debug(log.M{Msg: "Returning intel cache entry (not found) for " + term})
+			return
+		}
+		err := json.Unmarshal(res, &results)
+		if err == nil {
+			log.Debug(log.M{Msg: "Returning intel cache entry (found) for " + term})
+			found = true
+			return
+		}
+		log.Debug(log.M{Msg: "Failed to unmarshal intel cache for " + term})
+	}
+
+	// flag to store cache only on succesful query
+	successQuery := false
+
 	for _, v := range intels.IntelSources {
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
 		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
@@ -75,6 +94,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 		}
 		res, err := c.Do(req)
 		if err != nil {
+			// log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip + ": " + err.Error()})
 			log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip})
 			tx.Result = "Failed to query " + v.Name
 			tx.End()
@@ -89,6 +109,8 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 			continue
 		}
 
+		successQuery = true
+
 		if v.Matcher == "regex" {
 			f, r := matcherRegexIntel(body, v.Name, term, v.ResultRegex)
 			if f {
@@ -96,6 +118,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 				results = append(results, r...)
 			}
 		}
+
 		if found {
 			tx.Result = "Intel found"
 		} else {
@@ -103,13 +126,32 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 		}
 		tx.End()
 	}
+
+	if !successQuery {
+		return
+	}
+
+	if found {
+		b, err := json.Marshal(results)
+		if err == nil {
+			intelCache.Set(term, b)
+			log.Debug(log.M{Msg: "Storing intel result for " + term + " in cache"})
+		}
+	} else {
+		intelCache.Set(term, []byte("n/f"))
+		log.Debug(log.M{Msg: "Storing intel not found result for " + term + " in cache"})
+	}
 	return
 }
 
 // InitIntel initialize threat intel cross-correlation
-func InitIntel(confDir string) error {
+func InitIntel(confDir string, cacheDuration int) error {
 	p := path.Join(confDir, intelFileGlob)
 	files, err := filepath.Glob(p)
+	if err != nil {
+		return err
+	}
+	intelCache, err = cache.New("intel", cacheDuration)
 	if err != nil {
 		return err
 	}

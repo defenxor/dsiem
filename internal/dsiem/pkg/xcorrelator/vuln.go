@@ -1,6 +1,7 @@
 package xcorrelator
 
 import (
+	"dsiem/internal/shared/pkg/cache"
 	"dsiem/internal/shared/pkg/fs"
 	log "dsiem/internal/shared/pkg/logger"
 	"net/http"
@@ -25,6 +26,7 @@ const (
 
 // VulnEnabled mark whether intel lookup is enabled
 var VulnEnabled bool
+var vulnCache *cache.Cache
 
 type vulnSource struct {
 	Name        string   `json:"name"`
@@ -62,12 +64,30 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 		}
 	}()
 
+	p := strconv.Itoa(port)
+	term := ip + ":" + p
+
+	if res, err := vulnCache.Get(term); err == nil {
+		if string(res) == "n/f" {
+			log.Debug(log.M{Msg: "Returning vuln cache entry (not found) for " + term})
+			return
+		}
+		err := json.Unmarshal(res, &results)
+		if err == nil {
+			log.Debug(log.M{Msg: "Returning vuln cache entry (found) for " + term})
+			found = true
+			return
+		}
+		log.Debug(log.M{Msg: "Failed to unmarshal vuln cache for " + term})
+	}
+
+	// flag to store cache only on succesful query
+	successQuery := false
+
 	for _, v := range vulns.VulnSources {
-		p := strconv.Itoa(port)
 		url := strings.Replace(v.URL, "${ip}", ip, 1)
 		url = strings.Replace(url, "${port}", p, 1)
 		log.Debug(log.M{Msg: "result url " + url})
-		term := ip + ":" + p
 
 		tx := elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
 		tx.Context.SetCustom("term", term)
@@ -98,6 +118,8 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 			continue
 		}
 
+		successQuery = true
+
 		if v.Matcher == "regex" {
 			f, r := matcherRegexVuln(body, v.Name, term, v.ResultRegex)
 			if f {
@@ -120,13 +142,32 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 		}
 		tx.End()
 	}
+
+	if !successQuery {
+		return
+	}
+
+	if found {
+		b, err := json.Marshal(results)
+		if err == nil {
+			vulnCache.Set(term, b)
+			log.Debug(log.M{Msg: "Storing vuln result for " + term + " in cache"})
+		}
+	} else {
+		vulnCache.Set(term, []byte("n/f"))
+		log.Debug(log.M{Msg: "Storing vuln not found result for " + term + " in cache"})
+	}
 	return
 }
 
 // InitVuln initialize vulnerability scan result cross-correlation
-func InitVuln(confDir string) error {
+func InitVuln(confDir string, cacheDuration int) error {
 	p := path.Join(confDir, vulnFileGlob)
 	files, err := filepath.Glob(p)
+	if err != nil {
+		return err
+	}
+	vulnCache, err = cache.New("intel", cacheDuration)
 	if err != nil {
 		return err
 	}
