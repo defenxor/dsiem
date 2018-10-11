@@ -115,9 +115,6 @@ func readEPS() (res string) {
 // send false each second to backpressure channel
 // to reset the trues detected and sent by member backlog
 func (blogs *backlogs) backPressureTick() {
-	blogs.Lock()
-	blogs.bpCh = make(chan bool)
-	blogs.Unlock()
 	ticker := time.NewTicker(time.Second)
 	go func() {
 		for {
@@ -132,11 +129,7 @@ func (blogs *backlogs) backPressureTick() {
 }
 
 func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
-	time.AfterFunc(5*time.Second, func() {
-		// blogs.Lock()
-		blogs.backPressureTick()
-		// blogs.Unlock()
-	})
+	blogs.backPressureTick()
 
 	for {
 		evt := <-ch
@@ -146,41 +139,41 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		// maybe check event against all rules here, if non match then continue
 		// this will avoid checking against all backlogs which could be in 1000s compared to
 		// # of rules which in the 10s
-		// wg := &sync.WaitGroup{}
+		wg := &sync.WaitGroup{}
 		for k := range blogs.bl {
-			// wg.Add(1)
-			// go func(k string) {
-			// go try-receive pattern
-			select {
-			case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
-				//	wg.Done()
-				// return
-				continue
-			default:
-			}
+			wg.Add(1)
+			go func(k string) {
+				// go try-receive pattern
+				select {
+				case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
+					wg.Done()
+					return
+					// continue
+				default:
+				}
 
-			select {
-			case <-blogs.bl[k].chDone: // exit early if done
-				// wg.Done()
-				// return
-				continue
-			case blogs.bl[k].chData <- evt: // fwd to backlog
 				select {
 				case <-blogs.bl[k].chDone: // exit early if done
-					// wg.Done()
-					// return
-					continue
-				// wait for the result
-				case f := <-blogs.bl[k].chFound:
-					if f {
-						found = true
+					wg.Done()
+					return
+					// continue
+				case blogs.bl[k].chData <- evt: // fwd to backlog
+					select {
+					case <-blogs.bl[k].chDone: // exit early if done
+						wg.Done()
+						return
+						// continue
+					// wait for the result
+					case f := <-blogs.bl[k].chFound:
+						if f {
+							found = true
+						}
 					}
 				}
-			}
-			// wg.Done()
-			//			}(k)
+				wg.Done()
+			}(k)
 		}
-		//		wg.Wait()
+		wg.Wait()
 
 		l.Unlock()
 

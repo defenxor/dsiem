@@ -4,6 +4,7 @@ import (
 	"dsiem/internal/pkg/dsiem/alarm"
 	"dsiem/internal/pkg/dsiem/asset"
 	"dsiem/internal/pkg/dsiem/event"
+	"dsiem/internal/pkg/dsiem/rule"
 	"dsiem/internal/pkg/shared/apm"
 	log "dsiem/internal/pkg/shared/logger"
 	"dsiem/internal/pkg/shared/str"
@@ -61,8 +62,8 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 				b.debug("worker chData closed, exiting", 0)
 				return
 			}
-			b.debug("backlog incoming event", evt.ConnID)
 			l := b.RLock()
+			b.debug("backlog incoming event", evt.ConnID)
 			cs := b.CurrentStage
 			if cs <= 1 {
 				l.Unlock()
@@ -280,10 +281,14 @@ func (b *backLog) setLastEvent(e event.NormalizedEvent) {
 	b.Unlock()
 }
 
-func (b *backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
+func (b backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
+	l := b.RLock()
+	tmp := make([]rule.DirectiveRule, len(b.Directive.Rules))
+	copy(tmp, b.Directive.Rules)
+	l.Unlock()
 	go alarm.Upsert(b.ID, b.Directive.Name, b.Directive.Kingdom,
 		b.Directive.Category, b.SrcIPs, b.DstIPs, b.LastEvent.SrcPort,
-		b.LastEvent.DstPort, b.Risk, b.StatusTime, b.Directive.Rules,
+		b.LastEvent.DstPort, b.Risk, b.StatusTime, tmp,
 		connID, tx)
 }
 
@@ -303,8 +308,10 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *elas
 	b.Unlock()
 	b.setStatusTime()
 	// dont wait for I/O
-	go func() {
-		if err := b.updateElasticsearch(e); err != nil {
+	l := b.RLock()
+	go func(b backLog) {
+		err := b.updateElasticsearch(e)
+		if err != nil {
 			b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
 			if apm.Enabled() {
 				e := elasticapm.DefaultTracer.NewError(err)
@@ -317,7 +324,8 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *elas
 				tx.Result = "Event appended to backlog"
 			}
 		}
-	}()
+	}(*b)
+	l.Unlock()
 	return
 }
 

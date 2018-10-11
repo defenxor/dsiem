@@ -60,6 +60,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		blogs := backlogs{}
 		blogs.DRWMutex = drwmutex.New()
 		blogs.id = i
+		blogs.bpCh =  make(chan bool)
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
 		l := blogs.RLock()
 		allBacklogs = append(allBacklogs, blogs)

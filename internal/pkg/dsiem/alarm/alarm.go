@@ -164,8 +164,8 @@ func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *elastica
 			l.Unlock()
 			return
 		}
-		l.Unlock()
 		err := a.updateElasticsearch(connID)
+		l.Unlock()
 		if err != nil {
 			l := a.RLock()
 			log.Warn(log.M{Msg: "failed to update Elasticsearch after vulnerability check! " + err.Error(), BId: a.ID, CId: connID})
@@ -227,9 +227,8 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 			return
 		}
 
-		l.Unlock()
-
 		err := a.updateElasticsearch(connID)
+		l.Unlock()
 		if err != nil {
 			l := a.RLock()
 			log.Warn(log.M{Msg: "failed to update Elasticsearch after TI check! " + err.Error(), BId: a.ID, CId: connID})
@@ -416,9 +415,8 @@ func Upsert(id, name, kingdom, category string,
 		a.Rules = append(a.Rules, rule)
 	}
 
-	a.Unlock()
-
 	err := a.updateElasticsearch(connID)
+	a.Unlock()
 	if err != nil {
 		tx.Result = "Alarm failed to update ES"
 		l := a.RLock()
