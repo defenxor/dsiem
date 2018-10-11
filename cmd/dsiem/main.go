@@ -258,14 +258,14 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}
+			err = alarm.Init(path.Join(logDir, alarmLogs))
+			if err != nil {
+				exit("Cannot initialize alarm", err)
+			}
 			err = siem.InitBackLog(path.Join(logDir, aEventsLogs),
 				sendBpChan, holdDuration)
 			if err != nil {
 				exit("Cannot initialize backlog", err)
-			}
-			err = alarm.Init(path.Join(logDir, alarmLogs))
-			if err != nil {
-				exit("Cannot initialize alarm", err)
 			}
 		}
 

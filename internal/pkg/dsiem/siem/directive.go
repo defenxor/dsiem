@@ -61,7 +61,9 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		blogs.DRWMutex = drwmutex.New()
 		blogs.id = i
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
+		l := blogs.RLock()
 		allBacklogs = append(allBacklogs, blogs)
+		l.Unlock()
 		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i])
 	}
 

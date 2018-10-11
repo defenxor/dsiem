@@ -2,12 +2,15 @@ package limiter
 
 import (
 	"context"
+	"errors"
+	"sync"
 
 	"golang.org/x/time/rate"
 )
 
 // Limiter provides rate per second control
 type Limiter struct {
+	sync.RWMutex
 	lmt         *rate.Limiter
 	maxRPS      int
 	minRPS      int
@@ -15,18 +18,24 @@ type Limiter struct {
 }
 
 // New returns initialized Limiter
-func New(maxRPS, minRPS int) *Limiter {
+func New(maxRPS, minRPS int) (*Limiter, error) {
+	if minRPS > maxRPS {
+		return nil, errors.New("minRPS must be <= maxRPS")
+	}
 	l := new(Limiter)
+	l.Lock()
+	defer l.Unlock()
+
 	initial := maxRPS - ((maxRPS - minRPS) / 2)
 	l.lmt = rate.NewLimiter(rate.Limit(initial), maxRPS)
 	l.maxRPS = maxRPS
 	l.minRPS = minRPS
-	return l
+	return l, nil
 }
 
 func (l *Limiter) modifyLimit(raise bool) int {
 	target := 0
-	current := l.GetLimit()
+	current := l.Limit()
 	if raise {
 		// raise to maxRPS in 100 steps
 		target = current + ((l.maxRPS - l.minRPS) / 100)
@@ -44,18 +53,20 @@ func (l *Limiter) modifyLimit(raise bool) int {
 	return target
 }
 
-// GetLimit returns the current RPS
-func (l *Limiter) GetLimit() int {
+// Limit returns the current RPS
+func (l *Limiter) Limit() int {
+	l.RLock()
+	defer l.RUnlock()
 	return int(l.lmt.Limit())
 }
 
-// RaiseLimit increase the RPS
-func (l *Limiter) RaiseLimit() int {
+// Raise increase the RPS
+func (l *Limiter) Raise() int {
 	return l.modifyLimit(true)
 }
 
-// LowerLimit reduces the RPS
-func (l *Limiter) LowerLimit() int {
+// Lower reduces the RPS
+func (l *Limiter) Lower() int {
 	return l.modifyLimit(false)
 }
 

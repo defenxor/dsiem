@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -82,21 +83,27 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	router.GET("/debug/pprof/:name", pprofHandler)
 	router.GET("/debug/pprof/", pprofHandler)
 	router.POST("/config/:filename", handleConfFileUpload)
+	router.DELETE("/config/:filename", handleConfFileDelete)
 
 	if mode != "cluster-backend" {
 
 		initWSServer()
 		initEPSTicker()
-		overloadManager()
 
 		if maxEPS == 0 || minEPS == 0 {
 			router.POST("/events", handleEvents)
 		} else {
-			epsLimiter = limiter.New(maxEPS, minEPS)
-			router.POST("/events", rateLimit(epsLimiter.GetLimit(), 3*time.Second, handleEvents))
+			var err error
+			epsLimiter, err = limiter.New(maxEPS, minEPS)
+			if err != nil {
+				return err
+			}
+			router.POST("/events", rateLimit(epsLimiter.Limit(), 3*time.Second, handleEvents))
 		}
 		router.GET("/eps/", wsHandler)
 		router.ServeFiles("/ui/*filepath", webDir)
+
+		overloadManager()
 	}
 	ln, err := reuseport.Listen("tcp4", addr+":"+p)
 	if err != nil {
@@ -124,6 +131,7 @@ func increaseConnCounter() uint64 {
 }
 
 func overloadManager() {
+	mu := sync.RWMutex{}
 	detector := func() {
 		for {
 			m := <-bpChan
@@ -131,7 +139,9 @@ func overloadManager() {
 				log.Info(log.M{Msg: "Received overload status change from " + strconv.FormatBool(overloadFlag) +
 					" to " + strconv.FormatBool(m) + " from backend"})
 			}
+			mu.Lock()
 			overloadFlag = m
+			mu.Unlock()
 		}
 	}
 	modifier := func() {
@@ -140,16 +150,21 @@ func overloadManager() {
 			for {
 				res, current := 0, 0
 				<-ticker.C
-				current = epsLimiter.GetLimit()
+				if epsLimiter == nil {
+					continue
+				}
+				current = epsLimiter.Limit()
+				mu.RLock()
 				if overloadFlag {
-					res = epsLimiter.LowerLimit()
+					res = epsLimiter.Lower()
 				} else {
-					res = epsLimiter.RaiseLimit()
+					res = epsLimiter.Raise()
 				}
 				if current != res {
 					log.Info(log.M{Msg: "Overload status is " + strconv.FormatBool(overloadFlag) +
 						", EPS limit changed from " + strconv.Itoa(current) + " to " + strconv.Itoa(res)})
 				}
+				mu.RUnlock()
 			}
 		}()
 	}
@@ -166,6 +181,7 @@ func rateLimit(rps int, wait time.Duration, h fasthttp.RequestHandler) fasthttp.
 		// the deadline. This is preemptive, instead of waiting the
 		// entire duration.
 		if err := epsLimiter.Wait(ctx); err != nil {
+			fmt.Println("Too many requests")
 			fmt.Fprintf(c, "Too many requests\n")
 			c.SetStatusCode(fasthttp.StatusTooManyRequests)
 			return

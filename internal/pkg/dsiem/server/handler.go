@@ -67,6 +67,41 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 	return
 }
 
+func handleConfFileDelete(ctx *fasthttp.RequestCtx) {
+	clientAddr := ctx.RemoteAddr().String()
+	filename := ctx.UserValue("filename").(string)
+	if filename == "" {
+		fmt.Fprintf(ctx, "requires /config/filename\n")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+		return
+	}
+
+	if !isCfgFileNameValid(filename) {
+		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding."})
+		fmt.Fprintf(ctx, "Not a valid filename, should be in any_N4m3-that_you_want.json format\n")
+		ctx.SetStatusCode(fasthttp.StatusTeapot)
+		return
+	}
+
+	log.Info(log.M{Msg: "Delete request for file '" + filename + "' from " + clientAddr})
+	f := path.Join(confDir, filename)
+	log.Info(log.M{Msg: "Deleting file " + f})
+
+	if !fs.FileExist(f) {
+		fmt.Fprintf(ctx, filename+" doesn't exist\n")
+		ctx.SetStatusCode(fasthttp.StatusNotFound)
+		return
+	}
+
+	// delete file
+	var err = os.Remove(f)
+	if err != nil {
+		fmt.Fprintf(ctx, "cannot delete "+filename)
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+	}
+	return
+}
+
 func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
 	filename := ctx.UserValue("filename").(string)

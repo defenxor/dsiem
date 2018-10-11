@@ -45,22 +45,34 @@ func InitBackLog(logFile string, bpChan chan<- bool, holdDuration int) (err erro
 	}()
 
 	// note, initDirective must have completed before this
+	prevState := false
+	go func() { bpChan <- false }() // set initial state
 	go func() {
 		sWait := time.Duration(holdDuration)
 		timer := time.NewTimer(time.Second * sWait)
 		go func() {
 			for {
 				<-timer.C
-				bpChan <- false
+				// send false only if prev state is true
 				timer.Reset(time.Second * sWait)
+				if prevState == true {
+					bpChan <- false
+					prevState = false
+				}
 			}
 		}()
+		// get a merged channel consisting of results from all
+		// backlogs
 		out := mergeWait()
 		for range out {
 			n := <-out
+			// send true only if prev state is false
 			if n == true {
-				bpChan <- true
 				timer.Reset(time.Second * sWait)
+				if prevState == false {
+					bpChan <- true
+					prevState = true
+				}
 			}
 		}
 	}()
@@ -74,8 +86,14 @@ func mergeWait() <-chan bool {
 	wg.Add(l)
 	for i := range allBacklogs {
 		go func(i int) {
+			// l := allBacklogs[i].RLock()
 			for v := range allBacklogs[i].bpCh {
-				out <- v
+				// l.Unlock()
+				// out <- v
+				if v {
+					out <- v // one true result is enough
+					break
+				}
 			}
 			wg.Done()
 		}(i)
@@ -97,7 +115,9 @@ func readEPS() (res string) {
 // send false each second to backpressure channel
 // to reset the trues detected and sent by member backlog
 func (blogs *backlogs) backPressureTick() {
+	blogs.Lock()
 	blogs.bpCh = make(chan bool)
+	blogs.Unlock()
 	ticker := time.NewTicker(time.Second)
 	go func() {
 		for {
@@ -112,26 +132,43 @@ func (blogs *backlogs) backPressureTick() {
 }
 
 func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
-	blogs.backPressureTick()
+	time.AfterFunc(5*time.Second, func() {
+		// blogs.Lock()
+		blogs.backPressureTick()
+		// blogs.Unlock()
+	})
 
 	for {
 		evt := <-ch
 		found := false
 		l := blogs.RLock() // to prevent concurrent r/w with delete()
+		// OPTIM TODO:
+		// maybe check event against all rules here, if non match then continue
+		// this will avoid checking against all backlogs which could be in 1000s compared to
+		// # of rules which in the 10s
+		// wg := &sync.WaitGroup{}
 		for k := range blogs.bl {
+			// wg.Add(1)
+			// go func(k string) {
 			// go try-receive pattern
 			select {
 			case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
+				//	wg.Done()
+				// return
 				continue
 			default:
 			}
 
 			select {
 			case <-blogs.bl[k].chDone: // exit early if done
+				// wg.Done()
+				// return
 				continue
 			case blogs.bl[k].chData <- evt: // fwd to backlog
 				select {
 				case <-blogs.bl[k].chDone: // exit early if done
+					// wg.Done()
+					// return
 					continue
 				// wait for the result
 				case f := <-blogs.bl[k].chFound:
@@ -140,7 +177,11 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 					}
 				}
 			}
+			// wg.Done()
+			//			}(k)
 		}
+		//		wg.Wait()
+
 		l.Unlock()
 
 		if found {
@@ -150,7 +191,6 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		if !doesEventMatchRule(evt, d.Rules[0], evt.ConnID) {
 			continue // back to chan loop
 		}
-
 		b, err := createNewBackLog(d, evt)
 		if err != nil {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
