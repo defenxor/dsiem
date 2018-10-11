@@ -181,7 +181,6 @@ func rateLimit(rps int, wait time.Duration, h fasthttp.RequestHandler) fasthttp.
 		// the deadline. This is preemptive, instead of waiting the
 		// entire duration.
 		if err := epsLimiter.Wait(ctx); err != nil {
-			fmt.Println("Too many requests")
 			fmt.Fprintf(c, "Too many requests\n")
 			c.SetStatusCode(fasthttp.StatusTooManyRequests)
 			return
