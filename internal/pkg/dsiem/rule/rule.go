@@ -23,3 +23,4 @@ type DirectiveRule struct {
 	Events      []string `json:"events,omitempty"`
 	Status      string   `json:"status"`
 }
+
