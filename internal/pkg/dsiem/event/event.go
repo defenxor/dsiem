@@ -10,6 +10,7 @@ type NormalizedEvent struct {
 	ConnID       uint64 `json:"conn_id,omitempty"`
 	EventID      string `json:"event_id"`
 	Timestamp    string `json:"timestamp"`
+	Title        string `json:"title,omitempty"`
 	Sensor       string `json:"sensor"`
 	PluginID     int    `json:"plugin_id,omitempty"`
 	PluginSID    int    `json:"plugin_sid,omitempty"`

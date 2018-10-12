@@ -50,7 +50,7 @@ func init() {
 	dsiemCmd.Flags().StringP("homenet", "i", "192.168.0.1", "IP address to use to represent HOME_NET. This IP must already be defined in dsiem assets configuration")
 	dsiemCmd.Flags().IntP("rps", "r", 500, "number of HTTP post request per second")
 
-	fbeatCmd.Flags().StringP("logfile", "l", "/var/log/dtester.log", "log file location for filebeat mode. Filebeat must be configured to harvest this file.")
+	fbeatCmd.Flags().StringP("logfile", "l", "/var/log/external/dtester.json", "log file location for filebeat mode. Filebeat must be configured to harvest this file.")
 
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	viper.BindPFlag("file", rootCmd.PersistentFlags().Lookup("file"))
@@ -153,6 +153,7 @@ func toFilebeat(d *siem.Directives, logfile string) {
 			}
 			e := event.NormalizedEvent{}
 			e.Sensor = progName
+			e.Title = j.Name
 			e.SrcIP = genIP(j.From, prevFrom)
 			e.DstIP = genIP(j.To, prevTo)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
