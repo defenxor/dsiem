@@ -20,7 +20,33 @@ type DirectiveRule struct {
 	Timeout     int64    `json:"timeout"`
 	StartTime   int64    `json:"start_time"`
 	EndTime     int64    `json:"end_time"`
-	Events      []string `json:"events,omitempty"`
 	Status      string   `json:"status"`
+	Events      []string `json:"events,omitempty"`
+	StickyDiff  string   `json:"sticky_different,omitempty"`
+	SDiffString []string `json:"-"`
+	SDiffInt    []int    `json:"-"`
 }
 
+// IsStringStickyDiff check if v fulfill stickydiff condition
+func (r *DirectiveRule) IsStringStickyDiff(v string) bool {
+	for i := range r.SDiffString {
+		if r.SDiffString[i] == v {
+			return false
+		}
+	}
+	// add it to the coll
+	r.SDiffString = append(r.SDiffString, v)
+	return true
+}
+
+// IsIntStickyDiff check if v fulfill stickydiff condition
+func (r *DirectiveRule) IsIntStickyDiff(v int) (match bool) {
+	for i := range r.SDiffInt {
+		if r.SDiffInt[i] == v {
+			return false
+		}
+	}
+	// add it to the coll
+	r.SDiffInt = append(r.SDiffInt, v)
+	return true
+}

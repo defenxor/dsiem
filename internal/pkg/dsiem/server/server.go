@@ -205,13 +205,14 @@ func initMsgQueue(msq string, prefix, nodeName string) {
 	}
 	for {
 		err := initMsq()
-		if err == nil {
-			log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
-			break
+		if err != nil {
+			log.Info(log.M{Msg: "Error from message queue " + err.Error()})
+			log.Info(log.M{Msg: "Reconnecting in " + strconv.Itoa(reconnectSecond) + " seconds.."})
+			time.Sleep(reconnectSecond * time.Second)
+			continue
 		}
-		log.Info(log.M{Msg: "Error from message queue " + err.Error()})
-		log.Info(log.M{Msg: "Reconnecting in " + strconv.Itoa(reconnectSecond) + " seconds.."})
-		time.Sleep(reconnectSecond * time.Second)
+		log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
+		break
 	}
 }
 

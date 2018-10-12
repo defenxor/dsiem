@@ -44,7 +44,10 @@ var uCases Directives
 // InitDirectives initialize directive from directive_*.json files in confDir then start
 // backlog manager for each directive
 func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
+
+	var dirchan []chan event.NormalizedEvent
 	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob)
+
 	if err != nil {
 		return err
 	}
@@ -54,13 +57,12 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	}
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
-	var dirchan []chan event.NormalizedEvent
 	for i := 0; i < total; i++ {
 		dirchan = append(dirchan, make(chan event.NormalizedEvent, 10)) // allow lagging behind up to 10 events
 		blogs := backlogs{}
 		blogs.DRWMutex = drwmutex.New()
 		blogs.id = i
-		blogs.bpCh =  make(chan bool)
+		blogs.bpCh = make(chan bool)
 		blogs.bl = make(map[string]*backLog) // have to do it here before the append
 		l := blogs.RLock()
 		allBacklogs = append(allBacklogs, blogs)
@@ -74,12 +76,9 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 			evt := <-ch
 			// running under go routine easily bottleneck under heavy load
 			// this however will cause single dirchan to block the loop
-			// should investigate to use buffered channel here
-			// go func() {
 			for i := range dirchan {
 				dirchan[i] <- evt
 			}
-			// }()
 		}
 	}
 	go copier()
@@ -314,6 +313,11 @@ func pluginRuleCheck(e event.NormalizedEvent, r rule.DirectiveRule, connID uint6
 	if !sidMatch {
 		return
 	}
+	if r.StickyDiff == "PLUGIN_SID" {
+		if !r.IsIntStickyDiff(e.PluginSID) {
+			return
+		}
+	}
 	ret = ipPortCheck(e, r, connID)
 	return
 }
@@ -348,6 +352,26 @@ func ipPortCheck(e event.NormalizedEvent, r rule.DirectiveRule, connID uint64) (
 	}
 	if r.PortTo != "ANY" && !str.IsInCSVList(r.PortTo, strconv.Itoa(e.DstPort)) {
 		return
+	}
+
+	switch {
+	case r.StickyDiff == "SRC_IP":
+		if !r.IsStringStickyDiff(e.SrcIP) {
+			return
+		}
+	case r.StickyDiff == "DST_IP":
+		if !r.IsStringStickyDiff(e.DstIP) {
+			return
+		}
+	case r.StickyDiff == "SRC_PORT":
+		if !r.IsIntStickyDiff(e.SrcPort) {
+			return
+		}
+	case r.StickyDiff == "DST_PORT":
+		if !r.IsIntStickyDiff(e.DstPort) {
+			return
+		}
+	default:
 	}
 	// SrcIP, DstIP, SrcPort, DstPort all match
 	return true

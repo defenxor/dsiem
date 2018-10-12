@@ -41,6 +41,7 @@ type rule struct {
 	Category       string   `xml:"category,attr" json:"category,omitempty"`
 	SubCategorystr string   `xml:"subcategory,attr" json:"subcategory_str,omitempty"`
 	SubCategory    []string `json:"subcategory,omitempty"`
+	StickyDiff     string   `xml:"sticky_different,attr" json:"sticky_different,omitempty"`
 	Occurrence     int64    `xml:"occurrence,attr" json:"occurrence"`
 	From           string   `xml:"from,attr" json:"from"`
 	To             string   `xml:"to,attr" json:"to"`

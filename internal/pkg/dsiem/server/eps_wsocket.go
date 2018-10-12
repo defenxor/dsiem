@@ -54,7 +54,6 @@ func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
 }
 
 func (s *wsServer) del(cID string) {
-	log.Debug(log.M{Msg: "deleting WS client " + cID})
 	delete(s.clients, cID)
 }
 

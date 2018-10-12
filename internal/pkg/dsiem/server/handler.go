@@ -196,15 +196,6 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	connID := increaseConnCounter()
 	rateCounter.Incr(1)
 
-	/*
-		if overloadFlag {
-			log.Info(log.M{Msg: "Overload condition, rejecting request from " + clientAddr, CId: connID})
-			fmt.Fprintf(ctx, "backend overloaded\n")
-			ctx.SetStatusCode(fasthttp.StatusTooManyRequests)
-			return
-		}
-	*/
-
 	evt := &event.NormalizedEvent{}
 
 	msg := ctx.PostBody()

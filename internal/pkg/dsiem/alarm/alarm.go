@@ -412,6 +412,7 @@ func Upsert(id, name, kingdom, category string,
 		// rule := alarmRule{v, len(v.Events)}
 		rule := alarmRule{v}
 		rule.Events = []string{} // so it will be omited during json marshaling
+		rule.StickyDiff = ""
 		a.Rules = append(a.Rules, rule)
 	}
 
