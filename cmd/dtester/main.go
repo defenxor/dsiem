@@ -38,23 +38,31 @@ var buildTime string
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(testCmd)
-	testCmd.Flags().StringP("address", "a", "127.0.0.1", "Dsiem IP address to send events to")
-	testCmd.Flags().IntP("port", "p", 8080, "Dsiem TCP port")
-	testCmd.Flags().IntP("max", "m", 1000, "Maximum number of events to send per rule")
-	testCmd.Flags().StringP("homenet", "i", "192.168.0.1", "IP address to use to represent HOME_NET. This IP must already be defined in dsiem assets configuration")
-	testCmd.Flags().StringP("file", "f", "directives_*.json", "file glob pattern to load directives from")
-	testCmd.Flags().IntP("rps", "r", 500, "number of HTTP post request per second")
-	testCmd.Flags().IntP("concurrency", "c", 50, "number of concurrent HTTP post to submit")
-	testCmd.Flags().BoolP("verbose", "v", false, "print sent events to console")
-	viper.BindPFlag("address", testCmd.Flags().Lookup("address"))
-	viper.BindPFlag("port", testCmd.Flags().Lookup("port"))
-	viper.BindPFlag("homenet", testCmd.Flags().Lookup("homenet"))
-	viper.BindPFlag("file", testCmd.Flags().Lookup("file"))
-	viper.BindPFlag("max", testCmd.Flags().Lookup("max"))
-	viper.BindPFlag("rps", testCmd.Flags().Lookup("rps"))
-	viper.BindPFlag("concurrency", testCmd.Flags().Lookup("concurrency"))
-	viper.BindPFlag("verbose", testCmd.Flags().Lookup("verbose"))
+	rootCmd.AddCommand(dsiemCmd)
+	rootCmd.AddCommand(fbeatCmd)
+	rootCmd.PersistentFlags().StringP("file", "f", "directives_*.json", "file glob pattern to load directives from")
+	rootCmd.PersistentFlags().IntP("max", "n", 1000, "Maximum number of events to send per rule")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "print sent events to console")
+	rootCmd.PersistentFlags().IntP("concurrency", "c", 50, "number of concurrent HTTP post or file write to submit")
+
+	dsiemCmd.Flags().StringP("address", "a", "127.0.0.1", "Dsiem IP address to send events to")
+	dsiemCmd.Flags().IntP("port", "p", 8080, "Dsiem TCP port")
+	dsiemCmd.Flags().StringP("homenet", "i", "192.168.0.1", "IP address to use to represent HOME_NET. This IP must already be defined in dsiem assets configuration")
+	dsiemCmd.Flags().IntP("rps", "r", 500, "number of HTTP post request per second")
+
+	fbeatCmd.Flags().StringP("logfile", "l", "/var/log/dtester.log", "log file location for filebeat mode. Filebeat must be configured to harvest this file.")
+
+	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	viper.BindPFlag("file", rootCmd.PersistentFlags().Lookup("file"))
+	viper.BindPFlag("max", rootCmd.PersistentFlags().Lookup("max"))
+	viper.BindPFlag("concurrency", rootCmd.PersistentFlags().Lookup("concurrency"))
+
+	viper.BindPFlag("address", dsiemCmd.Flags().Lookup("address"))
+	viper.BindPFlag("port", dsiemCmd.Flags().Lookup("port"))
+	viper.BindPFlag("homenet", dsiemCmd.Flags().Lookup("homenet"))
+	viper.BindPFlag("rps", dsiemCmd.Flags().Lookup("rps"))
+
+	viper.BindPFlag("logfile", fbeatCmd.Flags().Lookup("logfile"))
 }
 
 func initConfig() {
@@ -88,11 +96,10 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Start sending events",
-	Long: `
-Send events to dsiem at defined address and port`,
+var dsiemCmd = &cobra.Command{
+	Use:   "dsiem",
+	Short: "Start sending events to dsiem",
+	Long:  `Send events to dsiem at defined address and port`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		log.Setup(true)
@@ -107,6 +114,78 @@ Send events to dsiem at defined address and port`,
 		}
 		sender(&dirs, addr, port)
 	},
+}
+
+var fbeatCmd = &cobra.Command{
+	Use:   "fbeat",
+	Short: "Start sending events through filebeat",
+	Long:  `Send events to dsiem through filebeat and logstash`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		log.Setup(true)
+
+		logfile := viper.GetString("logfile")
+		file := viper.GetString("file")
+
+		dirs, _, err := siem.LoadDirectivesFromFile("", file)
+		if err != nil {
+			exit("Cannot initialize directives", err)
+		}
+		toFilebeat(&dirs, logfile)
+	},
+}
+
+func toFilebeat(d *siem.Directives, logfile string) {
+	max := viper.GetInt("max")
+	conc := viper.GetInt("concurrency")
+	verbose := viper.GetBool("verbose")
+	swg := sizedwaitgroup.New(conc)
+
+	for _, v := range d.Dirs {
+		var prevPortTo int
+		var prevPortFrom int
+		var prevFrom string
+		var prevTo string
+		for _, j := range v.Rules {
+			amt := j.Occurrence
+			if amt > max {
+				amt = max
+			}
+			e := event.NormalizedEvent{}
+			e.Sensor = progName
+			e.SrcIP = genIP(j.From, prevFrom)
+			e.DstIP = genIP(j.To, prevTo)
+			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
+			e.DstPort = genPort(j.PortTo, prevPortTo, true)
+			e.Protocol = genProto(j.Protocol)
+			e.PluginID = j.PluginID
+			e.PluginSID = pickOneFromIntSlice(j.PluginSID)
+			e.Product = pickOneFromStrSlice(j.Product)
+			e.Category = j.Category
+			e.SubCategory = pickOneFromStrSlice(j.SubCategory)
+
+			prevPortTo = e.DstPort
+			prevPortFrom = e.SrcPort
+			prevFrom = e.SrcIP
+			prevTo = e.DstIP
+
+			for i := 0; i < amt; i++ {
+				go func(st int, iter int) {
+					for {
+						//	err := fn(&e, c, st, iter, verbose)
+						err := savetoLog(e, logfile, verbose)
+						if err != nil {
+							log.Info(log.M{Msg: "Error: " + err.Error() + ". Retrying in 3 second."})
+							time.Sleep(3 * time.Second)
+							continue
+						}
+						break
+					}
+				}(j.Stage, i)
+			}
+		}
+	}
+	swg.Wait()
 }
 
 func sender(d *siem.Directives, addr string, port int) {
@@ -323,4 +402,24 @@ func genUUID() string {
 		return "static-id-doesnt-really-matter"
 	}
 	return u.String()
+}
+
+func savetoLog(e event.NormalizedEvent, logfile string, verbose bool) error {
+	e.EventID = genUUID()
+	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	f, err := os.OpenFile(logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	vJSON, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+	if verbose {
+		fmt.Println(vJSON)
+	}
+	f.SetDeadline(time.Now().Add(60 * time.Second))
+	_, err = f.WriteString(string(vJSON) + "\n")
+	return err
 }
