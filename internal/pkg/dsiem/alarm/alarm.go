@@ -6,11 +6,10 @@ import (
 	xc "dsiem/internal/pkg/dsiem/xcorrelator"
 	"dsiem/internal/pkg/shared/apm"
 	"dsiem/internal/pkg/shared/fs"
+	"dsiem/internal/pkg/shared/ip"
 	log "dsiem/internal/pkg/shared/logger"
 	"encoding/json"
 	"errors"
-	"expvar"
-	"net"
 	"os"
 	"path"
 	"reflect"
@@ -35,9 +34,6 @@ var mediumRiskUpperBound int
 var defaultTag string
 var defaultStatus string
 var alarmRemovalChannel chan string
-var privateIPBlocks []*net.IPNet
-
-var alarmCounter = expvar.NewInt("alarm_counter")
 
 type alarm struct {
 	// sync.RWMutex
@@ -197,7 +193,7 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 		for i := range p {
 			// skip private IP
-			if isPrivateIP(p[i]) {
+			if ip.IsPrivateIP(p[i]) {
 				continue
 			}
 			// skip existing entries
@@ -244,6 +240,10 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 }
 
 func (a alarm) updateElasticsearch(connID uint64) error {
+	// skip if risk still 0
+	//if a.Risk == 0 {
+	//	return nil
+	//}
 	log.Info(log.M{Msg: "alarm updating Elasticsearch", BId: a.ID, CId: connID})
 	aJSON, _ := json.Marshal(a)
 
@@ -265,12 +265,11 @@ func removeAlarm(id string) {
 	alarms.Unlock()
 }
 
-// UpdateCount set and return the count of alarms
-func UpdateCount() (count int) {
+// Count set and return the count of alarms
+func Count() (count int) {
 	l := alarms.RLock()
 	count = len(alarms.al)
 	l.Unlock()
-	alarmCounter.Set(int64(count))
 	return
 }
 
@@ -314,18 +313,6 @@ func Init(logFile string) error {
 	alarmRemovalChannel = make(chan string)
 	removalListener()
 
-	for _, cidr := range []string{
-		"127.0.0.0/8",    // IPv4 loopback
-		"10.0.0.0/8",     // RFC1918
-		"172.16.0.0/12",  // RFC1918
-		"192.168.0.0/16", // RFC1918
-		"::1/128",        // IPv6 loopback
-		"fe80::/10",      // IPv6 link-local
-	} {
-		_, block, _ := net.ParseCIDR(cidr)
-		privateIPBlocks = append(privateIPBlocks, block)
-	}
-
 	return nil
 }
 
@@ -352,7 +339,7 @@ func findOrCreateAlarm(id string) (a *alarm) {
 // backlog struct is decomposed here to avoid circular dependency
 func Upsert(id, name, kingdom, category string,
 	srcIPs, dstIPs []string, lastSrcPort, lastDstPort, risk int, statusTime int64,
-	rules []rule.DirectiveRule, connID uint64,
+	rules []rule.DirectiveRule, connID uint64, checkIntelVuln bool,
 	tx *elasticapm.Transaction) {
 
 	if apm.Enabled() {
@@ -388,14 +375,12 @@ func Upsert(id, name, kingdom, category string,
 	a.SrcIPs = srcIPs
 	a.DstIPs = dstIPs
 
-	// only do these if tx is not nil, if it is that means this is just a timeout signal update
-	// from backlog ticker
-	if xc.IntelEnabled && tx != nil {
+	if xc.IntelEnabled && checkIntelVuln {
 		// do intel check in the background
 		a.asyncIntelCheck(connID, tx)
 	}
 
-	if xc.VulnEnabled && tx != nil {
+	if xc.VulnEnabled && checkIntelVuln {
 		// do vuln check in the background
 		a.asyncVulnCheck(lastSrcPort, lastDstPort, connID, tx)
 	}
@@ -478,16 +463,6 @@ func copyAlarm(dst *alarm, src *alarm) {
 	dst.Vulnerabilities = src.Vulnerabilities
 	dst.Networks = src.Networks
 	dst.Rules = src.Rules
-}
-
-func isPrivateIP(ip string) bool {
-	ipn := net.ParseIP(ip)
-	for _, block := range privateIPBlocks {
-		if block.Contains(ipn) {
-			return true
-		}
-	}
-	return false
 }
 
 func removeDuplicatesUnordered(elements []string) []string {

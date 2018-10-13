@@ -132,7 +132,7 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			ticker.Stop() // prevent next signal, we're exiting the go routine
 			b.info("backlog expired, deleting it", 0)
 			b.setRuleStatus("timeout", 0)
-			b.updateAlarm(0, nil)
+			b.updateAlarm(0, false, nil)
 			b.delete()
 			return
 		}
@@ -226,7 +226,7 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	// the new event has caused events_count == occurrence
 	b.setRuleStatus("finished", e.ConnID)
 	b.setRuleEndTime(e)
-	b.updateAlarm(e.ConnID, tx)
+	b.updateAlarm(e.ConnID, true, tx)
 
 	// if it causes the last stage to reach events_count == occurrence, delete it
 	if b.isLastStage() {
@@ -244,7 +244,7 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	b.setRuleStartTime(e)
 
 	// stageIncreased, update alarm to publish new stage startTime
-	b.updateAlarm(e.ConnID, tx)
+	b.updateAlarm(e.ConnID, true, tx)
 
 	// b.setStatus("active", e.ConnID, tx)
 	if apm.Enabled() {
@@ -259,7 +259,7 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	if riskChanged {
 		// this LastEvent is used to get ports by alarm
 		b.setLastEvent(e)
-		b.updateAlarm(e.ConnID, tx)
+		b.updateAlarm(e.ConnID, true, tx)
 	}
 }
 
@@ -281,7 +281,10 @@ func (b *backLog) setLastEvent(e event.NormalizedEvent) {
 	b.Unlock()
 }
 
-func (b backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
+func (b backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *elasticapm.Transaction) {
+	if b.Risk == 0 {
+		return
+	}
 	l := b.RLock()
 	tmp := make([]rule.DirectiveRule, len(b.Directive.Rules))
 	copy(tmp, b.Directive.Rules)
@@ -289,7 +292,7 @@ func (b backLog) updateAlarm(connID uint64, tx *elasticapm.Transaction) {
 	go alarm.Upsert(b.ID, b.Directive.Name, b.Directive.Kingdom,
 		b.Directive.Category, b.SrcIPs, b.DstIPs, b.LastEvent.SrcPort,
 		b.LastEvent.DstPort, b.Risk, b.StatusTime, tmp,
-		connID, tx)
+		connID, checkIntelVuln, tx)
 }
 
 func (b *backLog) setRuleStatus(status string, connID uint64) {
@@ -363,24 +366,34 @@ func (b *backLog) setRuleStartTime(e event.NormalizedEvent) {
 	b.Unlock()
 }
 
-func (b backLog) calcRisk(connID uint64) (riskChanged bool) {
+func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	l := b.RLock()
 	s := b.CurrentStage
 	idx := s - 1
-	from := b.Directive.Rules[idx].From
-	to := b.Directive.Rules[idx].To
-	value := asset.GetValue(from)
-	tval := asset.GetValue(to)
-	if tval > value {
-		value = tval
+	value := 0
+	for i := range b.SrcIPs {
+		v := asset.GetValue(b.SrcIPs[i])
+		if v > value {
+			value = v
+		}
+	}
+	for i := range b.DstIPs {
+		v := asset.GetValue(b.DstIPs[i])
+		if v > value {
+			value = v
+		}
 	}
 
 	pRisk := b.Risk
 
 	reliability := b.Directive.Rules[idx].Reliability
 	priority := b.Directive.Priority
-	l.Unlock()
 	risk := priority * reliability * value / 25
+	//	fmt.Println("directive:", b.Directive.ID, "stage", b.CurrentStage,
+	//		"SrcIPs:", b.SrcIPs, "DstIPs:", b.DstIPs, "asset value:", value, "rel:",
+	//		reliability, "prio:", priority, "risk:", risk)
+
+	l.Unlock()
 
 	if risk != pRisk {
 		b.Lock()

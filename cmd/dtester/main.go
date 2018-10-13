@@ -19,6 +19,7 @@ import (
 
 	"dsiem/internal/pkg/dsiem/event"
 	"dsiem/internal/pkg/dsiem/siem"
+	"dsiem/internal/pkg/shared/ip"
 	log "dsiem/internal/pkg/shared/logger"
 	"dsiem/internal/pkg/shared/str"
 
@@ -43,20 +44,20 @@ func init() {
 	rootCmd.PersistentFlags().StringP("file", "f", "directives_*.json", "file glob pattern to load directives from")
 	rootCmd.PersistentFlags().IntP("max", "n", 1000, "Maximum number of events to send per rule")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "print sent events to console")
-	rootCmd.PersistentFlags().IntP("concurrency", "c", 50, "number of concurrent HTTP post or file write to submit")
 
 	dsiemCmd.Flags().StringP("address", "a", "127.0.0.1", "Dsiem IP address to send events to")
 	dsiemCmd.Flags().IntP("port", "p", 8080, "Dsiem TCP port")
 	dsiemCmd.Flags().StringP("homenet", "i", "192.168.0.1", "IP address to use to represent HOME_NET. This IP must already be defined in dsiem assets configuration")
 	dsiemCmd.Flags().IntP("rps", "r", 500, "number of HTTP post request per second")
+	dsiemCmd.Flags().IntP("concurrency", "c", 50, "number of concurrent HTTP post to submit")
 
 	fbeatCmd.Flags().StringP("logfile", "l", "/var/log/external/dtester.json", "log file location for filebeat mode. Filebeat must be configured to harvest this file.")
 
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	viper.BindPFlag("file", rootCmd.PersistentFlags().Lookup("file"))
 	viper.BindPFlag("max", rootCmd.PersistentFlags().Lookup("max"))
-	viper.BindPFlag("concurrency", rootCmd.PersistentFlags().Lookup("concurrency"))
 
+	viper.BindPFlag("concurrency", dsiemCmd.Flags().Lookup("concurrency"))
 	viper.BindPFlag("address", dsiemCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", dsiemCmd.Flags().Lookup("port"))
 	viper.BindPFlag("homenet", dsiemCmd.Flags().Lookup("homenet"))
@@ -84,7 +85,9 @@ func exit(msg string, err error) {
 var rootCmd = &cobra.Command{
 	Use:   "dtester",
 	Short: "Directive rules tester for Dsiem",
-	Long:  `Dtester test directive rules by sending a matching event to dsiem`,
+	Long: `
+Dtester test directive rules by sending a simulated matching event to dsiem,
+either directly or through filebeat and logstash`,
 }
 
 var versionCmd = &cobra.Command{
@@ -137,9 +140,8 @@ var fbeatCmd = &cobra.Command{
 
 func toFilebeat(d *siem.Directives, logfile string) {
 	max := viper.GetInt("max")
-	conc := viper.GetInt("concurrency")
 	verbose := viper.GetBool("verbose")
-	swg := sizedwaitgroup.New(conc)
+	swg := sizedwaitgroup.New(10)
 
 	for _, v := range d.Dirs {
 		var prevPortTo int
@@ -154,8 +156,8 @@ func toFilebeat(d *siem.Directives, logfile string) {
 			e := event.NormalizedEvent{}
 			e.Sensor = progName
 			e.Title = j.Name
-			e.SrcIP = genIP(j.From, prevFrom)
-			e.DstIP = genIP(j.To, prevTo)
+			e.SrcIP = genIP(j.From, prevFrom, "")
+			e.DstIP = genIP(j.To, prevTo, e.SrcIP)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
 			e.DstPort = genPort(j.PortTo, prevPortTo, true)
 			e.Protocol = genProto(j.Protocol)
@@ -176,9 +178,8 @@ func toFilebeat(d *siem.Directives, logfile string) {
 						//	err := fn(&e, c, st, iter, verbose)
 						err := savetoLog(e, logfile, verbose)
 						if err != nil {
-							log.Info(log.M{Msg: "Error: " + err.Error() + ". Retrying in 3 second."})
-							time.Sleep(3 * time.Second)
-							continue
+							// exit if error
+							exit("Cannot save to "+logfile, err)
 						}
 						break
 					}
@@ -222,8 +223,8 @@ func sender(d *siem.Directives, addr string, port int) {
 			}
 			e := event.NormalizedEvent{}
 			e.Sensor = progName
-			e.SrcIP = genIP(j.From, prevFrom)
-			e.DstIP = genIP(j.To, prevTo)
+			e.SrcIP = genIP(j.From, prevFrom, "")
+			e.DstIP = genIP(j.To, prevTo, e.SrcIP)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
 			e.DstPort = genPort(j.PortTo, prevPortTo, true)
 			e.Protocol = genProto(j.Protocol)
@@ -342,8 +343,12 @@ func genPort(portList string, prev int, useLowPort bool) int {
 	return n
 }
 
-func genIP(ruleAddr string, prev string) string {
+func genIP(ruleAddr string, prev string, counterpart string) string {
 	if ruleAddr == "HOME_NET" {
+		return viper.GetString("homenet")
+	}
+
+	if counterpart != "" && ruleAddr == "ANY" && !ip.IsPrivateIP(counterpart) {
 		return viper.GetString("homenet")
 	}
 

@@ -13,6 +13,7 @@ import (
 	"dsiem/internal/pkg/dsiem/alarm"
 	"dsiem/internal/pkg/dsiem/asset"
 	"dsiem/internal/pkg/dsiem/event"
+	"dsiem/internal/pkg/dsiem/expcounter"
 	"dsiem/internal/pkg/dsiem/server"
 	"dsiem/internal/pkg/dsiem/siem"
 	"dsiem/internal/pkg/dsiem/worker"
@@ -52,7 +53,7 @@ func init() {
 	serverCmd.Flags().IntP("holdDuration", "n", 10, "Duration in seconds before resetting overload condition state")
 	serverCmd.Flags().Bool("apm", false, "Enable elastic APM instrumentation")
 	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
-	serverCmd.Flags().Bool("trace", false, "Generate trace file for debugging.")
+	serverCmd.Flags().Bool("trace", false, "Generate 10 seconds trace file for debugging.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
 	serverCmd.Flags().IntP("cacheDuration", "c", 10, "Cache expiration time in minutes for intel and vuln query results")
 	serverCmd.Flags().String("msq", "nats://dsiem-nats:4222", "Nats address to use for frontend - backend communication.")
@@ -268,6 +269,8 @@ external message queue.`,
 				exit("Cannot initialize backlog", err)
 			}
 		}
+
+		expcounter.Init(mode)
 
 		err = server.Start(
 			eventChan, bpChan, confDir, webDir,

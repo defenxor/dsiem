@@ -232,6 +232,11 @@ func validatePort(s string) error {
 }
 
 func validateFromTo(s string, isFirstRule bool) (err error) {
+
+	if s == "" {
+		return errors.New("From/To cannot be empty")
+	}
+
 	if s == "ANY" || s == "HOME_NET" || s == "!HOME_NET" {
 		return nil
 	}

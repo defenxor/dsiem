@@ -6,8 +6,6 @@ import (
 	"dsiem/internal/pkg/shared/idgen"
 	log "dsiem/internal/pkg/shared/logger"
 	"dsiem/internal/pkg/shared/str"
-	"expvar"
-	"runtime"
 	"strconv"
 
 	"sync"
@@ -25,24 +23,9 @@ type backlogs struct {
 
 var allBacklogs []backlogs
 
-var backlogCounter = expvar.NewInt("backlog_counter")
-var goRoutineCounter = expvar.NewInt("goroutine_counter")
-
 // InitBackLog initialize backlog and ticker
 func InitBackLog(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
 	bLogFile = logFile
-
-	ticker := time.NewTicker(time.Second * 10)
-	go func() {
-		for {
-			<-ticker.C
-			goRoutineCounter.Set(int64(runtime.NumGoroutine()))
-			aLen := alarm.UpdateCount()
-			log.Info(log.M{Msg: "Watchdog tick ended, # alarms:" +
-				strconv.Itoa(aLen) + readEPS()})
-			// debug.FreeOSMemory()
-		}
-	}()
 
 	// note, initDirective must have completed before this
 	prevState := false
@@ -103,13 +86,6 @@ func mergeWait() <-chan bool {
 		close(out)
 	}()
 	return out
-}
-
-func readEPS() (res string) {
-	if x := expvar.Get("eps_counter"); x != nil {
-		res = " events/sec:" + x.String()
-	}
-	return
 }
 
 // send false each second to backpressure channel

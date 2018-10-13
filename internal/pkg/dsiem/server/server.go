@@ -4,7 +4,6 @@ import (
 	"dsiem/internal/pkg/dsiem/event"
 	log "dsiem/internal/pkg/shared/logger"
 	"errors"
-	"expvar"
 	"fmt"
 	"net"
 	"strconv"
@@ -41,7 +40,6 @@ var eventChan chan<- event.NormalizedEvent
 var bpChan <-chan bool
 
 // var msq string
-var epsCounter = expvar.NewInt("eps_counter")
 var overloadFlag bool
 
 // Start starts the server
@@ -88,7 +86,6 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	if mode != "cluster-backend" {
 
 		initWSServer()
-		initEPSTicker()
 
 		if maxEPS == 0 || minEPS == 0 {
 			router.POST("/events", handleEvents)
@@ -114,14 +111,9 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	return err
 }
 
-func initEPSTicker() {
-	ticker := time.NewTicker(time.Second)
-	go func() {
-		for {
-			<-ticker.C
-			epsCounter.Set(rateCounter.Rate())
-		}
-	}()
+// CounterRate return the rate of EPS
+func CounterRate() int64 {
+	return rateCounter.Rate()
 }
 
 func increaseConnCounter() uint64 {
