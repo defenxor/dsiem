@@ -1,6 +1,9 @@
 package rule
 
-// DirectiveRule defines the struct for directive rules
+import "sync"
+
+// DirectiveRule defines the struct for directive rules, this is read-only
+// struct.
 type DirectiveRule struct {
 	Name        string   `json:"name"`
 	Stage       int      `json:"stage"`
@@ -23,30 +26,12 @@ type DirectiveRule struct {
 	Status      string   `json:"status"`
 	Events      []string `json:"events,omitempty"`
 	StickyDiff  string   `json:"sticky_different,omitempty"`
-	SDiffString []string `json:"-"`
-	SDiffInt    []int    `json:"-"`
 }
 
-// IsStringStickyDiff check if v fulfill stickydiff condition
-func (r *DirectiveRule) IsStringStickyDiff(v string) bool {
-	for i := range r.SDiffString {
-		if r.SDiffString[i] == v {
-			return false
-		}
-	}
-	// add it to the coll
-	r.SDiffString = append(r.SDiffString, v)
-	return true
-}
-
-// IsIntStickyDiff check if v fulfill stickydiff condition
-func (r *DirectiveRule) IsIntStickyDiff(v int) (match bool) {
-	for i := range r.SDiffInt {
-		if r.SDiffInt[i] == v {
-			return false
-		}
-	}
-	// add it to the coll
-	r.SDiffInt = append(r.SDiffInt, v)
-	return true
+// StickyDiffData hold the previous data for stickydiff rule
+// This is mutable, so its separated from DirectiveRule
+type StickyDiffData struct {
+	sync.RWMutex
+	SDiffString []string
+	SDiffInt    []int
 }

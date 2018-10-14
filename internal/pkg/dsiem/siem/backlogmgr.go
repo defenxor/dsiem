@@ -3,6 +3,7 @@ package siem
 import (
 	"dsiem/internal/pkg/dsiem/alarm"
 	"dsiem/internal/pkg/dsiem/event"
+	"dsiem/internal/pkg/dsiem/rule"
 	"dsiem/internal/pkg/shared/idgen"
 	log "dsiem/internal/pkg/shared/logger"
 	"dsiem/internal/pkg/shared/str"
@@ -69,10 +70,7 @@ func mergeWait() <-chan bool {
 	wg.Add(l)
 	for i := range allBacklogs {
 		go func(i int) {
-			// l := allBacklogs[i].RLock()
 			for v := range allBacklogs[i].bpCh {
-				// l.Unlock()
-				// out <- v
 				if v {
 					out <- v // one true result is enough
 					break
@@ -111,7 +109,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		evt := <-ch
 		found := false
 		l := blogs.RLock() // to prevent concurrent r/w with delete()
-		// OPTIM TODO:
+		// TODO:
 		// maybe check event against all rules here, if non match then continue
 		// this will avoid checking against all backlogs which could be in 1000s compared to
 		// # of rules which in the 10s
@@ -157,7 +155,8 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 			continue
 		}
 		// now for new backlog
-		if !doesEventMatchRule(evt, d.Rules[0], evt.ConnID) {
+		// stickydiff cannot be used on 1st rule, so we pass nil
+		if !rule.DoesEventMatch(evt, d.Rules[0], nil, evt.ConnID) {
 			continue // back to chan loop
 		}
 		b, err := createNewBackLog(d, evt)
@@ -165,7 +164,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
 			continue
 		}
-		blogs.Lock() // got hit with concurrent map write here
+		blogs.Lock()
 		blogs.bl[b.ID] = b
 		blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs

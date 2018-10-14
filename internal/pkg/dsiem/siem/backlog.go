@@ -73,7 +73,8 @@ func (b *backLog) worker(initialEvent event.NormalizedEvent) {
 			// heuristic, we know stage starts at 1 but rules start at 0
 			idx := cs - 1
 			currRule := b.Directive.Rules[idx]
-			if !doesEventMatchRule(evt, currRule, evt.ConnID) {
+			currSDiff := &b.Directive.StickyDiffs[idx]
+			if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
 				// b.info("backlog doeseventmatch false", evt.ConnID)
 				b.chFound <- false
 				l.Unlock()
