@@ -263,10 +263,10 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize alarm", err)
 			}
-			err = siem.InitBackLog(path.Join(logDir, aEventsLogs),
+			err = siem.InitBackLogManager(path.Join(logDir, aEventsLogs),
 				sendBpChan, holdDuration)
 			if err != nil {
-				exit("Cannot initialize backlog", err)
+				exit("Cannot initialize backlog manager", err)
 			}
 		}
 

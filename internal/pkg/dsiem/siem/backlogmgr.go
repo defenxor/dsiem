@@ -24,43 +24,45 @@ type backlogs struct {
 
 var allBacklogs []backlogs
 
-// InitBackLog initialize backlog and ticker
-func InitBackLog(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
+// InitBackLogManager initialize backlog and ticker
+func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
 	bLogFile = logFile
 
 	// note, initDirective must have completed before this
-	prevState := false
 	go func() { bpChan <- false }() // set initial state
+	go initBpTicker(bpChan, holdDuration)
+	return
+}
+
+func initBpTicker(bpChan chan<- bool, holdDuration int) {
+	prevState := false
+	sWait := time.Duration(holdDuration)
+	timer := time.NewTimer(time.Second * sWait)
 	go func() {
-		sWait := time.Duration(holdDuration)
-		timer := time.NewTimer(time.Second * sWait)
-		go func() {
-			for {
-				<-timer.C
-				// send false only if prev state is true
-				timer.Reset(time.Second * sWait)
-				if prevState == true {
-					bpChan <- false
-					prevState = false
-				}
-			}
-		}()
-		// get a merged channel consisting of results from all
-		// backlogs
-		out := mergeWait()
-		for range out {
-			n := <-out
-			// send true only if prev state is false
-			if n == true {
-				timer.Reset(time.Second * sWait)
-				if prevState == false {
-					bpChan <- true
-					prevState = true
-				}
+		for {
+			<-timer.C
+			// send false only if prev state is true
+			timer.Reset(time.Second * sWait)
+			if prevState == true {
+				bpChan <- false
+				prevState = false
 			}
 		}
 	}()
-	return
+	// get a merged channel consisting of results from all
+	// backlogs
+	out := mergeWait()
+	for range out {
+		n := <-out
+		// send true only if prev state is false
+		if n == true {
+			timer.Reset(time.Second * sWait)
+			if prevState == false {
+				bpChan <- true
+				prevState = true
+			}
+		}
+	}
 }
 
 func mergeWait() <-chan bool {
@@ -90,20 +92,18 @@ func mergeWait() <-chan bool {
 // to reset the trues detected and sent by member backlog
 func (blogs *backlogs) backPressureTick() {
 	ticker := time.NewTicker(time.Second)
-	go func() {
-		for {
-			<-ticker.C
-			select {
-			case blogs.bpCh <- false:
-				ticker.Stop()
-			default:
-			}
+	for {
+		<-ticker.C
+		select {
+		case blogs.bpCh <- false:
+			ticker.Stop()
+		default:
 		}
-	}()
+	}
 }
 
 func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
-	blogs.backPressureTick()
+	go blogs.backPressureTick()
 
 	for {
 		evt := <-ch
@@ -169,7 +169,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
-		blogs.bl[b.ID].worker(evt)
+		blogs.bl[b.ID].start(evt)
 	}
 }
 

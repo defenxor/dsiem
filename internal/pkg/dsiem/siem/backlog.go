@@ -49,96 +49,94 @@ type siemAlarmEvents struct {
 	Event string `json:"event_id"`
 }
 
-func (b *backLog) worker(initialEvent event.NormalizedEvent) {
-	maxDelay := viper.GetInt("maxDelay")
-	//	debug := viper.GetBool("debug")
-	// first, process the initial event
+func (b *backLog) start(initialEvent event.NormalizedEvent) {
 	b.processMatchedEvent(initialEvent, 0)
+	go b.newEventProcessor()
+	go b.expirationChecker()
+}
 
-	go func() {
-		for {
-			evt, ok := <-b.chData
-			if !ok {
-				b.debug("worker chData closed, exiting", 0)
-				return
-			}
-			l := b.RLock()
-			b.debug("backlog incoming event", evt.ConnID)
-			cs := b.CurrentStage
-			if cs <= 1 {
-				l.Unlock()
-				continue
-			}
-			// should check for currentStage rule match with event
-			// heuristic, we know stage starts at 1 but rules start at 0
-			idx := cs - 1
-			currRule := b.Directive.Rules[idx]
-			currSDiff := &b.Directive.StickyDiffs[idx]
-			if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
-				// b.info("backlog doeseventmatch false", evt.ConnID)
-				b.chFound <- false
-				l.Unlock()
-				continue
-			}
-			b.chFound <- true // answer quickly
-			l.Unlock()
-
-			// validate date conversion
-			ts, err := str.TimeStampToUnix(evt.Timestamp)
-			if err != nil {
-				b.warn("cannot parse event timestamp, discarding it", evt.ConnID)
-				continue
-			}
-			// discard out of order event
-			if !b.isTimeInOrder(idx, ts) {
-				b.warn("event timestamp out of order, discarding it", evt.ConnID)
-				continue
-			}
-
-			if b.isUnderPressure(evt.RcvdTime, int64(maxDelay)) {
-				b.warn("backlog is under pressure", evt.ConnID)
-				select {
-				case b.bLogs.bpCh <- true:
-				default:
-				}
-			}
-
-			b.debug("processing incoming event", evt.ConnID)
-			// this should be under go routine, but chFound need sync access (for first match, backlog creation)
-			if cs == 1 {
-				b.processMatchedEvent(evt, idx)
-			} else {
-				runtime.Gosched()                  // let the main go routine work
-				go b.processMatchedEvent(evt, idx) // use go routine later
-			}
-			// b.info("setting found to true", evt.ConnID)
-		}
-	}()
-
-	go func() {
-		// create own ticker here
-		ticker := time.NewTicker(time.Second * 10)
-		for {
-			<-ticker.C
-			select {
-			case <-b.chDone:
-				b.debug("backlog tick exiting, chDone.", 0)
-				ticker.Stop()
-				return
-			default:
-			}
-			if !b.isExpired() {
-				continue
-			}
-			ticker.Stop() // prevent next signal, we're exiting the go routine
-			b.info("backlog expired, deleting it", 0)
-			b.setRuleStatus("timeout", 0)
-			b.updateAlarm(0, false, nil)
-			b.delete()
+func (b *backLog) newEventProcessor() {
+	maxDelay := viper.GetInt("maxDelay")
+	for {
+		evt, ok := <-b.chData
+		if !ok {
+			b.debug("worker chData closed, exiting", 0)
 			return
 		}
-	}()
-	b.debug("exiting worker, leaving routine behind", initialEvent.ConnID)
+		l := b.RLock()
+		b.debug("backlog incoming event", evt.ConnID)
+		cs := b.CurrentStage
+		if cs <= 1 {
+			l.Unlock()
+			continue
+		}
+		// should check for currentStage rule match with event
+		// heuristic, we know stage starts at 1 but rules start at 0
+		idx := cs - 1
+		currRule := b.Directive.Rules[idx]
+		currSDiff := &b.Directive.StickyDiffs[idx]
+		if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
+			// b.info("backlog doeseventmatch false", evt.ConnID)
+			b.chFound <- false
+			l.Unlock()
+			continue
+		}
+		b.chFound <- true // answer quickly
+		l.Unlock()
+
+		// validate date conversion
+		ts, err := str.TimeStampToUnix(evt.Timestamp)
+		if err != nil {
+			b.warn("cannot parse event timestamp, discarding it", evt.ConnID)
+			continue
+		}
+		// discard out of order event
+		if !b.isTimeInOrder(idx, ts) {
+			b.warn("event timestamp out of order, discarding it", evt.ConnID)
+			continue
+		}
+
+		if b.isUnderPressure(evt.RcvdTime, int64(maxDelay)) {
+			b.warn("backlog is under pressure", evt.ConnID)
+			select {
+			case b.bLogs.bpCh <- true:
+			default:
+			}
+		}
+
+		b.debug("processing incoming event", evt.ConnID)
+		// this should be under go routine, but chFound need sync access (for first match, backlog creation)
+		if cs == 1 {
+			b.processMatchedEvent(evt, idx)
+		} else {
+			runtime.Gosched() // let the main go routine work
+			go b.processMatchedEvent(evt, idx)
+		}
+		// b.info("setting found to true", evt.ConnID)
+	}
+}
+
+func (b *backLog) expirationChecker() {
+	ticker := time.NewTicker(time.Second * 10)
+	for {
+		<-ticker.C
+		select {
+		case <-b.chDone:
+			b.debug("backlog tick exiting, chDone.", 0)
+			ticker.Stop()
+			return
+		default:
+		}
+		if !b.isExpired() {
+			continue
+		}
+		ticker.Stop() // prevent next signal, we're exiting the go routine
+		b.info("backlog expired, deleting it", 0)
+		b.setRuleStatus("timeout", 0)
+		b.updateAlarm(0, false, nil)
+		b.delete()
+		return
+	}
 
 }
 
@@ -164,6 +162,7 @@ func (b backLog) isTimeInOrder(idx int, ts int64) bool {
 	return true
 }
 
+/*
 func (b backLog) dumpCurrentRule(listEvent bool) {
 	fmt.Println("Directive ID:", b.Directive.ID, "backlog ID: ", b.ID)
 	for i := range b.Directive.Rules {
@@ -174,6 +173,7 @@ func (b backLog) dumpCurrentRule(listEvent bool) {
 		}
 	}
 }
+*/
 
 func (b backLog) isExpired() bool {
 	now := time.Now().Unix()
