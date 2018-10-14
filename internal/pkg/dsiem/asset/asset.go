@@ -1,7 +1,6 @@
 package asset
 
 import (
-	"dsiem/internal/pkg/shared/fs"
 	log "dsiem/internal/pkg/shared/logger"
 	"dsiem/internal/pkg/shared/str"
 
@@ -56,16 +55,13 @@ func newAssetEntry(ipNet net.IPNet, value int, name string) cidranger.RangerEntr
 // Init read assets from all asset_* files in confDir
 func Init(confDir string) error {
 	p := path.Join(confDir, assetsFileGlob)
-	files, err := filepath.Glob(p)
-	if err != nil {
-		return err
+	files, _ := filepath.Glob(p)
+	if len(files) == 0 {
+		return errors.New("Cannot find asset files in " + p)
 	}
 
 	for i := range files {
 		var a networkAssets
-		if !fs.FileExist(files[i]) {
-			return errors.New("Cannot find " + files[i])
-		}
 		file, err := os.Open(files[i])
 		if err != nil {
 			return err
@@ -75,16 +71,12 @@ func Init(confDir string) error {
 		byteValue, _ := ioutil.ReadAll(file)
 		err = json.Unmarshal(byteValue, &a)
 		if err != nil {
+			log.Info(log.M{Msg: "Cannot unmarshal asset!"})
 			return err
 		}
 		for j := range a.NetworkAssets {
 			assets.NetworkAssets = append(assets.NetworkAssets, a.NetworkAssets[j])
 		}
-	}
-
-	total := len(assets.NetworkAssets)
-	if total == 0 {
-		return errors.New("cannot load any asset from config dir")
 	}
 
 	ranger = cidranger.NewPCTrieRanger()
@@ -101,12 +93,14 @@ func Init(confDir string) error {
 			return err
 		}
 
-		err = ranger.Insert(newAssetEntry(*net, value, name))
-		if err != nil {
-			log.Warn(log.M{Msg: "Cannot insert " + cidr + " to HOME_NET!"})
-			return err
+		if value == 0 || name == "" {
+			return errors.New("value cannot be 0 and name cannot be empty for " + cidr)
 		}
+
+		_ = ranger.Insert(newAssetEntry(*net, value, name))
 	}
+
+	total := len(assets.NetworkAssets)
 
 	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " host and/or network assets."})
 
@@ -148,10 +142,7 @@ func GetValue(ip string) int {
 	// return the highest asset value
 	for i := range containingNetworks {
 		r, ok := containingNetworks[i].(*assetEntry)
-		if !ok {
-			continue
-		}
-		if r.value > val {
+		if ok && r.value > val {
 			val = r.value
 		}
 	}

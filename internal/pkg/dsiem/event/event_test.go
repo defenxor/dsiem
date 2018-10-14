@@ -5,8 +5,7 @@ import (
 	"testing"
 
 	"dsiem/internal/pkg/dsiem/asset"
-	"dsiem/internal/pkg/shared/fs"
-	log "dsiem/internal/pkg/shared/logger"
+	"dsiem/internal/pkg/shared/test"
 
 	"github.com/sebdah/goldie"
 )
@@ -49,20 +48,8 @@ func TestFromToBytes(t *testing.T) {
 	}
 }
 
-func helperDirEnv(t *testing.T) (dir string) {
-	dir, err := fs.GetDir(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = log.Setup(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return
-}
-
 func TestInHomeNet(t *testing.T) {
-	d := helperDirEnv(t)
+	d := test.DirEnv(t)
 	t.Logf("Using base dir %s", d)
 	err := asset.Init(path.Join(d, "configs"))
 	if err != nil {

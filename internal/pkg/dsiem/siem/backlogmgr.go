@@ -26,9 +26,9 @@ var allBacklogs []backlogs
 
 // InitBackLogManager initialize backlog and ticker
 func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
+	// bLogFile is defined in backlog.go
 	bLogFile = logFile
 
-	// note, initDirective must have completed before this
 	go func() { bpChan <- false }() // set initial state
 	go initBpTicker(bpChan, holdDuration)
 	return
