@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dsiem-backend-2
+  labels:
+    app: dsiem-backend-2
+spec:
+  selector:
+    app: dsiem-backend
+    statefulset.kubernetes.io/pod-name: dsiem-backend-2
+  ports:
+  - name: http
+    port: 8084
+    targetPort: 8084
+    protocol: TCP

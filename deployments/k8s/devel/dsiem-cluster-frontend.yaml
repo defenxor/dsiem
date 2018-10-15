@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dsiem-frontend
+  labels:
+   app: dsiem-frontend
+spec:
+  selector:
+    matchLabels:
+      app: dsiem-frontend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dsiem-frontend
+    spec:
+      affinity:
+        nodeAffinity:
+          # must only be run on central appliances, and in frontend
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: dsiem-node
+                operator: In
+                values:
+                - "yes"
+        # dont put replica on the same node, if possible
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - dsiem-frontend
+              topologyKey: kubernetes.io/hostname
+      hostNetwork: false
+      containers:
+      - name: dsiem-frontend
+        securityContext:
+          privileged: true
+        image: golang
+        imagePullPolicy: IfNotPresent
+        command: [ "/bin/bash" ]
+        args: 
+        - -c
+        - "sleep infinity"
+        volumeMounts:
+        - name: vol-dsiem
+          mountPath: /go/src/dsiem/logs
+        env:
+        - name: ELASTIC_APM_SERVER_URL
+          value: "http://dsiem-apm:8200"
+        - name: ELASTIC_APM_SERVICE_NAME
+          value: "dsiem"
+        - name: ELASTIC_APM_ACTIVE
+          value: "true"
+        - name: DSIEM_APM
+          value: "true"
+        - name: DSIEM_MODE
+          value: "cluster-frontend"
+        - name: DSIEM_PORT
+          value: "8080"
+        - name: DSIEM_MSQ
+          value: "nats://dsiem-nats:4222"
+        - name: DSIEM_NODE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      - name: logrotate
+        image: blacklabelops/logrotate
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: vol-dsiem
+          mountPath: /var/log/external
+        env:
+        - name: LOGROTATE_INTERVAL
+          value: "hourly"
+        - name: LOGS_DIRECTORIES
+          value: "/var/log/external"
+      volumes:
+        - name: vol-dsiem
+          emptyDir: {}

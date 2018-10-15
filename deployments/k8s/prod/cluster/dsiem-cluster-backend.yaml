@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dsiem-backend
+  labels:
+   app: dsiem-backend
+spec:
+  selector:
+    matchLabels:
+      app: dsiem-backend
+  serviceName: dsiem-backend
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: dsiem-backend
+    spec:
+      affinity:
+        nodeAffinity:
+          # must only be run on central appliances, and in frontend
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: dsiem-node
+                operator: In
+                values:
+                - "yes"
+        # dont put replica on the same node, if possible
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - dsiem-backend
+              topologyKey: kubernetes.io/hostname
+      hostNetwork: false
+      containers:
+      - name: dsiem-backend
+        securityContext:
+          privileged: true
+        image: golang
+        imagePullPolicy: IfNotPresent
+        command: [ "/bin/bash" ]
+        args: 
+        - -c
+        - "sleep infinity"
+        volumeMounts:
+        - name: vol-dsiem
+          mountPath: /go/src/dsiem/logs
+        env:
+        - name: ELASTIC_APM_SERVER_URL
+          value: "http://dsiem-apm:8200"
+        - name: ELASTIC_APM_SERVICE_NAME
+          value: "dsiem"
+        - name: ELASTIC_APM_ACTIVE
+          value: "true"
+        - name: DSIEM_APM
+          value: "true"
+        - name: DSIEM_MODE
+          value: "cluster-backend"
+        - name: DSIEM_PORT
+          value: "8082"
+        - name: DSIEM_MSQ
+          value: "nats://dsiem-nats:4222"
+        - name: DSIEM_NODE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DSIEM_FRONTEND
+          value: "http://dsiem:8080"
+      - name: logrotate
+        image: blacklabelops/logrotate
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: vol-dsiem
+          mountPath: /var/log/external
+        env:
+        - name: LOGROTATE_INTERVAL
+          value: "hourly"
+        - name: LOGS_DIRECTORIES
+          value: "/var/log/external"
+      - name: filebeat
+        securityContext:
+          privileged: false
+        image: mgmt:10443/defenxor-appliance/filebeat:6.3.0
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: dsiem-filebeat-config
+          mountPath: /usr/share/filebeat/filebeat.yml
+          subPath: filebeat.yml
+        - name: vol-dsiem
+          mountPath: /var/log/external
+      volumes:
+        - name: dsiem-filebeat-config
+          configMap:
+            name: dsiem-filebeat-config
+  volumeClaimTemplates:
+  - metadata:
+      name: vol-dsiem
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "local-storage"
+      resources:
+        requests:
+          storage: 100Gi

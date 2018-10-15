@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dsiem-nats
+  labels:
+    app: dsiem-nats
+spec:
+  selector:
+    app: dsiem-nats
+  ports:
+  - name: nats
+    port: 4222
+    targetPort: 4222
+    protocol: TCP

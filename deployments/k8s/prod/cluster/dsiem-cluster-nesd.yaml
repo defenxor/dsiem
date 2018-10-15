@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dsiem-nesd
+  labels:
+   app: dsiem-nesd
+spec:
+  selector:
+    matchLabels:
+      app: dsiem-nesd
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dsiem-nesd
+    spec:
+      affinity:
+        nodeAffinity:
+          # must only be run on central appliances, and in frontend
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: dsiem-node
+                operator: In
+                values:
+                - "yes"
+        # dont put replica on the same node
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - dsiem-nesd
+              topologyKey: kubernetes.io/hostname
+      hostNetwork: false
+      containers:
+      - name: dsiem-nesd
+        securityContext:
+          privileged: true
+        image: golang
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: NESD_ADDRESS
+          value: "0.0.0.0"
+        - name: NESD_CSVDIR
+          value: "/go/src/dsiem/test/nessus"
+        - name: NESD_PORT
+          value: "8081"
+        command: [ "/bin/bash" ]
+        args: 
+        - -c
+        - "sleep infinity"
+        volumeMounts:
+        - name: vol-nesd
+          mountPath: /go/src/dsiem/test/nessus
+      volumes:
+        - name: vol-nesd
+          emptyDir: {}
+
