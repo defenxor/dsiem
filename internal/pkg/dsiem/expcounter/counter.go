@@ -16,36 +16,46 @@ var alarmCounter *expvar.Int
 
 // Init starts the counters
 func Init(mode string) {
-	ticker := time.NewTicker(time.Second * 10)
 	if mode == "standalone" || mode == "cluster-frontend" {
 		setEPSTicker()
-		epsCounter = expvar.NewInt("eps_counter")
+		if epsCounter == nil {
+			epsCounter = expvar.NewInt("eps_counter")
+		}
 	}
 	if mode == "standalone" || mode == "cluster-backend" {
-		alarmCounter = expvar.NewInt("alarm_counter")
-	}
-
-	go func() {
-		for {
-			var a, e, m string
-			<-ticker.C
-			countGoroutine()
-			switch {
-			case mode == "standalone":
-				a = countAlarm()
-				e = countEPS()
-				m = "# of alarms: " + a + " events/sec: " + e
-			case mode == "cluster-frontend":
-				e = countEPS()
-				m = "events/sec: " + e
-			case mode == "cluster-backend":
-				a = countAlarm()
-				m = "# of alarms: " + a
-			}
-			log.Info(log.M{Msg: "Watchdog tick ended, " + m})
-			// debug.FreeOSMemory()
+		if alarmCounter == nil {
+			alarmCounter = expvar.NewInt("alarm_counter")
 		}
-	}()
+	}
+	go startTicker(mode, false)
+}
+
+func startTicker(mode string, once bool) {
+	ticker := time.NewTicker(time.Second * 10)
+	if once {
+		ticker = time.NewTicker(time.Second * 1)
+	}
+	for {
+		var a, e, m string
+		<-ticker.C
+		countGoroutine()
+		switch {
+		case mode == "standalone":
+			a = countAlarm()
+			e = countEPS()
+			m = "# of alarms: " + a + " events/sec: " + e
+		case mode == "cluster-frontend":
+			e = countEPS()
+			m = "events/sec: " + e
+		case mode == "cluster-backend":
+			a = countAlarm()
+			m = "# of alarms: " + a
+		}
+		log.Info(log.M{Msg: "Watchdog tick ended, " + m})
+		if once {
+			return
+		}
+	}
 }
 
 func countGoroutine() string {

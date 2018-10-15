@@ -69,7 +69,7 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	confDir = confd
 	webDir = webd
 
-	rateCounter = rc.NewRateCounter(1 * time.Second)
+	InitRcCounter()
 	p := strconv.Itoa(port)
 
 	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
@@ -109,6 +109,11 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 
 	err = fasthttp.Serve(ln, router.Handler)
 	return err
+}
+
+// InitRcCounter initialize rateCounter
+func InitRcCounter() {
+	rateCounter = rc.NewRateCounter(1 * time.Second)
 }
 
 // CounterRate return the rate of EPS

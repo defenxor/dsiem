@@ -31,9 +31,12 @@ func TestNew(t *testing.T) {
 }
 
 func TestModif(t *testing.T) {
-	l, err := New(500, 100)
+	min := 100
+	max := 500
+	iter := 100
+	l, err := New(max, min)
 	if err != nil {
-		t.Fatal("CAnnot create new limiter")
+		t.Fatal("Cannot create new limiter")
 	}
 
 	a := l.Limit()
@@ -42,13 +45,20 @@ func TestModif(t *testing.T) {
 	if b >= a || a < b {
 		t.Errorf("r: %d %d %d", a, b, c)
 	}
-	for i := 0; i <= 60; i++ {
+	for i := 0; i <= iter; i++ {
 		l.Lower()
 	}
+	if res := l.Limit(); res != min {
+		t.Errorf("expected %v, received %v", min, res)
+	}
 
-	for i := 0; i <= 60; i++ {
+	for i := 0; i <= iter; i++ {
 		l.Raise()
 	}
+	if res := l.Limit(); res != max {
+		t.Errorf("expected %v, received %v", max, res)
+	}
+
 }
 
 func TestWait(t *testing.T) {

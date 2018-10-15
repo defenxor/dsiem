@@ -113,31 +113,31 @@ func Debug(m M) {
 		return
 	}
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
-		go zlog.Debug(m.Msg)
+		zlog.Debug(m.Msg)
 		return
 	}
 	if m.DId == 0 && m.CId == 0 && m.BId != "" {
-		go zlog.Debug(m.Msg, zap.String("backlog", m.BId))
+		zlog.Debug(m.Msg, zap.String("backlog", m.BId))
 		return
 	}
 	if m.DId == 0 && m.CId != 0 && m.BId == "" {
-		go zlog.Debug(m.Msg, zap.Uint64("connId", m.CId))
+		zlog.Debug(m.Msg, zap.Uint64("connId", m.CId))
 		return
 	}
 	if m.DId == 0 && m.CId != 0 && m.BId != "" {
-		go zlog.Debug(m.Msg, zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
+		zlog.Debug(m.Msg, zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
 	if m.DId != 0 && m.CId == 0 && m.BId == "" {
-		go zlog.Debug(m.Msg, zap.Int("directive", m.DId))
+		zlog.Debug(m.Msg, zap.Int("directive", m.DId))
 		return
 	}
 	if m.DId != 0 && m.CId == 0 && m.BId != "" {
-		go zlog.Debug(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId))
+		zlog.Debug(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId))
 		return
 	}
 	if m.DId != 0 && m.CId != 0 && m.BId != "" {
-		go zlog.Debug(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
+		zlog.Debug(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
 	return
@@ -146,31 +146,31 @@ func Debug(m M) {
 //Error log with warn level
 func Error(m M) {
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
-		go zlog.Error(m.Msg)
+		zlog.Error(m.Msg)
 		return
 	}
 	if m.DId == 0 && m.CId == 0 && m.BId != "" {
-		go zlog.Error(m.Msg, zap.String("backlog", m.BId))
+		zlog.Error(m.Msg, zap.String("backlog", m.BId))
 		return
 	}
 	if m.DId == 0 && m.CId != 0 && m.BId == "" {
-		go zlog.Error(m.Msg, zap.Uint64("connId", m.CId))
+		zlog.Error(m.Msg, zap.Uint64("connId", m.CId))
 		return
 	}
 	if m.DId == 0 && m.CId != 0 && m.BId != "" {
-		go zlog.Error(m.Msg, zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
+		zlog.Error(m.Msg, zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
 	if m.DId != 0 && m.CId == 0 && m.BId == "" {
-		go zlog.Error(m.Msg, zap.Int("directive", m.DId))
+		zlog.Error(m.Msg, zap.Int("directive", m.DId))
 		return
 	}
 	if m.DId != 0 && m.CId == 0 && m.BId != "" {
-		go zlog.Error(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId))
+		zlog.Error(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId))
 		return
 	}
 	if m.DId != 0 && m.CId != 0 && m.BId != "" {
-		go zlog.Error(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
+		zlog.Error(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
 	return
