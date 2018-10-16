@@ -148,7 +148,6 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 			}(k)
 		}
 		wg.Wait()
-
 		l.Unlock()
 
 		if found {
@@ -174,7 +173,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 }
 
 func (blogs *backlogs) delete(b *backLog) {
-	log.Info(log.M{Msg: "backlog manager removing backlog in 60s", DId: b.Directive.ID, BId: b.ID})
+	log.Info(log.M{Msg: "backlog manager removing backlog in 20s", DId: b.Directive.ID, BId: b.ID})
 	go func() {
 		// first prevent another blogs.delete to enter here
 		blogs.Lock() // to protect bl.Lock??
@@ -191,11 +190,11 @@ func (blogs *backlogs) delete(b *backLog) {
 		blogs.Unlock()
 		// prevent further event write by manager, and stop backlog ticker
 		close(b.chDone)
-		time.Sleep(30 * time.Second)
+		time.Sleep(10 * time.Second)
 		// signal backlog worker to exit
 		log.Debug(log.M{Msg: "backlog manager closing data channel", DId: b.Directive.ID, BId: b.ID})
 		close(b.chData)
-		time.Sleep(30 * time.Second)
+		time.Sleep(10 * time.Second)
 		log.Debug(log.M{Msg: "backlog manager deleting backlog from map", DId: b.Directive.ID, BId: b.ID})
 		blogs.Lock()
 		blogs.bl[b.ID].bLogs = nil
