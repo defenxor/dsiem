@@ -28,7 +28,7 @@ import (
 
 var connCounter uint64
 var webDir, confDir string
-var rateCounter *rc.RateCounter
+
 var wss *wsServer
 var upgrader websocket.Upgrader
 var mode string
@@ -41,6 +41,8 @@ var bpChan <-chan bool
 
 // var msq string
 var overloadFlag bool
+
+var rateCounter = rc.NewRateCounter(1 * time.Second)
 
 // Start starts the server
 func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
@@ -69,7 +71,6 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	confDir = confd
 	webDir = webd
 
-	InitRcCounter()
 	p := strconv.Itoa(port)
 
 	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
@@ -109,11 +110,6 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 
 	err = fasthttp.Serve(ln, router.Handler)
 	return err
-}
-
-// InitRcCounter initialize rateCounter
-func InitRcCounter() {
-	rateCounter = rc.NewRateCounter(1 * time.Second)
 }
 
 // CounterRate return the rate of EPS

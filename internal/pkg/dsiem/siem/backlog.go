@@ -127,9 +127,12 @@ func (b *backLog) expirationChecker() {
 			return
 		default:
 		}
+		l := b.RLock()
 		if !b.isExpired() {
+			l.Unlock()
 			continue
 		}
+		l.Unlock()
 		ticker.Stop() // prevent next signal, we're exiting the go routine
 		b.info("backlog expired, deleting it", 0)
 		b.setRuleStatus("timeout", 0)
@@ -161,19 +164,6 @@ func (b backLog) isTimeInOrder(idx int, ts int64) bool {
 	}
 	return true
 }
-
-/*
-func (b backLog) dumpCurrentRule(listEvent bool) {
-	fmt.Println("Directive ID:", b.Directive.ID, "backlog ID: ", b.ID)
-	for i := range b.Directive.Rules {
-		if listEvent {
-			fmt.Println("Rule:", i, ":", b.Directive.Rules[i].Events)
-		} else {
-			fmt.Println("Rule:", i, "length:", len(b.Directive.Rules[i].Events))
-		}
-	}
-}
-*/
 
 func (b backLog) isExpired() bool {
 	now := time.Now().Unix()
@@ -339,11 +329,14 @@ func (b backLog) isLastStage() (ret bool) {
 }
 
 func (b backLog) isStageReachMaxEvtCount(idx int) (reachMaxEvtCount bool) {
+	// still need lock because Rules is a slice
+	l := b.RLock()
 	currRule := b.Directive.Rules[idx]
 	nEvents := len(b.Directive.Rules[idx].Events)
 	if nEvents >= currRule.Occurrence {
 		reachMaxEvtCount = true
 	}
+	l.Unlock()
 	return
 }
 

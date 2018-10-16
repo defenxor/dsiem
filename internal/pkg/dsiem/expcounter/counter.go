@@ -17,10 +17,10 @@ var alarmCounter *expvar.Int
 // Init starts the counters
 func Init(mode string) {
 	if mode == "standalone" || mode == "cluster-frontend" {
-		setEPSTicker()
 		if epsCounter == nil {
 			epsCounter = expvar.NewInt("eps_counter")
 		}
+		go setEPSTicker()
 	}
 	if mode == "standalone" || mode == "cluster-backend" {
 		if alarmCounter == nil {
@@ -32,8 +32,12 @@ func Init(mode string) {
 
 func startTicker(mode string, once bool) {
 	ticker := time.NewTicker(time.Second * 10)
+	// once is a flag for test
 	if once {
 		ticker = time.NewTicker(time.Second * 1)
+	} else {
+		// start first counting 5 seconds later to avoid data race with server
+		time.Sleep(5 * time.Second)
 	}
 	for {
 		var a, e, m string
@@ -78,6 +82,8 @@ func countEPS() (res string) {
 }
 
 func setEPSTicker() {
+	// sleep 5 seconds at the beginning to avoid data race with server
+	time.Sleep(5 * time.Second)
 	ticker := time.NewTicker(time.Second)
 	go func() {
 		for {
