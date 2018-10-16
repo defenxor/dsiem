@@ -4,14 +4,14 @@
       "name": "Nessus-Local",
       "type": "IP-Port",
       "plugin": "Nesd",
-      "enabled": true,
+      "enabled": false,
       "config": "{ \"url\" : \"http://127.0.0.1:8081/?ip=${ip}&port=${port}\" }"
     },
     {
       "name": "Nessus",
       "type": "IP-Port",
       "plugin": "Nesd",
-      "enabled": false,
+      "enabled": true,
       "config": "{ \"url\" : \"http://dsiem-nesd:8081/?ip=${ip}&port=${port}\" }"
     }
   ]

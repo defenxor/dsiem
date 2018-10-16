@@ -173,17 +173,15 @@ func toFilebeat(d *siem.Directives, logfile string) {
 			prevTo = e.DstIP
 
 			for i := 0; i < amt; i++ {
-				go func(st int, iter int) {
-					for {
-						//	err := fn(&e, c, st, iter, verbose)
-						err := savetoLog(e, logfile, verbose)
-						if err != nil {
-							// exit if error
-							exit("Cannot save to "+logfile, err)
-						}
-						break
+				for {
+					//	err := fn(&e, c, st, iter, verbose)
+					err := savetoLog(e, logfile, verbose)
+					if err != nil {
+						// exit if error
+						exit("Cannot save to "+logfile, err)
 					}
-				}(j.Stage, i)
+					break
+				}
 			}
 		}
 	}

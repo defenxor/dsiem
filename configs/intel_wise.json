@@ -4,8 +4,15 @@
       "name": "Wise-Local",
       "plugin": "Wise",
       "type": "IP",
-      "enabled": true,
+      "enabled": false,
       "config": "{ \"url\" : \"http://frontend.appl184.mss.defenxor.com:8081/ip/${ip}\" }"
+    },
+    {
+      "name": "Wise",
+      "plugin": "Wise",
+      "type": "IP",
+      "enabled": true,
+      "config": "{ \"url\" : \"http://wise:8081/ip/${ip}\" }"
     }
   ]
 }
