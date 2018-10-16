@@ -1,17 +1,18 @@
 package xcorrelator
 
 import (
+	"context"
 	"dsiem/internal/pkg/shared/apm"
 	"dsiem/internal/pkg/shared/cache"
+	"fmt"
 
 	"dsiem/internal/pkg/shared/fs"
 	log "dsiem/internal/pkg/shared/logger"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/elastic/apm-agent-go"
 
+	"dsiem/pkg/vuln"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -26,40 +27,36 @@ const (
 	maxSecondToWaitForVuln = 5
 )
 
-// VulnEnabled mark whether intel lookup is enabled
+// VulnEnabled mark whether vuln lookup is enabled
 var VulnEnabled bool
 var vulnCache *cache.Cache
 
 type vulnSource struct {
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Enabled     bool     `json:"enabled"`
-	URL         string   `json:"url"`
-	Matcher     string   `json:"matcher"`
-	ResultRegex []string `json:"result_regex"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+	Plugin  string `json:"plugin"`
+	Config  string `json:"config"`
 }
 
 type vulnSources struct {
 	VulnSources []vulnSource `json:"vuln_sources"`
 }
 
-type nesdResult struct {
-	Cve  string `json:"cve"`
-	Risk string `json:"risk"`
-	Name string `json:"name"`
-}
-
-// VulnResult contain results from vulnerability scan result queries
-type VulnResult struct {
-	Provider string `json:"provider"`
-	Term     string `json:"term"`
-	Result   string `json:"result"`
-}
-
 var vulns vulnSources
 
+var vulnPlugins = vuln.Checkers
+
+type vulnChecker struct {
+	vuln.Checker
+	name string
+}
+
+var vulnCheckers = []vulnChecker{}
+
 // CheckVulnIPPort lookup ip-port pair on vulnerability scan result references
-func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
+func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Warn(log.M{Msg: "Panic occurred while checking vulnerability scan result for " + ip})
@@ -86,66 +83,32 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 	// flag to store cache only on succesful query
 	successQuery := false
 
-	for _, v := range vulns.VulnSources {
-		url := strings.Replace(v.URL, "${ip}", ip, 1)
-		url = strings.Replace(url, "${port}", p, 1)
-		log.Debug(log.M{Msg: "result url " + url})
-
+	for _, v := range vulnCheckers {
 		var tx *elasticapm.Transaction
 		if apm.Enabled() {
-			tx = elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
-			tx.Context.SetCustom("term", term)
-			tx.Context.SetCustom("provider", v.Name)
-			tx.Context.SetCustom("Url", url)
+			tx = elasticapm.DefaultTracer.StartTransaction("Vuln Intel Lookup", "SIEM")
+			tx.Context.SetCustom("Term", term)
+			tx.Context.SetCustom("Provider", v.name)
 		}
-
-		c := http.Client{Timeout: time.Second * maxSecondToWaitForVuln}
-		req, err := http.NewRequest(http.MethodGet, url, nil)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*maxSecondToWaitForVuln)
+		f, r, err := v.CheckIPPort(ctx, ip, port)
 		if err != nil {
-			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " VS."})
+			log.Warn(log.M{Msg: "Error received from vuln checker " + v.name + ": " + err.Error()})
+			cancel()
 			if apm.Enabled() {
-				tx.Result = "Cannot create HTTP request"
+				tx.Result = err.Error()
 				tx.End()
 			}
 			continue
 		}
-		res, err := c.Do(req)
-		if err != nil {
-			log.Warn(log.M{Msg: "Failed to query " + v.Name + " VS for IP " + term})
-			if apm.Enabled() {
-				tx.Result = "Failed to query " + v.Name
-				tx.End()
-			}
-			continue
-		}
-		body, readErr := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if readErr != nil {
-			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " VS for IP " + term})
-			if apm.Enabled() {
-				tx.Result = "Cannot create read result from " + v.Name
-				tx.End()
-			}
-			continue
-		}
-
+		cancel()
 		successQuery = true
 
-		if v.Matcher == "regex" {
-			f, r := matcherRegexVuln(body, v.Name, term, v.ResultRegex)
-			if f {
-				found = true
-				results = append(results, r...)
-			}
+		if f {
+			found = true
+			results = append(results, r...)
 		}
 
-		if v.Matcher == "nesd" {
-			f, r := matcherNesd(body, v.Name, term)
-			if f {
-				found = true
-				results = append(results, r...)
-			}
-		}
 		if apm.Enabled() {
 			if found {
 				tx.Result = "Vuln found"
@@ -164,6 +127,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 		b, err := json.Marshal(results)
 		if err == nil {
 			vulnCache.Set(term, b)
+			fmt.Println("result: ", string(b))
 			log.Debug(log.M{Msg: "Storing vuln result for " + term + " in cache"})
 		}
 	} else {
@@ -171,6 +135,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []VulnResult) {
 		log.Debug(log.M{Msg: "Storing vuln not found result for " + term + " in cache"})
 	}
 	return
+
 }
 
 // InitVuln initialize vulnerability scan result cross-correlation
@@ -180,7 +145,7 @@ func InitVuln(confDir string, cacheDuration int) error {
 	if err != nil {
 		return err
 	}
-	vulnCache, err = cache.New("intel", cacheDuration)
+	vulnCache, err = cache.New("vuln", cacheDuration)
 	if err != nil {
 		return err
 	}
@@ -204,11 +169,24 @@ func InitVuln(confDir string, cacheDuration int) error {
 		for j := range it.VulnSources {
 			if it.VulnSources[j].Enabled {
 				vulns.VulnSources = append(vulns.VulnSources, it.VulnSources[j])
+				pPlugin := it.VulnSources[j].Plugin
+				p := vulnPlugins.Lookup(pPlugin)
+				if p == nil {
+					log.Warn(log.M{Msg: "Cannot find vuln plugin " + pPlugin})
+					continue
+				}
+				if err := p.Initialize([]byte(it.VulnSources[j].Config)); err != nil {
+					log.Warn(log.M{Msg: "Cannot initialize vuln plugin " + pPlugin + ": " + err.Error()})
+					continue
+				}
+				log.Info(log.M{Msg: "Adding vuln plugin " + pPlugin})
+				c := vulnChecker{p, pPlugin}
+				vulnCheckers = append(vulnCheckers, c)
 			}
 		}
 	}
 
-	total := len(vulns.VulnSources)
+	total := len(vulnCheckers)
 	if total > 0 {
 		VulnEnabled = true
 	}

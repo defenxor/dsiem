@@ -8,6 +8,8 @@ import (
 	"dsiem/internal/pkg/shared/fs"
 	"dsiem/internal/pkg/shared/ip"
 	log "dsiem/internal/pkg/shared/logger"
+	"dsiem/pkg/intel"
+	"dsiem/pkg/vuln"
 	"encoding/json"
 	"errors"
 	"os"
@@ -38,22 +40,22 @@ var alarmRemovalChannel chan string
 type alarm struct {
 	// sync.RWMutex
 	drwmutex.DRWMutex `json:"-"`
-	ID                string           `json:"alarm_id"`
-	Title             string           `json:"title"`
-	Status            string           `json:"status"`
-	Kingdom           string           `json:"kingdom"`
-	Category          string           `json:"category"`
-	CreatedTime       int64            `json:"created_time"`
-	UpdateTime        int64            `json:"update_time"`
-	Risk              int              `json:"risk"`
-	RiskClass         string           `json:"risk_class"`
-	Tag               string           `json:"tag"`
-	SrcIPs            []string         `json:"src_ips"`
-	DstIPs            []string         `json:"dst_ips"`
-	ThreatIntels      []xc.IntelResult `json:"intel_hits,omitempty"`
-	Vulnerabilities   []xc.VulnResult  `json:"vulnerabilities,omitempty"`
-	Networks          []string         `json:"networks"`
-	Rules             []alarmRule      `json:"rules"`
+	ID                string         `json:"alarm_id"`
+	Title             string         `json:"title"`
+	Status            string         `json:"status"`
+	Kingdom           string         `json:"kingdom"`
+	Category          string         `json:"category"`
+	CreatedTime       int64          `json:"created_time"`
+	UpdateTime        int64          `json:"update_time"`
+	Risk              int            `json:"risk"`
+	RiskClass         string         `json:"risk_class"`
+	Tag               string         `json:"tag"`
+	SrcIPs            []string       `json:"src_ips"`
+	DstIPs            []string       `json:"dst_ips"`
+	ThreatIntels      []intel.Result `json:"intel_hits,omitempty"`
+	Vulnerabilities   []vuln.Result  `json:"vulnerabilities,omitempty"`
+	Networks          []string       `json:"networks"`
+	Rules             []alarmRule    `json:"rules"`
 }
 
 type alarmRule struct {

@@ -3,16 +3,16 @@
     {
       "name": "Nessus-Local",
       "type": "IP-Port",
-      "enabled": false,
-      "url": "http://127.0.0.1:8081/?ip=${ip}&port=${port}",
-      "matcher": "nesd"
+      "plugin": "Nesd",
+      "enabled": true,
+      "config": "{ \"url\" : \"http://127.0.0.1:8081/?ip=${ip}&port=${port}\" }"
     },
     {
       "name": "Nessus",
       "type": "IP-Port",
-      "enabled": true,
-      "url": "http://dsiem-nesd:8081/?ip=${ip}&port=${port}",
-      "matcher": "nesd"
+      "plugin": "Nesd",
+      "enabled": false,
+      "config": "{ \"url\" : \"http://dsiem-nesd:8081/?ip=${ip}&port=${port}\" }"
     }
   ]
 }

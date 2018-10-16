@@ -1,19 +1,19 @@
 package xcorrelator
 
 import (
+	"context"
 	"dsiem/internal/pkg/shared/apm"
 	"dsiem/internal/pkg/shared/cache"
 	"dsiem/internal/pkg/shared/fs"
 	log "dsiem/internal/pkg/shared/logger"
+	"dsiem/pkg/intel"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/elastic/apm-agent-go"
@@ -29,19 +29,11 @@ var IntelEnabled bool
 var intelCache *cache.Cache
 
 type intelSource struct {
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Enabled     bool     `json:"enabled"`
-	URL         string   `json:"url"`
-	Matcher     string   `json:"matcher"`
-	ResultRegex []string `json:"result_regex"`
-}
-
-// IntelResult contain results from threat intel queries
-type IntelResult struct {
-	Provider string `json:"provider"`
-	Term     string `json:"term"`
-	Result   string `json:"result"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Enabled bool   `json:"enabled"`
+	Plugin  string `json:"plugin"`
+	Config  string `json:"config"`
 }
 
 type intelSources struct {
@@ -49,9 +41,17 @@ type intelSources struct {
 }
 
 var intels intelSources
+var intelPlugins = intel.Checkers
+
+type intelCheckers struct {
+	intel.Checker
+	name string
+}
+
+var checkers = []intelCheckers{}
 
 // CheckIntelIP lookup ip on threat intel references
-func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) {
+func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Warn(log.M{Msg: "Panic occurred while checking intel for " + ip})
@@ -77,56 +77,31 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 	// flag to store cache only on succesful query
 	successQuery := false
 
-	for _, v := range intels.IntelSources {
-		url := strings.Replace(v.URL, "${ip}", ip, 1)
-		c := http.Client{Timeout: time.Second * maxSecondToWaitForIntel}
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-
+	for _, v := range checkers {
 		var tx *elasticapm.Transaction
 		if apm.Enabled() {
 			tx = elasticapm.DefaultTracer.StartTransaction("Threat Intel Lookup", "SIEM")
-			tx.Context.SetCustom("term", term)
-			tx.Context.SetCustom("provider", v.Name)
-			tx.Context.SetCustom("Url", url)
+			tx.Context.SetCustom("Term", term)
+			tx.Context.SetCustom("Provider", v.name)
 		}
-
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*maxSecondToWaitForIntel)
+		// ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
+		f, r, err := v.CheckIP(ctx, term)
 		if err != nil {
-			log.Warn(log.M{Msg: "Cannot create new HTTP request for " + v.Name + " TI."})
+			log.Warn(log.M{Msg: "Error received from intel checker " + v.name + ": " + err.Error()})
+			cancel()
 			if apm.Enabled() {
-				tx.Result = "Cannot create HTTP request"
+				tx.Result = err.Error()
 				tx.End()
 			}
 			continue
 		}
-		res, err := c.Do(req)
-		if err != nil {
-			// log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip + ": " + err.Error()})
-			log.Warn(log.M{Msg: "Failed to query " + v.Name + " TI for IP " + ip})
-			if apm.Enabled() {
-				tx.Result = "Failed to query " + v.Name
-				tx.End()
-			}
-			continue
-		}
-		body, readErr := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if readErr != nil {
-			log.Warn(log.M{Msg: "Cannot read result from " + v.Name + " TI for IP " + ip})
-			if apm.Enabled() {
-				tx.Result = "Cannot read result from " + v.Name
-				tx.End()
-			}
-			continue
-		}
-
+		cancel()
 		successQuery = true
 
-		if v.Matcher == "regex" {
-			f, r := matcherRegexIntel(body, v.Name, term, v.ResultRegex)
-			if f {
-				found = true
-				results = append(results, r...)
-			}
+		if f {
+			found = true
+			results = append(results, r...)
 		}
 
 		if apm.Enabled() {
@@ -147,6 +122,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []IntelResult) 
 		b, err := json.Marshal(results)
 		if err == nil {
 			intelCache.Set(term, b)
+			// fmt.Println("result: ", string(b))
 			log.Debug(log.M{Msg: "Storing intel result for " + term + " in cache"})
 		}
 	} else {
@@ -187,11 +163,24 @@ func InitIntel(confDir string, cacheDuration int) error {
 		for j := range it.IntelSources {
 			if it.IntelSources[j].Enabled {
 				intels.IntelSources = append(intels.IntelSources, it.IntelSources[j])
+				pPlugin := it.IntelSources[j].Plugin
+				p := intelPlugins.Lookup(pPlugin)
+				if p == nil {
+					log.Warn(log.M{Msg: "Cannot find intel plugin " + pPlugin})
+					continue
+				}
+				if err := p.Initialize([]byte(it.IntelSources[j].Config)); err != nil {
+					log.Warn(log.M{Msg: "Cannot initialize intel plugin " + pPlugin + ": " + err.Error()})
+					continue
+				}
+				log.Info(log.M{Msg: "Adding intel plugin " + pPlugin})
+				c := intelCheckers{p, pPlugin}
+				checkers = append(checkers, c)
 			}
 		}
 	}
 
-	total := len(intels.IntelSources)
+	total := len(checkers)
 	if total > 0 {
 		IntelEnabled = true
 	}
