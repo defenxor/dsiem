@@ -86,7 +86,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 	for _, v := range vulnCheckers {
 		var tx *elasticapm.Transaction
 		if apm.Enabled() {
-			tx = elasticapm.DefaultTracer.StartTransaction("Vuln Intel Lookup", "SIEM")
+			tx = elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
 			tx.Context.SetCustom("Term", term)
 			tx.Context.SetCustom("Provider", v.name)
 		}
