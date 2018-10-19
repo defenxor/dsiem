@@ -222,6 +222,7 @@ func createNewBackLog(d directive, e event.NormalizedEvent) (bp *backLog, err er
 		return
 	}
 	b.Directive.Rules[0].StartTime = t.Unix()
+	b.Directive.Rules[0].RcvdTime = e.RcvdTime
 	b.chData = make(chan event.NormalizedEvent)
 	b.chFound = make(chan bool)
 	b.chDone = make(chan struct{}, 1)

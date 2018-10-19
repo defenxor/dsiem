@@ -31,6 +31,7 @@ type DirectiveRule struct {
 	Timeout     int64    `json:"timeout"`
 	StartTime   int64    `json:"start_time"`
 	EndTime     int64    `json:"end_time"`
+	RcvdTime    int64    `json:"rcvd_time"`
 	Status      string   `json:"status"`
 	Events      []string `json:"events,omitempty"`
 	StickyDiff  string   `json:"sticky_different,omitempty"`

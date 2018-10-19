@@ -215,8 +215,8 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	evt.ConnID = connID
 	evt.RcvdTime = time.Now().Unix()
+	evt.ConnID = connID
 
 	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 
