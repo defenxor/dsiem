@@ -11,6 +11,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/elastic/apm-agent-go"
+
+	"dsiem/internal/pkg/shared/apm"
 	"dsiem/internal/pkg/shared/fs"
 
 	"github.com/fasthttp-contrib/websocket"
@@ -218,6 +221,21 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	evt.RcvdTime = time.Now().Unix()
 	evt.ConnID = connID
 
+	var tx *elasticapm.Transaction
+
+	if apm.Enabled() {
+		tStart, err := time.Parse(time.RFC3339, evt.Timestamp)
+		if err != nil {
+			log.Warn(log.M{Msg: "Cannot parse event timestamp, skipping event", CId: evt.ConnID})
+			ctx.SetStatusCode(fasthttp.StatusBadRequest)
+			return
+		}
+		opts := elasticapm.TransactionOptions{elasticapm.TraceContext{}, tStart}
+		tx = elasticapm.DefaultTracer.StartTransactionOptions("Log Source to Frontend", "SIEM", opts)
+		tx.Context.SetCustom("event_id", evt.EventID)
+		defer tx.End()
+	}
+
 	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 
 	// push the event, timeout in 10s to avoid open fd overload
@@ -225,10 +243,19 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	case <-time.After(10 * time.Second):
 		log.Info(log.M{Msg: "event channel timed out!", CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
+		if apm.Enabled() {
+			tx.Result = "Event channel timed out"
+		}
 	case eventChan <- *evt:
 		log.Debug(log.M{Msg: "Event pushed", CId: connID})
+		if apm.Enabled() {
+			tx.Result = "Event sent to backend"
+		}
 	case err := <-errChan:
 		log.Info(log.M{Msg: "Error from message queue:" + err.Error(), CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusServiceUnavailable)
+		if apm.Enabled() {
+			tx.Result = err.Error()
+		}
 	}
 }

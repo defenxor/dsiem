@@ -3,6 +3,7 @@
 package apm
 
 var enabled bool
+var distributed bool
 
 //Enabled returns whether apm is enabled
 func Enabled() bool {

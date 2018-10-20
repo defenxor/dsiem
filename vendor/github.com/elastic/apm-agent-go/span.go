@@ -139,6 +139,20 @@ func (s *Span) End() {
 	s.mu.Unlock()
 }
 
+// SetDuration allows fake duration to be setup
+func (s *Span) SetDuration(t time.Duration) {
+	s.mu.Lock()
+	s.Duration = t
+	s.mu.Unlock()
+}
+
+// SetTimestamp allows fake duration to be setup
+func (s *Span) SetTimestamp(t time.Time) {
+	s.mu.Lock()
+	s.Timestamp = t
+	s.mu.Unlock()
+}
+
 func (s *Span) finalize(end time.Time) {
 	s.mu.Lock()
 	if s.Duration < 0 {
