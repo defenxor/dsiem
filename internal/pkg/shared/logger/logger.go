@@ -41,7 +41,7 @@ type M struct {
 	CId uint64 // conn ID
 }
 
-//Info log with info level
+//Info logs with info level
 func Info(m M) {
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Info(m.Msg)
@@ -71,10 +71,9 @@ func Info(m M) {
 		zlog.Info(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
-	return
 }
 
-//Warn log with warn level
+//Warn logs with warn level
 func Warn(m M) {
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Warn(m.Msg)
@@ -104,10 +103,9 @@ func Warn(m M) {
 		zlog.Warn(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
-	return
 }
 
-//Debug log with warn level
+//Debug logs with debug level
 func Debug(m M) {
 	if !enableDebugMessage {
 		return
@@ -140,10 +138,9 @@ func Debug(m M) {
 		zlog.Debug(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
-	return
 }
 
-//Error log with warn level
+//Error logs with error level
 func Error(m M) {
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Error(m.Msg)
@@ -173,7 +170,6 @@ func Error(m M) {
 		zlog.Error(m.Msg, zap.Int("directive", m.DId), zap.String("backlog", m.BId), zap.Uint64("connId", m.CId))
 		return
 	}
-	return
 }
 
 /* nice to look at but too expensive

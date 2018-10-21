@@ -195,9 +195,11 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 
 		for i := range p {
 			// skip private IP
-			if ip.IsPrivateIP(p[i]) {
+			priv, err := ip.IsPrivateIP(p[i])
+			if priv || err != nil {
 				continue
 			}
+
 			// skip existing entries
 			alreadyExist := false
 			for _, v := range a.ThreatIntels {

@@ -19,7 +19,7 @@ func GetDir(devEnv bool) (string, error) {
 	if devEnv == true {
 		// check both docker internal location or dev local pc location
 		dir = "/go/src/dsiem"
-		if !FileExist(dir + "/configs/assets_testing.json") {
+		if !FileExist(dir + "/configs") {
 			dir = "/home/mmta/go/src/dsiem"
 		}
 	}

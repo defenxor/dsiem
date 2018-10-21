@@ -9,10 +9,13 @@ import (
 
 func TestInit(t *testing.T) {
 
-	d := test.DirEnv(t)
+	d, err := test.DirEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("Using base dir %s", d)
 	fDir := path.Join(d, "internal", "pkg", "dsiem", "asset", "fixtures")
-	err := Init(path.Join(fDir, "asset2"))
+	err = Init(path.Join(fDir, "asset2"))
 	if err == nil {
 		t.Fatal(err)
 	}

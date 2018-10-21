@@ -1,6 +1,9 @@
 package ip
 
-import "net"
+import (
+	"errors"
+	"net"
+)
 
 var privateIPBlocks []*net.IPNet
 
@@ -19,12 +22,15 @@ func init() {
 }
 
 // IsPrivateIP check if IP is in private range
-func IsPrivateIP(ip string) bool {
+func IsPrivateIP(ip string) (bool, error) {
 	ipn := net.ParseIP(ip)
+	if ipn == nil {
+		return false, errors.New("Not a valid IP")
+	}
 	for _, block := range privateIPBlocks {
 		if block.Contains(ipn) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }

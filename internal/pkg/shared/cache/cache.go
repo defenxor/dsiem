@@ -13,19 +13,22 @@ type Cache struct {
 }
 
 // New returns initialized Cache
-func New(name string, lifetimeMinutes int) (*Cache, error) {
+func New(name string, lifetimeMinutes int, shards int) (*Cache, error) {
 	c := Cache{}
 	c.ID = name
 	// default to 10 minutes
 	if lifetimeMinutes == 0 {
 		lifetimeMinutes = 10
 	}
+	if shards == 0 {
+		shards = 128
+	}
 	config := bigcache.Config{
-		Shards:     128,                                          // number of shards (must be a power of 2)
+		Shards:     shards,                                       // number of shards (must be a power of 2)
 		LifeWindow: time.Duration(lifetimeMinutes) * time.Minute, // time after which entry can be evicted
 		// rps * lifeWindow, used only in initial
 		// memory allocation
-		MaxEntriesInWindow: 128 * lifetimeMinutes * 60,
+		MaxEntriesInWindow: shards * lifetimeMinutes * 60,
 		// max entry size in bytes, used only in initial memory allocation
 		MaxEntrySize: 500,
 		// prints information about additional memory allocation
@@ -33,7 +36,7 @@ func New(name string, lifetimeMinutes int) (*Cache, error) {
 		// cache will not allocate more memory than this limit, value in MB
 		// if value is reached then the oldest entries can be overridden for the new ones
 		// 0 value means no size limit
-		HardMaxCacheSize: 128,
+		HardMaxCacheSize: shards,
 		// callback fired when the oldest entry is removed because of its expiration time or no space left
 		// for the new entry, or because delete was called. A bitmask representing the reason will be returned.
 		// Default value is nil which means no callback and it prevents from unwrapping the oldest entry.

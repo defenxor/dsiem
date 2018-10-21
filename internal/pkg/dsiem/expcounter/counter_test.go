@@ -2,7 +2,9 @@ package expcounter
 
 import (
 	"dsiem/internal/pkg/dsiem/alarm"
-	"dsiem/internal/pkg/dsiem/server"
+	"time"
+
+	// "dsiem/internal/pkg/dsiem/server"
 	log "dsiem/internal/pkg/shared/logger"
 	"testing"
 
@@ -14,10 +16,11 @@ func TestInit(t *testing.T) {
 	log.Setup(false)
 	viper.Set("tags", []string{"0"})
 	viper.Set("status", []string{"Open"})
-	server.InitRcCounter()
+	// server.InitRcCounter()
 	alarm.Init("doesntmatter")
 	Init("standalone")
 	startTicker("standalone", true)
+	time.Sleep(6 * time.Second)
 }
 
 func TestInit2(t *testing.T) {

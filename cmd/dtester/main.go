@@ -346,7 +346,8 @@ func genIP(ruleAddr string, prev string, counterpart string) string {
 		return viper.GetString("homenet")
 	}
 
-	if counterpart != "" && ruleAddr == "ANY" && !ip.IsPrivateIP(counterpart) {
+	priv, err := ip.IsPrivateIP(counterpart)
+	if counterpart != "" && ruleAddr == "ANY" && err != nil && !priv {
 		return viper.GetString("homenet")
 	}
 

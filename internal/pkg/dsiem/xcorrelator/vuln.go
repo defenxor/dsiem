@@ -145,7 +145,7 @@ func InitVuln(confDir string, cacheDuration int) error {
 	if err != nil {
 		return err
 	}
-	vulnCache, err = cache.New("vuln", cacheDuration)
+	vulnCache, err = cache.New("vuln", cacheDuration, 0)
 	if err != nil {
 		return err
 	}

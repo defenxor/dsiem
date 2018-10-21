@@ -139,7 +139,7 @@ func InitIntel(confDir string, cacheDuration int) error {
 	if err != nil {
 		return err
 	}
-	intelCache, err = cache.New("intel", cacheDuration)
+	intelCache, err = cache.New("intel", cacheDuration, 0)
 	if err != nil {
 		return err
 	}

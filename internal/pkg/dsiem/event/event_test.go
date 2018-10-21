@@ -49,9 +49,12 @@ func TestFromToBytes(t *testing.T) {
 }
 
 func TestInHomeNet(t *testing.T) {
-	d := test.DirEnv(t)
+	d, err := test.DirEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("Using base dir %s", d)
-	err := asset.Init(path.Join(d, "configs"))
+	err = asset.Init(path.Join(d, "configs"))
 	if err != nil {
 		t.Fatal(err)
 	}
