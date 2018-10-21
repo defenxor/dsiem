@@ -2,8 +2,6 @@ package intel
 
 import (
 	"reflect"
-	"runtime"
-	"strings"
 	"sync"
 )
 
@@ -20,9 +18,6 @@ func extensionTypes(extension interface{}) []string {
 	var ifaces []string
 	typ := reflect.TypeOf(extension)
 	for name, ep := range extRegistry.m {
-		if ep.iface.Kind() == reflect.Func && typ.AssignableTo(ep.iface) {
-			ifaces = append(ifaces, name)
-		}
 		if ep.iface.Kind() != reflect.Func && typ.Implements(ep.iface) {
 			ifaces = append(ifaces, name)
 		}
@@ -98,13 +93,7 @@ func (ep *extensionPoint) register(extension interface{}, name string) bool {
 	defer ep.Unlock()
 	if name == "" {
 		typ := reflect.TypeOf(extension)
-		if typ.Kind() == reflect.Func {
-			nameParts := strings.Split(runtime.FuncForPC(
-				reflect.ValueOf(extension).Pointer()).Name(), ".")
-			name = nameParts[len(nameParts)-1]
-		} else {
-			name = typ.Elem().Name()
-		}
+		name = typ.Elem().Name()
 	}
 	_, exists := ep.extensions[name]
 	if exists {

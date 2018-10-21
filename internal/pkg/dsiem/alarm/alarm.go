@@ -244,10 +244,6 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 }
 
 func (a alarm) updateElasticsearch(connID uint64) error {
-	// skip if risk still 0
-	//if a.Risk == 0 {
-	//	return nil
-	//}
 	log.Info(log.M{Msg: "alarm updating Elasticsearch", BId: a.ID, CId: connID})
 	aJSON, _ := json.Marshal(a)
 
