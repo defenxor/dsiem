@@ -22,14 +22,16 @@ import (
 	"strconv"
 )
 
-const (
+var (
+	// VulnEnabled mark whether vuln lookup is enabled
+	VulnEnabled            bool
 	vulnFileGlob           = "vuln_*.json"
-	maxSecondToWaitForVuln = 5
+	maxSecondToWaitForVuln = time.Duration(5)
+	vulnCache              *cache.Cache
+	vulns                  vulnSources
+	vulnPlugins            = vuln.Checkers
+	vulnCheckers           = []vulnChecker{}
 )
-
-// VulnEnabled mark whether vuln lookup is enabled
-var VulnEnabled bool
-var vulnCache *cache.Cache
 
 type vulnSource struct {
 	Name    string `json:"name"`
@@ -44,25 +46,20 @@ type vulnSources struct {
 	VulnSources []vulnSource `json:"vuln_sources"`
 }
 
-var vulns vulnSources
-
-var vulnPlugins = vuln.Checkers
-
 type vulnChecker struct {
 	vuln.Checker
 	name string
 }
 
-var vulnCheckers = []vulnChecker{}
-
 // CheckVulnIPPort lookup ip-port pair on vulnerability scan result references
 func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Warn(log.M{Msg: "Panic occurred while checking vulnerability scan result for " + ip})
-		}
-	}()
-
+	/*
+		defer func() {
+			if r := recover(); r != nil {
+				log.Warn(log.M{Msg: "Panic occurred while checking vulnerability scan result for " + ip})
+			}
+		}()
+	*/
 	p := strconv.Itoa(port)
 	term := ip + ":" + p
 

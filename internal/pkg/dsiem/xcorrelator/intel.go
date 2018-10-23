@@ -19,14 +19,16 @@ import (
 	"github.com/elastic/apm-agent-go"
 )
 
-const (
+var (
+	// IntelEnabled mark whether intel lookup is enabled
+	IntelEnabled            bool
+	intelCache              *cache.Cache
 	intelFileGlob           = "intel_*.json"
-	maxSecondToWaitForIntel = 5
+	maxSecondToWaitForIntel = time.Duration(5)
+	intels                  intelSources
+	intelPlugins            = intel.Checkers
+	checkers                = []intelCheckers{}
 )
-
-// IntelEnabled mark whether intel lookup is enabled
-var IntelEnabled bool
-var intelCache *cache.Cache
 
 type intelSource struct {
 	Name    string `json:"name"`
@@ -40,23 +42,20 @@ type intelSources struct {
 	IntelSources []intelSource `json:"intel_sources"`
 }
 
-var intels intelSources
-var intelPlugins = intel.Checkers
-
 type intelCheckers struct {
 	intel.Checker
 	name string
 }
 
-var checkers = []intelCheckers{}
-
 // CheckIntelIP lookup ip on threat intel references
 func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Warn(log.M{Msg: "Panic occurred while checking intel for " + ip})
-		}
-	}()
+	/*
+		defer func() {
+			if r := recover(); r != nil {
+				log.Warn(log.M{Msg: "Panic occurred while checking intel for " + ip})
+			}
+		}()
+	*/
 
 	term := ip
 
@@ -71,7 +70,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 			found = true
 			return
 		}
-		log.Debug(log.M{Msg: "Failed to unmarshal intel cache for " + term})
+		// log.Debug(log.M{Msg: "Failed to unmarshal intel cache for " + term})
 	}
 
 	// flag to store cache only on succesful query
