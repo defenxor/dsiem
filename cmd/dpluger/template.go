@@ -46,7 +46,7 @@ filter {
 #
 # Optional fields:
 # These fields are optional but should be included whenever possible since they can be used in directive rules:
-#   dst_port (integer), src_port (integer), protocol (string)
+#   dst_port (integer), src_port (integer), protocol (string), subcategory (string)
 # 
 # These fields are also optional and can be used in directive rules. They should be used for custom data that 
 # are not defined in standard SIEM fields.
@@ -61,62 +61,70 @@ filter {
 
 filter {
   if [@metadata][siem_plugin_type] == "{{.P.Name}}" {
+    if {{.TitleField}} in [{{range $k,$v := .R.Sids }}
+      "{{$v.Title}}",{{end}}
+    ] {
 
-    if {{.P.Fields.Title}} == "
-
-    if {{.P.Fields.Title}} in [ "title1", "title2", "title3" ] {
-      
-    }
-
-    date {
-      match => [ "{{.P.Fields.Timestamp}}", "{{.P.Fields.TimestampFormat}}" ]
-      target => "[timestamp]"
-    }
-
-    mutate {
-      add_field => {
-        "src_index_pattern" => "{{.P.Index}}"
-        "title" => "{{.P.Fields.Title}}"
-        "sensor" => "{{.P.Fields.Sensor}}"
-        "product" => "{{.P.Fields.Product}}"
-        "src_ip" => "{{- .P.Fields.SrcIP -}}"
-        "dst_ip" => "{{.P.Fields.DstIP -}}"
-        "protocol" => "{{.P.Fields.Protocol}}"
-        {{if .IsFieldActive "Category" }}"category" => "{{.P.Fields.Category}}"{{end}}
-        {{if .IsFieldActive "SubCategory" }}"subcategory" => "{{.P.Fields.SubCategory}}"{{end}}
-        {{if .IsFieldActive "PluginID" }}"plugin_id" => "{{.P.Fields.PluginID}}"{{end}}
-        {{if .IsFieldActive "PluginSID" }}"plugin_sid" => "{{.P.Fields.PluginSID}}"{{end}}
-        {{if .IsFieldActive "SrcPort" }}"src_port" => "{{.P.Fields.SrcPort -}}"{{end}}
-        {{if .IsFieldActive "DstPort" }}"dst_port" => "{{.P.Fields.DstPort -}}"{{end}}
-        {{if .IsFieldActive "CustomLabel1" }}"custom_label1" => "{{.P.Fields.CustomLabel1}}"{{end}}
-        {{if .IsFieldActive "CustomLabel2" }}"custom_label2" => "{{.P.Fields.CustomLabel2}}"{{end}}
-        {{if .IsFieldActive "CustomLabel3" }}"custom_label3" => "{{.P.Fields.CustomLabel3}}"{{end}}
-        {{if .IsFieldActive "CustomData1" }}"custom_data1" => "{{.P.Fields.CustomData1}}"{{end}}
-        {{if .IsFieldActive "CustomData2" }}"custom_data2" => "{{.P.Fields.CustomData2}}"{{end}}
-        {{if .IsFieldActive "CustomData3" }}"custom_data3" => "{{.P.Fields.CustomData3}}"{{end}}
+      translate {
+        field => "{{.TitleField}}"
+        destination => "[plugin_sid]"
+        dictionary => { {{- range $k,$v := .R.Sids }}
+          "{{$v.Title}}" => "{{$v.SID}}"{{end}}
+        }
       }
-    }
-    {{if .IsIntegerMutationRequired}}
-    mutate {
-      convert => {
-        {{if .IsFieldActive "PluginID" }}"plugin_id" => "integer"{{end}}
-        {{if .IsFieldActive "PluginSID" }}"plugin_sid" => "integer"{{end}}
-        {{if .IsFieldActive "SrcPort" }}"src_port" => "integer"{{end}}
-        {{if .IsFieldActive "DstPort" }}"dst_port" => "integer"{{end}}
-      }
-    }
-    {{end}}
 
-    # delete fields except those included in the whitelist below
-    filter {
-      prune {
-        whitelist_names => [ "@metadata", "src_index_pattern", "title", "sensor", "product",
-          "src_ip", "dst_ip", "plugin_id", "plugin_sid", "category", "subcategory",
-          "src_port", "dst_port", "protocol", "custom_label1", "custom_label2", "custom_label3",
-          "custom_data1", "custom_data2", "custom_data3" ]
+      # the rest should be the same as nonCollect plugin
+      date {
+        match => [ "{{.P.Fields.Timestamp}}", "{{.P.Fields.TimestampFormat}}" ]
+        target => "[timestamp]"
       }
-    }		
-  }
+      mutate {
+        add_field => {
+          "title" => "{{.TitleField}}"
+          "src_index_pattern" => "{{.P.Index}}"
+          "sensor" => "{{.P.Fields.Sensor}}"
+          "product" => "{{.P.Fields.Product}}"
+          "src_ip" => "{{- .P.Fields.SrcIP -}}"
+          "dst_ip" => "{{.P.Fields.DstIP -}}"
+          "protocol" => "{{.P.Fields.Protocol}}"
+          {{if .IsFieldActive "Category" }}"category" => "{{.P.Fields.Category}}"{{end}}
+          {{if .IsFieldActive "SubCategory" }}"subcategory" => "{{.P.Fields.SubCategory}}"{{end}}
+          {{if .IsFieldActive "PluginID" }}"plugin_id" => "{{.P.Fields.PluginID}}"{{end}}
+          {{if .IsFieldActive "SrcPort" }}"src_port" => "{{.P.Fields.SrcPort -}}"{{end}}
+          {{if .IsFieldActive "DstPort" }}"dst_port" => "{{.P.Fields.DstPort -}}"{{end}}
+          {{if .IsFieldActive "CustomLabel1" }}"custom_label1" => "{{.P.Fields.CustomLabel1}}"{{end}}
+          {{if .IsFieldActive "CustomLabel2" }}"custom_label2" => "{{.P.Fields.CustomLabel2}}"{{end}}
+          {{if .IsFieldActive "CustomLabel3" }}"custom_label3" => "{{.P.Fields.CustomLabel3}}"{{end}}
+          {{if .IsFieldActive "CustomData1" }}"custom_data1" => "{{.P.Fields.CustomData1}}"{{end}}
+          {{if .IsFieldActive "CustomData2" }}"custom_data2" => "{{.P.Fields.CustomData2}}"{{end}}
+          {{if .IsFieldActive "CustomData3" }}"custom_data3" => "{{.P.Fields.CustomData3}}"{{end}}
+        }
+      }
+      {{if .IsIntegerMutationRequired}}
+      mutate {
+        convert => {
+          {{if .IsFieldActive "PluginID" }}"plugin_id" => "integer"{{end}}
+          {{if .IsFieldActive "PluginSID" }}"plugin_sid" => "integer"{{end}}
+          {{if .IsFieldActive "SrcPort" }}"src_port" => "integer"{{end}}
+          {{if .IsFieldActive "DstPort" }}"dst_port" => "integer"{{end}}
+        }
+      }
+      {{end}}
+
+      # delete fields except those included in the whitelist below
+      filter {
+        prune {
+          whitelist_names => [ "@metadata", "src_index_pattern", "title", "sensor", "product",
+            "src_ip", "dst_ip", "plugin_id", "plugin_sid", "category", "subcategory",
+            "src_port", "dst_port", "protocol", "custom_label1", "custom_label2", "custom_label3",
+            "custom_data1", "custom_data2", "custom_data3" ]
+        }
+      }		
+    } else {
+      # title doesnt match
+      drop {}
+    } # titleField
+  } # siem_plugin_type
 }
 `
 
@@ -166,7 +174,7 @@ filter {
 #
 # Optional fields:
 # These fields are optional but should be included whenever possible since they can be used in directive rules:
-#   dst_port (integer), src_port (integer), protocol (string)
+#   dst_port (integer), src_port (integer), protocol (string), subcategory (string)
 # 
 # These fields are also optional and can be used in directive rules. They should be used for custom data that 
 # are not defined in standard SIEM fields.
@@ -187,8 +195,8 @@ filter {
     }
     mutate {
       add_field => {
-        "src_index_pattern" => "{{.P.Index}}"
         "title" => "{{.P.Fields.Title}}"
+        "src_index_pattern" => "{{.P.Index}}"
         "sensor" => "{{.P.Fields.Sensor}}"
         "product" => "{{.P.Fields.Product}}"
         "src_ip" => "{{- .P.Fields.SrcIP -}}"

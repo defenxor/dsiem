@@ -17,18 +17,18 @@ type pluginSIDRef struct {
 }
 
 type tsvRef struct {
-	sids  map[int]pluginSIDRef
+	Sids  map[int]pluginSIDRef
 	fname string
 }
 
 func (c *tsvRef) setFilename(pluginName string, confFile string) {
 	dir := path.Dir(confFile)
-	c.fname = path.Join(dir, pluginName+"_plugin-sids.tsv")
+	c.fname = path.Join(dir, pluginName+"_plugin-Sids.tsv")
 	return
 }
 
 func (c *tsvRef) init(pluginName string, confFile string) {
-	c.sids = make(map[int]pluginSIDRef)
+	c.Sids = make(map[int]pluginSIDRef)
 	c.setFilename(pluginName, confFile)
 	f, err := os.OpenFile(c.fname, os.O_RDONLY, 0600)
 	if err != nil {
@@ -42,7 +42,7 @@ func (c *tsvRef) init(pluginName string, confFile string) {
 		if err != nil {
 			continue
 		}
-		c.sids[ref.SID] = ref
+		c.Sids[ref.SID] = ref
 		if eof {
 			break
 		}
@@ -54,7 +54,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 
 	// First check the title, exit if already exist
 	tKey := 0
-	for k, v := range c.sids {
+	for k, v := range c.Sids {
 		if v.Title == pluginTitle {
 			tKey = k
 			break
@@ -71,7 +71,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 
 	// first find available SID
 	for {
-		_, used := c.sids[*pluginSID]
+		_, used := c.Sids[*pluginSID]
 		if !used {
 			break
 		}
@@ -83,7 +83,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 		ID:    pluginID,
 		Title: pluginTitle,
 	}
-	c.sids[*pluginSID] = r
+	c.Sids[*pluginSID] = r
 	return true
 }
 
@@ -98,12 +98,12 @@ func (c tsvRef) save() error {
 	}
 	// use slice to get a sorted keys, ikr
 	var keys []int
-	for k := range c.sids {
+	for k := range c.Sids {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		v := c.sids[k]
+		v := c.Sids[k]
 		if _, err := f.WriteString(v.Name + "\t" +
 			strconv.Itoa(v.ID) + "\t" + strconv.Itoa(v.SID) + "\t" +
 			v.Title + "\n"); err != nil {

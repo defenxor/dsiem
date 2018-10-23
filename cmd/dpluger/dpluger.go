@@ -162,6 +162,8 @@ func createPluginCollect(plugin Plugin, confFile string) (err error) {
 	pt.P = plugin
 	pt.R = ref
 	pt.Creator = progName
+	pt.TitleField = getLogstashFieldNotation(
+		strings.Replace(plugin.Fields.Title, "collect:", "", 1))
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 	transformToLogstashField(&pt.P.Fields)
 
@@ -258,9 +260,7 @@ func setField(f *FieldMapping, field string, value string) {
 }
 
 func collectTitles(plugin Plugin, confFile string) (c tsvRef, err error) {
-
 	c.init(plugin.Name, confFile)
-
 	title := strings.Replace(plugin.Fields.Title, "collect:", "", 1) + ".keyword"
 
 	/*

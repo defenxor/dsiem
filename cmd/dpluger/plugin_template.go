@@ -7,6 +7,7 @@ type pluginTemplate struct {
 	Creator    string
 	CreateDate string
 	R          tsvRef
+	TitleField string
 }
 
 func (pt pluginTemplate) IsPluginRule() bool {
