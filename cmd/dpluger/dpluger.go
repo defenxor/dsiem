@@ -87,50 +87,43 @@ func createPlugin(plugin Plugin, confFile string) (err error) {
 		return
 	}
 	/* temporarily disable checks
-
 	if err = validateIndex(plugin.Index); err != nil {
 		return
 	}
-		if err = validateESField(plugin); err != nil {
-			return
-		}
+	if err = validateESField(plugin); err != nil {
+		return
+	}
 	*/
-
 	if getType(plugin.Fields.Title) == ftCollect {
 		return createPluginCollect(plugin, confFile)
 	}
 	return createPluginNonCollect(plugin, confFile)
 }
 
-type pluginTemplate struct {
-	P          Plugin
-	Creator    string
-	CreateDate string
-}
-
-func (pt pluginTemplate) IsPluginRule() bool {
-	return pt.P.Type == "PluginRule"
-}
-
-func (pt pluginTemplate) IsFieldActive(name string) bool {
-	s := reflect.ValueOf(&pt.P.Fields).Elem()
-	typeOfT := s.Type()
-	for i := 0; i < s.NumField(); i++ {
-		f := s.Field(i)
-		if typeOfT.Field(i).Name == name {
-			v := f.Interface().(string)
-			return v != ""
-		}
-	}
-	return false
-}
-
-func (pt pluginTemplate) IsIntegerMutationRequired() bool {
-	return pt.IsFieldActive("PluginID") || pt.IsFieldActive("PluginSID") ||
-		pt.IsFieldActive("SrcPort") || pt.IsFieldActive("DstPort")
-}
-
 func createPluginNonCollect(plugin Plugin, confFile string) (err error) {
+
+	// Prepare the struct to be used with the template
+	pt := pluginTemplate{}
+	pt.P = plugin
+	pt.Creator = progName
+	pt.CreateDate = time.Now().Format(time.RFC3339)
+
+	transformToLogstashField(&pt.P.Fields)
+
+	// Parse and execute the template
+	t, err := template.New(plugin.Name).Parse(templPluginNonCollect)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	w := bufio.NewWriter(&buf)
+	err = t.Execute(w, pt)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// Prepare plugin output file
 	dir := path.Dir(confFile)
 	fname := path.Join(dir, plugin.Output)
 	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
@@ -139,18 +132,72 @@ func createPluginNonCollect(plugin Plugin, confFile string) (err error) {
 	}
 	defer f.Close()
 
-	t, err := template.New(plugin.Name).Parse(templPluginNonCollect)
+	err = removeEmptyLines(&buf, f)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createPluginCollect(plugin Plugin, confFile string) (err error) {
+
+	// taxonomyRule type plugin doesnt need to collect title since it is relying on
+	// category field (which doesnt have to be unique per title) instead of Plugin_SID
+	// that requires a unique SID for each title
+	if plugin.Type != "PluginRule" {
+		return errors.New("Only PluginRule plugin support collect: keyword in title field")
+	}
+
+	// first get the refs
+	ref, err := collectTitles(plugin, confFile)
+	if err != nil {
+		return err
+	}
+	if err := ref.save(); err != nil {
+		return err
+	}
+
+	// Prepare the struct to be used with template
+	pt := pluginTemplate{}
+	pt.P = plugin
+	pt.R = ref
+	pt.Creator = progName
+	pt.CreateDate = time.Now().Format(time.RFC3339)
+	transformToLogstashField(&pt.P.Fields)
+
+	// Parse and execute the template, saving result to buff
+	t, err := template.New(plugin.Name).Parse(templPluginCollect)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	w := bufio.NewWriter(&buf)
+	err = t.Execute(w, pt)
+	w.Flush()
 	if err != nil {
 		return err
 	}
 
-	pt := pluginTemplate{}
-	pt.P = plugin
-	pt.Creator = progName
-	pt.CreateDate = time.Now().Format(time.RFC3339)
-	// iterate over fields
+	// prepare plugin output file
+	dir := path.Dir(confFile)
+	fname := path.Join(dir, plugin.Output)
+	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
-	s := reflect.ValueOf(&plugin.Fields).Elem()
+	err = removeEmptyLines(&buf, f)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+func transformToLogstashField(fields *FieldMapping) {
+	// iterate over fields to change them to logstash notation
+	s := reflect.ValueOf(fields).Elem()
 	typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
@@ -167,22 +214,19 @@ func createPluginNonCollect(plugin Plugin, confFile string) (err error) {
 			v = str
 		}
 		// set it
-		setField(&pt.P.Fields, typeOfT.Field(i).Name, v)
+		setField(fields, typeOfT.Field(i).Name, v)
 		// fmt.Printf("%d: %s %s = %v\n", i, typeOfT.Field(i).Name, f.Type(), f.Interface())
 	}
+}
 
-	var buf bytes.Buffer
-	w := bufio.NewWriter(&buf)
-	err = t.Execute(w, pt)
-	w.Flush()
-	if err != nil {
-		return err
-	}
-	err = removeEmptyLines(&buf, f)
-	if err != nil {
-		return err
-	}
-	return nil
+func getLogstashFieldNotation(src string) (res string) {
+	s := strings.Replace(src, "es:", "", 1)
+	s = strings.Replace(s, "collect:", "", 1)
+	s = strings.Replace(s, ".", "][", -1)
+	s = strings.Replace(s, s, "["+s, 1)
+	s = strings.Replace(s, s, s+"]", 1)
+	res = s
+	return
 }
 
 func removeEmptyLines(input io.Reader, output io.Writer) (err error) {
@@ -213,29 +257,14 @@ func setField(f *FieldMapping, field string, value string) {
 	}
 }
 
-func getLogstashFieldNotation(src string) (res string) {
-	s := strings.Replace(src, "es:", "", 1)
-	s = strings.Replace(s, ".", "][", -1)
-	s = strings.Replace(s, s, "["+s, 1)
-	s = strings.Replace(s, s, s+"]", 1)
-	res = s
-	return
-}
+func collectTitles(plugin Plugin, confFile string) (c tsvRef, err error) {
 
-func createPluginCollect(plugin Plugin, confFile string) (err error) {
-	c := csvRef{}
 	c.init(plugin.Name, confFile)
-
-	// taxonomyRule type plugin doesnt need to collect title since it is relying on
-	// category field (which doesnt have to be unique per title) instead of Plugin_SID
-	// that requires a unique SID for each title
-	if plugin.Type != "PluginRule" {
-		return errors.New("Only PluginRule plugin support collect: keyword in title field")
-	}
 
 	title := strings.Replace(plugin.Fields.Title, "collect:", "", 1) + ".keyword"
 
 	/*
+		// use this to collect a lot of titles
 		plugin.Index = "siem_events-*"
 		title = "title.keyword"
 	*/
@@ -246,7 +275,8 @@ func createPluginCollect(plugin Plugin, confFile string) (err error) {
 		return
 	}
 	if !exist {
-		return errors.New("Title collection requires field " + title + " to exist on index " + plugin.Index)
+		err = errors.New("Title collection requires field " + title + " to exist on index " + plugin.Index)
+		return
 	}
 	fmt.Println("OK")
 
@@ -258,16 +288,18 @@ func createPluginCollect(plugin Plugin, confFile string) (err error) {
 		Pretty(true).
 		Do(ctx)
 	if err != nil {
-		return err
+		return
 	}
 
 	agg, found := searchResult.Aggregations.Terms("uniqterm")
 	if !found {
-		return errors.New("cannot find aggregation uniqterm in ES query result")
+		err = errors.New("cannot find aggregation uniqterm in ES query result")
+		return
 	}
 	count := len(agg.Buckets)
 	if count == 0 {
-		return errors.New("cannot find matching title in field " + title + " on index " + plugin.Index)
+		err = errors.New("cannot find matching title in field " + title + " on index " + plugin.Index)
+		return
 	}
 	fmt.Println("Found", count, "uniq titles.")
 
@@ -275,18 +307,15 @@ func createPluginCollect(plugin Plugin, confFile string) (err error) {
 	plugID := strings.Replace(plugin.Fields.PluginID, "static:", "", 1)
 	nID, err := strconv.Atoi(plugID)
 	if err != nil {
-		return err
+		return
 	}
 	for _, titleBucket := range agg.Buckets {
 		t := titleBucket.Key.(string)
-		fmt.Println("found title:", t)
+		// fmt.Println("found title:", t)
 		// increase SID counter only if the last entry
 		if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, t); shouldIncrease {
 			newSID++
 		}
-	}
-	if err := c.save(); err != nil {
-		return err
 	}
 	return
 }

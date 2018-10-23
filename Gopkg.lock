@@ -21,14 +21,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4c4c33075b704791d6a7f09dfb55c66769e8a1dc6adf87026292d274fe8ad113"
-  name = "github.com/codahale/hdrhistogram"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
-
-[[projects]]
-  branch = "master"
   digest = "1:2d2ce323231b09b3e1caab2436fab061cde6d9fe85cc407dec05551fea3ab64c"
   name = "github.com/dogenzaka/tsv"
   packages = ["."]
@@ -203,6 +195,19 @@
   version = "v1.8.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:aa3d8d42865c42626b5c1add193692d045b3188b1479f0a0a88690d21fe20083"
+  name = "github.com/mailru/easyjson"
+  packages = [
+    ".",
+    "buffer",
+    "jlexer",
+    "jwriter",
+  ]
+  pruneopts = "UT"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
+
+[[projects]]
   digest = "1:e477efb98f2d11c7164be732e08d3757352d50faead8b1f07ccfe103a51d7fe2"
   name = "github.com/matryer/vice"
   packages = ["."]
@@ -250,16 +255,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:450b7623b185031f3a456801155c8320209f75d0d4c4e633c6b1e59d44d6e392"
-  name = "github.com/opentracing/opentracing-go"
+  digest = "1:e910cbdafbf77a84189338f673c4b5c624907042dff5996ff2df98726b146139"
+  name = "github.com/olivere/elastic"
   packages = [
     ".",
-    "ext",
-    "log",
+    "config",
+    "uritemplates",
   ]
   pruneopts = "UT"
-  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
-  version = "v1.0.2"
+  revision = "425e5369a8f054f4f447f7c8ee1bf605f48425ab"
+  version = "v6.2.11"
 
 [[projects]]
   digest = "1:7233f2b1f864831a729ca0d48e84081ac8b4ce040a5aad3b394c421a7a0405cb"
@@ -403,40 +408,6 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:ac6f26e917fd2fb3194a7ebe2baf6fb32de2f2fbfed130c18aac0e758a6e1d22"
-  name = "github.com/uber/jaeger-client-go"
-  packages = [
-    ".",
-    "config",
-    "internal/baggage",
-    "internal/baggage/remote",
-    "internal/spanlog",
-    "internal/throttler",
-    "internal/throttler/remote",
-    "log",
-    "rpcmetrics",
-    "thrift",
-    "thrift-gen/agent",
-    "thrift-gen/baggage",
-    "thrift-gen/jaeger",
-    "thrift-gen/sampling",
-    "thrift-gen/zipkincore",
-    "transport",
-    "utils",
-  ]
-  pruneopts = "UT"
-  revision = "1a782e2da844727691fef1757c72eb190c2909f0"
-  version = "v2.15.0"
-
-[[projects]]
-  digest = "1:0f09db8429e19d57c8346ad76fbbc679341fa86073d3b8fb5ac919f0357d8f4c"
-  name = "github.com/uber/jaeger-lib"
-  packages = ["metrics"]
-  pruneopts = "UT"
-  revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
-  version = "v1.5.0"
-
-[[projects]]
   digest = "1:c468422f334a6b46a19448ad59aaffdfc0a36b08fdcc1c749a0b29b6453d7e59"
   name = "github.com/valyala/bytebufferpool"
   packages = ["."]
@@ -515,11 +486,11 @@
   name = "golang.org/x/net"
   packages = ["context"]
   pruneopts = "UT"
-  revision = "04a2e542c03f1d053ab3e4d6e5abcd4b66e2be8e"
+  revision = "9b4f9f5ad5197c79fd623a3638e70d8b26cef344"
 
 [[projects]]
   branch = "master"
-  digest = "1:c694d2d71cc860ed51fc38768f52724f456d63d485ac01e3d77cebedb72f4830"
+  digest = "1:ebdb9ae52731cb63cd3e2feb970c0fbc333a691f6e0b2655c100a6d4814b81b1"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -527,7 +498,7 @@
     "windows/registry",
   ]
   pruneopts = "UT"
-  revision = "8e24a49d80f82323e1c4db1b5da3e0f31171a151"
+  revision = "44b849a8bc13eb42e95e6c6c5e360481b73ec710"
 
 [[projects]]
   digest = "1:8029e9743749d4be5bc9f7d42ea1659471767860f0cdc34d37c3111bd308a295"
@@ -584,7 +555,7 @@
     "github.com/matryer/vice",
     "github.com/nats-io/go-nats",
     "github.com/nats-io/go-nats-streaming",
-    "github.com/opentracing/opentracing-go",
+    "github.com/olivere/elastic",
     "github.com/paulbellamy/ratecounter",
     "github.com/pkg/profile",
     "github.com/remeh/sizedwaitgroup",
@@ -593,8 +564,6 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/teris-io/shortid",
-    "github.com/uber/jaeger-client-go",
-    "github.com/uber/jaeger-client-go/config",
     "github.com/valyala/fasthttp",
     "github.com/valyala/fasthttp/expvarhandler",
     "github.com/valyala/fasthttp/pprofhandler",
