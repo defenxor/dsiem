@@ -1,0 +1,25 @@
+{
+  "name": "suricata",
+  "type": "SID",
+  "output_file": "70_siem-plugin-suricata.conf",
+  "index_pattern": "suricata-*",
+  "elasticsearch_address": "http://frontend.appl184.mss.defenxor.com:9200",
+  "identifier_field": "[application]",
+  "identifier_value": "suricata",
+  "identifier_filter": "and [alert])",
+  "field_mapping": {
+    "title": "es:alert.signature",
+    "timestamp": "es:timestamp",
+    "timestamp_format": "ISO8601",
+    "sensor": "es:host.name",
+    "plugin_id": "1001",
+    "plugin_sid": "es:alert.signature_id",
+    "product": "Intrusion Detection System",
+    "category": "es:alert.category",
+    "src_ip": "es:src_ip",
+    "src_port": "es:src_port",
+    "dst_ip": "es:dest_ip",
+    "dst_port": "es:dest_port",
+    "protocol": "es:proto"
+  }
+}

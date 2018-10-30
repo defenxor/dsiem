@@ -1,0 +1,24 @@
+{
+  "name": "mcafee-idps",
+  "type": "SID",
+  "output_file": "70_siem-plugin-mcafee-idps.conf",
+  "index_pattern": "mcafee-idps-*",
+  "elasticsearch_address": "http://frontend.appl162.mss.defenxor.com:9200",
+  "identifier_field": "[fields][log_type]",
+  "identifier_value": "mcafee-ips",
+  "identifier_filter": "",
+  "field_mapping": {
+    "title": "es:signature",
+    "timestamp": "es:syslog_timestamp",
+    "timestamp_format": "ISO8601",
+    "sensor": "es:device_hostname",
+    "plugin_id": "1832",
+    "plugin_sid": "collect:signature",
+    "product": "Intrusion Prevention System",
+    "src_ip": "es:src_ip",
+    "src_port": "es:src_port",
+    "dst_ip": "es:dst_ip",
+    "dst_port": "es:dst_port",
+    "protocol": ""
+  }
+}
