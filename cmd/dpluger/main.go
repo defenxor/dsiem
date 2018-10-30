@@ -7,6 +7,7 @@ import (
 
 	log "dsiem/internal/pkg/shared/logger"
 
+	"dsiem/internal/pkg/dpluger"
 	"dsiem/internal/pkg/shared/fs"
 
 	"github.com/spf13/cobra"
@@ -29,12 +30,14 @@ func init() {
 	createCmd.Flags().StringP("address", "a", "http://elasticsearch:9200", "Elasticsearch endpoint to use")
 	createCmd.Flags().StringP("indexPattern", "i", "suricata-*", "index pattern to read fields from")
 	createCmd.Flags().StringP("name", "n", "suricata", "the name of the generated plugin")
-	createCmd.Flags().StringP("type", "t", "PluginRule", "the type of the generated plugin, can be PluginRule or TaxonomyRule")
+	createCmd.Flags().StringP("type", "t", "SID", "the type of the generated plugin, can be SID or Taxonomy")
+	runCmd.Flags().BoolP("validate", "v", true, "Check whether each refered ES field exists on the target index")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
 	viper.BindPFlag("index", createCmd.Flags().Lookup("indexPattern"))
 	viper.BindPFlag("name", createCmd.Flags().Lookup("name"))
 	viper.BindPFlag("type", createCmd.Flags().Lookup("type"))
+	viper.BindPFlag("validate", runCmd.Flags().Lookup("validate"))
 }
 
 func initConfig() {
@@ -76,17 +79,19 @@ var runCmd = &cobra.Command{
 	Long:  `Creates logstash plugin for dsiem`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config := viper.GetString("config")
+		validate := viper.GetBool("validate")
+
 		if !fs.FileExist(config) {
 			exit("Cannot read from config file", errors.New(config+" doesnt exist"))
 		}
 		if err := log.Setup(true); err != nil {
 			exit("Cannot setup logger", err)
 		}
-		plugin, err := parse(config)
+		plugin, err := dpluger.Parse(config)
 		if err != nil {
 			exit("Cannot parse config file", err)
 		}
-		if err := createPlugin(plugin, config); err != nil {
+		if err := dpluger.CreatePlugin(plugin, config, progName, validate); err != nil {
 			exit("Error encountered while running config file", err)
 		}
 		fmt.Println("Logstash conf file created.")
@@ -103,10 +108,10 @@ var createCmd = &cobra.Command{
 		index := viper.GetString("index")
 		name := viper.GetString("name")
 		typ := viper.GetString("type")
-		if err := createConfig(config, address, index, name, typ); err != nil {
+		if err := dpluger.CreateConfig(config, address, index, name, typ); err != nil {
 			exit("Cannot parse config file", err)
 		}
 		fmt.Println("Template created. in " + config + "\n" +
-			"Now you should edit the generated template and insert the appropriate ES field names.")
+			"Now you should edit the generated template and insert the appropriate parameters and ES field names.")
 	},
 }

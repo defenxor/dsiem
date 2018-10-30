@@ -255,18 +255,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:e910cbdafbf77a84189338f673c4b5c624907042dff5996ff2df98726b146139"
-  name = "github.com/olivere/elastic"
-  packages = [
-    ".",
-    "config",
-    "uritemplates",
-  ]
-  pruneopts = "UT"
-  revision = "425e5369a8f054f4f447f7c8ee1bf605f48425ab"
-  version = "v6.2.11"
-
-[[projects]]
   digest = "1:7233f2b1f864831a729ca0d48e84081ac8b4ce040a5aad3b394c421a7a0405cb"
   name = "github.com/paulbellamy/ratecounter"
   packages = ["."]
@@ -524,6 +512,18 @@
   revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
 
 [[projects]]
+  digest = "1:a321cc26048fee52d1604ca2509e80f77be291ad073fdbcc5a50fdbcb375ed2f"
+  name = "gopkg.in/olivere/elastic.v5"
+  packages = [
+    ".",
+    "config",
+    "uritemplates",
+  ]
+  pruneopts = "UT"
+  revision = "fc3063a8c0686f64e94f4b2c17eb140c06eb6793"
+  version = "v5.0.76"
+
+[[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -555,7 +555,6 @@
     "github.com/matryer/vice",
     "github.com/nats-io/go-nats",
     "github.com/nats-io/go-nats-streaming",
-    "github.com/olivere/elastic",
     "github.com/paulbellamy/ratecounter",
     "github.com/pkg/profile",
     "github.com/remeh/sizedwaitgroup",
@@ -572,6 +571,7 @@
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
     "golang.org/x/time/rate",
+    "gopkg.in/olivere/elastic.v5",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
