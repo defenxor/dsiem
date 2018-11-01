@@ -3,7 +3,7 @@ package nats
 import (
 	"time"
 
-	"dsiem/internal/pkg/dsiem/vice"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice"
 )
 
 // ReceiveBool gets a channel on which to receive messages

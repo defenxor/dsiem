@@ -8,9 +8,8 @@ package nats
 import (
 	"sync"
 
-	"dsiem/internal/pkg/dsiem/vice"
-
-	"dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice"
 
 	"github.com/nats-io/go-nats"
 )

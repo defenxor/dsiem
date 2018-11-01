@@ -2,11 +2,12 @@ package wise
 
 import (
 	"context"
-	"dsiem/pkg/intel"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/defenxor/dsiem/pkg/intel"
 )
 
 func init() {

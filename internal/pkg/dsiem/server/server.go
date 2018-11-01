@@ -1,8 +1,6 @@
 package server
 
 import (
-	"dsiem/internal/pkg/dsiem/event"
-	log "dsiem/internal/pkg/shared/logger"
 	"errors"
 	"fmt"
 	"net"
@@ -11,8 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dsiem/internal/pkg/dsiem/limiter"
-	"dsiem/internal/pkg/dsiem/vice/nats"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/limiter"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice/nats"
 
 	"github.com/fasthttp-contrib/websocket"
 	"github.com/valyala/fasthttp"

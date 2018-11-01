@@ -1,7 +1,7 @@
 package event
 
 import (
-	"dsiem/internal/pkg/dsiem/asset"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"encoding/json"
 )
 

@@ -1,8 +1,8 @@
 package expcounter
 
 import (
-	"dsiem/internal/pkg/dsiem/alarm"
-	"dsiem/internal/pkg/dsiem/server"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
 	log "dsiem/internal/pkg/shared/logger"
 	"expvar"
 	"runtime"

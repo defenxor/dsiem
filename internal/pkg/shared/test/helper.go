@@ -1,8 +1,8 @@
 package test
 
 import (
-	"dsiem/internal/pkg/shared/fs"
-	log "dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
 //DirEnv get the root app directory and setup log for testing

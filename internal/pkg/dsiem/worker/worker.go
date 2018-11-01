@@ -1,8 +1,6 @@
 package worker
 
 import (
-	"dsiem/internal/pkg/dsiem/event"
-	log "dsiem/internal/pkg/shared/logger"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,7 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"dsiem/internal/pkg/dsiem/vice/nats"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice/nats"
 )
 
 // var receiver <-chan []byte

@@ -4,8 +4,8 @@ import (
 	"path"
 	"testing"
 
-	"dsiem/internal/pkg/dsiem/asset"
-	"dsiem/internal/pkg/shared/test"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
+	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
 	"github.com/sebdah/goldie"
 )

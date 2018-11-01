@@ -1,7 +1,7 @@
 package nesd
 
 import (
-	log "dsiem/internal/pkg/shared/logger"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
 type vulnerability struct {

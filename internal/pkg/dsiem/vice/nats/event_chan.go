@@ -1,8 +1,8 @@
 package nats
 
 import (
-	"dsiem/internal/pkg/dsiem/event"
-	"dsiem/internal/pkg/dsiem/vice"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice"
 
 	"time"
 )

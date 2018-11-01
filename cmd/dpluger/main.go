@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	log "dsiem/internal/pkg/shared/logger"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"dsiem/internal/pkg/dpluger"
 	"dsiem/internal/pkg/shared/fs"

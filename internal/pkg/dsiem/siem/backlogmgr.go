@@ -1,14 +1,15 @@
 package siem
 
 import (
-	"dsiem/internal/pkg/dsiem/alarm"
-	"dsiem/internal/pkg/dsiem/event"
-	"dsiem/internal/pkg/dsiem/rule"
-	"dsiem/internal/pkg/shared/apm"
-	"dsiem/internal/pkg/shared/idgen"
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/internal/pkg/shared/str"
 	"strconv"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	"github.com/defenxor/dsiem/internal/pkg/shared/idgen"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 
 	"github.com/elastic/apm-agent-go"
 

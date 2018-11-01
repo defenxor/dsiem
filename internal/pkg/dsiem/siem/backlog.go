@@ -1,13 +1,6 @@
 package siem
 
 import (
-	"dsiem/internal/pkg/dsiem/alarm"
-	"dsiem/internal/pkg/dsiem/asset"
-	"dsiem/internal/pkg/dsiem/event"
-	"dsiem/internal/pkg/dsiem/rule"
-	"dsiem/internal/pkg/shared/apm"
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/internal/pkg/shared/str"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,6 +9,15 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/str"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 
 	"github.com/jonhoo/drwmutex"
 	"github.com/spf13/viper"

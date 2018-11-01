@@ -1,10 +1,11 @@
 package main
 
 import (
-	"dsiem/internal/pkg/ossimcnv"
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/defenxor/dsiem/internal/pkg/ossimcnv"
 )
 
 var (
