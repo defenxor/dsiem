@@ -1,8 +1,8 @@
 package asset
 
 import (
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/internal/pkg/shared/str"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 
 	"encoding/json"
 	"errors"

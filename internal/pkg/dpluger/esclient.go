@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	log "dsiem/internal/pkg/shared/logger"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
-	"github.com/olivere/elastic"
+	"github.com/defenxor/github.com/olivere/elastic"
 )
 
 // esCollector is the interface for querying elasticsearch summaries

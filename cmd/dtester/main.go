@@ -17,11 +17,11 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"dsiem/internal/pkg/dsiem/event"
-	"dsiem/internal/pkg/dsiem/siem"
-	"dsiem/internal/pkg/shared/ip"
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/internal/pkg/shared/str"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
+	"github.com/defenxor/dsiem/internal/pkg/shared/ip"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 
 	"github.com/remeh/sizedwaitgroup"
 	uuid "github.com/satori/go.uuid"

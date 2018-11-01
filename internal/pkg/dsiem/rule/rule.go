@@ -1,13 +1,14 @@
 package rule
 
 import (
-	"dsiem/internal/pkg/dsiem/event"
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/internal/pkg/shared/str"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 )
 
 // DirectiveRule defines the struct for directive rules, this is read-only

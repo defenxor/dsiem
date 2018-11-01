@@ -2,11 +2,6 @@ package xcorrelator
 
 import (
 	"context"
-	"dsiem/internal/pkg/shared/apm"
-	"dsiem/internal/pkg/shared/cache"
-	"dsiem/internal/pkg/shared/fs"
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/pkg/intel"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -15,6 +10,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	"github.com/defenxor/dsiem/internal/pkg/shared/cache"
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/pkg/intel"
 
 	"github.com/elastic/apm-agent-go"
 )

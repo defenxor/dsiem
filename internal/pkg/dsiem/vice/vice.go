@@ -1,7 +1,7 @@
 package vice
 
 import (
-	"dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 
 	"fmt"
 )

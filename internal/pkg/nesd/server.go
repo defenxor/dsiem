@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	log "dsiem/internal/pkg/shared/logger"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/julienschmidt/httprouter"
 )

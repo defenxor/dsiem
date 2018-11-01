@@ -1,14 +1,15 @@
 package nesd
 
 import (
-	"dsiem/internal/pkg/shared/fs"
-	log "dsiem/internal/pkg/shared/logger"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
+
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/gocarina/gocsv"
 )

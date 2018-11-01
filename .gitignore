@@ -16,6 +16,7 @@ user.xml.tmp
 docs/mkdocs
 
 web/dist
+web/ui
 web/ui-old
 temp/
 test/pprof_results

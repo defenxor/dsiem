@@ -1,7 +1,6 @@
 package ossimcnv
 
 import (
-	"dsiem/internal/pkg/shared/fs"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -10,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 )
 
 type directives struct {

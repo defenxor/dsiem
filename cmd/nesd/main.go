@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dsiem/internal/pkg/nesd"
-	log "dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/nesd"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"fmt"
 	"os"

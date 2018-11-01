@@ -2,15 +2,17 @@ package xcorrelator
 
 import (
 	"context"
-	"dsiem/internal/pkg/shared/apm"
-	"dsiem/internal/pkg/shared/ip"
-	"dsiem/internal/pkg/shared/test"
 
-	"dsiem/pkg/vuln"
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	"github.com/defenxor/dsiem/internal/pkg/shared/ip"
+	"github.com/defenxor/dsiem/internal/pkg/shared/test"
+
 	"os"
 	"path"
 	"reflect"
 	"testing"
+
+	"github.com/defenxor/dsiem/pkg/vuln"
 )
 
 type vulnTests struct {
