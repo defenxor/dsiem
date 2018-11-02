@@ -1,12 +1,14 @@
 package rule
 
 import (
-	"dsiem/internal/pkg/dsiem/asset"
-	"dsiem/internal/pkg/dsiem/event"
-	log "dsiem/internal/pkg/shared/logger"
-	"dsiem/internal/pkg/shared/test"
 	"path"
 	"testing"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/shared/test"
+
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
 func TestIPinCIDR(t *testing.T) {

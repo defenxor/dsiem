@@ -7,8 +7,8 @@ import (
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
-	"dsiem/internal/pkg/dpluger"
-	"dsiem/internal/pkg/shared/fs"
+	"github.com/defenxor/dsiem/internal/pkg/dpluger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

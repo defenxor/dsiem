@@ -2,12 +2,13 @@ package nesd
 
 import (
 	"context"
-	"dsiem/pkg/vuln"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/defenxor/dsiem/pkg/vuln"
 )
 
 func init() {

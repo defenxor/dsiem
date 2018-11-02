@@ -6,7 +6,7 @@ import (
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
-	"github.com/defenxor/github.com/olivere/elastic"
+	"github.com/olivere/elastic"
 )
 
 // esCollector is the interface for querying elasticsearch summaries

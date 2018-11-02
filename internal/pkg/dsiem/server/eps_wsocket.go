@@ -1,8 +1,8 @@
 package server
 
 import (
-	"dsiem/internal/pkg/shared/idgen"
-	log "dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/idgen"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/fasthttp-contrib/websocket"
 	// "golang.org/x/net/websocket"

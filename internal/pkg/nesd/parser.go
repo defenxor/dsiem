@@ -11,7 +11,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
-	"github.com/gocarina/gocsv"
+	"github.com/gocarina/gocsv/v2"
 )
 
 const (
