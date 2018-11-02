@@ -5,8 +5,9 @@ import (
 	"time"
 
 	// "dsiem/internal/pkg/dsiem/server"
-	log "dsiem/internal/pkg/shared/logger"
 	"testing"
+
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/spf13/viper"
 )

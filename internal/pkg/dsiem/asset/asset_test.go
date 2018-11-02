@@ -1,10 +1,11 @@
 package asset
 
 import (
-	"dsiem/internal/pkg/shared/test"
 	"path"
 	"reflect"
 	"testing"
+
+	"github.com/dsiem/internal/pkg/shared/test"
 )
 
 func TestInit(t *testing.T) {

@@ -1,10 +1,11 @@
 package ossimcnv
 
 import (
-	"dsiem/internal/pkg/shared/fs"
 	"errors"
 	"os"
 	"path"
+
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 
 	"github.com/dogenzaka/tsv"
 )

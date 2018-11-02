@@ -1,3 +1,4 @@
+// Package vuln provides entry point for vulnerability lookup plugins
 package vuln
 
 import "context"

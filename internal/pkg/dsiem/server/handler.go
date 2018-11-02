@@ -1,8 +1,6 @@
 package server
 
 import (
-	"dsiem/internal/pkg/dsiem/event"
-	log "dsiem/internal/pkg/shared/logger"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,10 +9,14 @@ import (
 	"regexp"
 	"time"
 
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+
 	"github.com/elastic/apm-agent-go"
 
-	"dsiem/internal/pkg/shared/apm"
-	"dsiem/internal/pkg/shared/fs"
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 
 	"github.com/fasthttp-contrib/websocket"
 	"github.com/valyala/fasthttp"

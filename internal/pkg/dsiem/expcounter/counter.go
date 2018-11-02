@@ -3,7 +3,7 @@ package expcounter
 import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
-	log "dsiem/internal/pkg/shared/logger"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"expvar"
 	"runtime"
 	"strconv"
