@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dsiem/internal/pkg/shared/test"
+	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 )
 
 func TestInit(t *testing.T) {
