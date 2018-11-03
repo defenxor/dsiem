@@ -16,9 +16,7 @@ user.xml.tmp
 docs/mkdocs
 docs/TODO.md
 
-web/dist
-web/ui
-web/ui-old
+web/
 temp/
 test/pprof_results
 configs/dsiem_config.json
