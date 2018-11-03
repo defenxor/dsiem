@@ -33,6 +33,8 @@ github.com/elastic/go-windows
 github.com/fasthttp-contrib/websocket
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
+# github.com/gocarina/gocsv/v2 v2.0.0-20181026075406-cde31a6ec2a8
+github.com/gocarina/gocsv/v2
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
 github.com/hashicorp/hcl/hcl/printer
