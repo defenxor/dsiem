@@ -1,10 +1,9 @@
 package expcounter
 
 import (
-	"dsiem/internal/pkg/dsiem/alarm"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"time"
 
-	// "dsiem/internal/pkg/dsiem/server"
 	"testing"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"

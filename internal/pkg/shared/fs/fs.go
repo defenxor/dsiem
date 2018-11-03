@@ -1,7 +1,9 @@
 package fs
 
 import (
+	"errors"
 	"os"
+	"path"
 
 	"github.com/kardianos/osext"
 )
@@ -15,15 +17,13 @@ func FileExist(path string) bool {
 // GetDir returns the program root directory
 func GetDir(devEnv bool) (string, error) {
 	dir, err := osext.ExecutableFolder()
-
 	if devEnv == true {
-		// check both docker internal location or dev local pc location
-		dir = "/go/src/dsiem"
-		if !FileExist(dir + "/configs") {
-			dir = "/home/mmta/go/src/dsiem"
+		g := os.Getenv("GOPATH")
+		if g == "" {
+			return "", errors.New("cannot find $GOPATH env variable")
 		}
+		dir = path.Join(g, "src", "github.com", "defenxor", "dsiem")
 	}
-
 	return dir, err
 }
 

@@ -13,7 +13,7 @@ now=$(date --utc --iso-8601=seconds)
 echo "target OS: $goos;" commands to build: $cmd
 curdir=$(pwd)
 rdir=$curdir/temp/release/$ver
-rm -rf $rdir && mkdir $rdir
+mkdir -p $rdir
 for os in $goos; do
   echo "** building for $os **"
   bdir=./temp/build/$os
@@ -25,14 +25,15 @@ for os in $goos; do
     echo building $c ver=${ver} buildtime=${now} for $os ..
     CGO_ENABLED=0 GOOS=$os GOARCH=amd64 go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c
   done
+  mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/
   cp -r ./configs $bdir/
   cd $bdir 
   if [ "$os" == "linux" ]; then
-    zip -9 $rdir/dsiem-server-$os-amd64.zip dsiem configs/*
+    zip -9 -r $rdir/dsiem-server-$os-amd64.zip dsiem configs web
   fi
-  tools=$(ls | grep -v dsiem | grep -v configs)
+  tools=$(ls | grep -v dsiem | grep -v configs | grep -v web)
   zip -9 $rdir/dsiem-tools-$os-amd64.zip $tools
   cd $curdir
-  # rm -rf $bdir
+  rm -rf $bdir
 done
 

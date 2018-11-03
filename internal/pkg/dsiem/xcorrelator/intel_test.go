@@ -2,14 +2,15 @@ package xcorrelator
 
 import (
 	"context"
-	"dsiem/internal/pkg/shared/apm"
-	"dsiem/internal/pkg/shared/ip"
-	"dsiem/internal/pkg/shared/test"
-	"dsiem/pkg/intel"
 	"os"
 	"path"
 	"reflect"
 	"testing"
+
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	"github.com/defenxor/dsiem/internal/pkg/shared/ip"
+	"github.com/defenxor/dsiem/internal/pkg/shared/test"
+	"github.com/defenxor/dsiem/pkg/intel"
 )
 
 type intelTests struct {

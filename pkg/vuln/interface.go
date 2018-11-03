@@ -9,7 +9,7 @@ type Checker interface {
 	Initialize(config []byte) error
 }
 
-// Result defines
+// Result defines the struct that must be returned by a vulnerability lookup plugin
 type Result struct {
 	Provider string `json:"provider"`
 	Term     string `json:"term"`
