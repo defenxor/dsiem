@@ -14,6 +14,7 @@ user.xml.tmp
 *.csv
 
 docs/mkdocs
+docs/TODO.md
 
 web/dist
 web/ui
