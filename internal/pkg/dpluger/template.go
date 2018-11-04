@@ -193,7 +193,7 @@ filter {
       target => "[timestamp]"
     }
     mutate {
-      add_field => {
+      replace => {
         "title" => "{{.P.Fields.Title}}"
         "src_index_pattern" => "{{.P.Index}}"
         "sensor" => "{{.P.Fields.Sensor}}"
@@ -227,14 +227,12 @@ filter {
     {{end}}
 
     # delete fields except those included in the whitelist below
-    filter {
-      prune {
-        whitelist_names => [ "@metadata", "src_index_pattern", "title", "sensor", "product",
-          "src_ip", "dst_ip", "plugin_id", "plugin_sid", "category", "subcategory",
-          "src_port", "dst_port", "protocol", "custom_label1", "custom_label2", "custom_label3",
-          "custom_data1", "custom_data2", "custom_data3" ]
-      }
-    }		
+    prune {
+      whitelist_names => [ "timestamp", "@metadata", "src_index_pattern", "title", "sensor", "product",
+        "src_ip", "dst_ip", "plugin_id", "plugin_sid", "category", "subcategory",
+        "src_port", "dst_port", "protocol", "custom_label1", "custom_label2", "custom_label3",
+        "custom_data1", "custom_data2", "custom_data3" ]
+    }
   }
 }
 `

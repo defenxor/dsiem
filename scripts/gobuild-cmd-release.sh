@@ -36,4 +36,8 @@ for os in $goos; do
   cd $curdir
   rm -rf $bdir
 done
-
+cd $rdir
+for f in $(ls $rdir); do
+  sha256sum $f > $f.sha256
+done
+~
