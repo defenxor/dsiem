@@ -6,7 +6,7 @@
   "elasticsearch_address": "http://frontend.appl184.mss.defenxor.com:9200",
   "identifier_field": "[application]",
   "identifier_value": "suricata",
-  "identifier_filter": "and [alert])",
+  "identifier_filter": "and [alert]",
   "field_mapping": {
     "title": "es:alert.signature",
     "timestamp": "es:timestamp",

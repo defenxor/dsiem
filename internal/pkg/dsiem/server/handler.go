@@ -209,6 +209,7 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot parse normalizedEvent from " + clientAddr + ". err: " + err.Error(), CId: connID})
+		log.Warn(log.M{Msg: "The failed message is: " + string(msg)})
 		fmt.Fprintf(ctx, "Cannot parse the submitted event\n")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		return
