@@ -13,9 +13,10 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 
 fi
 
+git tag -a $ver
+
 ./scripts/gobuild-cmd-release.sh || (echo failed to build release files && exit 1)
 
-git tag -a $ver
 github-release release -t $ver $pre || (echo failed to create github release && exit 1)
 
 for f in $(ls ./temp/release/$ver); do
