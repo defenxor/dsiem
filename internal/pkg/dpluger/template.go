@@ -77,10 +77,10 @@ filter {
       # the rest should be the same as nonCollect plugin
       date {
         match => [ "{{.P.Fields.Timestamp}}", "{{.P.Fields.TimestampFormat}}" ]
-        target => "[timestamp]"
+        target => [timestamp]
       }
       mutate {
-        add_field => {
+        replace => {
           "title" => "{{.SIDField}}"
           "src_index_pattern" => "{{.P.Index}}"
           "sensor" => "{{.P.Fields.Sensor}}"
@@ -114,7 +114,7 @@ filter {
 
       # delete fields except those included in the whitelist below
       prune {
-        whitelist_names => [ "@metadata", "src_index_pattern", "title", "sensor", "product",
+        whitelist_names => [ "timestamp", "@metadata", "src_index_pattern", "title", "sensor", "product",
           "src_ip", "dst_ip", "plugin_id", "plugin_sid", "category", "subcategory",
           "src_port", "dst_port", "protocol", "custom_label1", "custom_label2", "custom_label3",
           "custom_data1", "custom_data2", "custom_data3" ]
@@ -190,7 +190,7 @@ filter {
   if [@metadata][siem_plugin_type] == "{{.P.Name}}" {
     date {
       match => [ "{{.P.Fields.Timestamp}}", "{{.P.Fields.TimestampFormat}}" ]
-      target => "[timestamp]"
+      target => [timestamp]
     }
     mutate {
       replace => {

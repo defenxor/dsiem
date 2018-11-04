@@ -213,6 +213,7 @@ func createPluginCollect(plugin Plugin, confFile, creator string, validate bool)
 	pt.Creator = creator
 	pt.SIDField = getLogstashFieldNotation(
 		strings.Replace(plugin.Fields.Title, "collect:", "", 1))
+	pt.SIDField = "%{" + pt.SIDField + "}"
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 	transformToLogstashField(&pt.P.Fields)
 
@@ -269,6 +270,10 @@ func transformToLogstashField(fields *FieldMapping) {
 		if t := getType(str); t == ftES {
 			// convert to logstash [field][subfield] notation
 			v = getLogstashFieldNotation(str)
+			// do this except for timestamp, as it is only used in date filter
+			if typeOfT.Field(i).Name != "Timestamp" {
+				v = "%{" + v + "}"
+			}
 		} else {
 			v = str
 		}
