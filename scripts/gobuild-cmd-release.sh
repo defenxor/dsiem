@@ -37,7 +37,6 @@ for os in $goos; do
   rm -rf $bdir
 done
 cd $rdir
-for f in $(ls $rdir); do
+for f in $(ls $rdir | grep -v sha256); do
   sha256sum $f > $f.sha256
 done
-~
