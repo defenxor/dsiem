@@ -28,9 +28,9 @@ for os in $goos; do
   mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/
   cp -r ./configs $bdir/
   cd $bdir 
-  if [ "$os" == "linux" ]; then
-    zip -9 -r $rdir/dsiem-server-$os-amd64.zip dsiem configs web
-  fi
+  # if [ "$os" == "linux" ]; then
+  zip -9 -r $rdir/dsiem-server-$os-amd64.zip dsiem configs web
+  # fi
   tools=$(ls | grep -v dsiem | grep -v configs | grep -v web)
   zip -9 $rdir/dsiem-tools-$os-amd64.zip $tools
   cd $curdir
