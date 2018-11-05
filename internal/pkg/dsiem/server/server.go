@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -47,18 +48,19 @@ var rateCounter = rc.NewRateCounter(1 * time.Second)
 
 // Start starts the server
 func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
-	serverMode string, maxEPS int, minEPS int, msqCluster string,
-	msqPrefix string, nodeName string, addr string, port int) error {
+	writeableConfig bool, pprof bool, serverMode string, maxEPS int, minEPS int, msqCluster string,
+	msqPrefix string, nodeName string, addr string, port int) (err error) {
 
 	if a := net.ParseIP(addr); a == nil {
-		return errors.New(addr + " is not a valid IP address")
+		err = errors.New(addr + " is not a valid IP address")
+		return
 	}
 	if port < 1 || port > 65535 {
-		return errors.New("Invalid TCP port number")
+		err = errors.New("Invalid TCP port number")
+		return
 	}
 
 	mode = serverMode
-	// msq = msqCluster
 
 	if mode == "cluster-frontend" {
 		initMsgQueue(msqCluster, msqPrefix, nodeName)
@@ -80,10 +82,14 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	router.GET("/config/:filename", handleConfFileDownload)
 	router.GET("/config/", handleConfFileList)
 	router.GET("/debug/vars/", expVarHandler)
-	router.GET("/debug/pprof/:name", pprofHandler)
-	router.GET("/debug/pprof/", pprofHandler)
-	router.POST("/config/:filename", handleConfFileUpload)
-	router.DELETE("/config/:filename", handleConfFileDelete)
+	if pprof {
+		router.GET("/debug/pprof/:name", pprofHandler)
+		router.GET("/debug/pprof/", pprofHandler)
+	}
+	if writeableConfig {
+		router.POST("/config/:filename", handleConfFileUpload)
+		router.DELETE("/config/:filename", handleConfFileDelete)
+	}
 
 	if mode != "cluster-backend" {
 
@@ -92,10 +98,9 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 		if maxEPS == 0 || minEPS == 0 {
 			router.POST("/events", handleEvents)
 		} else {
-			var err error
 			epsLimiter, err = limiter.New(maxEPS, minEPS)
 			if err != nil {
-				return err
+				return
 			}
 			router.POST("/events", rateLimit(epsLimiter.Limit(), 3*time.Second, handleEvents))
 		}
@@ -104,13 +109,16 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 
 		overloadManager()
 	}
-	ln, err := reuseport.Listen("tcp4", addr+":"+p)
-	if err != nil {
-		return err
+	if runtime.GOOS == "windows" {
+		err = fasthttp.ListenAndServe(addr+":"+p, router.Handler)
+	} else {
+		ln, err := reuseport.Listen("tcp4", addr+":"+p)
+		if err != nil {
+			return err
+		}
+		err = fasthttp.Serve(ln, router.Handler)
 	}
-
-	err = fasthttp.Serve(ln, router.Handler)
-	return err
+	return
 }
 
 // CounterRate return the rate of EPS
