@@ -11,7 +11,6 @@ import (
 	"time"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
-	"github.com/defenxor/dsiem/internal/pkg/shared/pprof"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
@@ -53,7 +52,8 @@ func init() {
 	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
 	serverCmd.Flags().IntP("holdDuration", "n", 10, "Duration in seconds before resetting overload condition state")
 	serverCmd.Flags().Bool("apm", false, "Enable elastic APM instrumentation")
-	serverCmd.Flags().String("pprof", "", "Generate performance profiling information for either cpu, mutex, memory, or block.")
+	serverCmd.Flags().Bool("writeableConfig", false, "Whether to allow configuration file update through HTTP")
+	serverCmd.Flags().Bool("pprof", false, "Enable go pprof on the web interface")
 	serverCmd.Flags().Bool("trace", false, "Generate 10 seconds trace file for debugging.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
 	serverCmd.Flags().IntP("cacheDuration", "c", 10, "Cache expiration time in minutes for intel and vuln query results")
@@ -90,6 +90,7 @@ func init() {
 	viper.BindPFlag("medRiskMin", serverCmd.Flags().Lookup("medRiskMin"))
 	viper.BindPFlag("medRiskMax", serverCmd.Flags().Lookup("medRiskMax"))
 	viper.BindPFlag("filePattern", validateCmd.Flags().Lookup("filePattern"))
+	viper.BindPFlag("writeableConfig", validateCmd.Flags().Lookup("writeableConfig"))
 }
 
 func initConfig() {
@@ -172,7 +173,7 @@ external message queue.`,
 		webDir := path.Join(d, "web", "dist")
 		addr := viper.GetString("address")
 		port := viper.GetInt("port")
-		pp := viper.GetString("pprof")
+		pprof := viper.GetBool("pprof")
 		mode := viper.GetString("mode")
 		msq := viper.GetString("msq")
 		node := viper.GetString("node")
@@ -183,6 +184,7 @@ external message queue.`,
 		holdDuration := viper.GetInt("holdDuration")
 		cacheDuration := viper.GetInt("cacheDuration")
 		esapm := viper.GetBool("apm")
+		writeableConfig := viper.GetBool("writeableConfig")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -192,6 +194,7 @@ external message queue.`,
 			exit("Incorrect EPS setting", errors.New("minEPS must be <= than maxEPS"))
 		}
 
+		/* disable this in favor of pprof web interfae
 		if pp != "" {
 			f, err := pprof.GetProfiler(pp)
 			if err != nil {
@@ -199,6 +202,7 @@ external message queue.`,
 			}
 			defer f.Stop()
 		}
+		*/
 
 		if traceFlag {
 			fo, err := ioutil.TempFile(os.TempDir(), progName+"*.trace")
@@ -274,7 +278,7 @@ external message queue.`,
 		expcounter.Init(mode)
 
 		err = server.Start(
-			eventChan, bpChan, confDir, webDir,
+			eventChan, bpChan, confDir, webDir, writeableConfig, pprof,
 			mode, maxEPS, minEPS, msq, progName, node, addr, port)
 		if err != nil {
 			exit("Cannot start server", err)
