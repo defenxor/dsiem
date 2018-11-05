@@ -13,6 +13,7 @@ services:
       - xpack.ml.enabled=false
       - xpack.graph.enabled=false
       - xpack.watcher.enabled=false
+      - http.cors.enabled=true
     ports:
       - 9200:9200
     networks:
