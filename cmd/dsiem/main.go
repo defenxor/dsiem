@@ -90,7 +90,7 @@ func init() {
 	viper.BindPFlag("medRiskMin", serverCmd.Flags().Lookup("medRiskMin"))
 	viper.BindPFlag("medRiskMax", serverCmd.Flags().Lookup("medRiskMax"))
 	viper.BindPFlag("filePattern", validateCmd.Flags().Lookup("filePattern"))
-	viper.BindPFlag("writeableConfig", validateCmd.Flags().Lookup("writeableConfig"))
+	viper.BindPFlag("writeableConfig", serverCmd.Flags().Lookup("writeableConfig"))
 }
 
 func initConfig() {
