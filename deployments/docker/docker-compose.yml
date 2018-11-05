@@ -73,7 +73,7 @@ services:
      - NET_ADMIN
      - SYS_NICE
      - NET_RAW
-    command: [ "/bin/bash", "-c" , "chown -R suri /var/log/suricata && /usr/bin/suricata -v -i wlp4s0" ]
+    command: [ "/bin/bash", "-c" , "chown -R suri /var/log/suricata && /usr/bin/suricata -v -i ${PROMISC_INTERFACE}" ]
     volumes:
      - suricata-log:/var/log/suricata
 
