@@ -1,3 +1,11 @@
+// package vice is a modification of Vice (https://github.com/matryer/vice)
+// to directly use event.NormalizedEvent instead of []byte for the chans.
+
+// this is done to address what perhaps to be a buffer re-use issue on the underlying
+// nats library, which causes new message to still contain left-overs from older
+// message under heavy load. If this is no longer the case, we should switch to use
+// the main vice library again.
+
 package vice
 
 import (
@@ -5,9 +13,6 @@ import (
 
 	"fmt"
 )
-
-// Transport is copied from Vice to directly use event.NormalizedEvent
-// instead of []byte for the chans
 
 // Transport provides message sending and receiving
 // capabilities over a messaging queue technology.

@@ -11,6 +11,13 @@ func TestFS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err = os.Setenv("GOPATH", ""); err != nil {
+		t.Fatal(err)
+	}
+	_, err = GetDir(true)
+	if err == nil {
+		t.Fatal("expected error due to missing GOPATH")
+	}
 
 	tmpDir := path.Join(os.TempDir(), "dsiem")
 	if err := EnsureDir(tmpDir); err != nil {
@@ -22,6 +29,11 @@ func TestFS(t *testing.T) {
 	if err := AppendToFile("test", tmpFile); err != nil {
 		t.Fatal(err)
 	}
+
+	if !FileExist(tmpFile) {
+		t.Fatal("test file" + tmpFile + " doesnt exist")
+	}
+
 	if err := AppendToFile("test", "/proc"); err == nil {
 		t.Fatal("o rly?")
 	}
