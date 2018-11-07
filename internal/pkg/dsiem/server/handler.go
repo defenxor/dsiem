@@ -233,7 +233,7 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(fasthttp.StatusBadRequest)
 			return
 		}
-		opts := elasticapm.TransactionOptions{elasticapm.TraceContext{}, tStart}
+		opts := elasticapm.TransactionOptions{TraceContext: elasticapm.TraceContext{}, Start: tStart}
 		tx = elasticapm.DefaultTracer.StartTransactionOptions("Log Source to Frontend", "SIEM", opts)
 		tx.Context.SetCustom("event_id", evt.EventID)
 		defer tx.End()

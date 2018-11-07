@@ -22,8 +22,8 @@ type intelTests struct {
 var tblIntel = []intelTests{
 	{"10.0.0.1", false, nil},
 	{"not-an-ip", false, nil},
-	{"10.0.0.2", true, []intel.Result{{"Dummy", "10.0.0.2", "Detected in DB"}}},
-	{"10.0.0.2", true, []intel.Result{{"Dummy", "10.0.0.2", "Detected in DB"}}},
+	{"10.0.0.2", true, []intel.Result{{Provider: "Dummy", Term: "10.0.0.2", Result: "Detected in DB"}}},
+	{"10.0.0.2", true, []intel.Result{{Provider: "Dummy", Term: "10.0.0.2", Result: "Detected in DB"}}},
 }
 
 type Dummy struct{}

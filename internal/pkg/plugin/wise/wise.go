@@ -25,7 +25,7 @@ type Config struct {
 }
 type wiseResult struct {
 	Field string `json:"field"`
-	Len   int    `json:len"`
+	Len   int    `json:"len"`
 	Value string `json:"value"`
 }
 
@@ -75,7 +75,7 @@ func (w Wise) CheckIP(ctx context.Context, ip string) (found bool, results []int
 		}
 		// Example {field:value} returned is:
 		// alienvault.activity:Malicious Host
-		results = append(results, intel.Result{"Wise", ip, r.Field + ": " + r.Value})
+		results = append(results, intel.Result{Provider: "Wise", Term: ip, Result: r.Field + ": " + r.Value})
 		found = true
 	}
 	return

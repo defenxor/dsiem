@@ -25,8 +25,8 @@ type vulnTests struct {
 var tblVuln = []vulnTests{
 	{"10.0.0.1", 80, false, nil},
 	{"not-an-ip", 80, false, nil},
-	{"10.0.0.2", 80, true, []vuln.Result{{"Dummy", "10.0.0.2", "Detected in DB"}}},
-	{"10.0.0.2", 80, true, []vuln.Result{{"Dummy", "10.0.0.2", "Detected in DB"}}},
+	{"10.0.0.2", 80, true, []vuln.Result{{Provider: "Dummy", Term: "10.0.0.2", Result: "Detected in DB"}}},
+	{"10.0.0.2", 80, true, []vuln.Result{{Provider: "Dummy", Term: "10.0.0.2", Result: "Detected in DB"}}},
 }
 
 type DummyV struct{}

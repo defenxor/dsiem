@@ -33,7 +33,7 @@ func Start(addr string, port int) error {
 			log.Warn(log.M{Msg: "Error from http.ListenAndServe: " + err.Error()})
 		}
 	}
-	return nil
+	// return nil
 }
 
 func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -66,13 +66,13 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	b, err := json.MarshalIndent(&vulns.v, "", "  ")
+	b, err := json.MarshalIndent(&vulns.V, "", "  ")
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot encode result for " + ip + ":" + port + ". Error: " + err.Error()})
 		http.Error(w, "Cannot encode result", 500)
 		return
 	}
-	n := strconv.Itoa(len(vulns.v))
+	n := strconv.Itoa(len(vulns.V))
 	log.Info(log.M{Msg: "Returning " + n + " positive result for " + ip + ":" + port + " to " + clientAddr})
 	_, err = w.Write(b)
 	if err != nil {
