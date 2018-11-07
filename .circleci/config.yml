@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.11
-    working_directory: /dsiem
+    # working_directory: /dsiem
     steps:
       - checkout
       - restore_cache:
