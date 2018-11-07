@@ -68,7 +68,7 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		return
 	}
-	_, err = ctx.Write(byteVal)
+	_, _ = ctx.Write(byteVal)
 	return
 }
 
@@ -146,7 +146,7 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		return
 	}
-	_, err = ctx.Write(byteValue)
+	_, _ = ctx.Write(byteValue)
 	return
 }
 

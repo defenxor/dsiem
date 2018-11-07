@@ -1,6 +1,15 @@
 package alarm
 
 import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	xc "github.com/defenxor/dsiem/internal/pkg/dsiem/xcorrelator"
@@ -10,14 +19,6 @@ import (
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/pkg/intel"
 	"github.com/defenxor/dsiem/pkg/vuln"
-	"encoding/json"
-	"errors"
-	"os"
-	"path"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/jonhoo/drwmutex"
 
@@ -396,7 +397,7 @@ func Upsert(id, name, kingdom, category string,
 	for _, v := range rules {
 		// rule := alarmRule{v, len(v.Events)}
 		rule := alarmRule{v}
-		rule.Events = []string{} // so it will be omited during json marshaling
+		rule.Events = []string{} // so it will be omitted during json marshaling
 		rule.StickyDiff = ""
 		a.Rules = append(a.Rules, rule)
 	}

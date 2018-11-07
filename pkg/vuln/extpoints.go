@@ -25,6 +25,7 @@ func extensionTypes(extension interface{}) []string {
 	return ifaces
 }
 
+// RegisterExtension unregisters the extension
 func RegisterExtension(extension interface{}, name string) []string {
 	extRegistry.Lock()
 	defer extRegistry.Unlock()
@@ -37,6 +38,7 @@ func RegisterExtension(extension interface{}, name string) []string {
 	return ifaces
 }
 
+// UnregisterExtension unregisters the extension
 func UnregisterExtension(name string) []string {
 	extRegistry.Lock()
 	defer extRegistry.Unlock()
@@ -114,8 +116,7 @@ func (ep *extensionPoint) unregister(name string) bool {
 	return true
 }
 
-// Checker
-
+// Checkers represent Checker extensionPoint
 var Checkers = &checkerExt{
 	newExtensionPoint(new(Checker)),
 }

@@ -326,9 +326,8 @@ func genPort(portList string, prev int, useLowPort bool) int {
 	if portList == "ANY" {
 		if useLowPort {
 			return randInt(20, 1024)
-		} else {
-			return randInt(4000, 65535)
 		}
+		return randInt(4000, 65535)
 	}
 	s := pickOneFromCsv(portList)
 	if s == "" {

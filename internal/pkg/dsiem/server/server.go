@@ -112,9 +112,9 @@ func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd
 	if runtime.GOOS == "windows" {
 		err = fasthttp.ListenAndServe(addr+":"+p, router.Handler)
 	} else {
-		ln, err := reuseport.Listen("tcp4", addr+":"+p)
-		if err != nil {
-			return err
+		ln, e := reuseport.Listen("tcp4", addr+":"+p)
+		if e != nil {
+			return e
 		}
 		err = fasthttp.Serve(ln, router.Handler)
 	}

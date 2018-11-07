@@ -1,8 +1,9 @@
 package event
 
 import (
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"encoding/json"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 )
 
 // NormalizedEvent represents data received from logstash

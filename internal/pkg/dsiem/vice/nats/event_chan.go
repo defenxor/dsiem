@@ -39,6 +39,9 @@ func (t *Transport) makeSubscriber(name string) (chan event.NormalizedEvent, err
 	sub, err = s.QueueSubscribe(name, t.NatsQueueGroup, func(e *event.NormalizedEvent) {
 		ch <- *e
 	})
+	if err != nil {
+		return nil, err
+	}
 	t.subscriptions = append(t.subscriptions, sub)
 	return ch, nil
 }

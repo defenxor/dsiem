@@ -38,6 +38,9 @@ func (t *Transport) makeSubscriberBool(name string) (chan bool, error) {
 	sub, err = s.QueueSubscribe(name, t.NatsQueueGroup, func(b *bool) {
 		ch <- *b
 	})
+	if err != nil {
+		return nil, err
+	}
 	t.subscriptions = append(t.subscriptions, sub)
 	return ch, nil
 }

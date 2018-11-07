@@ -80,7 +80,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 		log.Debug(log.M{Msg: "Failed to unmarshal vuln cache for " + term})
 	}
 
-	// flag to store cache only on succesful query
+	// flag to store cache only on successful query
 	successQuery := false
 
 	for _, v := range vulnCheckers {
