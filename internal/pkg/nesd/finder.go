@@ -11,7 +11,7 @@ type vulnerability struct {
 }
 
 type vulnerabilities struct {
-	v []vulnerability `json:"vulnerability"`
+	V []vulnerability `json:"vulnerability"`
 }
 
 func findMatch(ip string, port int) (found bool, vs vulnerabilities) {
@@ -21,7 +21,7 @@ func findMatch(ip string, port int) (found bool, vs vulnerabilities) {
 			continue
 		}
 		log.Debug(log.M{Msg: "Found match: " + v.Risk + " - " + v.Name + " - " + v.CVE})
-		vs.v = append(vs.v, vulnerability{v.CVE, v.Risk, v.Name})
+		vs.V = append(vs.V, vulnerability{v.CVE, v.Risk, v.Name})
 		found = true
 	}
 	return found, vs

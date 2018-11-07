@@ -80,7 +80,7 @@ func (n Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool,
 			s = s + " (" + v.Cve + ")"
 		}
 		term := ip + ":" + strconv.Itoa(port)
-		results = append(results, vuln.Result{"Nesd", term, s})
+		results = append(results, vuln.Result{Provider: "Nesd", Term: term, Result: s})
 		found = true
 	}
 

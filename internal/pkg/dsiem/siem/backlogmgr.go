@@ -119,7 +119,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 				continue
 			}
 			tStart := time.Unix(evt.RcvdTime, 0)
-			opts := elasticapm.TransactionOptions{elasticapm.TraceContext{}, tStart}
+			opts := elasticapm.TransactionOptions{TraceContext: elasticapm.TraceContext{}, Start: tStart}
 			tx = elasticapm.DefaultTracer.StartTransactionOptions("Frontend to Backend", "SIEM", opts)
 			tx.Context.SetCustom("event_id", evt.EventID)
 			tx.Context.SetCustom("directive_id", d.ID)

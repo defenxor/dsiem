@@ -66,7 +66,8 @@ func TestWait(t *testing.T) {
 	if err != nil {
 		t.Fatal("CAnnot create new limiter")
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	err = l.Wait(ctx)
 	if err != nil {
 		t.Error(err)

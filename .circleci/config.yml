@@ -3,7 +3,9 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.11
-    # working_directory: /dsiem
+        environment:
+          GO111MODULE: "ON"
+    working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
       - add_ssh_keys
@@ -13,7 +15,7 @@ jobs:
       - run:
           name: run build
           command: |
-            go build -v
+            ./scripts/gobuild-cmd.sh
       - run:
           name: run tests
           command: |

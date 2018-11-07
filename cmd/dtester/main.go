@@ -243,7 +243,7 @@ func sender(d *siem.Directives, addr string, port int) {
 					defer swg.Done()
 					for {
 						//	err := fn(&e, c, st, iter, verbose)
-						err := fn(&e, c, j.Stage, i, verbose)
+						err := fn(&e, c, j.Stage, iter, verbose)
 						if err != nil {
 							log.Info(log.M{Msg: "Error: " + err.Error() + ". Retrying in 3 second."})
 							time.Sleep(3 * time.Second)
