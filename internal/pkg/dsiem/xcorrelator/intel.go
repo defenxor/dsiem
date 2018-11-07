@@ -74,7 +74,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 		// log.Debug(log.M{Msg: "Failed to unmarshal intel cache for " + term})
 	}
 
-	// flag to store cache only on succesful query
+	// flag to store cache only on successful query
 	successQuery := false
 
 	for _, v := range checkers {

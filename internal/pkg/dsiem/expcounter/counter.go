@@ -1,13 +1,14 @@
 package expcounter
 
 import (
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
-	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"expvar"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
 var goRoutineCounter = expvar.NewInt("goroutine_counter")

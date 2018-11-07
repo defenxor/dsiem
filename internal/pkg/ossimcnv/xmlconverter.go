@@ -209,7 +209,7 @@ func CreateSIEMDirective(tempXMLFile string, resFile string) (err error) {
 	// fmt.Println(string(b))
 
 	err = fs.OverwriteFile(string(b), resFile)
-	return nil
+	return err
 }
 
 func flattenRule(node []rule, target []rule) (merged []rule) {

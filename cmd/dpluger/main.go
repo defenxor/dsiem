@@ -31,7 +31,7 @@ func init() {
 	createCmd.Flags().StringP("indexPattern", "i", "suricata-*", "index pattern to read fields from")
 	createCmd.Flags().StringP("name", "n", "suricata", "the name of the generated plugin")
 	createCmd.Flags().StringP("type", "t", "SID", "the type of the generated plugin, can be SID or Taxonomy")
-	runCmd.Flags().BoolP("validate", "v", true, "Check whether each refered ES field exists on the target index")
+	runCmd.Flags().BoolP("validate", "v", true, "Check whether each referred ES field exists on the target index")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
 	viper.BindPFlag("index", createCmd.Flags().Lookup("indexPattern"))

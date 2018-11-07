@@ -48,7 +48,7 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	if a := net.ParseIP(ip); a == nil {
 		http.Error(w, "ip parameter only accept... ip address", 418)
-		log.Info(log.M{Msg: "returning 418-1, provided adress: " + ip})
+		log.Info(log.M{Msg: "returning 418-1, provided address: " + ip})
 		return
 	}
 	p, err := strconv.Atoi(port)

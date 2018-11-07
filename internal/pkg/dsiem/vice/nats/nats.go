@@ -2,7 +2,6 @@
 // Copied from the original project and modified to support broadcasting to
 // multiple receivers, and encoded data format to avoid marshal/unmarshal error from
 // go-nats.
-
 package nats
 
 import (
