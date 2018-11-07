@@ -6,6 +6,7 @@ jobs:
     # working_directory: /dsiem
     steps:
       - checkout
+      - add_ssh_keys
       - restore_cache:
           keys:
             - go-mod-v1-{{ checksum "go.sum" }}      
