@@ -1,12 +1,13 @@
 #!/bin/bash
 
-cmd=${1}
-goos=${2}
+ver=${1}
+cmd=${2}
+goos=${3}
 
 [ -z $cmd ] && cmd=$(find ./cmd/ -maxdepth 1 ! -path ./cmd/ -type d 2>/dev/null)
 [ -z $goos ] && goos="linux windows darwin"
+[ -z $ver ] && ver=$(git describe --tags 2>/dev/null)
 
-ver=$(git describe --tags 2>/dev/null)
 now=$(date --utc --iso-8601=seconds)
 [ -z $ver ] && ver="untagged"
 
@@ -23,16 +24,14 @@ for os in $goos; do
     n=$(basename $c)
     [ "$os" == "windows" ] && n="${n}.exe"
     echo building $c ver=${ver} buildtime=${now} for $os ..
-    CGO_ENABLED=0 GOOS=$os GOARCH=amd64 go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c
+    GOFLAGS="-mod=vendor" CGO_ENABLED=0 GOOS=$os GOARCH=amd64 go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c
   done
   mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/
   cp -r ./configs ./LICENSE ./README.md $bdir/
   cd $bdir 
-  # if [ "$os" == "linux" ]; then
-  zip -9 -r $rdir/dsiem-server-$os-amd64.zip dsiem configs web LICENSE README.md
-  # fi
+  zip -9 -r $rdir/dsiem-server_$os_amd64.zip dsiem configs web LICENSE README.md
   tools=$(ls | grep -v dsiem | grep -v configs | grep -v web)
-  zip -9 $rdir/dsiem-tools-$os-amd64.zip $tools
+  zip -9 $rdir/dsiem-tools_$os_amd64.zip $tools
   cd $curdir
   rm -rf $bdir
 done
