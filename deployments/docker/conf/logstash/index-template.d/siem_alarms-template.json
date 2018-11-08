@@ -3,7 +3,7 @@
   "version" : 1,
   "settings" : {
     "number_of_replicas": 1,
-    "number_of_shards": 2,
+    "number_of_shards": 5,
     "index.refresh_interval" : "5s"
   },
   "mappings" : {
