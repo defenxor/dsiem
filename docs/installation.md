@@ -48,7 +48,7 @@ Then after you get a feel on how everything fits together, you can start integra
 
 ### Using Existing ELK
 
-* First make sure you already familiar with how Dsiem architecture works by testing it using the Docker Compose method above.
+* First make sure you already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.2, though it should work with any 6.x version with minor adjustment.
 
 * Download Dsiem binary from the release page, unzip it, and run it on the target system, e.g. for Linux:
 
@@ -104,6 +104,10 @@ Then after you get a feel on how everything fits together, you can start integra
 * Dsiem web UI should be accessible from http://HostIPAddress:8080/ui
 
 * Import Kibana dashboard from `deployments/kibana/dashboard-siem.json`. This step will also install all Kibana index-patterns (`siem_alarms` and `siem_events`) that will be linked to from Dsiem web UI.
+
+    ```shell
+    ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname}
+    ```
 
 ## Uninstalling Dsiem
 
