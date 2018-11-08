@@ -38,7 +38,13 @@ Then after you get a feel on how everything fits together, you can start integra
   
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
     * Suricata comes with <a href="https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules">Emerging Threats ICMP Info Ruleset</a> enabled, so you can easily trigger a test just by continuously pinging a host in the same subnet. Dsiem comes with an <a href="https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing2.json"> example directive configuration</a> that will intercept this "attack".
-    * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI. 
+    * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
+
+* Once Kibana is up at http://localhost:5601, you can import Dsiem dashboard and its dependencies using the following command:
+
+    ```shell
+    ./scripts/kbndashboard-import.sh localhost
+    ```
 
 ### Using Existing ELK
 
@@ -96,6 +102,8 @@ Then after you get a feel on how everything fits together, you can start integra
     systemctl status dsiem.service)
     ```
 * Dsiem web UI should be accessible from http://HostIPAddress:8080/ui
+
+* Import Kibana dashboard from `deployments/kibana/dashboard-siem.json`. This step will also install all Kibana index-patterns (`siem_alarms` and `siem_events`) that will be linked to from Dsiem web UI.
 
 ## Uninstalling Dsiem
 
