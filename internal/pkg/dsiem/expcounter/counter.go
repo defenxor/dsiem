@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
+
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
