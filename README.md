@@ -6,6 +6,8 @@ Dsiem is a security event correlation engine for [ELK stack](https://www.elastic
 
 Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlation for normalized logs/events, perform lookup/query to threat intelligence and vulnerability information sources, and produces risk-adjusted alarms.
 
+![Example Kibana Dashboard](/docs/images/kbn-dashboard.png)
+
 ## Features
 
 * Runs in standalone or clustered mode with [NATS](https://nats.io/) as messaging bus between frontend and backend nodes. Along with ELK, this made the entire SIEM platform horizontally scalable.
