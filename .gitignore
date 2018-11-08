@@ -17,7 +17,10 @@ docs/mkdocs
 docs/TODO.md
 docs/wiki
 
-web/
+web/ui-internal
+web/dist
+web/ui/dist
+
 temp/
 test/pprof_results
 configs/dsiem_config.json
