@@ -49,7 +49,11 @@ The end result of the above process is that now we can watch for new alarms and 
 
 ## Installation
 
-You can use Docker Compose or the release binaries to install Dsiem. Refer to the [Installation](/docs/Installation.md) doc for details.
+You can use Docker Compose or the release binaries to install Dsiem. Refer to the [Installation Guide](/docs/installation.md) for details.
+
+## Documentation
+
+Currently available docs are located [Here](/docs).
 
 ## How to Contribute
 
