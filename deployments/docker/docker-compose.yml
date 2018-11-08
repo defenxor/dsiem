@@ -14,6 +14,7 @@ services:
       - xpack.graph.enabled=false
       - xpack.watcher.enabled=false
       - http.cors.enabled=true
+      - http.cors.allow-origin=/https?:\/\/localhost(:[0-9]+)?/
     ports:
       - 9200:9200
     networks:
