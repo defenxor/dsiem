@@ -26,10 +26,10 @@ for os in $goos; do
     CGO_ENABLED=0 GOOS=$os GOARCH=amd64 go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c
   done
   mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/
-  cp -r ./configs $bdir/
+  cp -r ./configs ./LICENSE ./README.md $bdir/
   cd $bdir 
   # if [ "$os" == "linux" ]; then
-  zip -9 -r $rdir/dsiem-server-$os-amd64.zip dsiem configs web
+  zip -9 -r $rdir/dsiem-server-$os-amd64.zip dsiem configs web LICENSE README.md
   # fi
   tools=$(ls | grep -v dsiem | grep -v configs | grep -v web)
   zip -9 $rdir/dsiem-tools-$os-amd64.zip $tools
