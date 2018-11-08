@@ -15,13 +15,11 @@ user.xml.tmp
 
 docs/mkdocs
 docs/TODO.md
+docs/wiki
 
 web/
 temp/
 test/pprof_results
 configs/dsiem_config.json
 logs
-cmd/dpluger/*.conf
-cmd/dpluger/*.json
-cmd/dpluger/*.tsv
 .vscode/
