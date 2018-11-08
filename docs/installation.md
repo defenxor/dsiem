@@ -115,12 +115,12 @@ For `docker-compose` installation, just run the following:
 
 ```shell
 cd dsiem/deployments/docker && \
-docker-compose down
+docker-compose down -v
 ```
 or
 ```shell
 cd dsiem/deployments/docker && \
-docker-compose -f docker-compose-cluster.yml down
+docker-compose -f docker-compose-cluster.yml down -v
 ```
 
 For non `docker-compose` procedure, you will have to undo all the changes made manually, for example:
