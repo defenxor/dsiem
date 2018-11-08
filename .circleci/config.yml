@@ -5,17 +5,22 @@ jobs:
       - image: circleci/golang:1.11
         environment:
           GO111MODULE: "on"
+          GOFLAGS: "-mod=vendor"
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
       - add_ssh_keys
-      - restore_cache:
-          keys:
-            - go-mod-v1-{{ checksum "go.sum" }}      
+      #- restore_cache:
+      #    keys:
+      #      - go-mod-v1-{{ checksum "go.sum" }}
       - run:
           name: run build
           command: |
             ./scripts/gobuild-cmd.sh
+      #- save_cache:
+      #    key: go-mod-v1-{{ checksum "go.sum" }}
+      #    paths:
+      #      - "/go/pkg/mod"
       - run:
           name: run tests
           command: |
@@ -24,12 +29,74 @@ jobs:
             go get github.com/mattn/goveralls
             go test -v -cover -race -coverprofile=./coverage.out $(go list ./...)
             goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
+  build-web:
+    docker:
+      - image: circleci/node:8.12-browsers
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - node-mod-v1-{{ checksum "package.json" }}
+      - run:
+          name: install deps
+          command: | 
+            cd web/ui 
+            npm install
       - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}
+          key: node-mod-v1-{{ checksum "package.sum" }}
           paths:
-            - "/go/pkg/mod"
+            - "web/ui/node_modules"
+      # this will be enabled once the web UI code is ready for it
+      # - run:
+      #     name: Linting
+      #     command: cd web/ui && npm run lint
+      # - run:
+      #     name: Testing
+      #     command: cd web/ui && npm run test
+      - run:
+          name: build-dist
+          command: ./scripts/ngbuild-web.sh
+      - persist_to_workspace:
+          root: .
+          paths: web/ui/dist/*
+  deploy:
+    docker:
+      - image: circleci/golang:1.11
+        environment:
+          GO111MODULE: "on"
+          GOFLAGS: "-mod=vendor"
+    working_directory: /go/src/github.com/defenxor/dsiem
+    steps:
+      - checkout
+      #- restore_cache:
+      #    keys:
+      #      - go-mod-v1-{{ checksum "go.sum" }}
+      - run: go install -u github.com/tcnksm/ghr
+      - run: go install -u github.com/stevenmatthewt/semantics
+      - attach_workspace:
+          at: .
+      - add_ssh_keys
+      - run:
+          name: create release
+          command: |
+            tag=$(semantics --output-tag)
+            if [ "$tag" ]; then
+              ./scripts/gobuild-cmd-release.sh $tag
+              ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace $tag temp/release/$tag
+            else
+              echo "The commit message(s) did not indicate a major/minor/patch version."
+            fi
 workflows:
   version: 2
   build-deploy:
     jobs:
       - build
+      - build-web
+      - deploy:
+          requires:
+            - build
+            - build-web
+          filters:
+            branches:
+              only: master            
+
