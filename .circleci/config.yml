@@ -21,7 +21,9 @@ jobs:
           command: |
             go fmt ./...
             go vet ./...
-            go test -v ./...
+            go get github.com/mattn/goveralls
+            go test -v -cover -race -coverprofile=./coverage.out $(go list ./...)
+            goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
