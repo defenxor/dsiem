@@ -5,7 +5,8 @@
 # Unignore all dirs
 !*/
 # Unignore docker builds
-!deployments/docker/build/*
+!deployments/docker/build/Dockerfile
+!deployments/docker/build/s6files/services.d/dsiem/run
 
 # extra things to ignore:
 
