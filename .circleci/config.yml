@@ -68,7 +68,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths: web/dist/*
-  deploy:
+  release:
     docker:
       - image: circleci/golang:1.11
         environment:
@@ -100,21 +100,62 @@ jobs:
             tag=$(semantics --output-tag)
             if [ "$tag" ]; then
               ./scripts/gobuild-cmd-release.sh $tag
+              echo $tag > ./releaseflag
               ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME -draft -replace $tag temp/release/$tag
             else
               echo "The commit message(s) did not indicate a major/minor/patch version."
             fi
+      - persist_to_workspace:
+          root: .
+          paths: releaseflag
+  deploy-dockerhub:
+    machine: true
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: create docker image
+          command: |
+
+            # make sure this wont return non-zero
+            tag=$(cat ./releaseflag 2>/dev/null || echo)
+
+            if [ "$tag" ]; then
+              # get downloader for private asset
+              wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch
+              chmod +x /tmp/fetch
+              # wait until the release is approved, exit after waiting for >= 10 minutes
+              minutewait=10
+              # fetch requires this
+              export GITHUB_OAUTH_TOKEN=$GITHUB_TOKEN
+              while ! /tmp/fetch --repo="https://github.com/defenxor/dsiem" --tag=$tag --release-asset="dsiem-server-linux-amd64.zip" /tmp 2>/dev/null; do
+                [ "$minutewait" == "0" ] && echo "Timeout waiting for release asset, skipping docker build." && exit 0
+                echo "release $tag doesnt exist yet, sleeping for 60 seconds before retrying .. retry left: $minutewait"
+                minutewait=$(( minutewait - 1 ))
+                sleep 60
+              done
+              echo "building docker for release $tag .."
+              cd deployments/docker/build
+              docker build -f Dockerfile -t defenxor/dsiem:$tag -t defenxor/dsiem:latest . --build-arg ver=$tag --build-arg token=GITHUB_TOKEN
+              docker login -u $DOCKER_USER -p $DOCKER_PASSWD
+              docker push defenxor/dsiem:$tag
+            else
+              echo "Releaseflag is not set."
+            fi
 workflows:
   version: 2
-  build-deploy:
+  build-release:
     jobs:
       - build
       - build-web
-      - deploy:
+      - release:
           requires:
             - build
             - build-web
           filters:
             branches:
-              only: master            
-
+              only: master
+      - deploy-dockerhub:
+          requires:
+            - release
