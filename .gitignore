@@ -4,6 +4,11 @@
 !*.*
 # Unignore all dirs
 !*/
+# Unignore docker builds
+!deployments/docker/build/*
+
+# extra things to ignore:
+
 node_modules/
 # alienvault rules
 *.tsv
