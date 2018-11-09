@@ -9,23 +9,23 @@ jobs:
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
-      #- restore_cache:
-      #    keys:
-      #      - go-mod-v1-{{ checksum "go.sum" }}
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run:
           name: run build
           command: |
             ./scripts/gobuild-cmd.sh
-      #- save_cache:
-      #    key: go-mod-v1-{{ checksum "go.sum" }}
-      #    paths:
-      #      - "/go/pkg/mod"
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
       - run:
           name: run tests
           command: |
             go fmt ./...
             go vet ./...
-            go get github.com/mattn/goveralls
+            GOFLAGS=-mod= go get github.com/mattn/goveralls
             go test -v -cover -race -coverprofile=./coverage.out $(go list ./...)
             goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
   build-web:
@@ -42,7 +42,7 @@ jobs:
             cd web/ui 
             npm install
       - save_cache:
-          key: node-mod-v1-{{ checksum "package.sum" }}
+          key: node-mod-v1-{{ checksum "package.json" }}
           paths:
             - "web/ui/node_modules"
       # this will be enabled once the web UI code is ready for it
@@ -63,17 +63,14 @@ jobs:
       - image: circleci/golang:1.11
         environment:
           GO111MODULE: "on"
+          GOFLAGS: "-mod=vendor"
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
-      #- restore_cache:
-      #    keys:
-      #      - go-mod-v1-{{ checksum "go.sum" }}
-      - run: go install -u github.com/tcnksm/ghr
-      - run: go install -u github.com/stevenmatthewt/semantics
+      - run: GOFLAGS=-mod= go get -u github.com/tcnksm/ghr
+      - run: GOFLAGS=-mod= go get -u github.com/stevenmatthewt/semantics
       - attach_workspace:
           at: .
-      - add_ssh_keys
       - run:
           name: create release
           command: |
