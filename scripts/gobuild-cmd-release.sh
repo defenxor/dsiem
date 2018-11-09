@@ -26,7 +26,7 @@ for os in $goos; do
     echo building $c ver=${ver} buildtime=${now} for $os ..
     GOFLAGS="-mod=vendor" CGO_ENABLED=0 GOOS=$os GOARCH=amd64 go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c
   done
-  mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/
+  mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/ || exit 1
   cp -r ./configs ./LICENSE ./README.md $bdir/
   cd $bdir 
   zip -9 -r $rdir/dsiem-server_$os_amd64.zip dsiem configs web LICENSE README.md

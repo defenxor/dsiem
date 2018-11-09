@@ -62,7 +62,7 @@ jobs:
             cp -r ./dist ../
       - persist_to_workspace:
           root: .
-          paths: web/ui/dist/*
+          paths: web/dist/*
   deploy:
     docker:
       - image: circleci/golang:1.11
