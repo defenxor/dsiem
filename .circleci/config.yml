@@ -104,6 +104,7 @@ jobs:
               ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME -draft -replace $tag temp/release/$tag
             else
               echo "The commit message(s) did not indicate a major/minor/patch version."
+              touch ./releaseflag
             fi
       - persist_to_workspace:
           root: .
