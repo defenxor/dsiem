@@ -28,6 +28,11 @@ jobs:
             GOFLAGS=-mod= go get github.com/mattn/goveralls
             go test -v -cover -race -coverprofile=./coverage.out $(go list ./...)
             goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
+      # goveralls will ignore vendor dir and download stuff, so we cache its results here
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
   build-web:
     docker:
       - image: circleci/node:8.12-browsers
@@ -35,14 +40,14 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - node-mod-v1-{{ checksum "package.json" }}
+            - node-mod-v1-{{ checksum "web/ui/package.json" }}
       - run:
           name: install deps
           command: | 
             cd web/ui 
             npm install
       - save_cache:
-          key: node-mod-v1-{{ checksum "package.json" }}
+          key: node-mod-v1-{{ checksum "web/ui/package.json" }}
           paths:
             - "web/ui/node_modules"
       # this will be enabled once the web UI code is ready for it
@@ -54,7 +59,11 @@ jobs:
       #     command: cd web/ui && npm run test
       - run:
           name: build-dist
-          command: ./scripts/ngbuild-web.sh
+          command: |
+            cd web/ui
+            npm run ng -- build --prod --build-optimizer --base-href /ui/
+            rm -rf ../dist
+            cp -r ./dist ../
       - persist_to_workspace:
           root: .
           paths: web/ui/dist/*
