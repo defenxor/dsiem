@@ -23,7 +23,7 @@ jobs:
             go vet ./...
             GOFLAGS=-mod= go get github.com/mattn/goveralls
             go test -v -cover -race -coverprofile=./coverage.out $(go list ./...)
-            goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
+            GOFLAGS=-mod= goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       # goveralls will ignore vendor dir and download stuff, so we cache its results here
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}
@@ -72,6 +72,7 @@ jobs:
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
+      - add_ssh_keys
       - restore_cache:
           keys:
             - go-mod-deploy-v1-{{ checksum "go.sum" }}
