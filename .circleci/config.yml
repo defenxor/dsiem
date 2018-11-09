@@ -16,10 +16,6 @@ jobs:
           name: run build
           command: |
             ./scripts/gobuild-cmd.sh
-      - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
       - run:
           name: run tests
           command: |
@@ -76,8 +72,15 @@ jobs:
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-deploy-v1-{{ checksum "go.sum" }}
       - run: GOFLAGS=-mod= go get -u github.com/tcnksm/ghr
       - run: GOFLAGS=-mod= go get -u github.com/stevenmatthewt/semantics
+      - save_cache:
+          key: go-mod-deploy-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
       - attach_workspace:
           at: .
       - run:
