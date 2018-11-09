@@ -12,6 +12,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-v1-{{ checksum "go.sum" }}
+            - go-path-v1-{{ checksum "go.sum" }}
       - run:
           name: run build
           command: |
@@ -29,6 +30,10 @@ jobs:
           key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
+      - save_cache:
+          key: go-path-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/src"
   build-web:
     docker:
       - image: circleci/node:8.12-browsers
