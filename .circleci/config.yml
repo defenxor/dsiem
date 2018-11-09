@@ -140,6 +140,7 @@ jobs:
               docker build -f Dockerfile -t defenxor/dsiem:$tag -t defenxor/dsiem:latest . --build-arg ver=$tag --build-arg token=$GITHUB_TOKEN
               docker login -u $DOCKER_USER -p $DOCKER_PASSWD
               docker push defenxor/dsiem:$tag
+              docker push defenxor/dsiem:latest
             else
               echo "Releaseflag is not set."
             fi
