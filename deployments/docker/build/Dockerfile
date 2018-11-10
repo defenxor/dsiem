@@ -18,6 +18,9 @@ RUN wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_li
 # RUN wget https://github.com/defenxor/dsiem/releases/download/$DSIEM_VER/dsiem-server-linux-amd64.zip -O /tmp/dsiem.zip && \
 #    unzip /tmp/dsiem.zip -d /dsiem && rm -rf /tmp/dsiem.zip
 
+# configs-dist will be used to prepolulate /dsiem/configs if it's mounted off a new empty volume
+RUN cp -r /dsiem/configs /dsiem/configs-dist
+
 # s6-overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v1.20.0.0/s6-overlay-amd64.tar.gz /tmp/
 RUN tar xzf /tmp/s6-overlay-amd64.tar.gz -C /
@@ -29,6 +32,6 @@ ENV S6_KEEP_ENV 1
 # fail container if init scripts failed
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS 2
 
-VOLUME ["/dsiem/logs" ]
+VOLUME ["/dsiem/logs", "/dsiem/configs" ]
 EXPOSE 8080
 ENTRYPOINT [ "/init"]
