@@ -1,0 +1,278 @@
+"Plugin ID","CVE","CVSS","Risk","Host","Protocol","Port","Name","Synopsis","Description","Solution","See Also","Plugin Output"
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+41028,"CVE-1999-0517",7.5,"High","192.168.225.196","udp",161,"SNMP Agent Default Community Name (public)","The community name of the remote SNMP server can be guessed.","It is possible to obtain the default community name of the remote
+SNMP server.
+
+An attacker may use this information to gain more knowledge about the
+remote host, or to change the configuration of the remote system (if
+the default community allows such modifications).","Disable the SNMP service on the remote host if you do not use it.
+Either filter incoming UDP packets going to this port, or change the 
+default community string.",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+41028,"CVE-1999-0517",7.5,"High","192.168.225.196","udp",161,"SNMP Agent Default Community Name (public)","The community name of the remote SNMP server can be guessed.","It is possible to obtain the default community name of the remote
+SNMP server.
+
+An attacker may use this information to gain more knowledge about the
+remote host, or to change the configuration of the remote system (if
+the default community allows such modifications).","Disable the SNMP service on the remote host if you do not use it.
+Either filter incoming UDP packets going to this port, or change the 
+default community string.",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10079,"CVE-1999-0497",5,"Medium","192.168.225.196","tcp",21,"Anonymous FTP Enabled","Anonymous logins are allowed on the remote FTP server.","Nessus has detected that the FTP server running on the remote host
+allows anonymous logins. Therefore, any remote user may connect and
+authenticate to the server without providing a password or unique
+credentials. This allows the user to access any files made available
+by the FTP server.","Disable anonymous FTP if it is not required. Routinely check the FTP
+server to ensure that sensitive content is not being made available.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+11213,"CVE-2003-1567",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2004-2320",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2010-0386",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+41028,"CVE-1999-0517",7.5,"High","192.168.225.196","udp",161,"SNMP Agent Default Community Name (public)","The community name of the remote SNMP server can be guessed.","It is possible to obtain the default community name of the remote
+SNMP server.
+
+An attacker may use this information to gain more knowledge about the
+remote host, or to change the configuration of the remote system (if
+the default community allows such modifications).","Disable the SNMP service on the remote host if you do not use it.
+Either filter incoming UDP packets going to this port, or change the 
+default community string.",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+11213,"CVE-2003-1567",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2004-2320",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2010-0386",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+41028,"CVE-1999-0517",7.5,"High","192.168.225.196","udp",161,"SNMP Agent Default Community Name (public)","The community name of the remote SNMP server can be guessed.","It is possible to obtain the default community name of the remote
+SNMP server.
+
+An attacker may use this information to gain more knowledge about the
+remote host, or to change the configuration of the remote system (if
+the default community allows such modifications).","Disable the SNMP service on the remote host if you do not use it.
+Either filter incoming UDP packets going to this port, or change the 
+default community string.",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+11213,"CVE-2003-1567",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2004-2320",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2010-0386",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+41028,"CVE-1999-0517",7.5,"High","192.168.225.196","udp",161,"SNMP Agent Default Community Name (public)","The community name of the remote SNMP server can be guessed.","It is possible to obtain the default community name of the remote
+SNMP server.
+
+An attacker may use this information to gain more knowledge about the
+remote host, or to change the configuration of the remote system (if
+the default community allows such modifications).","Disable the SNMP service on the remote host if you do not use it.
+Either filter incoming UDP packets going to this port, or change the 
+default community string.",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+70658,"CVE-2008-5161",2.6,"Low","192.168.225.196","tcp",22,"SSH Server CBC Mode Ciphers Enabled","The SSH server is configured to use Cipher Block Chaining.","The SSH server is configured to support Cipher Block Chaining (CBC)
+encryption.  This may allow an attacker to recover the plaintext message
+from the ciphertext. 
+
+Note that this plugin only checks for the options of the SSH server and
+does not check for vulnerable software versions.","Contact the vendor or consult product documentation to disable CBC mode
+cipher encryption, and enable CTR or GCM cipher mode encryption.",,
+10114,"CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.
+
+Timestamps returned from machines running Windows Vista / 7 / 2008 /
+2008 R2 are deliberately incorrect, but usually within 1000 seconds of
+the actual system time.","Filter out the ICMP timestamp requests (13), and the outgoing ICMP
+timestamp replies (14).",,
+10223,"CVE-1999-0632",,"None","192.168.225.196","udp",111,"RPC portmapper Service Detection","An ONC RPC portmapper is running on the remote host.","The RPC portmapper is running on this port.
+
+The portmapper allows someone to get the port number of each RPC
+service running on the remote host by sending either multiple lookup
+requests or a DUMP request.","n/a",,
+11213,"CVE-2003-1567",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2004-2320",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+11213,"CVE-2010-0386",5,"Medium","192.168.225.196","tcp",80,"HTTP TRACE / TRACK Methods Allowed","Debugging functions are enabled on the remote web server.","The remote web server supports the TRACE and/or TRACK methods. TRACE
+and TRACK are HTTP methods that are used to debug web server
+connections.","Disable these methods. Refer to the plugin output for more information.","http://www.cgisecurity.com/whitehat-mirror/WH-WhitePaper_XST_ebook.pdf
+http://www.apacheweek.com/issues/03-01-24
+http://download.oracle.com/sunalerts/1000718.1.html",
+42255,"CVE-1999-0548",,"None","192.168.225.196","tcp",2049,"NFS Server Superfluous","The remote host is running an unnecessary service.","The remote NFS server is not exporting any shares.  Running an
+unused service unnecessarily increases the attack surface of the
+remote host.","Disable this service.",,
+69401,"CVE-2013-4113",9.3,"High","192.168.225.196","tcp",80,"PHP 5.4.x < 5.4.18 Multiple Vulnerabilities","The remote web server uses a version of PHP that is potentially
+affected by multiple vulnerabilities.","According to its banner, the version of PHP 5.4.x installed on the
+remote host is a version prior to 5.4.18.  It is, therefore,
+potentially affected by the following vulnerabilities :
+
+  - A heap corruption error exists in numerous functions
+    in the file 'ext/xml/xml.c'. (CVE-2013-4113 / 
+    Bug #65236)
+
+  - An error exists related to certificate validation, the
+    'subjectAltName' field and certificates containing NULL
+    bytes. This error can allow spoofing attacks.
+    (CVE-2013-4248)
+
+Note that this plugin does not attempt to exploit these 
+vulnerabilities, but instead relies only on PHP's self-reported
+version number.","Upgrade to PHP version 5.4.19 or later.
+
+Note the 5.4.18 release contains an uninitialized memory read bug and
+a compile error that prevent proper operation.","http://bugs.php.net/65236
+http://www.php.net/ChangeLog-5.php#5.4.18",
+69401,"CVE-2013-4248",9.3,"High","192.168.225.196","tcp",80,"PHP 5.4.x < 5.4.18 Multiple Vulnerabilities","The remote web server uses a version of PHP that is potentially
+affected by multiple vulnerabilities.","According to its banner, the version of PHP 5.4.x installed on the
+remote host is a version prior to 5.4.18.  It is, therefore,
+potentially affected by the following vulnerabilities :
+
+  - A heap corruption error exists in numerous functions
+    in the file 'ext/xml/xml.c'. (CVE-2013-4113 / 
+    Bug #65236)
+
+  - An error exists related to certificate validation, the
+    'subjectAltName' field and certificates containing NULL
+    bytes. This error can allow spoofing attacks.
+    (CVE-2013-4248)
+
+Note that this plugin does not attempt to exploit these 
+vulnerabilities, but instead relies only on PHP's self-reported
+version number.","Upgrade to PHP version 5.4.19 or later.
+
+Note the 5.4.18 release contains an uninitialized memory read bug and
+a compile error that prevent proper operation.","http://bugs.php.net/65236
+http://www.php.net/ChangeLog-5.php#5.4.18",
