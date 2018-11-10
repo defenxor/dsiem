@@ -1,0 +1,8 @@
+#!/bin/bash
+jc=$(ls /dsiem/configs/*.json 2>/dev/null | wc -l)
+
+# only when empty
+if [ "$jc" == "0" ]; then
+  echo "/dsiem/configs has no config file, prepopulating it from /dsiem/configs-dist."
+  cp /dsiem/configs-dist/* /dsiem/configs/
+fi
