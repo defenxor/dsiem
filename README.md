@@ -15,7 +15,7 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 * Alarms enrichment with data from threat intel and vulnerability information sources. Builtin support for [Moloch Wise](https://github.com/aol/moloch/wiki/WISE) (which supports Alienvault OTX and others) and Nessus CSV exports, with support for other sources can easily be implemented as plugins.
 * Instrumentation supported through metricbeat and/or Elastic APM server. No need for extra stack for this purpose.
 * Builtin rate and backpressure control, set the minimum and maximum events/second (EPS) received from Logstash depending on your hardware capacity and acceptable delays in event processing.
-* Loosely coupled, designed to be composable with other infrastructure platform, and doesnt try to do everything. As an example, there's no authentication support by design, since implementing that using nginx or other frontend should provide better security. Loose coupling  also means that it's possible to use Dsiem as a correlation engine with non ELK stack if needed.
+* Loosely coupled, designed to be composable with other infrastructure platform, and doesn't try to do everything. As an example, there's no authentication support by design, since implementing that using nginx or other frontend should provide better security. Loose coupling  also means that it's possible to use Dsiem as a correlation engine with non ELK stack if needed.
 * Batteries included:
     * A directive conversion tool that reads OSSIM XML directive file and translate it to Dsiem JSON-style config.
     * A SIEM plugin creator tool that will read off an existing index pattern from Elasticsearch, and creates the necessary Logstash configuration to clone the relevant fields' content to Dsiem.
@@ -53,7 +53,7 @@ You can use Docker Compose or the release binaries to install Dsiem. Refer to th
 
 ## Documentation
 
-Currently available docs are located [Here](/docs).
+Currently available docs are located [here](/docs).
 
 ## How to Contribute
 
