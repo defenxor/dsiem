@@ -7,6 +7,7 @@
 # Unignore docker builds
 !deployments/docker/build/Dockerfile
 !deployments/docker/build/s6files/services.d/dsiem/run
+!deployments/docker/build/s6files/cont-init.d/00_seed_configs
 
 # extra things to ignore:
 
