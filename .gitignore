@@ -16,9 +16,6 @@ node_modules/
 user.xml
 user.xml.tmp
 
-# nessus files
-*.csv
-
 docs/mkdocs
 docs/TODO.md
 docs/wiki
