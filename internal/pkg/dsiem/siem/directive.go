@@ -92,6 +92,11 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	copier := func() {
 		for {
 			evt := <-ch
+
+			if isWhitelisted(evt.SrcIP) {
+				continue
+			}
+
 			// running under go routine easily bottleneck under heavy load
 			// this however will cause single dirchan to block the loop
 			for i := range dirchan {
@@ -101,6 +106,19 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 	}
 	go copier()
 	return nil
+}
+
+func isWhitelisted(ip string) (ret bool) {
+	whitelisted, err := asset.IsWhiteListed(ip)
+	if err != nil {
+		log.Warn(log.M{Msg: "Fail to check if source IP " + ip + " is whitelisted"})
+		return
+	}
+	if whitelisted {
+		log.Debug(log.M{Msg: "Skipping event, Source IP " + ip + " is whitelisted."})
+		ret = true
+	}
+	return
 }
 
 // LoadDirectivesFromFile load directive from namePattern (glob) files in confDir

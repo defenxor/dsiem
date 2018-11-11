@@ -37,11 +37,13 @@ const (
 )
 
 var ranger cidranger.Ranger
+var whitelist cidranger.Ranger
 
 type networkAsset struct {
-	Name  string `json:"name"`
-	Cidr  string `json:"cidr"`
-	Value int    `json:"value"`
+	Name        string `json:"name"`
+	Cidr        string `json:"cidr"`
+	Value       int    `json:"value"`
+	Whitelisted bool   `json:"whitelisted"`
 }
 
 type networkAssets struct {
@@ -96,6 +98,7 @@ func Init(confDir string) error {
 	}
 
 	ranger = cidranger.NewPCTrieRanger()
+	whitelist = cidranger.NewPCTrieRanger()
 
 	for i := range assets.NetworkAssets {
 		cidr := assets.NetworkAssets[i].Cidr
@@ -104,7 +107,6 @@ func Init(confDir string) error {
 
 		_, net, err := net.ParseCIDR(cidr)
 		if err != nil {
-			// log.Info("Cannot parse "+cidr+"!", 0)
 			log.Info(log.M{Msg: "Cannot parse " + cidr + "!"})
 			return err
 		}
@@ -113,19 +115,35 @@ func Init(confDir string) error {
 			return errors.New("value cannot be 0 and name cannot be empty for " + cidr)
 		}
 
-		_ = ranger.Insert(newAssetEntry(*net, value, name))
+		if assets.NetworkAssets[i].Whitelisted {
+			_ = whitelist.Insert(newAssetEntry(*net, value, name))
+		} else {
+			_ = ranger.Insert(newAssetEntry(*net, value, name))
+		}
 	}
 
-	total := len(assets.NetworkAssets)
+	// total := len(assets.NetworkAssets)
+	_, allIPs, _ := net.ParseCIDR("0.0.0.0/0")
+	r, _ := ranger.CoveredNetworks(*allIPs)
+	ttlAssets := len(r)
+	r, _ = whitelist.CoveredNetworks(*allIPs)
+	ttlWhitelist := len(r)
 
-	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(total) + " host and/or network assets."})
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(ttlAssets) + " host and/or network assets."})
+	log.Info(log.M{Msg: "Loaded " + strconv.Itoa(ttlWhitelist) + " whitelisted host and/or network assets."})
 
 	return nil
 }
 
-// IsInHomeNet check if IP is in HOME_NET
+// IsInHomeNet checks if IP is in HOME_NET
 func IsInHomeNet(ip string) (bool, error) {
 	contains, err := ranger.Contains(net.ParseIP(ip)) // returns true, nil
+	return contains, err
+}
+
+// IsWhiteListed checks if IP is whitelisted
+func IsWhiteListed(ip string) (bool, error) {
+	contains, err := whitelist.Contains(net.ParseIP(ip)) // returns true, nil
 	return contains, err
 }
 
