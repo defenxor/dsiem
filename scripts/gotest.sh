@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ "$1" == "" ]; then
-go test -cover $(go list ./... | grep -v temp)
+go test -race -cover $(go list ./... | grep -v temp)
 exit 
 fi 
 if [ "$1" == "update" ]; then

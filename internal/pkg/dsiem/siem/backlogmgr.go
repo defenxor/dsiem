@@ -56,6 +56,8 @@ func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (e
 
 func initBpTicker(bpChan chan<- bool, holdDuration int) {
 	prevState := false
+	sl := sync.RWMutex{}
+
 	sWait := time.Duration(holdDuration)
 	timer := time.NewTimer(time.Second * sWait)
 	go func() {
@@ -63,9 +65,15 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 			<-timer.C
 			// send false (reset signal) only if prev state is true
 			timer.Reset(time.Second * sWait)
+			sl.RLock()
 			if prevState == true {
+				sl.RUnlock()
 				bpChan <- false
+				sl.Lock()
 				prevState = false
+				sl.Unlock()
+			} else {
+				sl.RUnlock()
 			}
 		}
 	}()
@@ -77,9 +85,15 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 		// set the timer again
 		timer.Reset(time.Second * sWait)
 		// send true only if prev state is false
+		sl.RLock()
 		if prevState == false {
+			sl.RUnlock()
 			bpChan <- true
+			sl.Lock()
 			prevState = true
+			sl.Unlock()
+		} else {
+			sl.RUnlock()
 		}
 	}
 }
@@ -218,7 +232,9 @@ func (blogs *backlogs) delete(b *backLog) {
 		time.Sleep(10 * time.Second)
 		log.Debug(log.M{Msg: "backlog manager deleting backlog from map", DId: b.Directive.ID, BId: b.ID})
 		blogs.Lock()
+		blogs.bl[b.ID].Lock()
 		blogs.bl[b.ID].bLogs = nil
+		blogs.bl[b.ID].Unlock()
 		delete(blogs.bl, b.ID)
 		blogs.Unlock()
 		ch := alarm.RemovalChannel()
