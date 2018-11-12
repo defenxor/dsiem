@@ -26,23 +26,31 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
-	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
 	"github.com/jonhoo/drwmutex"
 )
 
-func TestBacklogMgr(t *testing.T) {
-	d, err := test.DirEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
+var testDir string
 
-	log.Setup(true)
-	fDir := path.Join(d, "internal", "pkg", "dsiem", "siem", "fixtures")
+func setTestDir(t *testing.T) {
+	if testDir == "" {
+		d, err := test.DirEnv()
+		if err != nil {
+			t.Fatal(err)
+		}
+		testDir = d
+	}
+}
+
+func TestBacklogMgr(t *testing.T) {
+
+	setTestDir(t)
+
+	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 	apm.Enable(true)
 
-	err = asset.Init(path.Join(d, "configs"))
+	err := asset.Init(path.Join(testDir, "configs"))
 	if err != nil {
 		t.Fatal(err)
 	}

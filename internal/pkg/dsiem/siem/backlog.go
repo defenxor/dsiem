@@ -42,6 +42,7 @@ import (
 )
 
 var bLogFile string
+var txLock = sync.RWMutex{}
 
 type backLog struct {
 	drwmutex.DRWMutex
@@ -78,7 +79,9 @@ func (b *backLog) newEventProcessor() {
 	for {
 		evt, ok := <-b.chData
 		if !ok {
+			l := b.RLock()
 			b.debug("worker chData closed, exiting", 0)
+			l.Unlock()
 			return
 		}
 		l := b.RLock()
@@ -100,17 +103,18 @@ func (b *backLog) newEventProcessor() {
 			continue
 		}
 		b.chFound <- true // answer quickly
-		l.Unlock()
 
 		// validate date conversion
 		ts, err := str.TimeStampToUnix(evt.Timestamp)
 		if err != nil {
 			b.warn("cannot parse event timestamp, discarding it", evt.ConnID)
+			l.Unlock()
 			continue
 		}
 		// discard out of order event
 		if !b.isTimeInOrder(idx, ts) {
 			b.warn("event timestamp out of order, discarding it", evt.ConnID)
+			l.Unlock()
 			continue
 		}
 
@@ -123,6 +127,7 @@ func (b *backLog) newEventProcessor() {
 		}
 
 		b.debug("processing incoming event", evt.ConnID)
+		l.Unlock()
 		// this should be under go routine, but chFound need sync access (for first match, backlog creation)
 		if cs == 1 {
 			b.processMatchedEvent(evt, idx)
@@ -140,7 +145,9 @@ func (b *backLog) expirationChecker() {
 		<-ticker.C
 		select {
 		case <-b.chDone:
+			l := b.RLock()
 			b.debug("backlog tick exiting, chDone.", 0)
+			l.Unlock()
 			ticker.Stop()
 			return
 		default:
@@ -222,15 +229,22 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		defer elasticapm.DefaultTracer.Recover(tx)
 	}
 
+	l = b.RLock()
 	b.debug("Incoming event with idx: "+strconv.Itoa(idx), e.ConnID)
 	// concurrent write may make events count overflow, so dont append current stage unless needed
 	if !b.isStageReachMaxEvtCount(idx) {
+		l.Unlock()
 		b.appendandWriteEvent(e, idx, tx)
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
+		l = b.RLock()
 		if !b.isStageReachMaxEvtCount(idx) {
+			l.Unlock()
 			return
 		}
+		l.Unlock()
+	} else {
+		l.Unlock()
 	}
 	// the new event has caused events_count == occurrence
 	b.setRuleStatus("finished", e.ConnID)
@@ -242,7 +256,9 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		b.info("reached max stage and occurrence, deleting.", e.ConnID)
 		b.delete()
 		if apm.Enabled() {
+			txLock.Lock()
 			tx.Result = "Backlog removed (max reached)"
+			txLock.Unlock()
 		}
 		return
 	}
@@ -260,7 +276,9 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		l = b.RLock()
 		tx.Context.SetCustom("backlog_stage", b.CurrentStage)
 		l.Unlock()
+		txLock.Lock()
 		tx.Result = "Stage increased"
+		txLock.Unlock()
 	}
 
 	// recalc risk, the new stage will have a different reliability
@@ -326,14 +344,18 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *elas
 		if err != nil {
 			b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
 			if apm.Enabled() {
+				txLock.Lock()
 				e := elasticapm.DefaultTracer.NewError(err)
 				e.Transaction = tx
 				e.Send()
 				tx.Result = "Failed to append and write event"
+				txLock.Unlock()
 			}
 		} else {
 			if apm.Enabled() {
+				txLock.Lock()
 				tx.Result = "Event appended to backlog"
+				txLock.Unlock()
 			}
 		}
 	}(*b)

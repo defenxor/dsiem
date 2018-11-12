@@ -23,18 +23,15 @@ import (
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
-	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 )
 
 func TestDirectiveInit(t *testing.T) {
-	d, err := test.DirEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Using base dir %s", d)
-	fDir := path.Join(d, "internal", "pkg", "dsiem", "siem", "fixtures")
+	setTestDir(t)
+
+	t.Logf("Using base dir %s", testDir)
+	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 	var evtChan chan event.NormalizedEvent
-	err = InitDirectives(path.Join(fDir, "directive2"), evtChan)
+	err := InitDirectives(path.Join(fDir, "directive2"), evtChan)
 	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
 		t.Fatal(err)
 	}
