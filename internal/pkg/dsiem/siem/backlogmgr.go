@@ -61,7 +61,7 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 	go func() {
 		for {
 			<-timer.C
-			// send false only if prev state is true
+			// send false (reset signal) only if prev state is true
 			timer.Reset(time.Second * sWait)
 			if prevState == true {
 				bpChan <- false
@@ -69,61 +69,35 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 			}
 		}
 	}()
-	// get a merged channel consisting of results from all
+	// get a merged channel consisting of true signal from all
 	// backlogs
-	out := mergeWait()
+	out := merge()
 	for range out {
-		n := <-out
+		<-out
+		// set the timer again
+		timer.Reset(time.Second * sWait)
 		// send true only if prev state is false
-		if n == true {
-			timer.Reset(time.Second * sWait)
-			if prevState == false {
-				bpChan <- true
-				prevState = true
-			}
+		if prevState == false {
+			bpChan <- true
+			prevState = true
 		}
 	}
 }
 
-func mergeWait() <-chan bool {
+func merge() <-chan bool {
 	out := make(chan bool)
-	var wg sync.WaitGroup
-	l := len(allBacklogs)
-	wg.Add(l)
 	for i := range allBacklogs {
 		go func(i int) {
 			for v := range allBacklogs[i].bpCh {
-				if v {
-					out <- v // one true result is enough
-					break
-				}
+				// v will only contain true
+				out <- v
 			}
-			wg.Done()
 		}(i)
 	}
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
 	return out
 }
 
-// send false each second to backpressure channel
-// to reset the trues detected and sent by member backlog
-func (blogs *backlogs) backPressureTick() {
-	ticker := time.NewTicker(time.Second)
-	for {
-		<-ticker.C
-		select {
-		case blogs.bpCh <- false:
-			ticker.Stop()
-		default:
-		}
-	}
-}
-
 func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
-	go blogs.backPressureTick()
 
 	for {
 		evt := <-ch
