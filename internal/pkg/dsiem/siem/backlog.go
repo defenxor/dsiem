@@ -42,7 +42,8 @@ import (
 )
 
 var bLogFile string
-var txLock = sync.RWMutex{}
+
+var txl = sync.Mutex{}
 
 type backLog struct {
 	drwmutex.DRWMutex
@@ -218,6 +219,7 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	var l sync.Locker
 
 	if apm.Enabled() {
+		txl.Lock()
 		tx = elasticapm.DefaultTracer.StartTransaction("Directive Event Processing", "SIEM")
 		tx.Context.SetCustom("event_id", e.EventID)
 		l = b.RLock()
@@ -225,7 +227,8 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		tx.Context.SetCustom("directive_id", b.Directive.ID)
 		tx.Context.SetCustom("backlog_stage", b.CurrentStage)
 		l.Unlock()
-		defer tx.End()
+		txl.Unlock()
+		// defer tx.End()
 		defer elasticapm.DefaultTracer.Recover(tx)
 	}
 
@@ -256,9 +259,10 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		b.info("reached max stage and occurrence, deleting.", e.ConnID)
 		b.delete()
 		if apm.Enabled() {
-			txLock.Lock()
+			txl.Lock()
 			tx.Result = "Backlog removed (max reached)"
-			txLock.Unlock()
+			tx.End()
+			txl.Unlock()
 		}
 		return
 	}
@@ -273,12 +277,13 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 	// b.setStatus("active", e.ConnID, tx)
 	if apm.Enabled() {
+		txl.Lock()
 		l = b.RLock()
 		tx.Context.SetCustom("backlog_stage", b.CurrentStage)
 		l.Unlock()
-		txLock.Lock()
 		tx.Result = "Stage increased"
-		txLock.Unlock()
+		tx.End()
+		txl.Unlock()
 	}
 
 	// recalc risk, the new stage will have a different reliability
@@ -344,18 +349,20 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *elas
 		if err != nil {
 			b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
 			if apm.Enabled() {
-				txLock.Lock()
+				txl.Lock()
 				e := elasticapm.DefaultTracer.NewError(err)
 				e.Transaction = tx
 				e.Send()
 				tx.Result = "Failed to append and write event"
-				txLock.Unlock()
+				tx.End()
+				txl.Unlock()
 			}
 		} else {
 			if apm.Enabled() {
-				txLock.Lock()
+				txl.Lock()
 				tx.Result = "Event appended to backlog"
-				txLock.Unlock()
+				tx.End()
+				txl.Unlock()
 			}
 		}
 	}(*b)
