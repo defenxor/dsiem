@@ -1,0 +1,19 @@
+{
+  "kingdom": [
+    {
+      "kingdom_name": "Environmental Awareness"
+    },
+    {
+      "kingdom_name": "Reconnaissance & Probing"
+    },
+    {
+      "kingdom_name": "Delivery & Attack"
+    },
+    {
+      "kingdom_name": "Exploitation & Installation"
+    },
+    {
+      "kingdom_name": "System Compromise"
+    }
+  ]
+}
