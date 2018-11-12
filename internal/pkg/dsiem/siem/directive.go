@@ -70,9 +70,6 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		return err
 	}
 	total := len(uCases.Dirs)
-	if total == 0 {
-		return errors.New("Cannot find valid directive from " + confDir)
-	}
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
 	for i := 0; i < total; i++ {
@@ -147,7 +144,7 @@ func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives,
 		}
 		totalFromFile += len(d.Dirs)
 		for j := range d.Dirs {
-			err = validateDirective(&d.Dirs[j])
+			err = validateDirective(&d.Dirs[j], &res)
 			if err != nil {
 				log.Warn(log.M{Msg: "Skipping directive ID " +
 					strconv.Itoa(d.Dirs[j].ID) +
@@ -163,8 +160,8 @@ func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives,
 	return
 }
 
-func validateDirective(d *directive) (err error) {
-	for _, v := range uCases.Dirs {
+func validateDirective(d *directive, res *Directives) (err error) {
+	for _, v := range res.Dirs {
 		if v.ID == d.ID {
 			return errors.New(strconv.Itoa(d.ID) + " is already used as an ID by other directive")
 		}
@@ -178,8 +175,8 @@ func validateDirective(d *directive) (err error) {
 			" has wrong priority set (" + strconv.Itoa(d.Priority) + "), configuring it to 1"})
 		d.Priority = 1
 	}
-	if len(d.Rules) == 1 {
-		return errors.New(strconv.Itoa(d.ID) + " has only 1 rule and therefore will never expire")
+	if len(d.Rules) <= 1 {
+		return errors.New(strconv.Itoa(d.ID) + " has no rule therefore has no effect, or only 1 rule and therefore will never expire")
 	}
 
 	stages := []int{}
@@ -203,25 +200,6 @@ func validateDirective(d *directive) (err error) {
 		if v.Type != "PluginRule" && v.Type != "TaxonomyRule" {
 			return errors.New("Rule Type must be PluginRule or TaxonomyRule")
 		}
-		if v.Reliability < 1 || v.Reliability > 10 {
-			// return errors.New("Reliability must be defined between 1 to 10")
-			log.Warn(log.M{Msg: "Directive " + strconv.Itoa(d.ID) + " rule " + strconv.Itoa(v.Stage) +
-				" has wrong reliability set (" + strconv.Itoa(v.Reliability) + "), configuring it to 1"})
-			d.Rules[j].Reliability = 1
-		}
-		isFirstStage := v.Stage == 1
-		if err := validateFromTo(v.From, isFirstStage); err != nil {
-			return err
-		}
-		if err := validateFromTo(v.To, isFirstStage); err != nil {
-			return err
-		}
-		if err := validatePort(v.PortFrom); err != nil {
-			return err
-		}
-		if err := validatePort(v.PortTo); err != nil {
-			return err
-		}
 		if v.Type == "PluginRule" {
 			if v.PluginID < 1 {
 				return errors.New("PluginRule requires PluginID to be 1 or higher")
@@ -243,6 +221,26 @@ func validateDirective(d *directive) (err error) {
 				return errors.New("TaxonomyRule requires Category to be defined")
 			}
 		}
+		if v.Reliability < 1 || v.Reliability > 10 {
+			// return errors.New("Reliability must be defined between 1 to 10")
+			log.Warn(log.M{Msg: "Directive " + strconv.Itoa(d.ID) + " rule " + strconv.Itoa(v.Stage) +
+				" has wrong reliability set (" + strconv.Itoa(v.Reliability) + "), configuring it to 1"})
+			d.Rules[j].Reliability = 1
+		}
+		isFirstStage := v.Stage == 1
+		if err := validateFromTo(v.From, isFirstStage); err != nil {
+			return err
+		}
+		if err := validateFromTo(v.To, isFirstStage); err != nil {
+			return err
+		}
+		if err := validatePort(v.PortFrom); err != nil {
+			return err
+		}
+		if err := validatePort(v.PortTo); err != nil {
+			return err
+		}
+		stages = append(stages, v.Stage)
 	}
 	return nil
 }
