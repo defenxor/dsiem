@@ -19,6 +19,12 @@
       "name": "172-16-Net",
       "cidr": "172.16.0.0/12",
       "value": 2
+    },
+    {
+      "name": "VulnScanner",
+      "cidr": "192.168.0.2/32",
+      "value": 3,
+      "whitelisted": true
     }
   ]  
 }

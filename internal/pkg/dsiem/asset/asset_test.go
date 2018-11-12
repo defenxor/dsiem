@@ -56,6 +56,13 @@ func TestInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	whitelisted, err := IsWhiteListed("192.168.0.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !whitelisted {
+		t.Fatal("Expected 192.168.0.2 to be in whitelist")
+	}
 }
 func TestAsset(t *testing.T) {
 
