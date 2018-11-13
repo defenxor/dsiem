@@ -17,16 +17,12 @@
 package logger
 
 import (
-	"bufio"
-	"bytes"
 	"strings"
 	"testing"
-
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 func TestLog(t *testing.T) {
+
 	if err := Setup(false); err != nil {
 		t.Fatal(err)
 	}
@@ -51,44 +47,31 @@ func TestLog(t *testing.T) {
 	}
 
 	for _, m := range msgs {
+		EnableTestingMode()
 		var o string
-		o = captureZapOutput(func() {
+		o = CaptureZapOutput(func() {
 			Info(m)
 		})
 		if !strings.Contains(o, "INFO") {
 			t.Fatal("Cannot find string in output, o: " + o)
 		}
-		o = captureZapOutput(func() {
+		o = CaptureZapOutput(func() {
 			Warn(m)
 		})
 		if !strings.Contains(o, "WARN") {
 			t.Fatal("Cannot find string in output, o: " + o)
 		}
-		o = captureZapOutput(func() {
+		o = CaptureZapOutput(func() {
 			Debug(m)
 		})
 		if !strings.Contains(o, "DEBUG") {
 			t.Fatal("Cannot find string in output, o: " + o)
 		}
-		o = captureZapOutput(func() {
+		o = CaptureZapOutput(func() {
 			Error(m)
 		})
 		if !strings.Contains(o, "ERROR") {
 			t.Fatal("Cannot find string in output, o: " + o)
 		}
 	}
-}
-
-func captureZapOutput(funcToRun func()) string {
-	var buffer bytes.Buffer
-
-	encoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	writer := bufio.NewWriter(&buffer)
-
-	zlog = zap.New(
-		zapcore.NewCore(encoder, zapcore.AddSync(writer), zapcore.DebugLevel))
-	funcToRun()
-	writer.Flush()
-
-	return buffer.String()
 }
