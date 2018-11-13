@@ -17,12 +17,24 @@
 package logger
 
 import (
+	"bufio"
+	"bytes"
+	"sync"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 var zlog *zap.Logger
 var enableDebugMessage bool
+
+var enc zapcore.Encoder
+var wrt *bufio.Writer
+var buffer bytes.Buffer
+var zLock = sync.RWMutex{}
+
+// TestMode is a flag for testing mode
+var TestMode bool
 
 // Setup initialize logger
 func Setup(dbg bool) (err error) {
@@ -59,6 +71,11 @@ type M struct {
 
 //Info logs with info level
 func Info(m M) {
+	if TestMode {
+		zLock.Lock()
+		defer zLock.Unlock()
+	}
+
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Info(m.Msg)
 		return
@@ -91,6 +108,11 @@ func Info(m M) {
 
 //Warn logs with warn level
 func Warn(m M) {
+	if TestMode {
+		zLock.Lock()
+		defer zLock.Unlock()
+	}
+
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Warn(m.Msg)
 		return
@@ -126,6 +148,11 @@ func Debug(m M) {
 	if !enableDebugMessage {
 		return
 	}
+	if TestMode {
+		zLock.Lock()
+		defer zLock.Unlock()
+	}
+
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Debug(m.Msg)
 		return
@@ -158,6 +185,10 @@ func Debug(m M) {
 
 //Error logs with error level
 func Error(m M) {
+	if TestMode {
+		zLock.Lock()
+		defer zLock.Unlock()
+	}
 	if m.DId == 0 && m.CId == 0 && m.BId == "" {
 		zlog.Error(m.Msg)
 		return
@@ -188,7 +219,29 @@ func Error(m M) {
 	}
 }
 
-/* nice to look at but too expensive
+// CaptureZapOutput returns output of zap logger so that it can be used
+// in tests
+func CaptureZapOutput(funcToRun func()) string {
+	zLock.Lock()
+	buffer.Reset()
+	zLock.Unlock()
+	funcToRun()
+	zLock.Lock()
+	wrt.Flush()
+	zLock.Unlock()
+	return buffer.String()
+}
+
+// EnableTestingMode set zap for testing, should be called before CaptureZapOutput
+func EnableTestingMode() {
+	TestMode = true
+	enc = zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	wrt = bufio.NewWriter(&buffer)
+	zlog = zap.New(
+		zapcore.NewCore(enc, zapcore.AddSync(wrt), zapcore.DebugLevel))
+}
+
+/* nice to look at but more expensive?
 // Info log with info level
 func Info(m M) {
 	go zlog.Info(m.Msg, parseFields(&m)...)
