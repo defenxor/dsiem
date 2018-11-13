@@ -98,7 +98,7 @@ func (b *backLog) newEventProcessor() {
 		currRule := b.Directive.Rules[idx]
 		currSDiff := &b.Directive.StickyDiffs[idx]
 		if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
-			b.info("backlog doeseventmatch false", evt.ConnID)
+			b.debug("backlog doeseventmatch false", evt.ConnID)
 			b.chFound <- false
 			l.Unlock()
 			continue
