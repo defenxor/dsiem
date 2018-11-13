@@ -25,13 +25,11 @@ import (
 
 	"time"
 
-	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/elastic/apm-agent-go"
 
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path"
@@ -168,9 +166,6 @@ func InitVuln(confDir string, cacheDuration int) error {
 
 	for i := range files {
 		var it vulnSources
-		if !fs.FileExist(files[i]) {
-			return errors.New("Cannot find " + files[i])
-		}
 		file, err := os.Open(files[i])
 		if err != nil {
 			return err

@@ -1,0 +1,11 @@
+{
+  "vuln_sources": [
+    {
+      "name": "DummyV",
+      "plugin": "DummyV",
+      "type": "IP-Port",
+      "enabled": true,
+      "config": "{ \"api_key\":\"testapikey\" }"
+    }
+  ]
+}

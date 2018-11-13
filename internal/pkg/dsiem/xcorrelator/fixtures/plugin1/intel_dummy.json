@@ -5,7 +5,7 @@
       "plugin": "Dummy",
       "type": "IP",
       "enabled": true,
-      "config": "N/A"
+      "config": 123
     }
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "vuln_sources": [
+    {
+      "name": "DummyV",
+      "plugin": "DummyV",
+      "type": "IP-Port",
+      "enabled": true,
+      "config": "N/A"
+    },
+    {
+      "name": "NoWhere",
+      "plugin": "NoWhere",
+      "type": "IP-Port",
+      "enabled": true,
+      "config": "N/A"
+    }
+  ]
+}
