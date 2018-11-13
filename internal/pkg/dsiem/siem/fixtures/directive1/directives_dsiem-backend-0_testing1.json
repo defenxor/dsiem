@@ -1,7 +1,7 @@
 {
   "directives": [
     {
-      "name": "Correct Rule",
+      "name": "Correct Rule, Attack from SRC_IP to DST_IP",
       "kingdom": "Reconnaissance & Probing",
       "category": "Misc Activity",
       "id": 1,

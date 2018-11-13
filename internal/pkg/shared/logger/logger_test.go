@@ -42,6 +42,7 @@ func TestLog(t *testing.T) {
 		{Msg: text, BId: s},
 		{Msg: text, CId: n},
 		{Msg: text, DId: i, BId: s},
+		{Msg: text, DId: i, CId: n},
 		{Msg: text, BId: s, CId: n},
 		{Msg: text, DId: i, BId: s, CId: n},
 	}
