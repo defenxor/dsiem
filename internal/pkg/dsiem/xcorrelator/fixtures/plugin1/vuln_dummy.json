@@ -5,7 +5,7 @@
       "plugin": "DummyV",
       "type": "IP-Port",
       "enabled": true,
-      "config": "N/A"
+      "config": 123
     }
   ]
 }

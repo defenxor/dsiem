@@ -18,6 +18,7 @@ package xcorrelator
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path"
 	"reflect"
@@ -44,8 +45,13 @@ var tblIntel = []intelTests{
 
 type Dummy struct{}
 
+type config struct {
+	API string `json:"api_key"`
+}
+
 func (d Dummy) Initialize(b []byte) (err error) {
-	return
+	cfg := config{}
+	return json.Unmarshal(b, &cfg)
 }
 
 func (d Dummy) CheckIP(ctx context.Context, ipstr string) (found bool, results []intel.Result, err error) {
@@ -76,9 +82,17 @@ func TestIntel(t *testing.T) {
 	intel.RegisterExtension(new(Dummy), "Dummy")
 
 	intelFileGlob = "intel_dummy.json"
-	confDir := path.Join(d, "fixtures")
+	confDir := path.Join(d, "fixtures", "plugin1")
+	if err = InitIntel(confDir, 0); err == nil {
+		t.Fatal("Expected to fail initializing intel")
+	}
+	confDir = path.Join(d, "fixtures", "plugin2")
 	if err = InitIntel(confDir, 0); err != nil {
-		t.Fatal("Cannot init intel")
+		t.Fatal("Expected to only give warning on failure to load config: ", err)
+	}
+	confDir = path.Join(d, "fixtures", "plugin3")
+	if err = InitIntel(confDir, 0); err != nil {
+		t.Fatal(err)
 	}
 
 	for _, tt := range tblIntel {
@@ -92,6 +106,11 @@ func TestIntel(t *testing.T) {
 		}
 	}
 
-	//	CheckIntelIP()
+	// for corrupted cache
+	ip := tblIntel[0].ip
+	intelCache.Set(ip, []byte("foo"))
+	if found, _ := CheckIntelIP(ip, 0); found {
+		t.Errorf("Intel: expected to fail on corrupted cache")
+	}
 
 }

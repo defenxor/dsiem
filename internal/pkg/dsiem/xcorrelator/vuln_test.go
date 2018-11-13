@@ -18,6 +18,8 @@ package xcorrelator
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/ip"
@@ -48,7 +50,8 @@ var tblVuln = []vulnTests{
 type DummyV struct{}
 
 func (d DummyV) Initialize(b []byte) (err error) {
-	return
+	cfg := config{}
+	return json.Unmarshal(b, &cfg)
 }
 
 func (d DummyV) CheckIPPort(ctx context.Context, ipstr string, port int) (found bool, results []vuln.Result, err error) {
@@ -79,9 +82,17 @@ func TestVuln(t *testing.T) {
 	vuln.RegisterExtension(new(DummyV), "DummyV")
 
 	vulnFileGlob = "vuln_dummy.json"
-	confDir := path.Join(d, "fixtures")
+	confDir := path.Join(d, "fixtures", "plugin1")
+	if err = InitVuln(confDir, 0); err == nil {
+		t.Fatal("Expected to fail initializing vuln")
+	}
+	confDir = path.Join(d, "fixtures", "plugin2")
 	if err = InitVuln(confDir, 0); err != nil {
-		t.Fatal("Cannot init vuln")
+		t.Fatal("Expected to only give warning on failure to load config: ", err)
+	}
+	confDir = path.Join(d, "fixtures", "plugin3")
+	if err = InitVuln(confDir, 0); err != nil {
+		t.Fatal(err)
 	}
 
 	for _, tt := range tblVuln {
@@ -95,6 +106,11 @@ func TestVuln(t *testing.T) {
 		}
 	}
 
-	//	CheckIntelIP()
-
+	// for corrupted cache
+	ip := tblVuln[0].ip
+	port := tblVuln[0].port
+	vulnCache.Set(ip+":"+strconv.Itoa(port), []byte("foo"))
+	if found, _ := CheckVulnIPPort(ip, port); found {
+		t.Errorf("Vuln: expected to fail on corrupted cache")
+	}
 }

@@ -19,7 +19,6 @@ package xcorrelator
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path"
@@ -29,7 +28,6 @@ import (
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/cache"
-	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/pkg/intel"
 
@@ -87,7 +85,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 			found = true
 			return
 		}
-		// log.Debug(log.M{Msg: "Failed to unmarshal intel cache for " + term})
+		log.Debug(log.M{Msg: "Failed to unmarshal intel cache for " + term})
 	}
 
 	// flag to store cache only on successful query
@@ -162,9 +160,6 @@ func InitIntel(confDir string, cacheDuration int) error {
 
 	for i := range files {
 		var it intelSources
-		if !fs.FileExist(files[i]) {
-			return errors.New("Cannot find " + files[i])
-		}
 		file, err := os.Open(files[i])
 		if err != nil {
 			return err
