@@ -41,7 +41,10 @@ import (
 	"github.com/elastic/apm-agent-go"
 )
 
-var bLogFile string
+var (
+	bLogFileMutex = sync.Mutex{}
+	bLogFile      string
+)
 
 var txl = sync.Mutex{}
 
@@ -466,7 +469,9 @@ func (b *backLog) setStatusTime() {
 func (b backLog) updateElasticsearch(e event.NormalizedEvent) error {
 	log.Debug(log.M{Msg: "backlog updating Elasticsearch", DId: b.Directive.ID, BId: b.ID, CId: e.ConnID})
 	b.StatusTime = time.Now().Unix()
+	bLogFileMutex.Lock()
 	f, err := os.OpenFile(bLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	bLogFileMutex.Unlock()
 	if err != nil {
 		return err
 	}
