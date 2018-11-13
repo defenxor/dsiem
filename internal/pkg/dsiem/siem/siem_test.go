@@ -170,9 +170,13 @@ func TestBacklogMgr(t *testing.T) {
 
 	fmt.Print("3rd event, will also fail updating ES ..")
 	e.ConnID = 3
+	bLogFileMutex.Lock()
 	bLogFile = ""
+	bLogFileMutex.Unlock()
 	verifyEventOutput(t, e, ch, "failed to update Elasticsearch")
+	bLogFileMutex.Lock()
 	bLogFile = tmpLog
+	bLogFileMutex.Unlock()
 
 	fmt.Print("4th event ..")
 	e.ConnID = 4
