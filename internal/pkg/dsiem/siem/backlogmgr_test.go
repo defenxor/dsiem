@@ -20,12 +20,15 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
 	"github.com/jonhoo/drwmutex"
@@ -35,7 +38,7 @@ var testDir string
 
 func setTestDir(t *testing.T) {
 	if testDir == "" {
-		d, err := test.DirEnv()
+		d, err := test.DirEnv(true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,9 +46,38 @@ func setTestDir(t *testing.T) {
 	}
 }
 
-func TestBacklogMgr(t *testing.T) {
+func TestInitDirective(t *testing.T) {
+
+	allBacklogs = []backlogs{}
+
+	fmt.Println("Starting TestInitDirective.")
 
 	setTestDir(t)
+
+	t.Logf("Using base dir %s", testDir)
+	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	var evtChan chan event.NormalizedEvent
+	err := InitDirectives(path.Join(fDir, "directive2"), evtChan)
+	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
+		t.Fatal(err)
+	}
+	err = InitDirectives(path.Join(fDir, "directive1"), evtChan)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBacklogMgr(t *testing.T) {
+
+	allBacklogs = []backlogs{}
+
+	setTestDir(t)
+	t.Logf("Using base dir %s", testDir)
+
+	if !log.TestMode {
+		t.Logf("Enabling log test mode")
+		log.EnableTestingMode()
+	}
 
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 	apm.Enable(true)
@@ -62,6 +94,13 @@ func TestBacklogMgr(t *testing.T) {
 	defer cleanUp()
 
 	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive1"), directiveFileGlob)
+
+	var evtChan chan event.NormalizedEvent
+
+	err = InitDirectives(path.Join(fDir, "directive1"), evtChan)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	e := event.NormalizedEvent{}
 	e.EventID = "1"
@@ -88,71 +127,97 @@ func TestBacklogMgr(t *testing.T) {
 	go func() {
 		for {
 			bpFlag := <-bpChOutput
-			fmt.Println("simulated server receive bp info: ", bpFlag)
+			log.Info(log.M{Msg: "simulated server received backpressure data: " + strconv.FormatBool(bpFlag)})
 		}
 	}()
-	err = InitBackLogManager(tmpLog, bpChOutput, 6)
-	if err != nil {
+
+	go allBacklogs[0].manager(dctives, ch)
+	if err = InitBackLogManager(tmpLog, bpChOutput, 1); err != nil {
 		t.Fatal(err)
 	}
 
-	go allBacklogs[0].manager(dctives, ch)
-
+	// start of event-based testing
 	// will be rejected, missing rcvdTime
+	fmt.Print("rejected event ..")
 	e.Timestamp = "2018-10-08T07:16:50Z"
-	ch <- e
+	verifyEventOutput(t, e, ch, "Cannot parse event received time, skipping event")
 
-	// should expire right away
-	fmt.Println("expired event")
+	fmt.Print("first event ..")
 	e.RcvdTime = time.Now().Unix()
-	ch <- e
-
-	fmt.Println("first event")
 	e.Timestamp = time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339)
-	ch <- e
-	fmt.Println("2nd event")
+	e.ConnID = 1
+	verifyEventOutput(t, e, ch, "stage increased")
+
+	fmt.Print("second event ..")
 	e.ConnID = 2
-	ch <- e
-	fmt.Println("3rd event")
+	verifyEventOutput(t, e, ch, "backlog updating")
+
+	fmt.Print("3rd event ..")
 	e.ConnID = 3
-	ch <- e
-	fmt.Println("4th event")
+	verifyEventOutput(t, e, ch, "backlog updating")
+
+	fmt.Print("4th event ..")
 	e.ConnID = 4
-	ch <- e
-	// will not match rule
-	fmt.Println("5th event")
-	e.PluginSID = 31337
+	verifyEventOutput(t, e, ch, "stage increased")
+
+	// this should create new backlog
+	fmt.Print("5th event ..")
 	e.ConnID = 5
-	ch <- e
+	verifyEventOutput(t, e, ch, "Incoming event with idx: 0")
+
+	if len(allBacklogs[0].bl) != 2 {
+		t.Fatal("allBacklogs.bl is expected to have a length of 2")
+	}
+
+	// will not match rule
+	fmt.Print("6th event ..")
+	e.PluginSID = 31337
+	e.ConnID = 6
+	verifyEventOutput(t, e, ch, "backlog doeseventmatch false")
 
 	var blID string
-	for k := range blogs.bl {
+	for k := range allBacklogs[0].bl {
 		blID = k
 		break
 	}
-	fmt.Println("sending bp true")
-	blogs.bpCh <- true
-	//fmt.Println("Sending second")
-	//bpCh <- true
-	blogs.delete(blogs.bl[blID])
-	blogs.delete(blogs.bl[blID])
-	time.Sleep(1 * time.Second)
-	fmt.Println("sending bp true")
-	blogs.bpCh <- true
-	time.Sleep(1 * time.Second)
-	fmt.Println("sending bp true")
-	blogs.bpCh <- true
-	time.Sleep(1 * time.Second)
-	fmt.Println("sending bp true")
-	blogs.bpCh <- true
-	time.Sleep(1 * time.Second)
-	fmt.Println("sending bp true")
-	blogs.bpCh <- true
-	time.Sleep(3 * time.Second)
-	fmt.Println("sending bp true")
-	blogs.bpCh <- true
-	e.PluginSID = 2100384
-	fmt.Println("6th event")
-	ch <- e
-	time.Sleep(time.Second * 15)
+	fmt.Print("Deleting the 1st backlog", blID, " ..")
+	verifyFuncOutput(t, func() {
+		blogs.delete(allBacklogs[0].bl[blID])
+		time.Sleep(time.Second * 2)
+	}, "backlog manager setting status to deleted")
+
+	fmt.Print("Deleting it again ..")
+	verifyFuncOutput(t, func() {
+		blogs.delete(allBacklogs[0].bl[blID])
+		time.Sleep(time.Second * 1)
+	}, "backlog is already in the process of being deleted")
+
+	fmt.Print("Sending overload signal=true to blogs bpCh ..")
+	verifyFuncOutput(t, func() {
+		allBacklogs[0].bpCh <- true
+		time.Sleep(time.Second)
+	}, "simulated server received backpressure data: true")
+}
+
+func verifyEventOutput(t *testing.T, e event.NormalizedEvent, ch chan event.NormalizedEvent, expected string) {
+	out := log.CaptureZapOutput(func() {
+		ch <- e
+		time.Sleep(time.Second * 1)
+	})
+	t.Log("out: ", out)
+	if !strings.Contains(out, expected) {
+		t.Fatalf("Cannot find '%s' in output: %s", expected, out)
+	} else {
+		fmt.Println("OK")
+	}
+}
+
+func verifyFuncOutput(t *testing.T, f func(), expected string) {
+	out := log.CaptureZapOutput(f)
+	t.Log("out: ", out)
+	if !strings.Contains(out, expected) {
+		t.Fatalf("Cannot find '%s' in output: %s", expected, out)
+	} else {
+		fmt.Println("OK")
+	}
 }
