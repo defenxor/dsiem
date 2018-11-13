@@ -53,7 +53,6 @@ func TestExtPointsInterface(t *testing.T) {
 	if c == nil {
 		t.Fatal("Expect a registered extension")
 	}
-
 	c1 := cs.Lookup("Dummy")
 	if c1 == nil {
 		t.Fatal("Cannot lookup extension")
@@ -62,7 +61,6 @@ func TestExtPointsInterface(t *testing.T) {
 	if c2 != nil {
 		t.Fatal("Expect c equals nil")
 	}
-
 	if !cs.Register(c1, "Dummy2") {
 		t.Fatal("Cannot register new extension")
 	}
@@ -78,10 +76,8 @@ func TestExtPointsInterface(t *testing.T) {
 	if cs.Unregister("Dummy2") {
 		t.Fatal("Expected to fail on unregistering non-existent extension")
 	}
-
 	ext := UnregisterExtension("Dummy")
 	if !reflect.DeepEqual(ext, []string{"Checker"}) {
 		t.Fatal("Cannot unregister extension")
 	}
-
 }
