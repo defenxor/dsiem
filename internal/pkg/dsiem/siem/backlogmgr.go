@@ -56,7 +56,7 @@ func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (e
 
 func initBpTicker(bpChan chan<- bool, holdDuration int) {
 	prevState := false
-	sl := sync.RWMutex{}
+	sl := sync.Mutex{}
 
 	sWait := time.Duration(holdDuration)
 	timer := time.NewTimer(time.Second * sWait)
@@ -64,16 +64,15 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 		for {
 			<-timer.C
 			// send false (reset signal) only if prev state is true
+			sl.Lock()
 			timer.Reset(time.Second * sWait)
-			sl.RLock()
 			if prevState == true {
-				sl.RUnlock()
+				log.Debug(log.M{Msg: "Sending overload=false signal from backend"})
 				bpChan <- false
-				sl.Lock()
 				prevState = false
 				sl.Unlock()
 			} else {
-				sl.RUnlock()
+				sl.Unlock()
 			}
 		}
 	}()
@@ -81,19 +80,17 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 	// backlogs
 	out := merge()
 	for range out {
-		<-out
 		// set the timer again
-		timer.Reset(time.Second * sWait)
 		// send true only if prev state is false
-		sl.RLock()
+		sl.Lock()
+		timer.Reset(time.Second * sWait)
 		if prevState == false {
-			sl.RUnlock()
+			log.Debug(log.M{Msg: "Sending overload=true signal from backend"})
 			bpChan <- true
-			sl.Lock()
 			prevState = true
 			sl.Unlock()
 		} else {
-			sl.RUnlock()
+			sl.Unlock()
 		}
 	}
 }
@@ -208,17 +205,18 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 }
 
 func (blogs *backlogs) delete(b *backLog) {
-	log.Info(log.M{Msg: "backlog manager removing backlog in 20s", DId: b.Directive.ID, BId: b.ID})
 	go func() {
 		// first prevent another blogs.delete to enter here
 		blogs.Lock() // to protect bl.Lock??
 		b.Lock()
 		if b.deleted {
 			// already in the closing process
+			log.Debug(log.M{Msg: "backlog is already in the process of being deleted"})
 			b.Unlock()
 			blogs.Unlock()
 			return
 		}
+		log.Info(log.M{Msg: "backlog manager removing backlog in 20s", DId: b.Directive.ID, BId: b.ID})
 		log.Debug(log.M{Msg: "backlog manager setting status to deleted", DId: b.Directive.ID, BId: b.ID})
 		b.deleted = true
 		b.Unlock()
