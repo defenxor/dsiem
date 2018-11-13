@@ -62,7 +62,7 @@ func (d Dummy) CheckIP(ctx context.Context, ipstr string) (found bool, results [
 }
 
 func TestIntel(t *testing.T) {
-	_, err := test.DirEnv()
+	_, err := test.DirEnv(false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -65,7 +65,7 @@ func (d DummyV) CheckIPPort(ctx context.Context, ipstr string, port int) (found 
 }
 
 func TestVuln(t *testing.T) {
-	_, err := test.DirEnv()
+	_, err := test.DirEnv(false)
 	if err != nil {
 		t.Fatal(err)
 	}

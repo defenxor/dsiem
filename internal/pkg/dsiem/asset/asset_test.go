@@ -26,7 +26,7 @@ import (
 
 func TestInit(t *testing.T) {
 
-	d, err := test.DirEnv()
+	d, err := test.DirEnv(false)
 	if err != nil {
 		t.Fatal(err)
 	}
