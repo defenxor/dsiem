@@ -40,7 +40,6 @@ type tsvRef struct {
 func (c *tsvRef) setFilename(pluginName string, confFile string) {
 	dir := path.Dir(confFile)
 	c.fname = path.Join(dir, pluginName+"_plugin-sids.tsv")
-	return
 }
 
 func (c *tsvRef) init(pluginName string, confFile string) {
@@ -78,10 +77,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 	}
 	if tKey != 0 {
 		// should increase new SID number if tKey == pluginSID by coincidence
-		if tKey == *pluginSID {
-			return true
-		}
-		return false
+		return tKey == *pluginSID
 	}
 	// here title doesnt yet exist so we add it
 

@@ -94,5 +94,4 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot return positive result for " + ip + ":" + port + " to " + clientAddr + ". Error: " + err.Error()})
 	}
-	return
 }

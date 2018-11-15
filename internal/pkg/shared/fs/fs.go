@@ -33,7 +33,7 @@ func FileExist(path string) bool {
 // GetDir returns the program root directory
 func GetDir(devEnv bool) (string, error) {
 	dir, err := osext.ExecutableFolder()
-	if devEnv == true {
+	if devEnv {
 		g := os.Getenv("GOPATH")
 		if g == "" {
 			return "", errors.New("cannot find $GOPATH env variable")
