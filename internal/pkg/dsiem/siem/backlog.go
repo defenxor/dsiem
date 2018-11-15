@@ -193,7 +193,7 @@ func (b backLog) isTimeInOrder(idx int, ts int64) bool {
 	*/
 	prevStageTime := b.Directive.Rules[idx-1].EndTime
 	ts = ts + 5 // allow up to 5 seconds diff to compensate for concurrent write
-	return prevStageTime > ts
+	return prevStageTime < ts
 }
 
 func (b backLog) isExpired() bool {

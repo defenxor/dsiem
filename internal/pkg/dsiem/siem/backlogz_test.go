@@ -144,30 +144,7 @@ func TestBackLog(t *testing.T) {
 	e.ConnID = 3
 	verifyEventOutput(t, e, b.chData, "backlog incoming event")
 
-	/*
+	// TODO: should check for multiple backlog creation by the same event sent concurrently
+	// within a short period of time
 
-			}
-			// discard out of order event
-			if !b.isTimeInOrder(idx, ts) {
-				b.warn("event timestamp out of order, discarding it", evt.ConnID)
-				l.Unlock()
-				continue
-			}
-
-			if b.isUnderPressure(evt.RcvdTime, int64(maxDelay)) {
-				b.warn("backlog is under pressure", evt.ConnID)
-				select {
-				case b.bLogs.bpCh <- true:
-				default:
-				}
-
-		/*
-			for k := range allBacklogs[0].bl {
-				fmt.Print("Deleting " + k + " through backlog member function ..")
-				verifyFuncOutput(t, func() {
-					allBacklogs[0].bl[k].delete()
-					time.Sleep(time.Second * 1)
-				}, "", true)
-			}
-	*/
 }
