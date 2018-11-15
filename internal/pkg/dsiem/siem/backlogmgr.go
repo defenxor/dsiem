@@ -194,7 +194,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		}
 		blogs.Lock()
 		blogs.bl[b.ID] = b
-		blogs.bl[b.ID].DRWMutex = drwmutex.New()
+		// blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
 		blogs.bl[b.ID].start(evt)

@@ -33,8 +33,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
-
-	"github.com/jonhoo/drwmutex"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/spf13/viper"
 )
 
@@ -44,7 +43,7 @@ var (
 )
 
 type backLog struct {
-	drwmutex.DRWMutex
+	deadlock.RWMutex
 	ID           string    `json:"backlog_id"`
 	StatusTime   int64     `json:"status_time"`
 	Risk         int       `json:"risk"`
@@ -78,12 +77,12 @@ func (b *backLog) newEventProcessor() {
 	for {
 		evt, ok := <-b.chData
 		if !ok {
-			l := b.RLock()
-			b.debug("worker chData closed, exiting", 0)
-			l.Unlock()
+			// b.RLock()
+			b.debug("worker chData closed, exiting", evt.ConnID)
+			// b.RUnlock()
 			return
 		}
-		l := b.RLock()
+		// b.RLock()
 		b.debug("backlog incoming event", evt.ConnID)
 		cs := b.CurrentStage
 		/* this never happen, since 1st stage is handled directly by start()
@@ -96,12 +95,14 @@ func (b *backLog) newEventProcessor() {
 		// should check for currentStage rule match with event
 		// heuristic, we know stage starts at 1 but rules start at 0
 		idx := cs - 1
+		b.RLock()
 		currRule := b.Directive.Rules[idx]
 		currSDiff := &b.Directive.StickyDiffs[idx]
+		b.RUnlock()
 		if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
 			b.debug("backlog doeseventmatch false", evt.ConnID)
 			b.chFound <- false
-			l.Unlock()
+			// b.RUnlock()
 			continue
 		}
 		b.chFound <- true // answer quickly
@@ -110,13 +111,15 @@ func (b *backLog) newEventProcessor() {
 		ts, err := str.TimeStampToUnix(evt.Timestamp)
 		if err != nil {
 			b.warn("cannot parse event timestamp, discarding it", evt.ConnID)
-			l.Unlock()
+			//b.RUnlock()
 			continue
 		}
 		// discard out of order event
 		if !b.isTimeInOrder(idx, ts) {
 			b.warn("event timestamp out of order, discarding it", evt.ConnID)
-			l.Unlock()
+
+			// b.RUnlock()
+
 			continue
 		}
 
@@ -129,7 +132,9 @@ func (b *backLog) newEventProcessor() {
 		}
 
 		b.debug("processing incoming event", evt.ConnID)
-		l.Unlock()
+
+		// b.RUnlock()
+
 		// this should be under go routine, but chFound need sync access (for first match, backlog creation)
 
 		/* this never happen, since stage 1 is handled by start()
@@ -138,6 +143,7 @@ func (b *backLog) newEventProcessor() {
 			} else {
 		*/
 		runtime.Gosched() // let the main go routine work
+
 		go b.processMatchedEvent(evt, idx)
 		// }
 		// b.info("setting found to true", evt.ConnID)
@@ -150,19 +156,14 @@ func (b *backLog) expirationChecker() {
 		<-ticker.C
 		select {
 		case <-b.chDone:
-			l := b.RLock()
 			b.debug("backlog tick exiting, chDone.", 0)
-			l.Unlock()
 			ticker.Stop()
 			return
 		default:
 		}
-		l := b.RLock()
 		if !b.isExpired() {
-			l.Unlock()
 			continue
 		}
-		l.Unlock()
 		ticker.Stop() // prevent next signal, we're exiting the go routine
 		b.info("backlog expired, deleting it", 0)
 		b.setRuleStatus("timeout", 0)
@@ -173,7 +174,7 @@ func (b *backLog) expirationChecker() {
 
 }
 
-func (b backLog) isUnderPressure(rcvd int64, maxDelay int64) bool {
+func (b *backLog) isUnderPressure(rcvd int64, maxDelay int64) bool {
 	if maxDelay == 0 {
 		return false
 	}
@@ -182,7 +183,7 @@ func (b backLog) isUnderPressure(rcvd int64, maxDelay int64) bool {
 }
 
 // no modification so use value receiver
-func (b backLog) isTimeInOrder(idx int, ts int64) bool {
+func (b *backLog) isTimeInOrder(idx int, ts int64) bool {
 
 	/* this never happen, first stage is processed directly by start() which doesnt
 	   call isTimeInOrder
@@ -191,17 +192,21 @@ func (b backLog) isTimeInOrder(idx int, ts int64) bool {
 		return true
 	}
 	*/
+	b.RLock()
 	prevStageTime := b.Directive.Rules[idx-1].EndTime
+	b.RUnlock()
 	ts = ts + 5 // allow up to 5 seconds diff to compensate for concurrent write
 	return prevStageTime < ts
 }
 
-func (b backLog) isExpired() bool {
+func (b *backLog) isExpired() bool {
 	now := time.Now().Unix()
+	b.RLock()
 	cs := b.CurrentStage
 	idx := cs - 1
 	start := b.Directive.Rules[idx].StartTime
 	timeout := b.Directive.Rules[idx].Timeout
+	b.RUnlock()
 	maxTime := start + timeout
 	return maxTime < now
 }
@@ -218,37 +223,32 @@ func (b *backLog) setRuleEndTime(e event.NormalizedEvent) {
 func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 	var tx *apm.Transaction
-	var l sync.Locker
-
 	if apm.Enabled() {
 		tx = apm.StartTransaction("Directive Event Processing", "SIEM", nil)
 		tx.SetCustom("event_id", e.EventID)
-		l = b.RLock()
+
+		b.RLock()
 		tx.SetCustom("backlog_id", b.ID)
 		tx.SetCustom("directive_id", b.Directive.ID)
 		tx.SetCustom("backlog_stage", b.CurrentStage)
-		l.Unlock()
-		// defer tx.End()
-		defer tx.Recover()
+
+		b.RUnlock()
+
+		//defer tx.Recover()
+		defer tx.End()
 	}
 
-	l = b.RLock()
 	b.debug("Incoming event with idx: "+strconv.Itoa(idx), e.ConnID)
 	// concurrent write may make events count overflow, so dont append current stage unless needed
 	if !b.isStageReachMaxEvtCount(idx) {
-		l.Unlock()
 		b.appendandWriteEvent(e, idx, tx)
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
-		l = b.RLock()
 		if !b.isStageReachMaxEvtCount(idx) {
-			l.Unlock()
 			return
 		}
-		l.Unlock()
-	} else {
-		l.Unlock()
 	}
+
 	// the new event has caused events_count == occurrence
 	b.setRuleStatus("finished", e.ConnID)
 	b.setRuleEndTime(e)
@@ -260,13 +260,13 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		b.delete()
 		if apm.Enabled() {
 			tx.Result("Backlog removed (max reached)")
-			tx.End()
 		}
 		return
 	}
 
 	// reach max occurrence, but not in last stage. Increase stage.
 	b.increaseStage(e)
+
 	// set rule startTime for the new stage
 	b.setRuleStartTime(e)
 
@@ -275,11 +275,10 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 	// b.setStatus("active", e.ConnID, tx)
 	if apm.Enabled() {
-		l = b.RLock()
+		b.RLock()
 		tx.SetCustom("backlog_stage", b.CurrentStage)
-		l.Unlock()
+		b.RUnlock()
 		tx.Result("Stage increased")
-		tx.End()
 	}
 
 	// recalc risk, the new stage will have a different reliability
@@ -291,16 +290,22 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	}
 }
 
-func (b backLog) info(msg string, connID uint64) {
+func (b *backLog) info(msg string, connID uint64) {
+	b.RLock()
 	log.Info(log.M{Msg: msg, BId: b.ID, CId: connID})
+	b.RUnlock()
 }
 
-func (b backLog) warn(msg string, connID uint64) {
+func (b *backLog) warn(msg string, connID uint64) {
+	b.RLock()
 	log.Warn(log.M{Msg: msg, BId: b.ID, CId: connID})
+	b.RUnlock()
 }
 
-func (b backLog) debug(msg string, connID uint64) {
+func (b *backLog) debug(msg string, connID uint64) {
+	b.RLock()
 	log.Debug(log.M{Msg: msg, BId: b.ID, CId: connID})
+	b.RUnlock()
 }
 
 func (b *backLog) setLastEvent(e event.NormalizedEvent) {
@@ -313,10 +318,10 @@ func (b backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transac
 	if b.Risk == 0 {
 		return
 	}
-	l := b.RLock()
+	b.RLock()
 	tmp := make([]rule.DirectiveRule, len(b.Directive.Rules))
 	copy(tmp, b.Directive.Rules)
-	l.Unlock()
+	b.RUnlock()
 	go alarm.Upsert(b.ID, b.Directive.Name, b.Directive.Kingdom,
 		b.Directive.Category, b.SrcIPs, b.DstIPs, b.LastEvent.SrcPort,
 		b.LastEvent.DstPort, b.Risk, b.StatusTime, tmp,
@@ -338,9 +343,10 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 	b.DstIPs = str.AppendUniq(b.DstIPs, e.DstIP)
 	b.Unlock()
 	b.setStatusTime()
+
 	// dont wait for I/O
-	l := b.RLock()
-	go func(b backLog) {
+	b.RLock()
+	go func(b *backLog) {
 		err := b.updateElasticsearch(e)
 		if err != nil {
 			b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
@@ -355,24 +361,26 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 				tx.End()
 			}
 		}
-	}(*b)
-	l.Unlock()
+	}(b)
+	b.RUnlock()
 }
 
-func (b backLog) isLastStage() (ret bool) {
+func (b *backLog) isLastStage() (ret bool) {
+	b.RLock()
 	ret = b.CurrentStage == b.HighestStage
+	b.RUnlock()
 	return
 }
 
-func (b backLog) isStageReachMaxEvtCount(idx int) (reachMaxEvtCount bool) {
+func (b *backLog) isStageReachMaxEvtCount(idx int) (reachMaxEvtCount bool) {
 	// still need lock because Rules is a slice
-	l := b.RLock()
+	b.RLock()
 	currRule := b.Directive.Rules[idx]
 	nEvents := len(b.Directive.Rules[idx].Events)
 	if nEvents >= currRule.Occurrence {
 		reachMaxEvtCount = true
 	}
-	l.Unlock()
+	b.RUnlock()
 	return
 }
 
@@ -397,7 +405,7 @@ func (b *backLog) setRuleStartTime(e event.NormalizedEvent) {
 }
 
 func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
-	l := b.RLock()
+	b.RLock()
 	s := b.CurrentStage
 	idx := s - 1
 	value := 0
@@ -415,16 +423,14 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	}
 
 	pRisk := b.Risk
-
 	reliability := b.Directive.Rules[idx].Reliability
 	priority := b.Directive.Priority
 	risk := priority * reliability * value / 25
-	//	fmt.Println("directive:", b.Directive.ID, "stage", b.CurrentStage,
+	//
 	//		"SrcIPs:", b.SrcIPs, "DstIPs:", b.DstIPs, "asset value:", value, "rel:",
 	//		reliability, "prio:", priority, "risk:", risk)
 
-	l.Unlock()
-
+	b.RUnlock()
 	if risk != pRisk {
 		b.Lock()
 		b.Risk = risk
@@ -437,11 +443,12 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 
 // need to use ptr receiver for bLogs.delete
 func (b *backLog) delete() {
-	l := b.RLock()
-	defer l.Unlock()
+	b.RLock()
 	if b.deleted {
+		b.RUnlock()
 		return
 	}
+	b.RUnlock()
 	b.debug("delete sending signal to bLogs", 0)
 	b.bLogs.delete(b)
 }
@@ -452,9 +459,12 @@ func (b *backLog) setStatusTime() {
 	b.Unlock()
 }
 
-func (b backLog) updateElasticsearch(e event.NormalizedEvent) error {
-	log.Debug(log.M{Msg: "backlog updating Elasticsearch", DId: b.Directive.ID, BId: b.ID, CId: e.ConnID})
+func (b *backLog) updateElasticsearch(e event.NormalizedEvent) error {
+	b.debug("backlog updating Elasticsearch", e.ConnID)
+	b.Lock()
 	b.StatusTime = time.Now().Unix()
+	v := siemAlarmEvents{b.ID, b.CurrentStage, e.EventID}
+	b.Unlock()
 	bLogFileMutex.Lock()
 	f, err := os.OpenFile(bLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	bLogFileMutex.Unlock()
@@ -462,7 +472,7 @@ func (b backLog) updateElasticsearch(e event.NormalizedEvent) error {
 		return err
 	}
 	defer f.Close()
-	v := siemAlarmEvents{b.ID, b.CurrentStage, e.EventID}
+
 	vJSON, err := json.Marshal(v)
 	if err != nil {
 		return err
