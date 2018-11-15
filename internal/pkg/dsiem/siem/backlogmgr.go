@@ -213,18 +213,18 @@ func (blogs *backlogs) delete(b *backLog) {
 			blogs.Unlock()
 			return
 		}
-		log.Info(log.M{Msg: "backlog manager removing backlog in 20s", DId: b.Directive.ID, BId: b.ID})
+		log.Info(log.M{Msg: "backlog manager removing backlog in < 10s", DId: b.Directive.ID, BId: b.ID})
 		log.Debug(log.M{Msg: "backlog manager setting status to deleted", DId: b.Directive.ID, BId: b.ID})
 		b.deleted = true
-		b.Unlock()
-		blogs.Unlock()
 		// prevent further event write by manager, and stop backlog ticker
 		close(b.chDone)
-		time.Sleep(10 * time.Second)
+		b.Unlock()
+		blogs.Unlock()
+		time.Sleep(3 * time.Second)
 		// signal backlog worker to exit
 		log.Debug(log.M{Msg: "backlog manager closing data channel", DId: b.Directive.ID, BId: b.ID})
 		close(b.chData)
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 		log.Debug(log.M{Msg: "backlog manager deleting backlog from map", DId: b.Directive.ID, BId: b.ID})
 		blogs.Lock()
 		blogs.bl[b.ID].Lock()

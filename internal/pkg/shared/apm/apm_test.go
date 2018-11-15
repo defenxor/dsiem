@@ -53,7 +53,6 @@ func TestAPM(t *testing.T) {
 	// dont know how to verify the output of these without checking the output at apm server
 	tx.SetCustom("key", "val")
 	tx.SetError(errors.New("Test error"))
-	f := tx.Recover()
-	f()
+	tx.Recover()
 	tx.End()
 }

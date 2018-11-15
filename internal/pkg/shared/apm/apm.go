@@ -61,12 +61,11 @@ func StartTransaction(name, transactionType string, startTime *time.Time) *Trans
 	return &txObj
 }
 
-// Recover returns a elasticapm.DefaultTracer.Recover function to be deferred
-func (t *Transaction) Recover() func() {
-	f := func() {
+// Recover returns an elasticapm.DefaultTracer.Recover function to be deferred
+func (t *Transaction) Recover() {
+	if t.Tx != nil {
 		elasticapm.DefaultTracer.Recover(t.Tx)
 	}
-	return f
 }
 
 // SetCustom set custom value for the transaction

@@ -189,27 +189,27 @@ func TestBacklogMgr(t *testing.T) {
 	fmt.Print("Deleting it again ..")
 	verifyFuncOutput(t, func() {
 		blogs.delete(allBacklogs[0].bl[blID])
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Millisecond * 1)
 	}, "backlog is already in the process of being deleted", true)
 
 	fmt.Print("Sending overload signal=true to blogs bpCh ..")
 	verifyFuncOutput(t, func() {
 		allBacklogs[0].bpCh <- true
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond)
 	}, "simulated server received backpressure data: true", true)
 
 	fmt.Print("Sending another signal=true to blogs bpCh ..")
 	verifyFuncOutput(t, func() {
 		allBacklogs[0].bpCh <- true
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond)
 	}, "simulated server received backpressure data: true", false)
 
 	// this one expect the timer from holdSecDuration already reset the signal to false
 	fmt.Print("Sending another signal=true to blogs bpCh, expecting timer to set prevstate to false ..")
 	verifyFuncOutput(t, func() {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 4)
 		allBacklogs[0].bpCh <- true
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond)
 	}, "simulated server received backpressure data: true", true)
 }
 

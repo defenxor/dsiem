@@ -292,11 +292,8 @@ func RemovalChannel() chan string {
 func removalListener() {
 	go func() {
 		for {
-			// this races against init during test
-			l := alarms.RLock()
 			// handle incoming event, id should be the ID to remove
 			m := <-alarmRemovalChannel
-			l.Unlock()
 			go removeAlarm(m)
 		}
 	}()
@@ -359,7 +356,7 @@ func Upsert(id, name, kingdom, category string,
 	rules []rule.DirectiveRule, connID uint64, checkIntelVuln bool,
 	tx *apm.Transaction) {
 
-	if apm.Enabled() {
+	if apm.Enabled() && tx != nil {
 		defer tx.Recover()
 	}
 
