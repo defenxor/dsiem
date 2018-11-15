@@ -38,8 +38,6 @@ import (
 
 	"github.com/jonhoo/drwmutex"
 
-	"github.com/elastic/apm-agent-go"
-
 	"github.com/spf13/viper"
 )
 
@@ -85,9 +83,9 @@ var alarms struct {
 	al map[string]*alarm
 }
 
-func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *elasticapm.Transaction) {
+func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *apm.Transaction) {
 	if apm.Enabled() && tx != nil {
-		defer elasticapm.DefaultTracer.Recover(tx)
+		defer tx.Recover()
 	}
 
 	go func() {
@@ -186,18 +184,16 @@ func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *elastica
 			log.Warn(log.M{Msg: "failed to update Elasticsearch after vulnerability check! " + err.Error(), BId: a.ID, CId: connID})
 			l.Unlock()
 			if apm.Enabled() && tx != nil {
-				e := elasticapm.DefaultTracer.NewError(err)
-				e.Transaction = tx
-				e.Send()
+				tx.SetError(err)
 			}
 		}
 	}()
 
 }
 
-func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
+func (a *alarm) asyncIntelCheck(connID uint64, tx *apm.Transaction) {
 	if apm.Enabled() && tx != nil {
-		defer elasticapm.DefaultTracer.Recover(tx)
+		defer tx.Recover()
 	}
 
 	go func() {
@@ -251,9 +247,7 @@ func (a *alarm) asyncIntelCheck(connID uint64, tx *elasticapm.Transaction) {
 			log.Warn(log.M{Msg: "failed to update Elasticsearch after TI check! " + err.Error(), BId: a.ID, CId: connID})
 			l.Unlock()
 			if apm.Enabled() && tx != nil {
-				e := elasticapm.DefaultTracer.NewError(err)
-				e.Transaction = tx
-				e.Send()
+				tx.SetError(err)
 			}
 		}
 	}()
@@ -298,11 +292,18 @@ func RemovalChannel() chan string {
 func removalListener() {
 	go func() {
 		for {
+			// this races against init during test
+			l := alarms.RLock()
 			// handle incoming event, id should be the ID to remove
 			m := <-alarmRemovalChannel
+			l.Unlock()
 			go removeAlarm(m)
 		}
 	}()
+}
+
+func init() {
+	alarms.DRWMutex = drwmutex.New()
 }
 
 // Init initialize alarm, storing result into logFile
@@ -310,9 +311,9 @@ func Init(logFile string) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
 	}
-	alarms.DRWMutex = drwmutex.New()
 	alarms.Lock()
 	alarms.al = make(map[string]*alarm)
+	alarmRemovalChannel = make(chan string)
 	alarms.Unlock()
 
 	mediumRiskLowerBound = viper.GetInt("medRiskMin")
@@ -327,7 +328,6 @@ func Init(logFile string) error {
 	}
 
 	aLogFile = logFile
-	alarmRemovalChannel = make(chan string)
 	removalListener()
 
 	return nil
@@ -357,10 +357,10 @@ func findOrCreateAlarm(id string) (a *alarm) {
 func Upsert(id, name, kingdom, category string,
 	srcIPs, dstIPs []string, lastSrcPort, lastDstPort, risk int, statusTime int64,
 	rules []rule.DirectiveRule, connID uint64, checkIntelVuln bool,
-	tx *elasticapm.Transaction) {
+	tx *apm.Transaction) {
 
 	if apm.Enabled() {
-		defer elasticapm.DefaultTracer.Recover(tx)
+		defer tx.Recover()
 	}
 
 	a := findOrCreateAlarm(id)
@@ -421,18 +421,16 @@ func Upsert(id, name, kingdom, category string,
 	err := a.updateElasticsearch(connID)
 	a.Unlock()
 	if err != nil {
-		tx.Result = "Alarm failed to update ES"
 		l := a.RLock()
 		log.Warn(log.M{Msg: "failed to update Elasticsearch! " + err.Error(), BId: a.ID, CId: connID})
 		l.Unlock()
 		if apm.Enabled() && tx != nil {
-			e := elasticapm.DefaultTracer.NewError(err)
-			e.Transaction = tx
-			e.Send()
+			tx.Result("Alarm failed to update ES")
+			tx.SetError(err)
 		}
 	} else {
 		if apm.Enabled() && tx != nil {
-			tx.Result = "Alarm updated"
+			tx.Result("Alarm updated")
 		}
 	}
 }
