@@ -102,7 +102,7 @@ func TestBackLog(t *testing.T) {
 	bLogs.DRWMutex = drwmutex.New()
 	bLogs.bl = make(map[string]*backLog)
 	bLogs.bl[b.ID] = b
-	bLogs.bl[b.ID].DRWMutex = drwmutex.New()
+	// bLogs.bl[b.ID].DRWMutex = drwmutex.New()
 	b.bLogs = &bLogs
 
 	go func() {
