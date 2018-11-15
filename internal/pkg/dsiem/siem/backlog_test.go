@@ -87,27 +87,27 @@ func TestBackLog(t *testing.T) {
 
 	apm.Enable(true)
 
-	b, err := createNewBackLog(dirs.Dirs[0], e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b.DRWMutex = drwmutex.New()
 	viper.Set("medRiskMin", 3)
 	viper.Set("medRiskMax", 6)
 	viper.Set("tags", []string{"Identified Threat", "Valid Threat"})
 	viper.Set("status", []string{"Open", "Closed"})
 	viper.Set("maxDelay", 100)
 
+	b, err := createNewBackLog(dirs.Dirs[0], e)
+	if err != nil {
+		t.Fatal(err)
+	}
 	bLogs := backlogs{}
 	bLogs.bpCh = make(chan bool)
 	bLogs.DRWMutex = drwmutex.New()
 	bLogs.bl = make(map[string]*backLog)
-	bLogs.bl["test"] = b
+	bLogs.bl[b.ID] = b
+	bLogs.bl[b.ID].DRWMutex = drwmutex.New()
 	b.bLogs = &bLogs
 
 	go func() {
 		for {
-			<-b.bLogs.bpCh
+			<-bLogs.bpCh
 		}
 	}()
 	go func() {
@@ -124,27 +124,30 @@ func TestBackLog(t *testing.T) {
 	fmt.Println("first event (by start)")
 	go b.start(e)
 
-	fmt.Print("second event ..")
-	e.ConnID = 2
-	verifyEventOutput(t, e, b.chData, "reached max stage and occurrence")
-
+	// will also raise stage
 	fmt.Print("under pressure ..")
+	e.ConnID = 1
 	e.RcvdTime = time.Now().Add(-700 * time.Second).Unix()
 	verifyEventOutput(t, e, b.chData, "backlog is under pressure")
 
+	e.RcvdTime = time.Now().Add(-time.Second).Unix()
+	e.ConnID = 2
+	fmt.Print("reached max stage ..")
+	verifyEventOutput(t, e, b.chData, "reached max stage and occurrence")
+
 	fmt.Print("out of order event ..")
+	e.ConnID = 4
 	e.Timestamp = time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339)
 	verifyEventOutput(t, e, b.chData, "event timestamp out of order")
 
 	fmt.Print("invalid timestamp ..")
+	e.ConnID = 5
 	e.Timestamp = "#"
 	verifyEventOutput(t, e, b.chData, "cannot parse event timestamp")
 
-	fmt.Print("3rd event ..")
-	e.ConnID = 3
-	verifyEventOutput(t, e, b.chData, "backlog incoming event")
-
-	// TODO: should check for multiple backlog creation by the same event sent concurrently
-	// within a short period of time
+	verifyFuncOutput(t, func() {
+		fmt.Println("waiting for backlog to be deleted..")
+		time.Sleep(time.Second * 8)
+	}, "backlog manager deleting backlog from map", true)
 
 }
