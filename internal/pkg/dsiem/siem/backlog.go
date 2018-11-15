@@ -33,7 +33,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/spf13/viper"
 )
 
@@ -43,7 +42,8 @@ var (
 )
 
 type backLog struct {
-	deadlock.RWMutex
+	// deadlock.RWMutex
+	sync.RWMutex
 	ID           string    `json:"backlog_id"`
 	StatusTime   int64     `json:"status_time"`
 	Risk         int       `json:"risk"`
@@ -314,18 +314,26 @@ func (b *backLog) setLastEvent(e event.NormalizedEvent) {
 	b.Unlock()
 }
 
-func (b backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transaction) {
+func (b *backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transaction) {
 	if b.Risk == 0 {
 		return
 	}
 	b.RLock()
 	tmp := make([]rule.DirectiveRule, len(b.Directive.Rules))
 	copy(tmp, b.Directive.Rules)
+	vName := b.Directive.Name
+	vKing := b.Directive.Kingdom
+	vCat := b.Directive.Category
+	vSrc := b.SrcIPs
+	vDst := b.DstIPs
+	vSrcPort := b.LastEvent.SrcPort
+	vDstPort := b.LastEvent.DstPort
+	vRisk := b.Risk
+	vStatTime := b.StatusTime
+	vID := b.ID
 	b.RUnlock()
-	go alarm.Upsert(b.ID, b.Directive.Name, b.Directive.Kingdom,
-		b.Directive.Category, b.SrcIPs, b.DstIPs, b.LastEvent.SrcPort,
-		b.LastEvent.DstPort, b.Risk, b.StatusTime, tmp,
-		connID, checkIntelVuln, tx)
+	go alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vSrcPort,
+		vDstPort, vRisk, vStatTime, tmp, connID, checkIntelVuln, tx)
 }
 
 func (b *backLog) setRuleStatus(status string, connID uint64) {
