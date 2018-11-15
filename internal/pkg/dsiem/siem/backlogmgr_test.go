@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -46,42 +45,9 @@ func setTestDir(t *testing.T) {
 	}
 }
 
-func TestInitDirective(t *testing.T) {
-
-	allBacklogs = []backlogs{}
-
-	fmt.Println("Starting TestInitDirective.")
-
-	setTestDir(t)
-
-	t.Logf("Using base dir %s", testDir)
-	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
-	var evtChan chan event.NormalizedEvent
-	err := InitDirectives(path.Join(fDir, "directive2"), evtChan)
-	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
-		t.Fatal(err)
-	}
-	err = InitDirectives(path.Join(fDir, "directive1"), evtChan)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = asset.Init(path.Join(testDir, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !isWhitelisted("192.168.0.2") {
-		t.Fatal("expected 192.168.0.2 to be whitelisted")
-	}
-	if isWhitelisted("foo") {
-		t.Fatal("expected foo not to be whitelisted")
-	}
-}
-
-var ch chan event.NormalizedEvent
-var dirs Directives
-
 func TestBacklogMgr(t *testing.T) {
+
+	fmt.Println("Starting TestBackLogMgr.")
 
 	allBacklogs = []backlogs{}
 
@@ -96,19 +62,28 @@ func TestBacklogMgr(t *testing.T) {
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 	apm.Enable(true)
 
-	tmpLog := "siem_alarm_events.log"
+	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
 	cleanUp := func() {
 		_ = os.Remove(tmpLog)
 	}
 	defer cleanUp()
 
-	// needed by rule checkers
-	err := asset.Init(path.Join(testDir, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
-	if err != nil {
-		t.Fatal(err)
+	initAlarm(t)
+	initAsset(t)
+
+	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive3"), directiveFileGlob)
+	if err == nil {
+		t.Error("Badly formatted file, expected err to be non nil")
+	}
+	dirs, _, err = LoadDirectivesFromFile(path.Join(fDir, "directive3"), `\\?\C:\*`)
+	if err == nil {
+		t.Error("Bad glob supplied, expected err to be non nil")
 	}
 
 	dirs, _, err = LoadDirectivesFromFile(path.Join(fDir, "directive1"), directiveFileGlob)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	e := event.NormalizedEvent{}
 	e.EventID = "1"
@@ -185,7 +160,9 @@ func TestBacklogMgr(t *testing.T) {
 	// this should create new backlog
 	fmt.Print("5th event ..")
 	e.ConnID = 5
-	verifyEventOutput(t, e, ch, "Incoming event with idx: 0")
+	e.SrcIP = "192.168.0.1"
+	e.DstIP = "192.168.0.3"
+	verifyEventOutput(t, e, ch, "Creating new backlog")
 
 	if len(allBacklogs[0].bl) != 2 {
 		t.Fatal("allBacklogs.bl is expected to have a length of 2")
@@ -234,7 +211,6 @@ func TestBacklogMgr(t *testing.T) {
 		allBacklogs[0].bpCh <- true
 		time.Sleep(time.Second)
 	}, "simulated server received backpressure data: true", true)
-
 }
 
 func verifyEventOutput(t *testing.T, e event.NormalizedEvent, ch chan event.NormalizedEvent, expected string) {
@@ -258,28 +234,4 @@ func verifyFuncOutput(t *testing.T, f func(), expected string, expectMatch bool)
 	} else {
 		fmt.Println("OK")
 	}
-}
-func TestBackLog(t *testing.T) {
-	e := event.NormalizedEvent{}
-	e.EventID = "1"
-	e.Sensor = "sensor1"
-	e.SrcIP = "10.0.0.1"
-	e.DstIP = "8.8.8.8"
-	e.Title = "ICMP Ping"
-	e.Protocol = "ICMP"
-	e.ConnID = 1
-	dctives := dirs.Dirs[0]
-	e.PluginID = dctives.Rules[0].PluginID
-	e.PluginSID = 2100384
-
-	fmt.Println("Continuing to TestBackLog")
-
-	for k := range allBacklogs[0].bl {
-		fmt.Print("Deleting " + k + " through backlog member function ..")
-		verifyFuncOutput(t, func() {
-			allBacklogs[0].bl[k].delete()
-			time.Sleep(time.Second * 1)
-		}, "", true)
-	}
-
 }
