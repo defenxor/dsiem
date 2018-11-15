@@ -35,12 +35,12 @@ func TestCache(t *testing.T) {
 	}
 
 	// test for fail init first
-	c, err := New("CacheName", 0, 3)
+	_, err := New("CacheName", 0, 3)
 	if err == nil {
 		t.Error("Expected error for shard eq. 3")
 	}
 
-	c, err = New("CacheName", 0, 0)
+	c, err := New("CacheName", 0, 0)
 	if err != nil {
 		t.Error(err)
 	}
