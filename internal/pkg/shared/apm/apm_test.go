@@ -16,11 +16,44 @@
 
 package apm
 
-import "testing"
+import (
+	"errors"
+	"testing"
+	"time"
+)
 
 func TestAPM(t *testing.T) {
 	Enable(true)
 	if !Enabled() {
 		t.Errorf("APM expected to be enabled")
 	}
+
+	tx := StartTransaction("test", "testType", nil)
+	if tx.Tx == nil {
+		t.Fatal("Expected transaction not to be nil")
+	}
+	if tx.Tx.Name != "test" {
+		t.Fatal("Expected tx.Name to be test")
+	}
+	if tx.Tx.Type != "testType" {
+		t.Fatal("Expected tx.Name to be testType")
+	}
+
+	tm := time.Now()
+	tx = StartTransaction("test", "test", &tm)
+	if tx.Tx == nil {
+		t.Fatal("Expected transaction not to be nil")
+	}
+
+	tx.Result("result test")
+	if tx.Tx.Result != "result test" {
+		t.Error("Expected result to be 'result test'")
+	}
+
+	// dont know how to verify the output of these without checking the output at apm server
+	tx.SetCustom("key", "val")
+	tx.SetError(errors.New("Test error"))
+	f := tx.Recover()
+	f()
+	tx.End()
 }
