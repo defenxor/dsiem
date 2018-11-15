@@ -27,8 +27,6 @@ import (
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 
-	"github.com/elastic/apm-agent-go"
-
 	"sync"
 	"time"
 
@@ -113,17 +111,16 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 	for {
 		evt := <-ch
 
-		var tx *elasticapm.Transaction
+		var tx *apm.Transaction
 		if apm.Enabled() {
 			if evt.RcvdTime == 0 {
 				log.Warn(log.M{Msg: "Cannot parse event received time, skipping event", CId: evt.ConnID})
 				continue
 			}
 			tStart := time.Unix(evt.RcvdTime, 0)
-			opts := elasticapm.TransactionOptions{TraceContext: elasticapm.TraceContext{}, Start: tStart}
-			tx = elasticapm.DefaultTracer.StartTransactionOptions("Frontend to Backend", "SIEM", opts)
-			tx.Context.SetCustom("event_id", evt.EventID)
-			tx.Context.SetCustom("directive_id", d.ID)
+			tx = apm.StartTransaction("Frontend to Backend", "SIEM", &tStart)
+			tx.SetCustom("event_id", evt.EventID)
+			tx.SetCustom("directive_id", d.ID)
 		}
 
 		found := false
@@ -171,8 +168,8 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		l.Unlock()
 
 		if found {
-			if apm.Enabled() {
-				tx.Result = "Event consumed by backlog"
+			if apm.Enabled() && tx != nil {
+				tx.Result("Event consumed by backlog")
 				tx.End()
 			}
 			continue
@@ -180,8 +177,8 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		// now for new backlog
 		// stickydiff cannot be used on 1st rule, so we pass nil
 		if !rule.DoesEventMatch(evt, d.Rules[0], nil, evt.ConnID) {
-			if apm.Enabled() {
-				tx.Result = "Event doesnt match rule"
+			if apm.Enabled() && tx != nil {
+				tx.Result("Event doesnt match rule")
 				tx.End()
 			}
 			continue // back to chan loop
@@ -189,8 +186,8 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		b, err := createNewBackLog(d, evt)
 		if err != nil {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
-			if apm.Enabled() {
-				tx.Result = "Fail to create new backlog"
+			if apm.Enabled() && tx != nil {
+				tx.Result("Fail to create new backlog")
 				tx.End()
 			}
 			continue

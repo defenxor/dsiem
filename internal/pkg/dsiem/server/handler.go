@@ -29,8 +29,6 @@ import (
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 
-	"github.com/elastic/apm-agent-go"
-
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 
@@ -185,12 +183,12 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 	log.Info(log.M{Msg: "Upload file request for '" + filename + "' from " + clientAddr})
 	file := path.Join(confDir, filename)
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	defer f.Close()
 	if err != nil {
 		fmt.Fprintf(ctx, "Cannot open target file location\n")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		return
 	}
+	defer f.Close()
 	_, err = f.Write(ctx.PostBody())
 	if err != nil {
 		fmt.Fprintf(ctx, "Cannot write to target file location\n")
@@ -240,7 +238,7 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 	evt.RcvdTime = time.Now().Unix()
 	evt.ConnID = connID
 
-	var tx *elasticapm.Transaction
+	var tx *apm.Transaction
 
 	if apm.Enabled() {
 		tStart, err := time.Parse(time.RFC3339, evt.Timestamp)
@@ -249,9 +247,8 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(fasthttp.StatusBadRequest)
 			return
 		}
-		opts := elasticapm.TransactionOptions{TraceContext: elasticapm.TraceContext{}, Start: tStart}
-		tx = elasticapm.DefaultTracer.StartTransactionOptions("Log Source to Frontend", "SIEM", opts)
-		tx.Context.SetCustom("event_id", evt.EventID)
+		tx = apm.StartTransaction("Log Source to Frontend", "SIEM", &tStart)
+		tx.SetCustom("event_id", evt.EventID)
 		defer tx.End()
 	}
 
@@ -263,18 +260,19 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		log.Info(log.M{Msg: "event channel timed out!", CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
 		if apm.Enabled() {
-			tx.Result = "Event channel timed out"
+			tx.Result("Event channel timed out")
 		}
 	case eventChan <- *evt:
 		log.Debug(log.M{Msg: "Event pushed", CId: connID})
 		if apm.Enabled() {
-			tx.Result = "Event sent to backend"
+			tx.Result("Event sent to backend")
 		}
 	case err := <-errChan:
 		log.Info(log.M{Msg: "Error from message queue:" + err.Error(), CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusServiceUnavailable)
 		if apm.Enabled() {
-			tx.Result = err.Error()
+			tx.SetError(err)
+			tx.Result("Error received from message queue")
 		}
 	}
 }
