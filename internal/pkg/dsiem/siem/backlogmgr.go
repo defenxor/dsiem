@@ -64,7 +64,7 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 			// send false (reset signal) only if prev state is true
 			sl.Lock()
 			timer.Reset(time.Second * sWait)
-			if prevState == true {
+			if prevState {
 				log.Debug(log.M{Msg: "Sending overload=false signal from backend"})
 				bpChan <- false
 				prevState = false
@@ -82,7 +82,7 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 		// send true only if prev state is false
 		sl.Lock()
 		timer.Reset(time.Second * sWait)
-		if prevState == false {
+		if !prevState {
 			log.Debug(log.M{Msg: "Sending overload=true signal from backend"})
 			bpChan <- true
 			prevState = true

@@ -193,10 +193,7 @@ func (b backLog) isTimeInOrder(idx int, ts int64) bool {
 	*/
 	prevStageTime := b.Directive.Rules[idx-1].EndTime
 	ts = ts + 5 // allow up to 5 seconds diff to compensate for concurrent write
-	if prevStageTime > ts {
-		return false
-	}
-	return true
+	return prevStageTime > ts
 }
 
 func (b backLog) isExpired() bool {
@@ -206,10 +203,7 @@ func (b backLog) isExpired() bool {
 	start := b.Directive.Rules[idx].StartTime
 	timeout := b.Directive.Rules[idx].Timeout
 	maxTime := start + timeout
-	if maxTime >= now {
-		return false
-	}
-	return true
+	return maxTime < now
 }
 
 func (b *backLog) setRuleEndTime(e event.NormalizedEvent) {
@@ -363,7 +357,6 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 		}
 	}(*b)
 	l.Unlock()
-	return
 }
 
 func (b backLog) isLastStage() (ret bool) {

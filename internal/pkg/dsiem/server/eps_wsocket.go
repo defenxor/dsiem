@@ -85,22 +85,18 @@ func (s *wsServer) onClientConnected(ws *websocket.Conn) {
 	if err != nil {
 		return
 	}
-	for {
-		select {
-		// send message to client
-		case msg := <-s.sendAllCh:
-			/*
-				_, err := json.Marshal(msg)
-				if err != nil {
-					log.Debug(log.M{Msg: "failed to marshal msg"})
-					continue
-				}
-			*/
-			if err := ws.WriteJSON(msg); err != nil {
-				log.Debug(log.M{Msg: "failed to write to " + id + ", assuming client is disconnected."})
-				s.del(id)
-				return
+	for msg := range s.sendAllCh {
+		/*
+			_, err := json.Marshal(msg)
+			if err != nil {
+				log.Debug(log.M{Msg: "failed to marshal msg"})
+				continue
 			}
+		*/
+		if err := ws.WriteJSON(msg); err != nil {
+			log.Debug(log.M{Msg: "failed to write to " + id + ", assuming client is disconnected."})
+			s.del(id)
+			return
 		}
 	}
 }

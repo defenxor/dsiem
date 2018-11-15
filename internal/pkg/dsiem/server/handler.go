@@ -83,7 +83,6 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	_, _ = ctx.Write(byteVal)
-	return
 }
 
 func handleConfFileDelete(ctx *fasthttp.RequestCtx) {
@@ -118,7 +117,6 @@ func handleConfFileDelete(ctx *fasthttp.RequestCtx) {
 		fmt.Fprintf(ctx, "cannot delete "+filename)
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 	}
-	return
 }
 
 func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
@@ -161,7 +159,6 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	_, _ = ctx.Write(byteValue)
-	return
 }
 
 func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
@@ -197,7 +194,6 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 	}
 	fmt.Fprintf(ctx, "File "+filename+" uploaded successfully\n")
 	ctx.SetStatusCode(fasthttp.StatusCreated)
-	return
 }
 
 func isCfgFileNameValid(filename string) (ok bool) {

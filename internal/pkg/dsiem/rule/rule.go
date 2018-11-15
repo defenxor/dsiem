@@ -134,10 +134,10 @@ func pluginRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 
 func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) (ret bool) {
 	eSrcInHomeNet := e.SrcIPInHomeNet()
-	if r.From == "HOME_NET" && eSrcInHomeNet == false {
+	if r.From == "HOME_NET" && !eSrcInHomeNet {
 		return
 	}
-	if r.From == "!HOME_NET" && eSrcInHomeNet == true {
+	if r.From == "!HOME_NET" && eSrcInHomeNet {
 		return
 	}
 	// covers  r.From == "IP", r.From == "IP1, IP2", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2"
@@ -146,10 +146,10 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 		return
 	}
 	eDstInHomeNet := e.DstIPInHomeNet()
-	if r.To == "HOME_NET" && eDstInHomeNet == false {
+	if r.To == "HOME_NET" && !eDstInHomeNet {
 		return
 	}
-	if r.To == "!HOME_NET" && eDstInHomeNet == true {
+	if r.To == "!HOME_NET" && eDstInHomeNet {
 		return
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"

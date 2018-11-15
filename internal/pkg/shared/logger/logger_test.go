@@ -49,8 +49,7 @@ func TestLog(t *testing.T) {
 
 	for _, m := range msgs {
 		EnableTestingMode()
-		var o string
-		o = CaptureZapOutput(func() {
+		o := CaptureZapOutput(func() {
 			Info(m)
 		})
 		if !strings.Contains(o, "INFO") {
