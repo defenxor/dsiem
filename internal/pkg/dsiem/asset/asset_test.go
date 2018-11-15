@@ -79,7 +79,7 @@ func TestAsset(t *testing.T) {
 	if GetName(privNet) == privNetName {
 		t.Errorf("Cannot find name for %s", privIP)
 	}
-	if GetName(privIP) == "Firewall" {
+	if GetName(privIP) != "firewall" {
 		t.Errorf("Cannot find name for %s", privIP)
 	}
 	if GetValue(privIP) != 5 {
