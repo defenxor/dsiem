@@ -31,7 +31,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 
@@ -128,9 +127,6 @@ func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives,
 	totalFromFile = 0
 	for i := range files {
 		var d Directives
-		if !fs.FileExist(files[i]) {
-			return res, 0, errors.New("Cannot find " + files[i])
-		}
 		file, err := os.Open(files[i])
 		if err != nil {
 			return res, 0, err
