@@ -47,7 +47,6 @@ func initAsset(t *testing.T) {
 	}
 	assetInitialized = true
 }
-
 func TestBackLog(t *testing.T) {
 
 	fmt.Println("Starting TestBackLog.")
@@ -145,9 +144,20 @@ func TestBackLog(t *testing.T) {
 	e.Timestamp = "#"
 	verifyEventOutput(t, e, b.chData, "cannot parse event timestamp")
 
+	fmt.Print("Check expiration ..")
+	if !b.isExpired() {
+		t.Fatal("expected to not yet expire")
+	}
+	fmt.Println("OK")
+
+	fmt.Print("Check deletion ..")
 	verifyFuncOutput(t, func() {
-		fmt.Println("waiting for backlog to be deleted..")
+		b.delete()
+	}, "", true)
+	fmt.Println("OK")
+
+	verifyFuncOutput(t, func() {
+		fmt.Print("waiting for backlog to be deleted..")
 		time.Sleep(time.Second * 8)
 	}, "backlog manager deleting backlog from map", true)
-
 }
