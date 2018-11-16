@@ -63,16 +63,20 @@ func StartTransaction(name, transactionType string, startTime *time.Time) *Trans
 
 // Recover returns an elasticapm.DefaultTracer.Recover function to be deferred
 func (t *Transaction) Recover() {
-	if t.Tx != nil {
-		elasticapm.DefaultTracer.Recover(t.Tx)
+	// this is copied from elasticapm.DefaultTracer.Recover(t.Tx)
+	v := recover()
+	if v == nil {
+		return
 	}
+	elasticapm.DefaultTracer.Recovered(v, t.Tx).Send()
 }
 
 // SetCustom set custom value for the transaction
 func (t *Transaction) SetCustom(key string, value interface{}) {
 	t.Lock()
+	defer t.Unlock()
+	defer t.Recover()
 	t.Tx.Context.SetCustom(key, value)
-	t.Unlock()
 }
 
 // Result set the result for the transaction
