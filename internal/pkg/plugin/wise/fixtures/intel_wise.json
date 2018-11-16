@@ -1,0 +1,11 @@
+{
+  "intel_sources": [
+    {
+      "name": "Wise",
+      "plugin": "Wise",
+      "type": "IP",
+      "enabled": true,
+      "config": "{ \"url\" : \"http://localhost:8081/ip/${ip}\" }"
+    }
+  ]
+}
