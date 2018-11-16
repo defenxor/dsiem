@@ -50,9 +50,16 @@ func TestAPM(t *testing.T) {
 		t.Error("Expected result to be 'result test'")
 	}
 
+	defer tx.Recover()
+
 	// dont know how to verify the output of these without checking the output at apm server
 	tx.SetCustom("key", "val")
 	tx.SetError(errors.New("Test error"))
-	tx.Recover()
+
 	tx.End()
+	trick := false // this is just a workaround to skip vet on reachable t.Error below
+	if !trick {
+		panic("panic")
+	}
+	t.Error("expected to recover from panic and never reach this point")
 }
