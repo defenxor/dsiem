@@ -126,8 +126,6 @@ func TestRefToDigit(t *testing.T) {
 			t.Errorf("RefToDigit: text %v, expected Ok value: %v, actual: %v", tt.text, tt.expectedOk, ok)
 		} else {
 			if actual != tt.expected {
-				fmt.Println(actual)
-				fmt.Println(tt.expected)
 				t.Errorf("RefToDigit: text %v,  expected %v, actual %v",
 					tt.text, tt.expected, actual)
 			}
@@ -152,11 +150,77 @@ func TestTimeStampToUnix(t *testing.T) {
 			t.Errorf("TimeStampToUnix: text %v, expected err: %v, actual: %v", tt.text, tt.shouldErr, err)
 		} else {
 			if actual != tt.expected {
-				fmt.Println(actual)
-				fmt.Println(tt.expected)
 				t.Errorf("TimeStampToUnix: text %v,  expected %v, actual %v",
 					tt.text, tt.expected, actual)
 			}
 		}
 	}
+}
+
+func TestRemoveDuplicatesUnordered(t *testing.T) {
+	type s1 struct {
+		elements []string
+		expected []string
+	}
+	tbl1 := []s1{
+		{[]string{"1", "1", "2"}, []string{"2", "1"}},
+		{[]string{"1", "2"}, []string{"2", "1"}},
+		{[]string{}, []string{}},
+	}
+
+	for _, tt := range tbl1 {
+		actual := RemoveDuplicatesUnordered(tt.elements)
+		if !sameStringSlice(actual, tt.expected) {
+			t.Errorf("RemoveDuplicatesUnordered: elements %v,  expected %v, actual %v",
+				tt.elements, tt.expected, actual)
+		}
+	}
+}
+
+func TestUniqStringSlice(t *testing.T) {
+	type s1 struct {
+		list     string
+		expected []string
+	}
+	tbl1 := []s1{
+		{"1,2,3", []string{"1", "2", "3"}},
+		{"1,2,2", []string{"1", "2"}},
+	}
+
+	for _, tt := range tbl1 {
+		actual := UniqStringSlice(tt.list)
+		if !sameStringSlice(actual, tt.expected) {
+			fmt.Println(actual)
+			fmt.Println(tt.expected)
+			t.Errorf("UniqStringSlice: list %v,  expected %v, actual %v",
+				tt.list, tt.expected, actual)
+		}
+	}
+}
+
+// https://stackoverflow.com/questions/36000487/check-for-equality-on-slices-without-order
+func sameStringSlice(x, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	// create a map of string -> int
+	diff := make(map[string]int, len(x))
+	for _, _x := range x {
+		// 0 value for int is 0, so just increment a counter for the string
+		diff[_x]++
+	}
+	for _, _y := range y {
+		// If the string _y is not in diff bail out early
+		if _, ok := diff[_y]; !ok {
+			return false
+		}
+		diff[_y]--
+		if diff[_y] == 0 {
+			delete(diff, _y)
+		}
+	}
+	if len(diff) == 0 {
+		return true
+	}
+	return false
 }

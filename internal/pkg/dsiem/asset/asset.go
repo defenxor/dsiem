@@ -17,6 +17,8 @@
 package asset
 
 import (
+	"sync"
+
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/str"
 
@@ -70,8 +72,12 @@ func newAssetEntry(ipNet net.IPNet, value int, name string) cidranger.RangerEntr
 	}
 }
 
+var mu = sync.RWMutex{}
+
 // Init read assets from all asset_* files in confDir
 func Init(confDir string) error {
+	mu.Lock()
+	defer mu.Unlock()
 	p := path.Join(confDir, assetsFileGlob)
 	files, _ := filepath.Glob(p)
 	if len(files) == 0 {
@@ -186,8 +192,10 @@ func GetValue(ip string) int {
 // GetAssetNetworks return the CIDR network that the IP is in
 func GetAssetNetworks(ip string) []string {
 	val := []string{}
+	mu.RLock()
 	containingNetworks, err := ranger.ContainingNetworks(net.ParseIP(ip))
 	if err != nil || len(containingNetworks) == 0 {
+		mu.RUnlock()
 		return val
 	}
 	// return all network string except those with /32
@@ -199,5 +207,6 @@ func GetAssetNetworks(ip string) []string {
 			val = str.AppendUniq(val, s)
 		}
 	}
+	mu.RUnlock()
 	return val
 }
