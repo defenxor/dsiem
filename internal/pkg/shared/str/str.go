@@ -81,3 +81,27 @@ func TimeStampToUnix(s string) (int64, error) {
 	}
 	return t.Unix(), nil
 }
+
+// RemoveDuplicatesUnordered remove duplicates from elements
+func RemoveDuplicatesUnordered(elements []string) []string {
+	encountered := map[string]bool{}
+
+	// Create a map of all unique elements.
+	for v := range elements {
+		encountered[elements[v]] = true
+	}
+
+	// Place all keys from the map into a slice.
+	result := []string{}
+	for key := range encountered {
+		result = append(result, key)
+	}
+	return result
+}
+
+// UniqStringSlice removes duplicate from a comma separated list into result slice
+func UniqStringSlice(cslist string) (result []string) {
+	s := strings.Split(cslist, ",")
+	result = RemoveDuplicatesUnordered(s)
+	return
+}

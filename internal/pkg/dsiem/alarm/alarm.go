@@ -17,26 +17,19 @@
 package alarm
 
 import (
-	"encoding/json"
 	"errors"
-	"os"
 	"path"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
+	"sync"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	xc "github.com/defenxor/dsiem/internal/pkg/dsiem/xcorrelator"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
-	"github.com/defenxor/dsiem/internal/pkg/shared/ip"
-	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/str"
+
 	"github.com/defenxor/dsiem/pkg/intel"
 	"github.com/defenxor/dsiem/pkg/vuln"
-
-	"github.com/jonhoo/drwmutex"
 
 	"github.com/spf13/viper"
 )
@@ -53,254 +46,30 @@ var defaultStatus string
 var alarmRemovalChannel chan string
 
 type alarm struct {
-	// sync.RWMutex
-	drwmutex.DRWMutex `json:"-"`
-	ID                string         `json:"alarm_id"`
-	Title             string         `json:"title"`
-	Status            string         `json:"status"`
-	Kingdom           string         `json:"kingdom"`
-	Category          string         `json:"category"`
-	CreatedTime       int64          `json:"created_time"`
-	UpdateTime        int64          `json:"update_time"`
-	Risk              int            `json:"risk"`
-	RiskClass         string         `json:"risk_class"`
-	Tag               string         `json:"tag"`
-	SrcIPs            []string       `json:"src_ips"`
-	DstIPs            []string       `json:"dst_ips"`
-	ThreatIntels      []intel.Result `json:"intel_hits,omitempty"`
-	Vulnerabilities   []vuln.Result  `json:"vulnerabilities,omitempty"`
-	Networks          []string       `json:"networks"`
-	Rules             []alarmRule    `json:"rules"`
-}
-
-type alarmRule struct {
-	rule.DirectiveRule
+	sync.RWMutex `json:"-"`
+	//drwmutex.DRWMutex `json:"-"`
+	ID              string               `json:"alarm_id"`
+	Title           string               `json:"title"`
+	Status          string               `json:"status"`
+	Kingdom         string               `json:"kingdom"`
+	Category        string               `json:"category"`
+	CreatedTime     int64                `json:"created_time"`
+	UpdateTime      int64                `json:"update_time"`
+	Risk            int                  `json:"risk"`
+	RiskClass       string               `json:"risk_class"`
+	Tag             string               `json:"tag"`
+	SrcIPs          []string             `json:"src_ips"`
+	DstIPs          []string             `json:"dst_ips"`
+	ThreatIntels    []intel.Result       `json:"intel_hits,omitempty"`
+	Vulnerabilities []vuln.Result        `json:"vulnerabilities,omitempty"`
+	Networks        []string             `json:"networks"`
+	Rules           []rule.DirectiveRule `json:"rules"`
 }
 
 // alarms group all the alarm in a single collection
 var alarms struct {
-	drwmutex.DRWMutex
+	sync.RWMutex
 	al map[string]*alarm
-}
-
-func (a *alarm) asyncVulnCheck(srcPort, dstPort int, connID uint64, tx *apm.Transaction) {
-	if apm.Enabled() && tx != nil {
-		defer tx.Recover()
-	}
-
-	go func() {
-		// record prev value
-		pVulnerabilities := a.Vulnerabilities
-
-		// build IP:Port list
-		terms := []vulnSearchTerm{}
-		l := a.RLock()
-		for _, v := range a.Rules {
-			sIps := uniqStringSlice(v.From)
-			ports := uniqStringSlice(v.PortFrom)
-			sPort := strconv.Itoa(srcPort)
-			for _, z := range sIps {
-				if z == "ANY" || z == "HOME_NET" || z == "!HOME_NET" || strings.Contains(z, "/") {
-					continue
-				}
-				for _, y := range ports {
-					if y == "ANY" {
-						continue
-					}
-					terms = append(terms, vulnSearchTerm{z, y})
-				}
-				// also try to use port from last event
-				if sPort != "0" {
-					terms = append(terms, vulnSearchTerm{z, sPort})
-				}
-			}
-
-			dIps := uniqStringSlice(v.To)
-			ports = uniqStringSlice(v.PortTo)
-			dPort := strconv.Itoa(dstPort)
-			for _, z := range dIps {
-				if z == "ANY" || z == "HOME_NET" || z == "!HOME_NET" || strings.Contains(z, "/") {
-					continue
-				}
-				for _, y := range ports {
-					if y == "ANY" {
-						continue
-					}
-					terms = append(terms, vulnSearchTerm{z, y})
-				}
-				// also try to use port from last event
-				if dPort != "0" {
-					terms = append(terms, vulnSearchTerm{z, dPort})
-				}
-			}
-		}
-		l.Unlock()
-
-		terms = sliceUniqMap(terms)
-		for i := range terms {
-			log.Debug(log.M{Msg: "Evaluating " + terms[i].ip + ":" + terms[i].port, BId: a.ID, CId: connID})
-			// skip existing entries
-			alreadyExist := false
-			l := a.RLock()
-			for _, v := range a.Vulnerabilities {
-				s := terms[i].ip + ":" + terms[i].port
-				if v.Term == s {
-					alreadyExist = true
-					break
-				}
-			}
-			l.Unlock()
-			if alreadyExist {
-				log.Debug(log.M{Msg: "vuln checker: " + terms[i].ip + ":" + terms[i].port + " already exist", BId: a.ID, CId: connID})
-				continue
-			}
-
-			p, err := strconv.Atoi(terms[i].port)
-			if err != nil {
-				continue
-			}
-
-			log.Debug(log.M{Msg: "actually checking vuln for " + terms[i].ip + ":" + terms[i].port, BId: a.ID, CId: connID})
-
-			if found, res := xc.CheckVulnIPPort(terms[i].ip, p); found {
-				a.Lock()
-				a.Vulnerabilities = append(a.Vulnerabilities, res...)
-				a.Unlock()
-				log.Info(log.M{Msg: "found vulnerability for " + terms[i].ip + ":" + terms[i].port, CId: connID, BId: a.ID})
-			}
-		}
-
-		// compare content of slice
-		l = a.RLock()
-
-		if reflect.DeepEqual(pVulnerabilities, a.Vulnerabilities) {
-			l.Unlock()
-			return
-		}
-		err := a.updateElasticsearch(connID)
-		l.Unlock()
-		if err != nil {
-			l := a.RLock()
-			log.Warn(log.M{Msg: "failed to update Elasticsearch after vulnerability check! " + err.Error(), BId: a.ID, CId: connID})
-			l.Unlock()
-			if apm.Enabled() && tx != nil {
-				tx.SetError(err)
-			}
-		}
-	}()
-
-}
-
-func (a *alarm) asyncIntelCheck(connID uint64, tx *apm.Transaction) {
-	if apm.Enabled() && tx != nil {
-		defer tx.Recover()
-	}
-
-	go func() {
-
-		IPIntel := a.ThreatIntels
-
-		l := a.RLock()
-
-		// loop over srcips and dstips
-		p := append(a.SrcIPs, a.DstIPs...)
-		p = removeDuplicatesUnordered(p)
-
-		for i := range p {
-			// skip private IP
-			priv, err := ip.IsPrivateIP(p[i])
-			if priv || err != nil {
-				continue
-			}
-
-			// skip existing entries
-			alreadyExist := false
-			for _, v := range a.ThreatIntels {
-				if v.Term == p[i] {
-					alreadyExist = true
-					break
-				}
-			}
-			if alreadyExist {
-				continue
-			}
-			if found, res := xc.CheckIntelIP(p[i], connID); found {
-				l.Unlock()
-				a.Lock()
-				a.ThreatIntels = append(a.ThreatIntels, res...)
-				a.Unlock()
-				l = a.RLock()
-				log.Info(log.M{Msg: "Found intel result for " + p[i], CId: connID, BId: a.ID})
-			}
-		}
-
-		// compare content of slice
-		if reflect.DeepEqual(IPIntel, a.ThreatIntels) {
-			l.Unlock()
-			return
-		}
-
-		err := a.updateElasticsearch(connID)
-		l.Unlock()
-		if err != nil {
-			l := a.RLock()
-			log.Warn(log.M{Msg: "failed to update Elasticsearch after TI check! " + err.Error(), BId: a.ID, CId: connID})
-			l.Unlock()
-			if apm.Enabled() && tx != nil {
-				tx.SetError(err)
-			}
-		}
-	}()
-
-}
-
-func (a alarm) updateElasticsearch(connID uint64) error {
-	log.Info(log.M{Msg: "alarm updating Elasticsearch", BId: a.ID, CId: connID})
-	aJSON, _ := json.Marshal(a)
-
-	f, err := os.OpenFile(aLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	f.SetDeadline(time.Now().Add(60 * time.Second))
-
-	_, err = f.WriteString(string(aJSON) + "\n")
-	return err
-}
-
-func removeAlarm(id string) {
-	alarms.Lock()
-	log.Debug(log.M{Msg: "Lock obtained. Removing alarm", BId: id})
-	delete(alarms.al, id)
-	alarms.Unlock()
-}
-
-// Count set and return the count of alarms
-func Count() (count int) {
-	l := alarms.RLock()
-	count = len(alarms.al)
-	l.Unlock()
-	return
-}
-
-// RemovalChannel returns the channel used to send alarm ID to delete
-func RemovalChannel() chan string {
-	return alarmRemovalChannel
-}
-
-func removalListener() {
-	go func() {
-		for {
-			// handle incoming event, id should be the ID to remove
-			m := <-alarmRemovalChannel
-			go removeAlarm(m)
-		}
-	}()
-}
-
-func init() {
-	alarms.DRWMutex = drwmutex.New()
 }
 
 // Init initialize alarm, storing result into logFile
@@ -328,25 +97,6 @@ func Init(logFile string) error {
 	removalListener()
 
 	return nil
-}
-
-func findOrCreateAlarm(id string) (a *alarm) {
-	l := alarms.RLock()
-	for k := range alarms.al {
-		if alarms.al[k].ID == id {
-			a = alarms.al[id]
-			l.Unlock()
-			return
-		}
-	}
-	l.Unlock()
-	alarms.Lock()
-	alarms.al[id] = &alarm{}
-	alarms.al[id].DRWMutex = drwmutex.New()
-	alarms.al[id].ID = id
-	a = alarms.al[id]
-	alarms.Unlock()
-	return
 }
 
 // Upsert creates or update alarms
@@ -389,106 +139,46 @@ func Upsert(id, name, kingdom, category string,
 	a.SrcIPs = srcIPs
 	a.DstIPs = dstIPs
 
+	a.Unlock()
 	if xc.IntelEnabled && checkIntelVuln {
 		// do intel check in the background
-		a.asyncIntelCheck(connID, tx)
+		asyncIntelCheck(a, connID, tx)
 	}
 
 	if xc.VulnEnabled && checkIntelVuln {
 		// do vuln check in the background
-		a.asyncVulnCheck(lastSrcPort, lastDstPort, connID, tx)
+		asyncVulnCheck(a, lastSrcPort, lastDstPort, connID, tx)
 	}
 
+	a.Lock()
 	for i := range a.SrcIPs {
 		a.Networks = append(a.Networks, asset.GetAssetNetworks(a.SrcIPs[i])...)
 	}
 	for i := range a.DstIPs {
 		a.Networks = append(a.Networks, asset.GetAssetNetworks(a.DstIPs[i])...)
 	}
-	a.Networks = removeDuplicatesUnordered(a.Networks)
-	a.Rules = []alarmRule{}
+	a.Networks = str.RemoveDuplicatesUnordered(a.Networks)
+	a.Rules = []rule.DirectiveRule{}
 	for _, v := range rules {
 		// rule := alarmRule{v, len(v.Events)}
-		rule := alarmRule{v}
-		rule.Events = []string{} // so it will be omitted during json marshaling
-		rule.StickyDiff = ""
-		a.Rules = append(a.Rules, rule)
+		r := v
+		r.Events = []string{} // so it will be omitted during json marshaling
+		r.StickyDiff = ""
+		a.Rules = append(a.Rules, r)
 	}
-
-	err := a.updateElasticsearch(connID)
 	a.Unlock()
-	if err != nil {
-		l := a.RLock()
-		log.Warn(log.M{Msg: "failed to update Elasticsearch! " + err.Error(), BId: a.ID, CId: connID})
-		l.Unlock()
-		if apm.Enabled() && tx != nil {
-			tx.Result("Alarm failed to update ES")
-			tx.SetError(err)
-		}
-	} else {
-		if apm.Enabled() && tx != nil {
-			tx.Result("Alarm updated")
-		}
-	}
+	updateElasticsearch(a, "Upsert", connID, tx)
 }
 
-func uniqStringSlice(cslist string) (result []string) {
-	s := strings.Split(cslist, ",")
-	result = removeDuplicatesUnordered(s)
+// Count set and return the count of alarms
+func Count() (count int) {
+	alarms.RLock()
+	count = len(alarms.al)
+	alarms.RUnlock()
 	return
 }
 
-type vulnSearchTerm struct {
-	ip   string
-	port string
-}
-
-func sliceUniqMap(s []vulnSearchTerm) []vulnSearchTerm {
-	seen := make(map[vulnSearchTerm]struct{}, len(s))
-	j := 0
-	for _, v := range s {
-		if _, ok := seen[v]; ok {
-			continue
-		}
-		seen[v] = struct{}{}
-		s[j] = v
-		j++
-	}
-	return s[:j]
-}
-
-// to avoid copying mutex
-func copyAlarm(dst *alarm, src *alarm) {
-	dst.ID = src.ID
-	dst.Title = src.Title
-	dst.Status = src.Status
-	dst.Kingdom = src.Kingdom
-	dst.Category = src.Category
-	dst.CreatedTime = src.CreatedTime
-	dst.UpdateTime = src.UpdateTime
-	dst.Risk = src.Risk
-	dst.RiskClass = src.RiskClass
-	dst.Tag = src.Tag
-	dst.SrcIPs = src.SrcIPs
-	dst.DstIPs = src.DstIPs
-	dst.ThreatIntels = src.ThreatIntels
-	dst.Vulnerabilities = src.Vulnerabilities
-	dst.Networks = src.Networks
-	dst.Rules = src.Rules
-}
-
-func removeDuplicatesUnordered(elements []string) []string {
-	encountered := map[string]bool{}
-
-	// Create a map of all unique elements.
-	for v := range elements {
-		encountered[elements[v]] = true
-	}
-
-	// Place all keys from the map into a slice.
-	result := []string{}
-	for key := range encountered {
-		result = append(result, key)
-	}
-	return result
+// RemovalChannel returns the channel used to send alarm ID to delete
+func RemovalChannel() chan string {
+	return alarmRemovalChannel
 }
