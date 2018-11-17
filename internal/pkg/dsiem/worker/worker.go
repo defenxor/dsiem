@@ -18,7 +18,6 @@ package worker
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -47,25 +46,23 @@ type configFiles struct {
 	Files []configFile `json:"files"`
 }
 
-func getConfigFileList(frontendAddr string) (*configFiles, error) {
+func getConfigFileList(frontendAddr string) (cf *configFiles, err error) {
 	c := http.Client{Timeout: time.Second * 5}
 	url := frontendAddr + "/config"
 	resp, err := c.Get(url)
 	if err != nil {
-		return nil, err
+		return
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	// fmt.Println(string(body))
 	if err != nil {
-		return nil, err
+		return
 	}
-	cf := configFiles{}
-	err = json.Unmarshal(body, &cf)
-	if err != nil {
-		return nil, err
-	}
-	return &cf, nil
+	cfg := configFiles{}
+	err = json.Unmarshal(body, &cfg)
+	cf = &cfg
+	return
 }
 
 func downloadConfigFiles(confDir string, frontendAddr string, node string) error {
@@ -75,17 +72,14 @@ func downloadConfigFiles(confDir string, frontendAddr string, node string) error
 	}
 	for _, v := range cfg.Files {
 		f := v.Filename
-		if !strings.HasPrefix(f, "assets_") &&
-			!strings.HasPrefix(f, "vuln_") &&
-			!strings.HasPrefix(f, "intel_") &&
-			!strings.HasPrefix(f, "directives_"+node+"_") {
-			continue
-		}
-		p := path.Join(confDir, f)
-		url := frontendAddr + "/config/" + f
-		log.Info(log.M{Msg: "downloading " + url})
-		if err := downloadFile(p, url); err != nil {
-			return err
+		if strings.HasPrefix(f, "assets_") || strings.HasPrefix(f, "vuln_") ||
+			strings.HasPrefix(f, "intel_") || strings.HasPrefix(f, "directives_"+node+"_") {
+			p := path.Join(confDir, f)
+			url := frontendAddr + "/config/" + f
+			log.Info(log.M{Msg: "downloading " + url})
+			if err := downloadFile(p, url); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -97,7 +91,6 @@ func GetBackPressureChannel() chan<- bool {
 }
 
 func initMsgQueue(msq string, prefix, nodeName string) {
-	const reconnectSecond = 3
 	initMsq := func() (err error) {
 		transport := nats.New()
 		transport.NatsAddr = msq
@@ -116,10 +109,15 @@ func initMsgQueue(msq string, prefix, nodeName string) {
 			log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
 			break
 		}
-		log.Info(log.M{Msg: "Error from message queue " + err.Error()})
-		log.Info(log.M{Msg: "Reconnecting in " + strconv.Itoa(reconnectSecond) + " seconds.."})
-		time.Sleep(reconnectSecond * time.Second)
+		handleMsqError(err)
 	}
+}
+
+func handleMsqError(err error) {
+	const reconnectSecond = 3
+	log.Info(log.M{Msg: "Error from message queue " + err.Error()})
+	log.Info(log.M{Msg: "Reconnecting in " + strconv.Itoa(reconnectSecond) + " seconds.."})
+	time.Sleep(reconnectSecond * time.Second)
 }
 
 // Start start worker
@@ -159,8 +157,5 @@ func downloadFile(filepath string, url string) error {
 	}
 	defer out.Close()
 	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
