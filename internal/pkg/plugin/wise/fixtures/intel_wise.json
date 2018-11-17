@@ -5,7 +5,7 @@
       "plugin": "Wise",
       "type": "IP",
       "enabled": true,
-      "config": "{ \"url\" : \"http://localhost:8081/ip/${ip}\" }"
+      "config": "{ \"url\" : \"http://localhost:8082/ip/${ip}\" }"
     }
   ]
 }

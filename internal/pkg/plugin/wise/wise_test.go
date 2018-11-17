@@ -106,7 +106,7 @@ func mockWise(t *testing.T) {
 		fmt.Fprint(ctx, resp+"\n")
 		ctx.SetStatusCode(fasthttp.StatusOK)
 	})
-	_ = fasthttp.ListenAndServe("127.0.0.1:8081", router.Handler)
+	_ = fasthttp.ListenAndServe("127.0.0.1:8082", router.Handler)
 }
 
 func TestWise(t *testing.T) {
@@ -146,6 +146,7 @@ func TestWise(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if found {
 		t.Fatal("Expected to not find a match")
 	}
