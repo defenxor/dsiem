@@ -1,0 +1,30 @@
+{
+  "assets": [
+    {
+      "name": "Firewall",
+      "cidr": "192.168.0.1/32",
+      "value": 5
+    },
+    {
+      "name": "VulnerabilityScanner",
+      "cidr": "192.168.0.2/32",
+      "value": 5,
+      "whitelisted": true
+    },
+    {
+      "name": "192-168-Net",
+      "cidr": "192.168.0.0/16",
+      "value": 2
+    },
+    {
+      "name": "10-Net",
+      "cidr": "10.0.0.0/8",
+      "value": 2
+    },
+    {
+      "name": "172-16-Net",
+      "cidr": "172.16.0.0/12",
+      "value": 2
+    }
+  ]  
+}

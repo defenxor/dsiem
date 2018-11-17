@@ -6,6 +6,20 @@
       "type": "IP",
       "enabled": true,
       "config": "{ \"url\" : \"http://localhost:8082/ip/${ip}\" }"
+    },
+    {
+      "name": "Wise-Error",
+      "plugin": "Wise",
+      "type": "IP",
+      "enabled": true,
+      "config": "{ \"url\" : \"\" }"
+    },
+    {
+      "name": "Wise-Error",
+      "plugin": "Wise",
+      "type": "IP",
+      "enabled": true,
+      "config": "{ \"url\" : \"http://localhost:8082/foo\" }"
     }
   ]
 }

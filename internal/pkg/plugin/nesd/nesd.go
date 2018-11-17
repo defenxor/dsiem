@@ -59,10 +59,7 @@ func (n Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool,
 	url = strings.Replace(url, "${port}", strconv.Itoa(port), 1)
 
 	c := http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return
-	}
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req = req.WithContext(ctx)
 
 	res, err := c.Do(req)

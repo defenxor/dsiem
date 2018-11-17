@@ -6,6 +6,20 @@
       "plugin": "Nesd",
       "enabled": true,
       "config": "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }"
+    },
+    {
+      "name": "Nessus-Error",
+      "type": "IP-Port",
+      "plugin": "Nesd",
+      "enabled": true,
+      "config": "{ \"url\" : \"\" }"
+    },
+    {
+      "name": "Nessus-Error",
+      "type": "IP-Port",
+      "plugin": "Nesd",
+      "enabled": true,
+      "config": "{ \"url\" : \"http://localhost:8081/?\" }"
     }
   ]
 }
