@@ -165,7 +165,9 @@ workflows:
             - release
   build-test:
     jobs:
-      - build
-      - build-web
-      - branches:
-          ignore: master
+      - build:
+          branches:
+            ignore: master
+      - build-web:
+          branches:
+            ignore: master
