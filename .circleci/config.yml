@@ -102,6 +102,8 @@ jobs:
               ./scripts/gobuild-cmd-release.sh $tag
               echo $tag > ./releaseflag
               ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME -draft -replace $tag temp/release/$tag
+              msg="{ \"text\" : \"Release draft $tag has been posted for review, approval within 30 minutes will also release a docker image.\" }"
+              command -v curl >/dev/null 2>&1 && curl -X POST -H 'Content-type: application/json' -d "$msg" $SLACK_WEBHOOK || echo curl error occurred
             else
               echo "The commit message(s) did not indicate a major/minor/patch version."
               touch ./releaseflag
@@ -139,7 +141,7 @@ jobs:
               echo "building docker for release $tag .."
               cd deployments/docker/build
               docker build -f Dockerfile -t defenxor/dsiem:$tag -t defenxor/dsiem:latest . --build-arg ver=$tag --build-arg token=$GITHUB_TOKEN
-              docker login -u $DOCKER_USER -p $DOCKER_PASSWD
+              echo "$DOCKER_PASSWD" | docker login -u $DOCKER_USER --password-stdin
               docker push defenxor/dsiem:$tag
               docker push defenxor/dsiem:latest
             else
@@ -147,7 +149,7 @@ jobs:
             fi
 workflows:
   version: 2
-  build-release:
+  build-test-release:
     jobs:
       - build
       - build-web
@@ -161,3 +163,9 @@ workflows:
       - deploy-dockerhub:
           requires:
             - release
+  build-test:
+    jobs:
+      - build
+      - build-web
+      - branches:
+          ignore: master
