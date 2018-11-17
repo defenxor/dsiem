@@ -1,0 +1,19 @@
+{
+  "directives": [
+    {
+      "name": "Ping Flood from SRC_IP",
+      "kingdom": "Reconnaissance & Probing",
+      "category": "Misc Activity",
+      "id": 1,
+      "priority": 3,
+      "rules" : [
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
+          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 },
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 2, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 300,
+          "from": ":1", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 6, "timeout": 600 },
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 3, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 10000,
+          "from": ":1", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 10, "timeout": 3600 }
+      ]
+    }
+  ] 
+}
