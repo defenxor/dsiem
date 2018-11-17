@@ -109,4 +109,24 @@ func TestNesd(t *testing.T) {
 		t.Fatal("Expected to not find a match (only Low risks found)")
 	}
 
+	// for error in config
+
+	n = Nesd{}
+	if err = n.Initialize([]byte(vs.VulnSources[1].Config)); err != nil {
+		t.Fatal(err)
+	}
+	found, _, err = n.CheckIPPort(context.Background(), "10.0.0.1", 80)
+	if err == nil {
+		t.Fatal("expected to error due to mistake in config")
+	}
+
+	n = Nesd{}
+	if err = n.Initialize([]byte(vs.VulnSources[2].Config)); err != nil {
+		t.Fatal(err)
+	}
+	found, _, err = n.CheckIPPort(context.Background(), "10.0.0.1", 80)
+	if err == nil {
+		t.Fatal("expected to error due to mistake in config")
+	}
+
 }

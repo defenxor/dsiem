@@ -56,10 +56,7 @@ func (w Wise) CheckIP(ctx context.Context, ip string) (found bool, results []int
 	url := strings.Replace(w.Cfg.URL, "${ip}", ip, 1)
 
 	c := http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return
-	}
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req = req.WithContext(ctx)
 
 	res, err := c.Do(req)

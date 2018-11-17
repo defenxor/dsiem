@@ -146,7 +146,6 @@ func TestWise(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if found {
 		t.Fatal("Expected to not find a match")
 	}
@@ -167,4 +166,25 @@ func TestWise(t *testing.T) {
 	if !found || res[0].Result != "criticalstack.type: Intel::ADDR" {
 		t.Fatal("Expected to find a match")
 	}
+
+	// for error in config
+
+	w = Wise{}
+	if err = w.Initialize([]byte(it.IntelSources[1].Config)); err != nil {
+		t.Fatal(err)
+	}
+	found, _, err = w.CheckIP(context.Background(), "10.0.0.1")
+	if err == nil {
+		t.Fatal("expected to error due to mistake in config")
+	}
+
+	w = Wise{}
+	if err = w.Initialize([]byte(it.IntelSources[2].Config)); err != nil {
+		t.Fatal(err)
+	}
+	found, _, err = w.CheckIP(context.Background(), "10.0.0.1")
+	if err == nil {
+		t.Fatal("expected to error due to mistake in config")
+	}
+
 }
