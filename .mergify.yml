@@ -3,7 +3,7 @@ pull_request_rules:
     conditions:
       - base=master
     actions:
-      dismiss_reviews:
+      dismiss_reviews
   - name: automatic merge for maintainer 1
     conditions:
       - author=mmta
