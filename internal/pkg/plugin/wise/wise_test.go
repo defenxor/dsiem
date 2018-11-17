@@ -84,11 +84,11 @@ func mockWise(t *testing.T) {
 	}
 	p1, err := json.MarshalIndent(wp1.WiseLines, " ", " ")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	p2, err := json.MarshalIndent(wp2.WiseLines, " ", " ")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	router := fasthttprouter.New()
 
@@ -105,12 +105,11 @@ func mockWise(t *testing.T) {
 		}
 		fmt.Fprint(ctx, resp+"\n")
 		ctx.SetStatusCode(fasthttp.StatusOK)
-		return
 	})
 	_ = fasthttp.ListenAndServe("127.0.0.1:8081", router.Handler)
 }
 
-func TestIntel(t *testing.T) {
+func TestWise(t *testing.T) {
 	_, err := test.DirEnv(false)
 	if err != nil {
 		t.Fatal(err)
