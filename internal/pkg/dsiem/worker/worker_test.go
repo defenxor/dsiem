@@ -59,22 +59,23 @@ var (
 )
 
 func initFrontend(d string, t *testing.T) {
-	bpCh := make(chan bool)
 	fixturesDir := path.Join(d, "internal", "pkg", "dsiem", "worker", "fixtures")
-	confd := path.Join(fixturesDir, "configs")
-	webd := path.Join()
-	writeableConfig := true
-	pprof := true
-	mode := "cluster-frontend"
-	maxEPS := 1000
-	minEPS := 100
-	nodeName := "frontend"
-	addr := "127.0.0.1"
-	port := 8080
+
+	c := server.Config{}
+	c.BpChan = make(chan bool)
+	c.Confd = path.Join(fixturesDir, "configs")
+	c.Webd = path.Join()
+	c.WriteableConfig = true
+	c.Pprof = true
+	c.Mode = "cluster-frontend"
+	c.MaxEPS = 1000
+	c.MinEPS = 100
+	c.NodeName = "frontend"
+	c.Addr = "127.0.0.1"
+	c.Port = 8080
 
 	go func() {
-		if err := server.Start(ch, bpCh, confd, webd, writeableConfig, pprof, mode, maxEPS,
-			minEPS, msq, msqPrefix, nodeName, addr, port); err != nil {
+		if err := server.Start(c); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -137,7 +138,7 @@ func TestErrors(t *testing.T) {
 	if err == nil {
 		t.Error("expected error due to wrong filepath")
 	}
-	err = downloadFile(os.TempDir(), "http://127.0.0.1")
+	err = downloadFile(os.TempDir(), "http://127.0.0.1:31337")
 	if err == nil {
 		t.Error("expected error due to wrong URL")
 	}

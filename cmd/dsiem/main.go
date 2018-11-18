@@ -184,6 +184,7 @@ external message queue.`,
 		if err != nil {
 			exit("Cannot get current directory??", err)
 		}
+
 		confDir := path.Join(d, "configs")
 		logDir := path.Join(d, "logs")
 		webDir := path.Join(d, "web", "dist")
@@ -285,9 +286,23 @@ external message queue.`,
 
 		expcounter.Init(mode)
 
-		err = server.Start(
-			eventChan, bpChan, confDir, webDir, writeableConfig, pprof,
-			mode, maxEPS, minEPS, msq, progName, node, addr, port)
+		cf := server.Config{}
+		cf.EvtChan = eventChan
+		cf.BpChan = bpChan
+		cf.Confd = confDir
+		cf.Webd = webDir
+		cf.WriteableConfig = writeableConfig
+		cf.Pprof = pprof
+		cf.Mode = mode
+		cf.MaxEPS = maxEPS
+		cf.MinEPS = minEPS
+		cf.MsqCluster = msq
+		cf.MsqPrefix = progName
+		cf.NodeName = node
+		cf.Addr = addr
+		cf.Port = port
+
+		err = server.Start(cf)
 		if err != nil {
 			exit("Cannot start server", err)
 		}
