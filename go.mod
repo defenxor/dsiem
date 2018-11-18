@@ -41,7 +41,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.1.0
 	github.com/teris-io/shortid v0.0.0-20160104014424-6c56cef5189c
-	github.com/valyala/fasthttp v1.0.0
+	github.com/valyala/fasthttp v1.0.1-0.20181115162433-65955d6208bf
 	github.com/ventu-io/go-shortid v0.0.0-20171029131806-771a37caa5cf // indirect
 	github.com/yl2chen/cidranger v0.0.0-20180214081945-928b519e5268
 	go.uber.org/atomic v1.3.2 // indirect

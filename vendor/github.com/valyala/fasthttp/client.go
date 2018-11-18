@@ -154,6 +154,10 @@ type Client struct {
 	// Default client name is used if not set.
 	Name string
 
+	// NoDefaultUserAgentHeader when set to true, causes the default
+	// User-Agent header to be excluded from the Request.
+	NoDefaultUserAgentHeader bool
+
 	// Callback for establishing new connections to hosts.
 	//
 	// Default Dial is used if not set.
@@ -389,6 +393,7 @@ func (c *Client) Do(req *Request, resp *Response) error {
 		hc = &HostClient{
 			Addr:                          addMissingPort(string(host), isTLS),
 			Name:                          c.Name,
+			NoDefaultUserAgentHeader:      c.NoDefaultUserAgentHeader,
 			Dial:                          c.Dial,
 			DialDualStack:                 c.DialDualStack,
 			IsTLS:                         isTLS,
@@ -418,11 +423,15 @@ func (c *Client) Do(req *Request, resp *Response) error {
 
 func (c *Client) mCleaner(m map[string]*HostClient) {
 	mustStop := false
+
 	for {
-		t := time.Now()
 		c.mLock.Lock()
 		for k, v := range m {
-			if t.Sub(v.LastUseTime()) > time.Minute {
+			v.connsLock.Lock()
+			shouldRemove := v.connsCount == 0
+			v.connsLock.Unlock()
+
+			if shouldRemove {
 				delete(m, k)
 			}
 		}
@@ -490,6 +499,10 @@ type HostClient struct {
 
 	// Client name. Used in User-Agent request header.
 	Name string
+
+	// NoDefaultUserAgentHeader when set to true, causes the default
+	// User-Agent header to be excluded from the Request.
+	NoDefaultUserAgentHeader bool
 
 	// Callback for establishing new connection to the host.
 	//
@@ -598,7 +611,7 @@ type HostClient struct {
 	readerPool sync.Pool
 	writerPool sync.Pool
 
-	pendingRequests uint64
+	pendingRequests int32
 
 	connsCleanerRun bool
 }
@@ -770,9 +783,24 @@ func doRequestFollowRedirects(req *Request, dst []byte, url string, c clientDoer
 	resp.keepBodyBuffer = true
 	oldBody := bodyBuf.B
 	bodyBuf.B = dst
+	scheme := req.uri.Scheme()
+	req.schemaUpdate = false
 
 	redirectsCount := 0
 	for {
+		// In case redirect to different scheme
+		if redirectsCount > 0 && !bytes.Equal(scheme, req.uri.Scheme()) {
+			if strings.HasPrefix(url, string(strHTTPS)) {
+				req.isTLS = true
+				req.uri.SetSchemeBytes(strHTTPS)
+			} else {
+				req.isTLS = false
+				req.uri.SetSchemeBytes(strHTTP)
+			}
+			scheme = req.uri.Scheme()
+			req.schemaUpdate = true
+		}
+
 		req.parsedURI = false
 		req.Header.host = req.Header.host[:0]
 		req.SetRequestURI(url)
@@ -993,7 +1021,7 @@ func (c *HostClient) Do(req *Request, resp *Response) error {
 	}
 	attempts := 0
 
-	atomic.AddUint64(&c.pendingRequests, 1)
+	atomic.AddInt32(&c.pendingRequests, 1)
 	for {
 		retry, err = c.do(req, resp)
 		if err == nil || !retry {
@@ -1017,7 +1045,7 @@ func (c *HostClient) Do(req *Request, resp *Response) error {
 			break
 		}
 	}
-	atomic.AddUint64(&c.pendingRequests, ^uint64(0))
+	atomic.AddInt32(&c.pendingRequests, -1)
 
 	if err == io.EOF {
 		err = ErrConnectionClosed
@@ -1031,7 +1059,7 @@ func (c *HostClient) Do(req *Request, resp *Response) error {
 // This function may be used for balancing load among multiple HostClient
 // instances.
 func (c *HostClient) PendingRequests() int {
-	return int(atomic.LoadUint64(&c.pendingRequests))
+	return int(atomic.LoadInt32(&c.pendingRequests))
 }
 
 func isIdempotent(req *Request) bool {
@@ -1067,6 +1095,16 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 	// Free up resources occupied by response before sending the request,
 	// so the GC may reclaim these resources (e.g. response body).
 	resp.Reset()
+
+	// If we detected a redirect to another schema
+	if req.schemaUpdate {
+		c.IsTLS = bytes.Equal(req.URI().Scheme(), strHTTPS)
+		c.Addr = addMissingPort(string(req.Host()), c.IsTLS)
+		c.addrIdx = 0
+		c.addrs = nil
+		req.schemaUpdate = false
+		req.SetConnectionClose()
+	}
 
 	cc, err := c.acquireConn()
 	if err != nil {
@@ -1140,7 +1178,9 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 	if err = resp.ReadLimitBody(br, c.MaxResponseBodySize); err != nil {
 		c.releaseReader(br)
 		c.closeConn(cc)
-		return true, err
+		// Don't retry in case of ErrBodyTooLarge since we will just get the same again.
+		retry := err != ErrBodyTooLarge
+		return retry, err
 	}
 	c.releaseReader(br)
 
@@ -1507,7 +1547,7 @@ func (c *HostClient) getClientName() []byte {
 	var clientName []byte
 	if v == nil {
 		clientName = []byte(c.Name)
-		if len(clientName) == 0 {
+		if len(clientName) == 0 && !c.NoDefaultUserAgentHeader {
 			clientName = defaultUserAgent
 		}
 		c.clientName.Store(clientName)
