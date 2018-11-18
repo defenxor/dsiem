@@ -16,7 +16,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 )
-
 func TestServerHandlers(t *testing.T) {
 	d, err := test.DirEnv(true)
 	if err != nil {
@@ -64,17 +63,24 @@ func TestServerHandlers(t *testing.T) {
 	httpTest(t, url, "POST", string(b), 418)
 
 	e.EventID = genUUID()
-	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	e.Sensor = "sensor1"
 	e.SrcIP = "10.0.0.1"
 	e.DstIP = "8.8.8.8"
 	e.PluginID = 1001
 	e.PluginSID = 1
+
+	e.Timestamp = "im a string"
 	b, err = json.Marshal(e)
 	if err != nil {
 		t.Fatal(err)
 	}
+	httpTest(t, url, "POST", string(b), 400)
 
+	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	b, err = json.Marshal(e)
+	if err != nil {
+		t.Fatal(err)
+	}
 	httpTest(t, url, "POST", string(b), 200)
 
 	// should timeout, no more buffer/listener to receive the channel

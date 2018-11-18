@@ -51,7 +51,10 @@ var upgrader websocket.Upgrader
 var transport nats.Transport
 var epsLimiter *limiter.Limiter
 
-var overloadFlag bool
+var (
+	overloadFlag bool
+	mu           sync.RWMutex
+)
 
 var rateCounter = rc.NewRateCounter(1 * time.Second)
 
@@ -164,7 +167,6 @@ func Start(cfg Config) (err error) {
 		if e != nil {
 			return e
 		}
-
 		err = fServer.Serve(ln)
 	}
 	return
@@ -182,7 +184,6 @@ func increaseConnCounter() uint64 {
 }
 
 func overloadManager() {
-	mu := sync.RWMutex{}
 	detector := func() {
 		var m bool
 		cmu.RLock()
@@ -226,7 +227,7 @@ func overloadManager() {
 				}
 				cmu.RUnlock()
 				current = epsLimiter.Limit()
-				mu.RLock()
+				mu.Lock()
 				if overloadFlag {
 					res = epsLimiter.Lower()
 				} else {
@@ -236,7 +237,7 @@ func overloadManager() {
 					log.Info(log.M{Msg: "Overload status is " + strconv.FormatBool(overloadFlag) +
 						", EPS limit changed from " + strconv.Itoa(current) + " to " + strconv.Itoa(res)})
 				}
-				mu.RUnlock()
+				mu.Unlock()
 			}
 		}()
 	}

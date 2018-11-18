@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/limiter"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
+	"github.com/valyala/fasthttp"
 
 	gnatsd "github.com/nats-io/gnatsd/server"
 )
@@ -45,7 +47,7 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 	go natsServer.Start()
 
 	// Wait for accept loop(s) to be started
-	if !natsServer.ReadyForConnections(10 * time.Second) {
+	if !natsServer.ReadyForConnections(15 * time.Second) {
 		panic("Unable to start NATS Server in Go Routine")
 	}
 	return natsServer
@@ -53,13 +55,16 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 
 var natsServer *gnatsd.Server
 var testErrChan chan error
+var testBpChan chan bool
 
 func initServer(cfg Config, t *testing.T, expectError bool) {
 	// use bidirectional channel to simulate err
 	cmu.Lock()
 	testErrChan = make(chan error, 1)
+	testBpChan = make(chan bool, 1)
 	cmu.Unlock()
 	cfg.ErrChan = testErrChan
+	cfg.BpChan = testBpChan
 	err := Start(cfg)
 	if !expectError && err != nil {
 		t.Fatal("server start return error: " + err.Error())
@@ -92,13 +97,11 @@ func TestServerStartupAndFileServer(t *testing.T) {
 
 	var cfg Config
 	cfg.EvtChan = make(chan event.NormalizedEvent)
-	cfg.ErrChan = make(chan error)
 	cfg.MsqCluster = "nats://127.0.0.1:4222"
 	cfg.MsqPrefix = "dsiem"
 	cfg.NodeName = "nodename"
 	cfg.Addr = "127.0.0.1"
 	cfg.Port = 8080
-	cfg.BpChan = make(chan bool)
 	cfg.Webd = path.Join(fixDir, "web")
 	cfg.WriteableConfig = true
 	cfg.Pprof = true
@@ -116,8 +119,8 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	url := "http://" + cfg.Addr + ":" + strconv.Itoa(cfg.Port)
 
 	// test for few errs first
-	httpTest(t, url, "GET", "", 404)
 	httpTest(t, url+"/config", "GET", "", 500)
+	httpTest(t, url, "GET", "", 404)
 	httpTest(t, url+"/config/intel_wise.json", "GET", "", 400)
 	httpTest(t, url+"/config/valid.json", "POST", "{}", 500)
 
@@ -150,6 +153,14 @@ func TestServerStartupAndFileServer(t *testing.T) {
 
 	cfg.Mode = "standalone"
 	go initServer(cfg, t, false)
+	fmt.Println("sending true to bpCh")
+	time.Sleep(time.Second)
+
+	cmu.Lock()
+	testBpChan <- true
+	cmu.Unlock()
+	time.Sleep(time.Second)
+
 	stopServer(t)
 
 	// expected errors on server startup
@@ -197,4 +208,25 @@ func httpClient(url, method, data string) (out string, statusCode int, err error
 	out = string(body)
 	statusCode = resp.StatusCode
 	return
+}
+
+func TestRateFuncs(t *testing.T) {
+	var c *fasthttp.RequestCtx
+	f := func(c *fasthttp.RequestCtx) {}
+	cmu.Lock()
+	epsLimiter, _ = limiter.New(1, 1)
+	cmu.Unlock()
+	h := rateLimit(10, time.Duration(time.Second), f)
+	h(c)
+	v := connCounter
+	increaseConnCounter()
+	r := connCounter - v
+	if r != 1 {
+		t.Fatal("Expected connCounter to be increased by 1")
+	}
+	n := CounterRate()
+	if n < 0 {
+		t.Fatal("Expected rate to be at least 0")
+	}
+
 }
