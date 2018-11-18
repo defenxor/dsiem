@@ -1,0 +1,200 @@
+package server
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"path"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/shared/test"
+
+	gnatsd "github.com/nats-io/gnatsd/server"
+)
+
+// DefaultTestOptions are default options for the unit tests.
+var DefaultTestOptions = gnatsd.Options{
+	Host:           "127.0.0.1",
+	Port:           4222,
+	NoLog:          true,
+	NoSigs:         true,
+	MaxControlLine: 256,
+}
+
+// https://github.com/nats-io/gnatsd/blob/master/test/test.go
+// RunDefaultServer starts a new Go routine based server using the default options
+func RunDefaultServer() *gnatsd.Server {
+	return RunServer(&DefaultTestOptions)
+}
+
+// RunServer starts a new Go routine based server
+func RunServer(opts *gnatsd.Options) *gnatsd.Server {
+	if opts == nil {
+		opts = &DefaultTestOptions
+	}
+	natsServer = gnatsd.New(opts)
+	if natsServer == nil {
+		panic("No NATS Server object returned.")
+	}
+
+	// Run server in Go routine.
+	go natsServer.Start()
+
+	// Wait for accept loop(s) to be started
+	if !natsServer.ReadyForConnections(10 * time.Second) {
+		panic("Unable to start NATS Server in Go Routine")
+	}
+	return natsServer
+}
+
+var natsServer *gnatsd.Server
+var testErrChan chan error
+
+func initServer(cfg Config, t *testing.T, expectError bool) {
+	// use bidirectional channel to simulate err
+	cmu.Lock()
+	testErrChan = make(chan error, 1)
+	cmu.Unlock()
+	cfg.ErrChan = testErrChan
+	err := Start(cfg)
+	if !expectError && err != nil {
+		t.Fatal("server start return error: " + err.Error())
+	}
+	if expectError && err == nil {
+		t.Fatal("error expected but start returns nil")
+	}
+}
+
+func stopServer(t *testing.T) {
+	time.Sleep(time.Second)
+	cmu.Lock()
+	close(c.StopChan)
+	cmu.Unlock()
+	err := fServer.Shutdown()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("server stopped.")
+}
+
+func TestServerStartupAndFileServer(t *testing.T) {
+	d, err := test.DirEnv(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fServer.ReadTimeout = time.Second * 3
+	fixDir := path.Join(d, "internal", "pkg", "dsiem", "server", "fixtures")
+
+	var cfg Config
+	cfg.EvtChan = make(chan event.NormalizedEvent)
+	cfg.ErrChan = make(chan error)
+	cfg.MsqCluster = "nats://127.0.0.1:4222"
+	cfg.MsqPrefix = "dsiem"
+	cfg.NodeName = "nodename"
+	cfg.Addr = "127.0.0.1"
+	cfg.Port = 8080
+	cfg.BpChan = make(chan bool)
+	cfg.Webd = path.Join(fixDir, "web")
+	cfg.WriteableConfig = true
+	cfg.Pprof = true
+
+	time.AfterFunc(time.Second, func() {
+		go RunDefaultServer()
+	})
+
+	cfg.Confd = `/\/\/\/`
+	cfg.Mode = "cluster-frontend"
+	go initServer(cfg, t, false)
+	// wait for msg queue to be connected
+	time.Sleep(time.Second * 4)
+
+	url := "http://" + cfg.Addr + ":" + strconv.Itoa(cfg.Port)
+
+	// test for few errs first
+	httpTest(t, url, "GET", "", 404)
+	httpTest(t, url+"/config", "GET", "", 500)
+	httpTest(t, url+"/config/intel_wise.json", "GET", "", 400)
+	httpTest(t, url+"/config/valid.json", "POST", "{}", 500)
+
+	stopServer(t)
+
+	// reinit frontend with extra params
+	cfg.Confd = path.Join(fixDir, "configs")
+	cfg.MaxEPS = 1000
+	cfg.MinEPS = 100
+	go initServer(cfg, t, false)
+	time.Sleep(time.Second * 4)
+
+	httpTest(t, url+"/config/payload.exe", "POST", "zpl01t", 418)
+	httpTest(t, url+"/config/valid.json", "POST", "{}", 201)
+	httpTest(t, url+"/config/payload.exe", "DELETE", "", 418)
+	httpTest(t, url+"/config/valid.json", "DELETE", "", 200)
+	httpTest(t, url+"/config/doesntexist.json", "DELETE", "", 400)
+
+	httpTest(t, url+"/config/", "GET", "", 200)
+	httpTest(t, url+"/config/intel_wise.json", "GET", "", 200)
+	httpTest(t, url+"/config/doesntexist.json", "GET", "", 400)
+	httpTest(t, url+"/config/payload.exe", "GET", "", 418)
+	httpTest(t, url+"/config/dir/asdad/", "GET", "", 404)
+
+	stopServer(t)
+
+	cfg.Mode = "cluster-backend"
+	go initServer(cfg, t, false)
+	stopServer(t)
+
+	cfg.Mode = "standalone"
+	go initServer(cfg, t, false)
+	stopServer(t)
+
+	// expected errors on server startup
+
+	cfg.MinEPS = 2000
+	go initServer(cfg, t, true)
+	time.Sleep(time.Second)
+
+	cfg.Port = 0
+	go initServer(cfg, t, true)
+	time.Sleep(time.Second)
+
+	cfg.Addr = "wrong"
+	go initServer(cfg, t, true)
+	time.Sleep(time.Second)
+}
+
+func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
+	_, code, err := httpClient(url, method, data)
+	if err != nil {
+		t.Fatal("Error received from httpClient", url, ":", err)
+	}
+	if code != expectedStatusCode {
+		t.Fatal("Received", code, "from", url, "expected", expectedStatusCode)
+	}
+}
+
+func httpClient(url, method, data string) (out string, statusCode int, err error) {
+	client := &http.Client{}
+	r := strings.NewReader(data)
+	req, err := http.NewRequest(method, url, r)
+	if err != nil {
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	out = string(body)
+	statusCode = resp.StatusCode
+	return
+}

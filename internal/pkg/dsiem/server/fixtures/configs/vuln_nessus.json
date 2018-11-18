@@ -1,0 +1,11 @@
+{
+  "vuln_sources": [
+    {
+      "name": "Nessus",
+      "type": "IP-Port",
+      "plugin": "Nesd",
+      "enabled": true,
+      "config": "{ \"url\" : \"http://dsiem-nesd:8081/?ip=${ip}&port=${port}\" }"
+    }
+  ]
+}
