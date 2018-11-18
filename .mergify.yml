@@ -13,7 +13,7 @@ pull_request_rules:
       - base=master
     actions:
       merge:
-        method: merge
+        method: squash
         strict: smart
   - name: automatic merge for maintainer 2
     conditions:
@@ -22,7 +22,7 @@ pull_request_rules:
       - base=master
     actions:
       merge:
-        method: merge
+        method: squash
         strict: smart
   - name: automatic merge on CI success and review
     conditions:
@@ -34,7 +34,7 @@ pull_request_rules:
       - base=master
     actions:
       merge:
-        method: merge
+        method: squash
         strict: smart
   - name: delete head branch after merge
     conditions: []
