@@ -207,8 +207,8 @@ workflows:
       - build-cmd:
           filters:
             branches:
-              ignore: master
+              ignore: cleanup-dev-tools
       - build-web:
           filters:
             branches:
-              ignore: master
+              ignore: cleanup-dev-tools
