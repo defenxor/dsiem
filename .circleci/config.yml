@@ -81,7 +81,7 @@ jobs:
           name: check if release needed
           command: |
             # dry-run, but will trigger @semantic-release/exec to write ./release_ver as needed
-            npx semantic-release -b cleanup-dev-tools -d 
+            npx semantic-release -b master -d 
       - persist_to_workspace:
           root: .
           paths: release_ver
@@ -138,7 +138,7 @@ jobs:
           name: release to github if needed
           command: |
             touch ./release_tag
-            npx semantic-release -b cleanup-dev-tools
+            npx semantic-release -b master
       - persist_to_workspace:
           root: .
           paths:
@@ -184,11 +184,11 @@ workflows:
       - build-cmd:
           filters:
             branches:
-              only: cleanup-dev-tools
+              only: master
       - build-web:
           filters:
             branches:
-              only: cleanup-dev-tools
+              only: master
       - semantic-check:
           requires:
             - build-cmd
@@ -207,9 +207,9 @@ workflows:
       - build-cmd:
           filters:
             branches:
-              ignore: cleanup-dev-tools
+              ignore: master
       - build-web:
           filters:
             branches:
-              ignore: cleanup-dev-tools
+              ignore: master
 
