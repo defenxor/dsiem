@@ -81,7 +81,7 @@ jobs:
           name: check if release needed
           command: |
             # testing only should remove -b flag when ready
-            npx semantic-release -b cleanup-dev-tools -d
+            npx semantic-release -b cleanup-dev-tools -d || true
       - persist_to_workspace:
           root: .
           paths: buildtag
@@ -105,7 +105,7 @@ jobs:
           name: create release
           command: |
             # make sure this wont return non-zero
-            tag=$(cat ./buildtag 2>/dev/null || echo)
+            tag=$(cat ./buildtag 2>/dev/null || true)
             if [ "$tag" ]; then
               ./scripts/gobuild-cmd-release.sh $tag
               echo $tag > ./releaseflag
@@ -142,7 +142,7 @@ jobs:
           name: release to github if needed
           command: |
             # testing only should remove -b flag when ready
-            npx semantic-release -b cleanup-dev-tools
+            npx semantic-release -b cleanup-dev-tools || true
   release-dockerhub:
     machine: true
     steps:
@@ -153,7 +153,7 @@ jobs:
           name: create docker image
           command: |
             # make sure this wont return non-zero
-            tag=$(head -1 ./releaseflag 2>/dev/null || echo)
+            tag=$(head -1 ./releaseflag 2>/dev/null || true)
             if [ "$tag" ]; then
               # get downloader for private asset
               wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch
