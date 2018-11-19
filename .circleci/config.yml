@@ -127,7 +127,7 @@ jobs:
           root: .
           paths:
             - temp
-  semantic-release:
+  release-github:
     docker:
       - image: circleci/node:8.12-browsers
     steps:
@@ -143,7 +143,7 @@ jobs:
           command: |
             # testing only should remove -b flag when ready
             npx semantic-release -b cleanup-dev-tools
-  deploy-dockerhub:
+  release-dockerhub:
     machine: true
     steps:
       - checkout
@@ -181,24 +181,30 @@ workflows:
   version: 2
   build-test-release:
     jobs:
-      - build:
+      - build-cmd:
           filters:
             branches:
-              only: master
+              only: cleanup-dev-tools
       - build-web:
           filters:
             branches:
-              only: master
-      - release:
+              only: cleanup-dev-tools
+      - semantic-check:
           requires:
-            - build
+            - build-cmd
             - build-web
-      - deploy-dockerhub:
+      - build-release:
           requires:
-            - release
+            - semantic-check
+      - release-github:
+          requires:
+            - build-release
+      - release-dockerhub:
+          requires:
+            - release-github
   build-test:
     jobs:
-      - build:
+      - build-cmd:
           filters:
             branches:
               ignore: master
