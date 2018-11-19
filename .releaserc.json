@@ -2,6 +2,15 @@
   "plugins": [ 
     "@semantic-release/commit-analyzer", 
     "@semantic-release/release-notes-generator", 
-    "@semantic-release/github"
+    [ "@semantic-release/github", {
+        "assets": [
+          {"path": "temp/release/latest/*" }
+        ]
+      }
+    ],
+    ["@semantic-release/exec", {
+      "verifyReleaseCmd": "echo ${nextRelease.version} > ./buildtag",
+      "successCmd": "echo ${nextRelease.version} > ./releasetag && echo ${lastRelease.version} > ./lastreleasetag"
+    }]
   ]
 }

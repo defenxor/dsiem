@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  build-cmd:
     docker:
       - image: circleci/golang:1.11
         environment:
@@ -59,7 +59,7 @@ jobs:
       #     name: Testing
       #     command: cd web/ui && npm run test
       - run:
-          name: build-dist
+          name: build dist
           command: |
             cd web/ui
             npm run ng -- build --prod --build-optimizer --base-href /ui/
@@ -68,7 +68,24 @@ jobs:
       - persist_to_workspace:
           root: .
           paths: web/dist/*
-  release:
+  semantic-check:
+    docker:
+      - image: circleci/node:8.12-browsers
+    steps:
+      - checkout
+      - run:
+          name: install tools
+          command: |
+            npm install -g semantic-release@15.12.0 @semantic-release/exec@3.3.0
+      - run:
+          name: check if release needed
+          command: |
+            # testing only should remove -b flag when ready
+            npx semantic-release -b cleanup-dev-tools -d
+      - persist_to_workspace:
+          root: .
+          paths: buildtag
+  build-release:
     docker:
       - image: circleci/golang:1.11
         environment:
@@ -80,37 +97,52 @@ jobs:
       - add_ssh_keys
       - restore_cache:
           keys:
-            - go-mod-deploy-v1-{{ checksum "go.sum" }}
-            - go-path-deploy-v1-{{ checksum "go.sum" }}
-      - run: GOFLAGS=-mod= go get -u github.com/tcnksm/ghr
-      - run: GOFLAGS=-mod= go get -u github.com/stevenmatthewt/semantics
-      - save_cache:
-          key: go-mod-deploy-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - save_cache:
-          key: go-path-deploy-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/src"
+            - go-mod-v1-{{ checksum "go.sum" }}
+            - go-path-v1-{{ checksum "go.sum" }}
       - attach_workspace:
           at: .
       - run:
           name: create release
           command: |
-            tag=$(semantics --output-tag)
+            # make sure this wont return non-zero
+            tag=$(cat ./buildtag 2>/dev/null || echo)
             if [ "$tag" ]; then
               ./scripts/gobuild-cmd-release.sh $tag
               echo $tag > ./releaseflag
-              ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME -draft -replace $tag temp/release/$tag
-              msg="{ \"text\" : \"Release draft $tag has been posted for review, approval within 30 minutes will also release a docker image.\" }"
-              command -v curl >/dev/null 2>&1 && curl -X POST -H 'Content-type: application/json' -d "$msg" $SLACK_WEBHOOK || echo curl error occurred
+              # msg="{ \"text\" : \"Release draft $tag has been posted for review, approval within 30 minutes will also release a docker image.\" }"
+              # command -v curl >/dev/null 2>&1 && curl -X POST -H 'Content-type: application/json' -d "$msg" $SLACK_WEBHOOK || echo curl error occurred
             else
-              echo "The commit message(s) did not indicate a major/minor/patch version."
-              touch ./releaseflag
+              echo "semantic-check doesnt signal that a build is required"
+              mkdir -p temp
             fi
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - save_cache:
+          key: go-path-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/src"
       - persist_to_workspace:
           root: .
-          paths: releaseflag
+          paths:
+            - temp
+  semantic-release:
+    docker:
+      - image: circleci/node:8.12-browsers
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: install tools
+          command: |
+            npm install -g semantic-release@15.12.0 @semantic-release/exec@3.3.0
+      - run:
+          name: release to github if needed
+          command: |
+            # testing only should remove -b flag when ready
+            npx semantic-release -b cleanup-dev-tools
   deploy-dockerhub:
     machine: true
     steps:
@@ -120,10 +152,8 @@ jobs:
       - run:
           name: create docker image
           command: |
-
             # make sure this wont return non-zero
-            tag=$(cat ./releaseflag 2>/dev/null || echo)
-
+            tag=$(head -1 ./releaseflag 2>/dev/null || echo)
             if [ "$tag" ]; then
               # get downloader for private asset
               wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch

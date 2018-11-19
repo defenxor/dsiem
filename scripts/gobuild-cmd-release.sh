@@ -13,8 +13,8 @@ now=$(date --utc --iso-8601=seconds)
 
 echo "target OS: $goos;" commands to build: $cmd
 curdir=$(pwd)
-rdir=$curdir/temp/release/$ver
-mkdir -p $rdir
+rdir=$curdir/temp/release/latest
+rm -rf $rdir && mkdir -p $rdir
 for os in $goos; do
   echo "** building for $os **"
   bdir=./temp/build/$os
