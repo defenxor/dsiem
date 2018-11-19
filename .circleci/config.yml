@@ -80,11 +80,11 @@ jobs:
       - run:
           name: check if release needed
           command: |
-            # testing only should remove -b flag when ready
+            # dry-run, but will trigger @semantic-release/exec to write ./releasetag as needed
             npx semantic-release -b cleanup-dev-tools -d || true
       - persist_to_workspace:
           root: .
-          paths: buildtag
+          paths: releasetag
   build-release:
     docker:
       - image: circleci/golang:1.11
@@ -104,13 +104,9 @@ jobs:
       - run:
           name: create release
           command: |
-            # make sure this wont return non-zero
-            tag=$(cat ./buildtag 2>/dev/null || true)
+            tag=$(cat ./releasetag 2>/dev/null || true)
             if [ "$tag" ]; then
               ./scripts/gobuild-cmd-release.sh $tag
-              echo $tag > ./releaseflag
-              # msg="{ \"text\" : \"Release draft $tag has been posted for review, approval within 30 minutes will also release a docker image.\" }"
-              # command -v curl >/dev/null 2>&1 && curl -X POST -H 'Content-type: application/json' -d "$msg" $SLACK_WEBHOOK || echo curl error occurred
             else
               echo "semantic-check doesnt signal that a build is required"
               mkdir -p temp
@@ -141,8 +137,7 @@ jobs:
       - run:
           name: release to github if needed
           command: |
-            # testing only should remove -b flag when ready
-            npx semantic-release -b cleanup-dev-tools || true
+            npx semantic-release -b cleanup-dev-tools|| true
   release-dockerhub:
     machine: true
     steps:
@@ -152,8 +147,7 @@ jobs:
       - run:
           name: create docker image
           command: |
-            # make sure this wont return non-zero
-            tag=$(head -1 ./releaseflag 2>/dev/null || true)
+            tag=$(cat ./releasetag 2>/dev/null || true)
             if [ "$tag" ]; then
               # get downloader for private asset
               wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch
@@ -175,7 +169,7 @@ jobs:
               docker push defenxor/dsiem:$tag
               docker push defenxor/dsiem:latest
             else
-              echo "Releaseflag is not set."
+              echo "Releasetag is not set."
             fi
 workflows:
   version: 2
@@ -212,4 +206,4 @@ workflows:
           filters:
             branches:
               ignore: cleanup-dev-tools
-              
+
