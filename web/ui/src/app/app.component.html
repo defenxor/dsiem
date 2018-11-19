@@ -1,27 +1,10 @@
 <mat-toolbar style="background-color: #dc3545">
 	<mat-toolbar-row>
-		<button type="button" aria-label="Toggle sidenav" mat-icon-button (click)="drawer.toggle()" color="primary">
-			<mat-icon aria-label="Side nav toggle icon" style="color: #fff">menu</mat-icon>
-		</button>
 		<span style="color: #ffff">{{title}}</span>
 	</mat-toolbar-row>
 </mat-toolbar>
 
-<mat-sidenav-container class="example-container">
-	<mat-sidenav #drawer mode="side" role="navigation">
-		<mat-nav-list>
-			<a mat-list-item routerLink='alarms' (click)="drawer.toggle()">
-				<mat-icon aria-label="Side nav toggle icon" style="margin-right: 5px">notification_important</mat-icon> Alarms
-			</a>
-			<a mat-list-item routerLink='events' (click)="drawer.toggle()">
-				<mat-icon aria-label="Side nav toggle icon" style="margin-right: 5px">list</mat-icon> Events
-			</a>
-		</mat-nav-list>
-	</mat-sidenav>
-	<mat-sidenav-content>
-		<router-outlet></router-outlet>
-	</mat-sidenav-content>
-</mat-sidenav-container>
+<router-outlet></router-outlet>
 
 <!-- <div class="container">
 	<h1 class="text-center">{{title}}</h1>
