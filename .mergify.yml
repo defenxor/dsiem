@@ -11,6 +11,7 @@ pull_request_rules:
       - author=mmta
       - status-success=build-test
       - base=master
+      - 
     actions:
       merge:
         method: squash
@@ -24,13 +25,25 @@ pull_request_rules:
       merge:
         method: squash
         strict: smart
+  # for version bump, must use merge so that semantics can see the 
+  - name: automatic merge for version bump
+    conditions:
+      - author=mmta
+      - status-success=build-test
+      - base=master
+      - title~=version bump.*
+    actions:
+      merge:
+        method: merge
+        strict: smart
   - name: automatic merge on CI success and review
     conditions:
       - status-success=build-test
       - "#approved-reviews-by>=1"
       - "#review-requested=0"
       - "#changes-requested-reviews-by=0"
-      - "#commented-reviews-by=0"      
+      - "#commented-reviews-by=0"
+      - approved-reviews-by=[ "mmta","Cempakers87" ]
       - base=master
     actions:
       merge:
