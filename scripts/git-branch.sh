@@ -45,28 +45,27 @@ thisbranch=$(git rev-parse --abbrev-ref HEAD)
 
 # sync will sync this branch will changes in origin/master, so you dont develop on out-of-date copies
 if [ "$cmd" == "sync" ]; then
-  git checkout master
-  git pull
-  git checkout $thisbranch
+  git checkout master && \
+  git pull && \
+  git checkout $thisbranch && \
   git merge master
-  exit 
+  exit $?
 fi
 
 # cleanup delete the remote and local branch when there's no open pr for it
 if [ "$cmd" == "cleanup" ]; then
   open=$(hub pr list -b $thisbranch)
   [ "$open" != "" ] && echo cannot continue due to open pr: "$open" && exit 1
-  git branch -D $thisbranch
+  git branch -D $thisbranch && \
   git push origin --delete $thisbranch
-  exit
+  exit $?
 fi
 
 if [ "$cmd" == "ci-status" ]; then
   hub ci-status -v
-  exit
+  exit $?
 fi
 
 # for the rest of useful commands, just pass it directly to hub
 [ "$cmd" == "pull-request" ] || [ "$cmd" == "push" ] || [ "$cmd" == "commit" ] && (echo $cmd is not a supported command && exit 1) 
 hub $cmd
-
