@@ -35,7 +35,7 @@ if [ "$cmd" == "start" ]; then
   [ -z "$param" ] && echo need a branch name as 2nd argument. && exit 1
   hub sync && \
   git checkout -b $param master && \
-  git branch -u origin/$2
+  git push -u origin $param
   exit $?
 fi
 
@@ -45,10 +45,14 @@ thisbranch=$(git rev-parse --abbrev-ref HEAD)
 
 # sync will sync this branch will changes in origin/master, so you dont develop on out-of-date copies
 if [ "$cmd" == "sync" ]; then
+  # sync others commit to this branch first
+  git pull --rebase && \
+  # sync master
   git checkout master && \
-  git pull && \
+  git pull --rebase && \
+  # put all of your changes on this branch on top of master
   git checkout $thisbranch && \
-  git merge master
+  git rebase master
   exit $?
 fi
 
@@ -56,6 +60,7 @@ fi
 if [ "$cmd" == "cleanup" ]; then
   open=$(hub pr list -b $thisbranch)
   [ "$open" != "" ] && echo cannot continue due to open pr: "$open" && exit 1
+  git checkout master
   git branch -D $thisbranch && \
   git push origin --delete $thisbranch
   exit $?
