@@ -9,7 +9,7 @@
       }
     ],
     ["@semantic-release/exec", {
-      "analyzeCommits": "touch ./buildtag",
+      "analyzeCommitsCmd": "touch ./buildtag",
       "verifyReleaseCmd": "echo ${nextRelease.version} > ./buildtag",
       "successCmd": "echo ${nextRelease.version} > ./releasetag && echo ${lastRelease.version} > ./lastreleasetag"
     }]
