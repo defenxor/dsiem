@@ -13,8 +13,8 @@ now=$(date --utc --iso-8601=seconds)
 
 echo "target OS: $goos;" commands to build: $cmd
 curdir=$(pwd)
-rdir=$curdir/temp/release/$ver
-mkdir -p $rdir
+rdir=$curdir/temp/release/latest
+rm -rf $rdir && mkdir -p $rdir
 for os in $goos; do
   echo "** building for $os **"
   bdir=./temp/build/$os
@@ -41,7 +41,7 @@ for os in $goos; do
 done
 cd $rdir
 for f in $(ls $rdir | grep -v sha256); do
-  sha256sum $f > $f.sha256
+  sha256sum $f > $f.sha256.txt
 done
 echo "Done building, content of $dir:"
 ls -l $rdir

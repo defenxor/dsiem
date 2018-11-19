@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  build-cmd:
     docker:
       - image: circleci/golang:1.11
         environment:
@@ -59,7 +59,7 @@ jobs:
       #     name: Testing
       #     command: cd web/ui && npm run test
       - run:
-          name: build-dist
+          name: build dist
           command: |
             cd web/ui
             npm run ng -- build --prod --build-optimizer --base-href /ui/
@@ -68,7 +68,24 @@ jobs:
       - persist_to_workspace:
           root: .
           paths: web/dist/*
-  release:
+  semantic-check:
+    docker:
+      - image: circleci/node:8.12-browsers
+    steps:
+      - checkout
+      - run:
+          name: install tools
+          command: |
+            sudo npm install -g semantic-release@15.12.0 @semantic-release/exec@3.3.0
+      - run:
+          name: check if release needed
+          command: |
+            # dry-run, but will trigger @semantic-release/exec to write ./release_ver as needed
+            npx semantic-release -b master -d 
+      - persist_to_workspace:
+          root: .
+          paths: release_ver
+  build-release:
     docker:
       - image: circleci/golang:1.11
         environment:
@@ -80,38 +97,53 @@ jobs:
       - add_ssh_keys
       - restore_cache:
           keys:
-            - go-mod-deploy-v1-{{ checksum "go.sum" }}
-            - go-path-deploy-v1-{{ checksum "go.sum" }}
-      - run: GOFLAGS=-mod= go get -u github.com/tcnksm/ghr
-      - run: GOFLAGS=-mod= go get -u github.com/stevenmatthewt/semantics
-      - save_cache:
-          key: go-mod-deploy-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - save_cache:
-          key: go-path-deploy-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/src"
+            - go-mod-v1-{{ checksum "go.sum" }}
+            - go-path-v1-{{ checksum "go.sum" }}
       - attach_workspace:
           at: .
       - run:
           name: create release
           command: |
-            tag=$(semantics --output-tag)
-            if [ "$tag" ]; then
-              ./scripts/gobuild-cmd-release.sh $tag
-              echo $tag > ./releaseflag
-              ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME -draft -replace $tag temp/release/$tag
-              msg="{ \"text\" : \"Release draft $tag has been posted for review, approval within 30 minutes will also release a docker image.\" }"
-              command -v curl >/dev/null 2>&1 && curl -X POST -H 'Content-type: application/json' -d "$msg" $SLACK_WEBHOOK || echo curl error occurred
+            ver=$(cat ./release_ver 2>/dev/null || true)
+            if [ "$ver" ]; then
+              ./scripts/gobuild-cmd-release.sh $ver
             else
-              echo "The commit message(s) did not indicate a major/minor/patch version."
-              touch ./releaseflag
+              echo "semantic-check doesnt signal that a build is required"
+              mkdir -p temp
             fi
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - save_cache:
+          key: go-path-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/src"
       - persist_to_workspace:
           root: .
-          paths: releaseflag
-  deploy-dockerhub:
+          paths:
+            - temp
+  release-github:
+    docker:
+      - image: circleci/node:8.12-browsers
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: install tools
+          command: |
+            sudo npm install -g semantic-release@15.12.0 @semantic-release/exec@3.3.0
+      - run:
+          name: release to github if needed
+          command: |
+            touch ./release_tag
+            npx semantic-release -b master
+      - persist_to_workspace:
+          root: .
+          paths:
+            - release_tag            
+  release-dockerhub:
     machine: true
     steps:
       - checkout
@@ -120,10 +152,8 @@ jobs:
       - run:
           name: create docker image
           command: |
-
-            # make sure this wont return non-zero
-            tag=$(cat ./releaseflag 2>/dev/null || echo)
-
+            ver=$(cat ./release_ver 2>/dev/null || true)
+            tag=$(cat ./release_tag 2>/dev/null || true)
             if [ "$tag" ]; then
               # get downloader for private asset
               wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch
@@ -138,20 +168,20 @@ jobs:
                 minutewait=$(( minutewait - 1 ))
                 sleep 60
               done
-              echo "building docker for release $tag .."
+              echo "building docker for release $ver .."
               cd deployments/docker/build
-              docker build -f Dockerfile -t defenxor/dsiem:$tag -t defenxor/dsiem:latest . --build-arg ver=$tag --build-arg token=$GITHUB_TOKEN
+              docker build -f Dockerfile -t defenxor/dsiem:$ver -t defenxor/dsiem:latest . --build-arg tag=$tag --build-arg token=$GITHUB_TOKEN
               echo "$DOCKER_PASSWD" | docker login -u $DOCKER_USER --password-stdin
-              docker push defenxor/dsiem:$tag
+              docker push defenxor/dsiem:$ver
               docker push defenxor/dsiem:latest
             else
-              echo "Releaseflag is not set."
+              echo "release_tag is not set."
             fi
 workflows:
   version: 2
   build-test-release:
     jobs:
-      - build:
+      - build-cmd:
           filters:
             branches:
               only: master
@@ -159,16 +189,22 @@ workflows:
           filters:
             branches:
               only: master
-      - release:
+      - semantic-check:
           requires:
-            - build
+            - build-cmd
             - build-web
-      - deploy-dockerhub:
+      - build-release:
           requires:
-            - release
+            - semantic-check
+      - release-github:
+          requires:
+            - build-release
+      - release-dockerhub:
+          requires:
+            - release-github
   build-test:
     jobs:
-      - build:
+      - build-cmd:
           filters:
             branches:
               ignore: master
@@ -176,3 +212,4 @@ workflows:
           filters:
             branches:
               ignore: master
+
