@@ -80,11 +80,11 @@ jobs:
       - run:
           name: check if release needed
           command: |
-            # dry-run, but will trigger @semantic-release/exec to write ./releasetag as needed
+            # dry-run, but will trigger @semantic-release/exec to write ./release_ver as needed
             npx semantic-release -b cleanup-dev-tools -d || true
       - persist_to_workspace:
           root: .
-          paths: releasetag
+          paths: release_ver
   build-release:
     docker:
       - image: circleci/golang:1.11
@@ -104,9 +104,9 @@ jobs:
       - run:
           name: create release
           command: |
-            tag=$(cat ./releasetag 2>/dev/null || true)
-            if [ "$tag" ]; then
-              ./scripts/gobuild-cmd-release.sh $tag
+            ver=$(cat ./release_ver 2>/dev/null || true)
+            if [ "$ver" ]; then
+              ./scripts/gobuild-cmd-release.sh $ver
             else
               echo "semantic-check doesnt signal that a build is required"
               mkdir -p temp
@@ -137,7 +137,12 @@ jobs:
       - run:
           name: release to github if needed
           command: |
+            touch ./release_tag
             npx semantic-release -b cleanup-dev-tools|| true
+      - persist_to_workspace:
+          root: .
+          paths:
+            - release_tag            
   release-dockerhub:
     machine: true
     steps:
@@ -147,8 +152,9 @@ jobs:
       - run:
           name: create docker image
           command: |
-            tag=$(cat ./releasetag 2>/dev/null || true)
-            if [ "$tag" ]; then
+            ver=$(cat ./release_ver 2>/dev/null || true)
+            tag=$(cat ./release_tag 2>/dev/null || true)
+            if [ "$ver" ]; then
               # get downloader for private asset
               wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch
               chmod +x /tmp/fetch
@@ -162,14 +168,14 @@ jobs:
                 minutewait=$(( minutewait - 1 ))
                 sleep 60
               done
-              echo "building docker for release $tag .."
+              echo "building docker for release $ver .."
               cd deployments/docker/build
-              docker build -f Dockerfile -t defenxor/dsiem:$tag -t defenxor/dsiem:latest . --build-arg ver=$tag --build-arg token=$GITHUB_TOKEN
+              docker build -f Dockerfile -t defenxor/dsiem:$ver -t defenxor/dsiem:latest . --build-arg ver=$ver --build-arg token=$GITHUB_TOKEN
               echo "$DOCKER_PASSWD" | docker login -u $DOCKER_USER --password-stdin
-              docker push defenxor/dsiem:$tag
+              docker push defenxor/dsiem:$ver
               docker push defenxor/dsiem:latest
             else
-              echo "Releasetag is not set."
+              echo "release_ver is not set."
             fi
 workflows:
   version: 2

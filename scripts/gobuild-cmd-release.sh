@@ -41,7 +41,7 @@ for os in $goos; do
 done
 cd $rdir
 for f in $(ls $rdir | grep -v sha256); do
-  sha256sum $f > $f.sha256
+  sha256sum $f > $f.sha256.txt
 done
 echo "Done building, content of $dir:"
 ls -l $rdir
