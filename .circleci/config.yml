@@ -154,7 +154,7 @@ jobs:
           command: |
             ver=$(cat ./release_ver 2>/dev/null || true)
             tag=$(cat ./release_tag 2>/dev/null || true)
-            if [ "$ver" ]; then
+            if [ "$tag" ]; then
               # get downloader for private asset
               wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch
               chmod +x /tmp/fetch
