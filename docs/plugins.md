@@ -18,7 +18,31 @@ TODO
 
 ## Developing a Threat Intel Lookup Plugin
 
-TODO
+Intel lookup plugin is simply a Go package that implements the following interface:
+```go
+type Checker interface {
+	CheckIP(ctx context.Context, ip string) (found bool, results []Result, err error)
+	Initialize(config []byte) error
+}
+```
+
+`Initialize` will receive its `config` content from the text defined in `configs/intel_*.json` file. This allows user to pass in
+custom data in any format to the plugin to configure its behavior.
+
+`CheckIP` will receive its `IP` parameter from SIEM alarm's source and destination IP addresses. The plugin should then check that address against its sources (e.g. by database lookups, API calls, etc.), and return `found=true` if there's a matching entry for that address. If that's the case, Dsiem expects the plugin to also return more detail information in multiple `intel.Result` struct as follows:
+
+```go
+// Result defines the struct that must be returned by an intel plugin
+type Result struct {
+	Provider string `json:"provider"`
+	Term     string `json:"term"`
+	Result   string `json:"result"`
+}
+```
+
+You can see a working example of this in [Wise](https://github.com/defenxor/dsiem/blob/master/internal/pkg/plugin/wise/wise.go) intel plugin code. That plugin uses `Initialize` function to obtain Wise server address to use.
+
+
 
 ## Developing a Vulnerability Lookup Plugin
 
