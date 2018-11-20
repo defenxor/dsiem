@@ -24,13 +24,18 @@ pull_request_rules:
       merge:
         method: squash
         strict: smart
+    actions:
+      merge:
+        method: merge
+        strict: smart
   - name: automatic merge on CI success and review
     conditions:
       - status-success=build-test
       - "#approved-reviews-by>=1"
       - "#review-requested=0"
       - "#changes-requested-reviews-by=0"
-      - "#commented-reviews-by=0"      
+      - "#commented-reviews-by=0"
+      - "approved-reviews-by=[mmta,Cempakers87]"
       - base=master
     actions:
       merge:

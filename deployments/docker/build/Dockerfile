@@ -1,6 +1,6 @@
 FROM alpine:edge
-ARG ver
-ENV DSIEM_VER=$ver
+ARG tag
+ENV REL_TAG=$tag
 
 # Install packages
 RUN apk -U upgrade && \
@@ -11,7 +11,7 @@ RUN apk -U upgrade && \
 ARG token
 ENV GITHUB_OAUTH_TOKEN=$token
 RUN wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch && chmod +x /tmp/fetch && \
-    /tmp/fetch --repo="https://github.com/defenxor/dsiem" --tag=$DSIEM_VER --release-asset="dsiem-server_linux_amd64.zip" /tmp && \
+    /tmp/fetch --repo="https://github.com/defenxor/dsiem" --tag=$REL_TAG --release-asset="dsiem-server_linux_amd64.zip" /tmp && \
     unzip /tmp/dsiem-server_linux_amd64.zip -d /dsiem && rm -rf /tmp/dsiem-server_linux_amd64.zip /tmp/fetch
 
 # To be used later, replacing the above
