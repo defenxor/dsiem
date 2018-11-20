@@ -24,10 +24,6 @@ pull_request_rules:
       merge:
         method: squash
         strict: smart
-    actions:
-      merge:
-        method: merge
-        strict: smart
   - name: automatic merge on CI success and review
     conditions:
       - status-success=build-test
