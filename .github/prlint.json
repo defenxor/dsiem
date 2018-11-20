@@ -1,8 +1,8 @@
 {
   "title": [
     {
-      "pattern": "^(build|ci|docs|feat|fix|perf|refactor|style|test):\\s"
-      "message": "We use semantic-release, so your PR title needs to be prefixed with a type, e.g. `refactor: the title`. Use one of `build|ci|docs|feat|fix|perf|refactor|style|test|chore|revert` for type. See https://github.com/marionebl/commitlint/tree/master/%40commitlint/config-conventional for reference on which type to use."
+      "pattern": "^(build|ci|docs|feat|fix|perf|refactor|style|test):\\s",
+      "message": "PR title needs to be prefixed with a type, e.g. refactor: the title."
     }
   ]
 }
