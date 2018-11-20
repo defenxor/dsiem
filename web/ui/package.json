@@ -25,6 +25,7 @@
     "@angular/router": "6.1.7",
     "@coreui/angular": "^2.0.0",
     "@coreui/coreui": "^2.1.0",
+    "@coreui/coreui-plugin-chartjs-custom-tooltips": "^1.2.0",
     "angular2-moment": "^1.9.0",
     "core-js": "^2.4.1",
     "elasticsearch": "^15.1.1",
