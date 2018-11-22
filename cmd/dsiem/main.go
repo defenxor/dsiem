@@ -63,7 +63,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
-	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling iconming events")
+	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling incoming events")
 	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. number of incoming events/second")
 	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
 	serverCmd.Flags().IntP("holdDuration", "n", 10, "Duration in seconds before resetting overload condition state")
