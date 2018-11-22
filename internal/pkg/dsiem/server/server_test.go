@@ -106,14 +106,14 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	cfg.WriteableConfig = true
 	cfg.Pprof = true
 
-	if natsServer != nil {
-		fmt.Println("SHUTTING DOWN NATS")
-		natsServer.Shutdown()
-	}
-
 	time.AfterFunc(time.Second, func() {
 		fmt.Println("TIMEAFTER FUNC RUNNING NATS")
 		go RunDefaultServer()
+		defer func() {
+			if natsServer != nil {
+				natsServer.Shutdown()
+			}
+		}
 	})
 
 	fmt.Println("TESTING FAILED CONFIG")

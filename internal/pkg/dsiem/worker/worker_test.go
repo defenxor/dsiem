@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -83,11 +84,20 @@ func initFrontend(d string, t *testing.T) {
 	//	ch <- evt
 }
 
+func cleanUp() {
+	if natsServer != nil {
+		fmt.Println("Shutting down NATS server")
+		natsServer.Shutdown()
+	}
+}
+
 func TestWorker(t *testing.T) {
 	d, err := test.DirEnv(true)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer cleanUp()
 
 	ch = make(chan event.NormalizedEvent)
 	errChan = make(chan error)
