@@ -1,15 +1,12 @@
-import { TestBed, inject } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 
 import { ElasticsearchService } from './elasticsearch.service';
 
 describe('ElasticsearchService', () => {
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [ElasticsearchService]
-    });
-  });
+  beforeEach(() => TestBed.configureTestingModule({}));
 
-  it('should be created', inject([ElasticsearchService], (service: ElasticsearchService) => {
+  it('should be created', () => {
+    const service: ElasticsearchService = TestBed.get(ElasticsearchService);
     expect(service).toBeTruthy();
-  }));
+  });
 });
