@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 // DefaultTestOptions are default options for the unit tests.
 var DefaultTestOptions = gnatsd.Options{
 	Host:           "127.0.0.1",
-	Port:           4222,
+	Port:           4223,
 	NoLog:          true,
 	NoSigs:         true,
 	MaxControlLine: 256,
@@ -36,6 +37,8 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 	if opts == nil {
 		opts = &DefaultTestOptions
 	}
+	natsMu.Lock()
+	defer natsMu.Unlock()
 	natsServer = gnatsd.New(opts)
 	if natsServer == nil {
 		panic("No NATS Server object returned.")
@@ -52,6 +55,7 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 }
 
 var natsServer *gnatsd.Server
+var natsMu sync.Mutex
 
 var (
 	ch        chan event.NormalizedEvent
@@ -80,15 +84,23 @@ func initFrontend(d string, t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	//	evt := event.NormalizedEvent{}
-	//	ch <- evt
 }
 
-func cleanUp() {
+func cleanUp(t *testing.T) {
+	natsMu.Lock()
+	defer natsMu.Unlock()
 	if natsServer != nil {
 		fmt.Println("Shutting down NATS server")
 		natsServer.Shutdown()
+		fmt.Println("Done shutting down NATS server")
+
 	}
+	fmt.Println("Stopping server")
+	if err := server.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Server stopped")
+	return
 }
 
 func TestWorker(t *testing.T) {
@@ -97,15 +109,14 @@ func TestWorker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer cleanUp()
-
 	ch = make(chan event.NormalizedEvent)
 	errChan = make(chan error)
 
-	msq = "nats://127.0.0.1:4222"
+	msq = "nats://127.0.0.1:4223"
 	msqPrefix = "dsiem"
 
 	go initFrontend(d, t)
+	defer cleanUp(t)
 
 	nodeName := "dsiem-backend-0"
 	wd, err := ioutil.TempDir(os.TempDir(), "dsiem-worker")
@@ -123,6 +134,7 @@ func TestWorker(t *testing.T) {
 	})
 
 	time.Sleep(time.Second * 5)
+	fmt.Println("here3a")
 
 	frontend = "http://127.0.0.1:8080"
 	if err = Start(ch, msq, msqPrefix, nodeName, wd, frontend); err != nil {
@@ -141,10 +153,10 @@ func TestWorker(t *testing.T) {
 	sendCh := tr.Send(msqPrefix + "_" + "events")
 
 	sendCh <- event.NormalizedEvent{}
-}
 
-func TestErrors(t *testing.T) {
-	err := downloadFile(`/\/\/\/`, "http://127.0.0.1:8080/config/assets_testing.json")
+	// start testing for errors
+
+	err = downloadFile(`/\/\/\/`, "http://127.0.0.1:8080/config/assets_testing.json")
 	if err == nil {
 		t.Error("expected error due to wrong filepath")
 	}

@@ -7,6 +7,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -38,6 +39,8 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 	if opts == nil {
 		opts = &DefaultTestOptions
 	}
+	natsMu.Lock()
+	defer natsMu.Unlock()
 	natsServer = gnatsd.New(opts)
 	if natsServer == nil {
 		panic("No NATS Server object returned.")
@@ -54,6 +57,8 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 }
 
 var natsServer *gnatsd.Server
+var natsMu sync.Mutex
+
 var testErrChan chan error
 var testBpChan chan bool
 
@@ -75,15 +80,20 @@ func initServer(cfg Config, t *testing.T, expectError bool) {
 }
 
 func stopServer(t *testing.T) {
-	time.Sleep(time.Second)
-	cmu.Lock()
-	close(c.StopChan)
-	cmu.Unlock()
-	err := fServer.Shutdown()
+	err := Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println("server stopped.")
+}
+
+func stopNats(t *testing.T) {
+	natsMu.Lock()
+	defer natsMu.Unlock()
+	if natsServer != nil {
+		natsServer.Shutdown()
+	}
+	return
 }
 
 func TestServerStartupAndFileServer(t *testing.T) {
@@ -92,7 +102,6 @@ func TestServerStartupAndFileServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fServer.ReadTimeout = time.Second * 3
 	fixDir := path.Join(d, "internal", "pkg", "dsiem", "server", "fixtures")
 
 	var cfg Config
@@ -109,16 +118,13 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	time.AfterFunc(time.Second, func() {
 		fmt.Println("TIMEAFTER FUNC RUNNING NATS")
 		go RunDefaultServer()
-		defer func() {
-			if natsServer != nil {
-				natsServer.Shutdown()
-			}
-		}
 	})
+	defer stopNats(t)
 
 	fmt.Println("TESTING FAILED CONFIG")
 	cfg.Confd = `/\/\/\/`
 	cfg.Mode = "cluster-frontend"
+
 	go initServer(cfg, t, false)
 	// wait for msg queue to be connected
 	time.Sleep(time.Second * 4)

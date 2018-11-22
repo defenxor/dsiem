@@ -89,7 +89,17 @@ func init() {
 	wss = newWSServer()
 }
 
-// Start starts the server
+// Stop the server
+func Stop() (err error) {
+	time.Sleep(time.Second)
+	cmu.Lock()
+	close(c.StopChan)
+	cmu.Unlock()
+	err = fServer.Shutdown()
+	return
+}
+
+// Start the server
 func Start(cfg Config) (err error) {
 	cmu.Lock()
 	// these are used by other functions
