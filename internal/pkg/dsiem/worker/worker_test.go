@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -68,6 +69,7 @@ func initFrontend(d string, t *testing.T) {
 
 	c := server.Config{}
 	c.BpChan = make(chan bool)
+	c.MsqCluster = "nats://" + DefaultTestOptions.Host + ":" + strconv.Itoa(DefaultTestOptions.Port)
 	c.Confd = path.Join(fixturesDir, "configs")
 	c.Webd = path.Join()
 	c.WriteableConfig = true
@@ -134,7 +136,6 @@ func TestWorker(t *testing.T) {
 	})
 
 	time.Sleep(time.Second * 5)
-	fmt.Println("here3a")
 
 	frontend = "http://127.0.0.1:8080"
 	if err = Start(ch, msq, msqPrefix, nodeName, wd, frontend); err != nil {
