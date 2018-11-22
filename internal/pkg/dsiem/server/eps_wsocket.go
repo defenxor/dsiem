@@ -17,11 +17,12 @@
 package server
 
 import (
+	"sync"
+
 	"github.com/defenxor/dsiem/internal/pkg/shared/idgen"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/fasthttp-contrib/websocket"
-	// "golang.org/x/net/websocket"
 )
 
 type client struct {
@@ -34,6 +35,7 @@ type message struct {
 }
 
 type wsServer struct {
+	sync.Mutex
 	clients      map[string]*client
 	sendAllCh    chan *message
 	cConnectedCh chan bool
@@ -44,18 +46,15 @@ func newWSServer() *wsServer {
 	sendAllCh := make(chan *message)
 	cConnectedCh := make(chan bool)
 	return &wsServer{
-		clients,
-		sendAllCh,
-		cConnectedCh,
+		clients:      clients,
+		sendAllCh:    sendAllCh,
+		cConnectedCh: cConnectedCh,
 	}
 }
 
 func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
-	id, err = idgen.GenerateID()
-	if err != nil {
-		log.Debug(log.M{Msg: "cannot create an ID for WS client!" + id})
-		return "", err
-	}
+	id = "static"
+	id, _ = idgen.GenerateID()
 	log.Debug(log.M{Msg: "adding WS client " + id})
 	c := client{}
 	c.id = id
@@ -70,7 +69,9 @@ func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
 }
 
 func (s *wsServer) del(cID string) {
+	s.Lock()
 	delete(s.clients, cID)
+	s.Unlock()
 }
 
 func (s *wsServer) sendAll(msg *message) {
