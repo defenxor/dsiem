@@ -23,7 +23,7 @@ jobs:
             go fmt ./...
             go vet ./...
             GOFLAGS=-mod= go get github.com/mattn/goveralls
-            go test -v -cover -race -coverprofile=./coverage.out $(go list ./...)
+            go test -v -cover -race -timeout=60s -coverprofile=./coverage.out $(go list ./...)
             GOFLAGS=-mod= goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       # goveralls will ignore vendor dir and download stuff, so we cache its results here
       - save_cache:
