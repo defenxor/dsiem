@@ -140,7 +140,7 @@ func Start(cfg Config) (err error) {
 		if cfg.MaxEPS == 0 || cfg.MinEPS == 0 {
 			router.POST("/events", handleEvents)
 		} else {
-			// reuse c lock
+			// reuse cmu lock
 			cmu.Lock()
 			epsLimiter, err = limiter.New(cfg.MaxEPS, cfg.MinEPS)
 			cmu.Unlock()
