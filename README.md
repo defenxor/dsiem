@@ -12,10 +12,10 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 
 * Runs in standalone or clustered mode with [NATS](https://nats.io/) as messaging bus between frontend and backend nodes. Along with ELK, this made the entire SIEM platform horizontally scalable.
 * OSSIM-style correlation and directive rules, bridging easier transition from OSSIM.
-* Alarms enrichment with data from threat intel and vulnerability information sources. Builtin support for [Moloch Wise](https://github.com/aol/moloch/wiki/WISE) (which supports Alienvault OTX and others) and Nessus CSV exports, with support for other sources can easily be implemented as plugins.
-* Instrumentation supported through metricbeat and/or Elastic APM server. No need for extra stack for this purpose.
+* Alarms enrichment with data from threat intel and vulnerability information sources. Builtin support for [Moloch Wise](https://github.com/aol/moloch/wiki/WISE) (which supports Alienvault OTX and others) and Nessus CSV exports. Support for other sources can easily be implemented as [plugins](./docs/plugins.md#about-threat-intel-lookup-plugin).
+* Instrumentation supported through metricbeat and/or Elastic APM server. No need extra stack for this purpose.
 * Builtin rate and backpressure control, set the minimum and maximum events/second (EPS) received from Logstash depending on your hardware capacity and acceptable delays in event processing.
-* Loosely coupled, designed to be composable with other infrastructure platform, and doesn't try to do everything. As an example, there's no authentication support by design, since implementing that using nginx or other frontend should provide better security. Loose coupling  also means that it's possible to use Dsiem as a correlation engine with non ELK stack if needed.
+* Loosely coupled, designed to be composable with other infrastructure platform, and doesn't try to do everything. Loose coupling also means that it's possible to use Dsiem as an OSSIM-style correlation engine with non ELK stack if needed.
 * Batteries included:
     * A directive conversion tool that reads OSSIM XML directive file and translate it to Dsiem JSON-style config.
     * A SIEM plugin creator tool that will read off an existing index pattern from Elasticsearch, and creates the necessary Logstash configuration to clone the relevant fields' content to Dsiem.
@@ -55,9 +55,14 @@ You can use Docker Compose or the release binaries to install Dsiem. Refer to th
 
 Currently available docs are located [here](/docs).
 
+## Reporting Bugs and Issues
+
+Please submit bug and issue reports by opening a new Github [issue](https://github.com/defenxor/dsiem/issues/new). Security-sensitive information (like details of a potential security bug), may also be sent to devs@defenxor.com. The GPG public key for that address can be found [here](https://pgp.mit.edu/pks/lookup?search=devs%40defenxor.com).
+
+
 ## How to Contribute
 
-Contributions are very welcome! Submit PR for bug fixes and additional tests, gist for logstash config files to parse device events, SIEM directive rules, or a new threat intel/vulnerability lookup plugins.
+Contributions are very welcome! Feel free to submit PR for bug fixes and additional tests, gist for Logstash config files to parse device events, SIEM directive rules, or a new threat intel/vulnerability lookup plugins.
 
 If you're not sure on what to do on a particular matter, feel free to open an <a href="https://github.com/defenxor/dsiem/issues"> issue</a> and discuss first.
 
