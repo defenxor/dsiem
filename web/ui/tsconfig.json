@@ -14,8 +14,6 @@
     "lib": [
       "es2017",
       "dom"
-    ],
-    "module": "es2015",
-    "baseUrl": "./src"
+    ]
   }
 }
