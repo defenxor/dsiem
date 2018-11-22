@@ -30,7 +30,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
-	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 
 	"github.com/fasthttp-contrib/websocket"
 	"github.com/valyala/fasthttp"
@@ -44,6 +43,8 @@ type configFile struct {
 type configFiles struct {
 	Files []configFile `json:"files"`
 }
+
+var evtChanTimeoutSecond = time.Duration(10 * time.Second)
 
 func pprofHandler(ctx *fasthttp.RequestCtx) {
 	pprofhandler.PprofHandler(ctx)
@@ -65,7 +66,7 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
 	log.Info(log.M{Msg: "Request for list of configuration files from " + clientAddr})
 
-	files, err := ioutil.ReadDir(confDir)
+	files, err := ioutil.ReadDir(c.Confd)
 	if err != nil {
 		fmt.Fprintf(ctx, "Error reading config directory")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
@@ -88,11 +89,6 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 func handleConfFileDelete(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
 	filename := ctx.UserValue("filename").(string)
-	if filename == "" {
-		fmt.Fprintf(ctx, "requires /config/filename\n")
-		ctx.SetStatusCode(fasthttp.StatusBadRequest)
-		return
-	}
 
 	if !isCfgFileNameValid(filename) {
 		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding."})
@@ -102,16 +98,9 @@ func handleConfFileDelete(ctx *fasthttp.RequestCtx) {
 	}
 
 	log.Info(log.M{Msg: "Delete request for file '" + filename + "' from " + clientAddr})
-	f := path.Join(confDir, filename)
+	f := path.Join(c.Confd, filename)
 	log.Info(log.M{Msg: "Deleting file " + f})
 
-	if !fs.FileExist(f) {
-		fmt.Fprintf(ctx, filename+" doesn't exist\n")
-		ctx.SetStatusCode(fasthttp.StatusNotFound)
-		return
-	}
-
-	// delete file
 	var err = os.Remove(f)
 	if err != nil {
 		fmt.Fprintf(ctx, "cannot delete "+filename)
@@ -122,11 +111,6 @@ func handleConfFileDelete(ctx *fasthttp.RequestCtx) {
 func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
 	filename := ctx.UserValue("filename").(string)
-	if filename == "" {
-		fmt.Fprintf(ctx, "requires /config/filename\n")
-		ctx.SetStatusCode(fasthttp.StatusBadRequest)
-		return
-	}
 
 	if !isCfgFileNameValid(filename) {
 		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding."})
@@ -136,14 +120,9 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 	}
 
 	log.Info(log.M{Msg: "Request for file '" + filename + "' from " + clientAddr})
-	f := path.Join(confDir, filename)
+	f := path.Join(c.Confd, filename)
 	log.Info(log.M{Msg: "Getting file " + f})
 
-	if !fs.FileExist(f) {
-		fmt.Fprintf(ctx, filename+" doesn't exist\n")
-		ctx.SetStatusCode(fasthttp.StatusNotFound)
-		return
-	}
 	file, err := os.Open(f)
 	if err != nil {
 		fmt.Fprintf(ctx, "cannot open "+filename)
@@ -164,11 +143,6 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
 	filename := ctx.UserValue("filename").(string)
-	if filename == "" {
-		fmt.Fprintf(ctx, "requires /config/filename\n")
-		ctx.SetStatusCode(fasthttp.StatusBadRequest)
-		return
-	}
 
 	if !isCfgFileNameValid(filename) {
 		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding."})
@@ -178,7 +152,7 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 	}
 
 	log.Info(log.M{Msg: "Upload file request for '" + filename + "' from " + clientAddr})
-	file := path.Join(confDir, filename)
+	file := path.Join(c.Confd, filename)
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Fprintf(ctx, "Cannot open target file location\n")
@@ -215,7 +189,6 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 
 	msg := ctx.PostBody()
 	err := evt.FromBytes(msg)
-	// works: err := gojay.Unmarshal(ctx.PostBody(), evt)
 
 	if err != nil {
 		log.Warn(log.M{Msg: "Cannot parse normalizedEvent from " + clientAddr + ". err: " + err.Error(), CId: connID})
@@ -250,20 +223,20 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 
 	log.Debug(log.M{Msg: "Received event ID: " + evt.EventID, CId: connID})
 
-	// push the event, timeout in 10s to avoid open fd overload
+	// push the event, timeout to avoid open fd overload
 	select {
-	case <-time.After(10 * time.Second):
+	case <-time.After(evtChanTimeoutSecond):
 		log.Info(log.M{Msg: "event channel timed out!", CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusRequestTimeout)
 		if apm.Enabled() {
 			tx.Result("Event channel timed out")
 		}
-	case eventChan <- *evt:
+	case c.EvtChan <- *evt:
 		log.Debug(log.M{Msg: "Event pushed", CId: connID})
 		if apm.Enabled() {
 			tx.Result("Event sent to backend")
 		}
-	case err := <-errChan:
+	case err := <-c.ErrChan:
 		log.Info(log.M{Msg: "Error from message queue:" + err.Error(), CId: connID})
 		ctx.SetStatusCode(fasthttp.StatusServiceUnavailable)
 		if apm.Enabled() {

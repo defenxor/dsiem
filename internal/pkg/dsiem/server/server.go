@@ -45,94 +45,139 @@ import (
 )
 
 var connCounter uint64
-var webDir, confDir string
 
 var wss *wsServer
 var upgrader websocket.Upgrader
-var mode string
 var transport nats.Transport
 var epsLimiter *limiter.Limiter
 
-var errChan <-chan error
-var eventChan chan<- event.NormalizedEvent
-var bpChan <-chan bool
-
-// var msq string
-var overloadFlag bool
+var (
+	overloadFlag bool
+	mu           sync.RWMutex
+)
 
 var rateCounter = rc.NewRateCounter(1 * time.Second)
 
-// Start starts the server
-func Start(ch chan<- event.NormalizedEvent, bpCh <-chan bool, confd string, webd string,
-	writeableConfig bool, pprof bool, serverMode string, maxEPS int, minEPS int, msqCluster string,
-	msqPrefix string, nodeName string, addr string, port int) (err error) {
+var fServer fasthttp.Server
 
-	if a := net.ParseIP(addr); a == nil {
-		err = errors.New(addr + " is not a valid IP address")
+var (
+	cmu sync.RWMutex
+	c   Config
+)
+
+// Config define the struct used to initialize server
+type Config struct {
+	EvtChan         chan<- event.NormalizedEvent
+	BpChan          <-chan bool
+	StopChan        chan struct{}
+	ErrChan         <-chan error
+	Confd           string
+	Webd            string
+	WriteableConfig bool
+	Pprof           bool
+	Mode            string
+	MaxEPS          int
+	MinEPS          int
+	MsqCluster      string
+	MsqPrefix       string
+	NodeName        string
+	Addr            string
+	Port            int
+}
+
+func init() {
+	wss = newWSServer()
+}
+
+// Stop the server
+func Stop() (err error) {
+	time.Sleep(time.Second)
+	cmu.Lock()
+	close(c.StopChan)
+	cmu.Unlock()
+	err = fServer.Shutdown()
+	return
+}
+
+// Start the server
+func Start(cfg Config) (err error) {
+	cmu.Lock()
+	// these are used by other functions
+	c.EvtChan = cfg.EvtChan
+	c.StopChan = make(chan struct{})
+	c.Mode = cfg.Mode
+	c.Confd = cfg.Confd
+	cmu.Unlock()
+
+	if a := net.ParseIP(cfg.Addr); a == nil {
+		err = errors.New(cfg.Addr + " is not a valid IP address")
 		return
 	}
-	if port < 1 || port > 65535 {
+	if cfg.Port < 1 || cfg.Port > 65535 {
 		err = errors.New("Invalid TCP port number")
 		return
 	}
 
-	mode = serverMode
-
-	if mode == "cluster-frontend" {
-		initMsgQueue(msqCluster, msqPrefix, nodeName)
+	if c.Mode == "cluster-frontend" {
+		initMsgQueue(cfg.MsqCluster, cfg.MsqPrefix, cfg.NodeName)
 	} else {
-		eventChan = ch
-		bpChan = bpCh
-		errChan = nil
+		cmu.Lock()
+		c.EvtChan = cfg.EvtChan
+		c.BpChan = cfg.BpChan
+		c.ErrChan = cfg.ErrChan
+		cmu.Unlock()
 	}
 
-	// no need to check this, toctou issue
-	confDir = confd
-	webDir = webd
+	p := strconv.Itoa(cfg.Port)
 
-	p := strconv.Itoa(port)
-
-	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
+	log.Info(log.M{Msg: "Server mode " + c.Mode + " listening on " + cfg.Addr + ":" + p})
 
 	router := fasthttprouter.New()
 	router.GET("/config/:filename", handleConfFileDownload)
 	router.GET("/config/", handleConfFileList)
 	router.GET("/debug/vars/", expVarHandler)
-	if pprof {
+	if cfg.Pprof {
 		router.GET("/debug/pprof/:name", pprofHandler)
 		router.GET("/debug/pprof/", pprofHandler)
 	}
-	if writeableConfig {
+	if cfg.WriteableConfig {
 		router.POST("/config/:filename", handleConfFileUpload)
 		router.DELETE("/config/:filename", handleConfFileDelete)
 	}
 
-	if mode != "cluster-backend" {
-
+	if c.Mode != "cluster-backend" {
 		initWSServer()
-
-		if maxEPS == 0 || minEPS == 0 {
+		if cfg.MaxEPS == 0 || cfg.MinEPS == 0 {
 			router.POST("/events", handleEvents)
 		} else {
-			epsLimiter, err = limiter.New(maxEPS, minEPS)
+			// reuse cmu lock
+			cmu.Lock()
+			epsLimiter, err = limiter.New(cfg.MaxEPS, cfg.MinEPS)
+			cmu.Unlock()
 			if err != nil {
 				return
 			}
 			router.POST("/events", rateLimit(epsLimiter.Limit(), 3*time.Second, handleEvents))
 		}
 		router.GET("/eps/", wsHandler)
-		router.ServeFiles("/ui/*filepath", webDir)
+		router.ServeFiles("/ui/*filepath", cfg.Webd)
 
 		overloadManager()
 	}
+	// just reuse the lock here
+	cmu.Lock()
+	fServer.Handler = router.Handler
+	fServer.Name = "dsiem"
+	cmu.Unlock()
+
 	if runtime.GOOS == "windows" {
-		err = fasthttp.ListenAndServe(addr+":"+p, router.Handler)
+		err = fServer.ListenAndServe(cfg.Addr + ":" + p)
 	} else {
-		ln, e := reuseport.Listen("tcp4", addr+":"+p)
+		ln, e := reuseport.Listen("tcp4", cfg.Addr+":"+p)
 		if e != nil {
 			return e
 		}
-		err = fasthttp.Serve(ln, router.Handler)
+		err = fServer.Serve(ln)
 	}
 	return
 }
@@ -149,10 +194,18 @@ func increaseConnCounter() uint64 {
 }
 
 func overloadManager() {
-	mu := sync.RWMutex{}
 	detector := func() {
+		var m bool
+		cmu.RLock()
+		stopCh := c.StopChan
+		bpCh := c.BpChan
+		cmu.RUnlock()
 		for {
-			m := <-bpChan
+			select {
+			case <-stopCh:
+				return
+			case m = <-bpCh:
+			}
 			if m != overloadFlag {
 				log.Info(log.M{Msg: "Received overload status change from " + strconv.FormatBool(overloadFlag) +
 					" to " + strconv.FormatBool(m) + " from backend"})
@@ -165,14 +218,26 @@ func overloadManager() {
 	modifier := func() {
 		ticker := time.NewTicker(5 * time.Second)
 		go func() {
+			cmu.RLock()
+			stopCh := c.StopChan
+			cmu.RUnlock()
 			for {
 				res, current := 0, 0
+				select {
+				case <-stopCh:
+					ticker.Stop()
+					return
+				case <-ticker.C:
+				}
 				<-ticker.C
+				cmu.RLock()
 				if epsLimiter == nil {
+					cmu.RUnlock()
 					continue
 				}
+				cmu.RUnlock()
 				current = epsLimiter.Limit()
-				mu.RLock()
+				mu.Lock()
 				if overloadFlag {
 					res = epsLimiter.Lower()
 				} else {
@@ -182,7 +247,7 @@ func overloadManager() {
 					log.Info(log.M{Msg: "Overload status is " + strconv.FormatBool(overloadFlag) +
 						", EPS limit changed from " + strconv.Itoa(current) + " to " + strconv.Itoa(res)})
 				}
-				mu.RUnlock()
+				mu.Unlock()
 			}
 		}()
 	}
@@ -212,11 +277,14 @@ func initMsgQueue(msq string, prefix, nodeName string) {
 	initMsq := func() (err error) {
 		transport := nats.New()
 		transport.NatsAddr = msq
-		eventChan = transport.Send(prefix + "_" + "events")
-		errChan = transport.ErrChan()
-		bpChan = transport.ReceiveBool(prefix + "_" + "overload_signals")
+		cmu.Lock()
+		c.EvtChan = transport.Send(prefix + "_" + "events")
+		c.ErrChan = transport.ErrChan()
+		c.BpChan = transport.ReceiveBool(prefix + "_" + "overload_signals")
+		errCh := c.ErrChan
+		cmu.Unlock()
 		select {
-		case err = <-errChan:
+		case err = <-errCh:
 		default:
 		}
 		return err
@@ -235,15 +303,24 @@ func initMsgQueue(msq string, prefix, nodeName string) {
 }
 
 func initWSServer() {
-	wss = newWSServer()
 	go func() {
-		var c int
+		var cl int
 		for {
-			c = len(wss.clients)
-			if c == 0 {
+			wss.Lock()
+			cl = len(wss.clients)
+			wss.Unlock()
+			cmu.RLock()
+			stopCh := c.StopChan
+			wsChan := wss.cConnectedCh
+			cmu.RUnlock()
+			if cl == 0 {
 				log.Debug(log.M{Msg: "WS server waiting for client connection."})
 				// wait until new client connected
-				<-wss.cConnectedCh
+				select {
+				case <-stopCh:
+					break
+				case <-wsChan:
+				}
 			}
 			wss.sendAll(&message{rateCounter.Rate()})
 			time.Sleep(250 * time.Millisecond)
