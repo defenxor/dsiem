@@ -1,6 +1,6 @@
 # Installation
  
-The quickest and most reliable way to test Dsiem is to use the supplied Docker Compose files. They include Dsiem, all the required ELK stack, and an example log source (Suricata) preconfigured.
+The quickest and most reliable way to test Dsiem is to use the supplied Docker Compose files. They include Dsiem, all the required ELK stack, and an example log source (Suricata) pre-configured.
 
 Then after you get a feel on how everything fits together, you can start integrating Dsiem into your existing or custom ELK deployment.
 
@@ -8,8 +8,7 @@ Then after you get a feel on how everything fits together, you can start integra
 
 ### Using Docker Compose
 
-* Install <a href="https://git-scm.com/downloads">Git</a>, <a href="https://www.docker.com/get-started">Docker</a>, and 
-  <a href="https://docs.docker.com/compose/install/">Docker Compose</a>.
+* Install [Git](https://git-scm.com/downloads), [Docker](https://www.docker.com/get-started), and [Docker Compose](https://docs.docker.com/compose/install/).
 
 * Clone this repository:
 
@@ -37,7 +36,7 @@ Then after you get a feel on how everything fits together, you can start integra
 * Here's things to note about the environment created by `docker-compose`:
   
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
-    * Suricata comes with <a href="https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules">Emerging Threats ICMP Info Ruleset</a> enabled, so you can easily trigger a test just by continuously pinging a host in the same subnet. Dsiem comes with an <a href="https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing2.json"> example directive configuration</a> that will intercept this "attack".
+    * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled, so you can easily trigger a test just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
     * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
 
 * Once Kibana is up at http://localhost:5601, you can import Dsiem dashboard and its dependencies using the following command:
@@ -48,9 +47,9 @@ Then after you get a feel on how everything fits together, you can start integra
 
 ### Using Existing ELK
 
-* First make sure you already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.2, though it should work with any 6.x version with minor adjustment.
+* First make sure you're already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.x, though it should work with any 6.x version with minor adjustment.
 
-* Download Dsiem binary from the release page, unzip it, and run it on the target system, e.g. for Linux:
+* Download Dsiem binary from the release page, unzip it, and run it on the target system, e.g. for Linux (please use dsiem latest version accordingly for the download URL):
 
     ```shell
 
@@ -65,19 +64,19 @@ Then after you get a feel on how everything fits together, you can start integra
     ```
 
 * Install the following plugin to your Logstash instance:
-    * logstash-filter-prune
-    * logstash-filter-uuid
+    * [logstash-filter-prune](https://www.elastic.co/guide/en/logstash/current/plugins-filters-prune.html)
+    * [logstash-filter-uuid](https://www.elastic.co/guide/en/logstash/current/plugins-filters-uuid.html)
 
-* Adjust and deploy the example configuration files for Logstash from <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/logstash">here</a>. Consult
+* Adjust and deploy the example configuration files for Logstash from [here](https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/logstash). Consult
   Logstash documentation if you have problem on this.
 
-* Install filebeat on the same machine as dsiem, and configure it to use the provided example config file from <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/filebeat">here</a>.
+* Install Filebeat on the same machine as dsiem, and configure it to use the provided example config file from [here](https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/filebeat).
 
     * Note that you should change `/var/log/dsiem` in that example to the `logs` directory inside dsiem install location (`/var/dsiem/logs` if using the above example).
   
     * Also make sure you adjust the logstash address variable inside `filebeat.yml` file to point to your Logstash endpoint address.
 
-* Set Dsiem to auto-start by using something like this:
+* Set Dsiem to auto-start by using something like this (for systemd-based Linux):
   
     ```shell
 
@@ -126,5 +125,5 @@ docker-compose -f docker-compose-cluster.yml down -v
 For non `docker-compose` procedure, you will have to undo all the changes made manually, for example:
 
 * Remove the extra logstash plugins and configuration files.
-* Uninstall filebeat.
-* Uninstall dsiem by deleting its directory and systemd unit file, if any.
+* Uninstall Filebeat.
+* Uninstall Dsiem by deleting its directory and systemd unit file, if any.
