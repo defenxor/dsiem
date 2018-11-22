@@ -5,7 +5,8 @@ This directory contains Dsiem documentation pages until there's a need for a ded
 Available topics are:
 
 * [Installation](./installation.md)
-* [Advanced Deployment](./adv-deployment.md)
-* [Event Processing Flow](./event-processing.md)
+* [Event Processing Flow](./event_processing.md)
+* [Directive and Alarm Processing](./directives_and_alarms.md)
 * [Dsiem Command and Tools](./commands.md)
-* [Plugins](./plugins.md)
+* [Dsiem Plugins](./plugins.md)
+* [Advanced Deployment](./adv_deployment.md)

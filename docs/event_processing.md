@@ -4,7 +4,7 @@ This section provides an in-depth view of how event is processed in Dsiem. We'll
 
 ![Event Processing Flow](/docs/images/flow.png)
 
-It should be clear from the diagram how logstash plays a central role in the event flow. It is therefore important to get an idea of how it works first before diving further. The basic things to understand are:
+The diagram shows how logstash plays a central role in the event flow. It is therefore important to get an idea of how it works first before diving further. The basic things to understand are:
 
   * Logstash processing pipeline progresses from input --> filter --> output. More detail on this can be found on the Logstash documentation on <a href="https://www.elastic.co/guide/en/logstash/current/pipeline.html">how it works</a>.
 
@@ -25,7 +25,7 @@ After that, still based on the same unique identifier, the event is then process
 
 `99_output.conf` in turn process the original event and send it to Elasticsearch (`Parsed Logs` in the diagram) to be stored in a device-specific index, which in this case `suricata-*`. At this point the processing flow of the initial event is complete.
 
-## Processing Cloned --> Normalized Events
+## Processing Cloned ⟶ Normalized Events
 
 As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all `Incoming Events` such as Source IP, Destination IP, Title, and others. Those common fields are what allows Dsiem to correlate events from different sources and original format.
 
@@ -35,7 +35,7 @@ the cloned event is then picked up based on its new identifier by <a href="https
 
 ## Generating Alarms
 
-Dsiem performs event correlation on all incoming `Normalized Event` based on its configured directive rules. Dsiem generates `Alarm` if the directive rule condition are met by a series of incoming events within a given period of time. See Directives section for more detail on how alarms are generated. 
+Dsiem performs event correlation on all incoming `Normalized Event` based on its configured directive rules. Dsiem generates `Alarm` if the directive rule condition are met by a series of incoming events within a given period of time. Refer to [Directive and Alarm](./directive_and_alarm.md) doc for more detail on how alarms are generated. 
 
 Dsiem stores generated `Alarm` and subsequent updates to it in a log file which is then harvested by a local Filebeat. In addition to the alarm it self, Dsiem also store `Alarm_events` record that link each alarm to the `Normalized Event`s that trigger its creation. Just like `Alarm`, those records are also harvested by the local Filebeat instance.
 

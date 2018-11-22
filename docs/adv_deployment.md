@@ -1,6 +1,6 @@
 # Advanced Deployment
 
-Dsiem support clustering mode for horizontal scalability. In this mode each instance of dsiem will run either as frontend or backend node, with NATS messaging in between to facilitate communication. The architecture is depicted in the following diagram.
+Dsiem support clustering mode for horizontal scalability. In this mode, each instance of dsiem will run either as frontend or backend node, with NATS messaging in between to facilitate communication. The architecture is depicted in the following diagram.
 
 ![Advanced Architecture](/docs/images/advanced-arch.png)
 
@@ -29,7 +29,7 @@ Locations of all web interface endpoints (Kibana, Elasticsearch, Dsiem) are the 
 
 In `cluster-backend` mode, dsiem will pull files from frontend `configs` directory into its own, but will *only* fetch directives files whose name matches its `node` startup parameter.
   
-For instance, in the example `docker-compose-cluster.yml` above, backend container is started with `DSIEM_NODE=dsiem-backend` environment variable set. That tells dsiem to only fetch directive files that matches *directives_**dsiem-backend**_\*.json* glob pattern from frontend node.
+For instance, in the example `docker-compose-cluster.yml` above, backend container is started with `DSIEM_NODE` environment variable set to `dsiem-backend`. That tells dsiem to only fetch directive files that matches *directives_**dsiem-backend**_\*.json* glob pattern from frontend node.
 
 Therefore to distribute loads between backend nodes, you will need to:
 * Start each backend with a unique `node` parameter;
@@ -42,10 +42,11 @@ Therefore to distribute loads between backend nodes, you will need to:
 Dsiem should run on any container orchestration engine, including Kubernetes. The following lists our recommendation for running dsiem on K8s:
 
 * For frontend nodes:
-  - To have a central location for directive files, use a shared storage (e.g. NFS, CIFS) on frontend nodes to mount `configs` directory.
+  - To centrally manage directive files, use a shared storage (e.g. NFS, CIFS) on frontend nodes to mount `configs` directory.
   - For high availability and load balancing, create a K8s service for frontends and have logstash instances send logs to that service.
-  - Frontends don't need permanent storage, so you can use [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) to manage them.
+  - Frontends don't need permanent storage, so you can use [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) to manage schedule them.
 
 * For backend nodes:
-  - Use [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) to have a stable/predictable pod names, and use the pod name to set `DSIEM_NODE` container environment variable. This allows you to distribute work between backends by naming the directive files on frontend based on the backend StatefulSet's pod name prefix and number of replicas.
+  - Use [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) to have a stable/predictable pod names, and use the pod name to set `DSIEM_NODE` container environment variable. This allows you to distribute work among backends by naming the directive files (located in frontend nodes) based on the backend StatefulSet's pod name prefix and number of replicas.
+
   - Mount a persistent storage for backend `logs` directory, and have a filebeat container in the same pod to harvest those logs. Have a look at how this is done in docker compose examples as a starting point.
