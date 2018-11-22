@@ -114,14 +114,13 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	cfg.Webd = path.Join(fixDir, "web")
 	cfg.WriteableConfig = true
 	cfg.Pprof = true
+	cfg.WebSocket = true
 
 	time.AfterFunc(time.Second, func() {
-		fmt.Println("TIMEAFTER FUNC RUNNING NATS")
 		go RunDefaultServer()
 	})
 	defer stopNats(t)
 
-	fmt.Println("TESTING FAILED CONFIG")
 	cfg.Confd = `/\/\/\/`
 	cfg.Mode = "cluster-frontend"
 
@@ -139,7 +138,6 @@ func TestServerStartupAndFileServer(t *testing.T) {
 
 	stopServer(t)
 
-	fmt.Println("REINIT WITH EXTRA PARAMS")
 	// reinit frontend with extra params
 	cfg.Confd = path.Join(fixDir, "configs")
 	cfg.MaxEPS = 1000
@@ -147,7 +145,6 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	go initServer(cfg, t, false)
 	time.Sleep(time.Second * 4)
 
-	fmt.Println("ABT TO TEST PAYLOAD.EXE")
 	httpTest(t, url+"/config/payload.exe", "POST", "zpl01t", 418)
 	httpTest(t, url+"/config/valid.json", "POST", "{}", 201)
 	httpTest(t, url+"/config/payload.exe", "DELETE", "", 418)

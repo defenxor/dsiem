@@ -16,6 +16,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 )
+
 func TestServerHandlers(t *testing.T) {
 	d, err := test.DirEnv(true)
 	if err != nil {
@@ -37,6 +38,7 @@ func TestServerHandlers(t *testing.T) {
 	cfg.Webd = path.Join(fixDir, "web")
 	cfg.WriteableConfig = true
 	cfg.Pprof = true
+	cfg.WebSocket = true
 
 	cfg.Mode = "standalone"
 	go initServer(cfg, t, false)
