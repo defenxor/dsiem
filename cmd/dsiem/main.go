@@ -210,16 +210,6 @@ external message queue.`,
 			exit("Incorrect EPS setting", errors.New("minEPS must be <= than maxEPS"))
 		}
 
-		/* disable this in favor of pprof web interfae
-		if pp != "" {
-			f, err := pprof.GetProfiler(pp)
-			if err != nil {
-				exit("Cannot start profiler", err)
-			}
-			defer f.Stop()
-		}
-		*/
-
 		if traceFlag {
 			fo, err := ioutil.TempFile(os.TempDir(), progName+"*.trace")
 			if err != nil {
@@ -240,9 +230,11 @@ external message queue.`,
 		apm.Enable(esapm)
 
 		// saving the config for UI to read
-		err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))
-		if err != nil {
-			exit("Error writing config file", err)
+		if writeableConfig {
+			err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))
+			if err != nil {
+				exit("Error writing config file", err)
+			}
 		}
 
 		eventChan = make(chan event.NormalizedEvent)
