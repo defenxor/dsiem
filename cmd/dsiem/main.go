@@ -70,6 +70,7 @@ func init() {
 	serverCmd.Flags().Bool("apm", false, "Enable elastic APM instrumentation")
 	serverCmd.Flags().Bool("writeableConfig", false, "Whether to allow configuration file update through HTTP")
 	serverCmd.Flags().Bool("pprof", false, "Enable go pprof on the web interface")
+	serverCmd.Flags().Bool("websocket", false, "Enable websocket endpoint that streams events/second measurement data")
 	serverCmd.Flags().Bool("trace", false, "Generate 10 seconds trace file for debugging.")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
 	serverCmd.Flags().IntP("cacheDuration", "c", 10, "Cache expiration time in minutes for intel and vuln query results")
@@ -107,6 +108,7 @@ func init() {
 	viper.BindPFlag("medRiskMax", serverCmd.Flags().Lookup("medRiskMax"))
 	viper.BindPFlag("filePattern", validateCmd.Flags().Lookup("filePattern"))
 	viper.BindPFlag("writeableConfig", serverCmd.Flags().Lookup("writeableConfig"))
+	viper.BindPFlag("websocket", serverCmd.Flags().Lookup("websocket"))
 }
 
 func initConfig() {
@@ -202,6 +204,7 @@ external message queue.`,
 		cacheDuration := viper.GetInt("cacheDuration")
 		esapm := viper.GetBool("apm")
 		writeableConfig := viper.GetBool("writeableConfig")
+		websocket := viper.GetBool("websocket")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -301,6 +304,7 @@ external message queue.`,
 		cf.NodeName = node
 		cf.Addr = addr
 		cf.Port = port
+		cf.WebSocket = websocket
 
 		err = server.Start(cf)
 		if err != nil {

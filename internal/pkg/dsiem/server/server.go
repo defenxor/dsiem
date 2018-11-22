@@ -83,6 +83,7 @@ type Config struct {
 	NodeName        string
 	Addr            string
 	Port            int
+	WebSocket       bool
 }
 
 func init() {
@@ -159,9 +160,10 @@ func Start(cfg Config) (err error) {
 			}
 			router.POST("/events", rateLimit(epsLimiter.Limit(), 3*time.Second, handleEvents))
 		}
-		router.GET("/eps/", wsHandler)
+		if cfg.WebSocket {
+			router.GET("/eps/", wsHandler)
+		}
 		router.ServeFiles("/ui/*filepath", cfg.Webd)
-
 		overloadManager()
 	}
 	// just reuse the lock here
