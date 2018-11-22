@@ -1,0 +1,26 @@
+<app-header
+  [fixed]="true"
+  [navbarBrandFull]="{src: 'assets/img/brand/dsiem.png', width: 89, height: 25, alt: 'SIEM UI Logo'}"
+  [navbarBrandMinimized]="{src: 'assets/img/brand/dsiem.png', width: 30, height: 30, alt: 'SIEM UI Logo'}"
+  [sidebarToggler]="'lg'"
+  [asideMenuToggler]="false"
+  [mobileAsideMenuToggler]="false">
+  <ul class="nav navbar-nav d-md-down-none"></ul>
+  <ul class="nav navbar-nav ml-auto"></ul>
+</app-header>
+<div class="app-body">
+  <app-sidebar [fixed]="true" [display]="'lg'">
+    <app-sidebar-nav [navItems]="navItems" [perfectScrollbar] [disabled]="sidebarMinimized"></app-sidebar-nav>
+    <app-sidebar-minimizer></app-sidebar-minimizer>
+  </app-sidebar>
+  <main class="main">
+    <ol class="breadcrumb">
+      <app-breadcrumb></app-breadcrumb>
+    </ol>
+    <div class="container-fluid">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>
+<app-footer>
+</app-footer>

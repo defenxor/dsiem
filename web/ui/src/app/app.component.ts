@@ -1,30 +1,37 @@
-import {Component, ChangeDetectorRef} from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import {ElasticsearchService} from './elasticsearch.service'
 import { timer } from 'rxjs';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  // tslint:disable-next-line
+  selector: 'body',
+  template: '<router-outlet></router-outlet>'
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   private elasticsearch: string
-  
-  title = 'DSIEM';
-  status = "";
   timerSubscription = null
 
-  constructor(private es: ElasticsearchService, private cd: ChangeDetectorRef) {
+  constructor(private router: Router, private es: ElasticsearchService) { 
     this.elasticsearch = this.es.getServer()
     this.checkES()
+  }
+
+  ngOnInit() {
+    this.router.events.subscribe((evt) => {
+      if (!(evt instanceof NavigationEnd)) {
+        return;
+      }
+      window.scrollTo(0, 0);
+    });
   }
 
   checkES() {
     console.log('checkES executed.')
     this.es.isAvailable().then(() => {
-      this.status = "Connected to ES " + this.elasticsearch
+      console.log('Connected to ES ' + this.elasticsearch)
     }, error => {
-      this.status = "Disconnected from ES " + this.elasticsearch
+      console.log('Disconnected from ES ' + this.elasticsearch)
       console.error('Elasticsearch is down', error)
     }).then(() => {
       this.timerSubscription = timer(5000).subscribe(() => this.checkES());
