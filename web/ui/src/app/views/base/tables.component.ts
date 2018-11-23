@@ -1,4 +1,4 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component, AfterViewInit, ViewChildren, QueryList } from '@angular/core';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { AlarmSource } from './alarm.interface';
 import { timer } from 'rxjs';
@@ -8,12 +8,23 @@ import { timer } from 'rxjs';
 })
 export class TablesComponent implements AfterViewInit {
 
+  @ViewChildren('pages') pages: QueryList<any>;
   private static readonly INDEX = 'siem_alarms';
   private static readonly TYPE = 'doc';
   elasticsearch: string;
   tempAlarms: AlarmSource[];
   tableData: object[] = [];
   timerSubscription: any;
+  totalItems = 20;
+  itemsPerPage = 10;
+  numberOfVisiblePaginators = 10;
+  numberOfPaginators: number;
+  paginators: Array<any> = [];
+  activePage = 1;
+  firstVisibleIndex = 1;
+  lastVisibleIndex: number = this.itemsPerPage;
+  firstVisiblePaginator = 0;
+  lastVisiblePaginator = this.numberOfVisiblePaginators;
 
   constructor(private es: ElasticsearchService) {
     this.elasticsearch = this.es.getServer();
