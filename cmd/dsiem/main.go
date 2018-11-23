@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path"
 	"runtime/trace"
+	"sync"
 	"time"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -311,6 +313,7 @@ external message queue.`,
 			exit("Cannot start server", err)
 		}
 
+		waitInterruptSignal()
 	},
 }
 
@@ -331,4 +334,17 @@ func checkMode(mode, node, msq, frontend string) error {
 		}
 	}
 	return nil
+}
+
+func waitInterruptSignal() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var ch chan os.Signal
+	ch = make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		wg.Done()
+	}()
+	wg.Wait()
 }
