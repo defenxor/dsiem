@@ -64,7 +64,7 @@ func wsHandler(ctx *fasthttp.RequestCtx) {
 
 func handleConfFileList(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
-	log.Info(log.M{Msg: "Request for list of configuration files from " + clientAddr})
+	log.Info(log.M{Msg: "Request for list of configuration files from " + clientAddr + ". Using config dir: " + c.Confd})
 
 	files, err := ioutil.ReadDir(c.Confd)
 	if err != nil {

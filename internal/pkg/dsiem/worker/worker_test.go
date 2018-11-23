@@ -81,27 +81,26 @@ func initFrontend(d string, t *testing.T) {
 	c.Addr = "127.0.0.1"
 	c.Port = 8080
 
-	go func() {
-		if err := server.Start(c); err != nil {
-			t.Error(err)
-		}
-	}()
+	if err := server.Start(c); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second)
 }
 
 func cleanUp(t *testing.T) {
+	fmt.Println("worker cleaning up..")
 	natsMu.Lock()
 	defer natsMu.Unlock()
 	if natsServer != nil {
-		fmt.Println("Shutting down NATS server")
+		//fmt.Println("Shutting down NATS server")
 		natsServer.Shutdown()
-		fmt.Println("Done shutting down NATS server")
-
+		//fmt.Println("Done shutting down NATS server")
 	}
-	fmt.Println("Stopping server")
+	//fmt.Println("Stopping server")
 	if err := server.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("Server stopped")
+	//fmt.Println("Server stopped")
 	return
 }
 
@@ -117,7 +116,10 @@ func TestWorker(t *testing.T) {
 	msq = "nats://127.0.0.1:4223"
 	msqPrefix = "dsiem"
 
-	go initFrontend(d, t)
+	time.AfterFunc(time.Second, func() {
+		go RunDefaultServer()
+	})
+	initFrontend(d, t)
 	defer cleanUp(t)
 
 	nodeName := "dsiem-backend-0"
@@ -131,14 +133,19 @@ func TestWorker(t *testing.T) {
 	if err := Start(ch, msq, msqPrefix, nodeName, wd, frontend); err == nil {
 		t.Fatal("expect an error due to wrong frontend address:", frontend)
 	}
-	time.AfterFunc(time.Second, func() {
-		go RunDefaultServer()
-	})
-
-	time.Sleep(time.Second * 5)
 
 	frontend = "http://127.0.0.1:8080"
-	if err = Start(ch, msq, msqPrefix, nodeName, wd, frontend); err != nil {
+	// flaky test when run together with server test, so retry it 3x
+	for i := 0; i < 10; i++ {
+		err = Start(ch, msq, msqPrefix, nodeName, wd, frontend)
+		if err != nil {
+			fmt.Println("Flaky worker test result detected, attempted start so far:", i+1, "..")
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
+	}
+	if err != nil {
 		t.Fatal("error during worker start:", err)
 	}
 
