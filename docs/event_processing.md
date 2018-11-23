@@ -1,12 +1,12 @@
 # Event Processing
 
-This section provides an in-depth view of how event is processed in Dsiem. We'll use the following diagram and <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/">Dsiem example Logstash and Filebeat configuration files</a> as reference.
+This section provides more details on how event processing works in Dsiem, compared to the rather simplified version description on the main [Readme](https://github.com/defenxor/dsiem/#how-it-works). We'll use the following diagram and <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/">Dsiem example Logstash and Filebeat configuration files</a> as reference.
 
 ![Event Processing Flow](/docs/images/flow.png)
 
 The diagram shows how logstash plays a central role in the event flow. It is therefore important to get an idea of how it works first before diving further. The basic things to understand are:
 
-  * Logstash processing pipeline progresses from input --> filter --> output. More detail on this can be found on the Logstash documentation on <a href="https://www.elastic.co/guide/en/logstash/current/pipeline.html">how it works</a>.
+  * Logstash processing pipeline progresses from input ⟶ filter ⟶ output. More detail on this can be found on the Logstash documentation on <a href="https://www.elastic.co/guide/en/logstash/current/pipeline.html">how it works</a>.
 
   * Logstash <a href="https://discuss.elastic.co/t/logstash-priority-order-when-using-multiple-config-files/80507">reads configuration files in alphabetical order</a>. Dsiem <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/logstash/conf.d">example configuration files</a> use this fact to contruct the appropriate pipeline.
 
@@ -14,20 +14,43 @@ With that in mind, let's break down how event flows throughout the system.
 
 ## Processing Initial Events
 
-First, logs are received by Syslog/Filebeat, and is sent (`Incoming Events` in the diagram) to logstash with a unique identifier. On the example config file, Filebeat adds field <a href="https://github.com/defenxor/dsiem/blob/fbf98d55d6b6dd2414a76a84964cb6c9719d7f58/deployments/docker/conf/filebeat/filebeat.yml#L33">`{application: suricata}`</a> to the event for this purpose.
+First, logs are received by Syslog/Filebeat, and are sent (`Incoming Events` in the diagram) to Logstash with a unique identifier. On the example config file, Filebeat adds field <a href="https://github.com/defenxor/dsiem/blob/fbf98d55d6b6dd2414a76a84964cb6c9719d7f58/deployments/docker/conf/filebeat/filebeat.yml#L33">`{application: suricata}`</a> to the event for this purpose.
 
 
 Logstash receives the event through <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/00_input.conf">00_input.conf</a>, and process it separately from other events in file <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/50_suricata.conf"> 50_suricata.conf</a> based on the presence of `[application] == suricata` field.
 
 After that, still based on the same unique identifier, the event is then processed by <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/70_siem-plugin-suricata.conf">70_siem-plugin-suricata.conf</a>, followed by <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/99_output.conf">99_output.conf</a>.
 
-`70_siem-plugin-suricata.conf` clone the event, and remove the `[application] == suricata` identifier from the clone so that it will not be processed by `99_output.conf`.
+`70_siem-plugin-suricata.conf` *clone* the event, and remove the `[application] == suricata` identifier from the clone so that it will not be processed by `99_output.conf`.
 
 `99_output.conf` in turn process the original event and send it to Elasticsearch (`Parsed Logs` in the diagram) to be stored in a device-specific index, which in this case `suricata-*`. At this point the processing flow of the initial event is complete.
 
 ## Processing Cloned ⟶ Normalized Events
 
-As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all `Incoming Events` such as Source IP, Destination IP, Title, and others. Those common fields are what allows Dsiem to correlate events from different sources and original format.
+As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others, which are all shown in the following table.
+
+| Field   |      Description      |  Mandatory | Usable in Correlation Rules |
+|----------|-------------|------|------|
+| timestamp | The original event timestamp in ISO8601 format, not to be confused with Logstash builtin `@timestamp` | Yes | No, but this is used to detect out-of-order events and transit time.
+| event_id | UUID for the event, typically generated using [Logstash UUID filter plugin](https://www.elastic.co/guide/en/logstash/current/plugins-filters-uuid.html) if the event doesn't already have one. | Yes | No
+| title | Description of the event. | Yes | No
+| sensor | String identifier of the device that produces/captures the event. Examples: hostname of the IPS device, firewall, or the processing Logstash node. | Yes | No
+| src_ip | Source IP, should refer to the sender for network communication based events. For host-based events, use the host main IP address if it's available on the event's record, or just use `127.0.0.1`. | Yes | Yes
+| dst_ip |    Destination IP, should refer to the receiver for network communication based events. Host-based events should just use the same address as `src_ip` or `127.0.0.1` |   Yes | Yes
+| protocol |  Network protocol used, such as TCP, UDP, ICMP, etc. | No | Yes
+| src_port | Source port number, typically refers to TCP or UDP ports, but may also be any identifying number like ICMP type number, etc. | No | Yes
+| dst_port | Source port number, typically refers to TCP or UDP ports, but may also be any identifying number like ICMP type number, etc. |  No | Yes
+| product | Product-type of the device that generates the event, i.e. firewall, IDS/IPS, etc. | Yes | Yes, in taxonomy-based rules.
+| category | The event's category, relative to the product type. For example, if the product type is firewall, event's category maybe `Allowed Traffic`,`Denied Traffic`, `Dropped Traffic`, `Port Scan` etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in taxonomy-based rules
+| subcategory |  further breakdown of the event's category. For example, if the category is `Code Injection Attack`, subcategory maybe `SQL Injection`, `HTTP Parameter Injection`, etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in taxonomy-based rules
+| plugin_id | A unique number that identifies the plugin. For example, `1001` for Suricata eve.json based events as used in Dsiem default config (`1001` is also used in OSSIM by default for Suricata UnifiedThreat logs)  | Yes, if `product` or `category` is empty | Yes, in plugin-based rules
+| plugin_sid |  A unique number that identifies the event *within* the plugin. |Yes, if `product` or `category` is empty | Yes, in plugin-based rules
+| custom_label1 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
+| custom_data1 |  The text content for the extra/custom field defined by `custom_label1` | No | Yes
+| custom_label2 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
+| custom_data2 |  The text content for the extra/custom field defined by `custom_label2` | No | Yes
+| custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
+| custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes
 
 In addition to that, `70_siem-plugin-suricata.conf` also adds field `"[@metadata][siem_data_type]" => "normalizedEvent"` to the cloned event to become its new identifier.
 
