@@ -27,7 +27,7 @@ After that, still based on the same unique identifier, the event is then process
 
 ## Processing Cloned ⟶ Normalized Events
 
-As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others, which are all shown in the following table.
+As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others. The following table shows the complete list of fields of a `Normalized Event`.
 
 | Field   |      Description      |  Mandatory | Usable in Correlation Rules |
 |----------|-------------|------|------|
@@ -52,9 +52,9 @@ As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Norm
 | custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
 | custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes
 
-In addition to that, `70_siem-plugin-suricata.conf` also adds field `"[@metadata][siem_data_type]" => "normalizedEvent"` to the cloned event to become its new identifier.
+In addition to converting the cloned event to a normalized event format, `70_siem-plugin-suricata.conf` also adds field `"[@metadata][siem_data_type]" => "normalizedEvent"` to become its new identifier.
 
-the cloned event is then picked up based on its new identifier by <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf">80_siem.conf</a>. In there, a copy of the clone event is sent to Elasticsearch for final storage in `siem_events-*` index, and another copy is sent to Dsiem for event correlation. At this point, the processing flow of the cloned event is complete.
+the cloned event is then picked up based on its new identifier by <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf">80_siem.conf</a>. In there, a copy of the cloned event is sent to Elasticsearch for final storage in `siem_events-*` index, and another copy is sent to Dsiem for event correlation. At this point, the processing flow of the cloned event is complete.
 
 ## Generating Alarms
 

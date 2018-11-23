@@ -13,11 +13,7 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 * Runs in standalone or clustered mode with [NATS](https://nats.io/) as messaging bus between frontend and backend nodes. Along with ELK, this made the entire SIEM platform horizontally scalable.
 * OSSIM-style correlation and directive rules, bridging easier transition from OSSIM.
 * Alarms enrichment with data from threat intel and vulnerability information sources. Builtin support for [Moloch Wise](https://github.com/aol/moloch/wiki/WISE) (which supports Alienvault OTX and others) and Nessus CSV exports. Support for other sources can easily be implemented as [plugins](./docs/plugins.md#about-threat-intel-lookup-plugin).
-<<<<<<< Updated upstream
 * Instrumentation supported through Metricbeat and/or Elastic APM server. No need extra stack for this purpose.
-=======
-* Instrumentation supported through metricbeat and/or Elastic APM server. No need extra stack for this purpose.
->>>>>>> Stashed changes
 * Builtin rate and back-pressure control, set the minimum and maximum events/second (EPS) received from Logstash depending on your hardware capacity and acceptable delays in event processing.
 * Loosely coupled, designed to be composable with other infrastructure platform, and doesn't try to do everything. Loose coupling also means that it's possible to use Dsiem as an OSSIM-style correlation engine with non ELK stack if needed.
 * Batteries included:
@@ -29,7 +25,7 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 
 ## How It Works
 
-![Simple Architecture](/docs/images/simple-arch.png)
+![Simple Architecture](https://github.com/defenxor/dsiem/docs/images/simple-arch.png)
 
 On the diagram above:
 
@@ -53,11 +49,11 @@ The end result of the above process is that now we can watch for new alarms and 
 
 ## Installation
 
-You can use Docker Compose or the release binaries to install Dsiem. Refer to the [Installation Guide](/docs/installation.md) for details.
+You can use Docker Compose or the release binaries to install Dsiem. Refer to the [Installation Guide](https://github.com/defenxor/dsiem/installation.md) for details.
 
 ## Documentation
 
-Currently available docs are located [here](/docs).
+Currently available docs are located [here](https://github.com/defenxor/dsiem/docs).
 
 ## Reporting Bugs and Issues
 
