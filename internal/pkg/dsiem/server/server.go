@@ -147,7 +147,10 @@ func Start(cfg Config) (err error) {
 	}
 
 	if c.Mode != "cluster-backend" {
-		initWSServer()
+		if cfg.WebSocket {
+			initWSServer()
+			router.GET("/eps/", wsHandler)
+		}
 		if cfg.MaxEPS == 0 || cfg.MinEPS == 0 {
 			router.POST("/events", handleEvents)
 		} else {
@@ -160,9 +163,6 @@ func Start(cfg Config) (err error) {
 			}
 			router.POST("/events", rateLimit(epsLimiter.Limit(), 3*time.Second, handleEvents))
 		}
-		if cfg.WebSocket {
-			router.GET("/eps/", wsHandler)
-		}
 		router.ServeFiles("/ui/*filepath", cfg.Webd)
 		overloadManager()
 	}
@@ -172,15 +172,18 @@ func Start(cfg Config) (err error) {
 	fServer.Name = "dsiem"
 	cmu.Unlock()
 
-	if runtime.GOOS == "windows" {
-		err = fServer.ListenAndServe(cfg.Addr + ":" + p)
-	} else {
-		ln, e := reuseport.Listen("tcp4", cfg.Addr+":"+p)
-		if e != nil {
-			return e
+	go func() {
+		if runtime.GOOS == "windows" {
+			err = fServer.ListenAndServe(cfg.Addr + ":" + p)
+		} else {
+			ln, err := reuseport.Listen("tcp4", cfg.Addr+":"+p)
+			err = fServer.Serve(ln)
+			if err != nil {
+				log.Error(log.M{Msg: "Unable to start server:" + err.Error()})
+			}
 		}
-		err = fServer.Serve(ln)
-	}
+	}()
+	time.Sleep(time.Second)
 	return
 }
 
