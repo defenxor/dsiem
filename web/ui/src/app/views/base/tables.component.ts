@@ -32,14 +32,19 @@ export class TablesComponent implements AfterViewInit {
 
   ngAfterViewInit(){
     setTimeout(()=>{
-      this.getData();
+      this.getData('init');
     }, 100);
   }
 
-   async getData() {
+  async getData(type, from=0, size=0) {
     var that = this;
     try {
-      let resp = await this.es.getAllDocuments(TablesComponent.INDEX, TablesComponent.TYPE)
+      let resp;
+      if(type == 'init'){
+        resp = await this.es.getAllDocumentsPaging(TablesComponent.INDEX, TablesComponent.TYPE, 0, this.itemsPerPage);
+      } else if(type == 'pagination'){
+        resp = await this.es.getAllDocumentsPaging(TablesComponent.INDEX, TablesComponent.TYPE, from-1, size);
+      }
       this.tempAlarms = resp.hits.hits
       await Promise.all(this.tempAlarms.map(async (e) => {
         // e["_source"].timestamp = e["_source"]["@timestamp"]
@@ -55,6 +60,8 @@ export class TablesComponent implements AfterViewInit {
         }))
       }))
       this.tableData = [];
+      this.paginators = [];
+      if (type == 'init') this.activePage = 1;
       this.tempAlarms.forEach((a)=>{
         var tempArr = {
           id: a['_source']['id'],
@@ -70,13 +77,25 @@ export class TablesComponent implements AfterViewInit {
         };
         this.tableData.push(tempArr);
       })
-      console.log(this.tableData);
-      console.log('Show Alarms Completed!');
+      // console.log(this.tableData);
+      // console.log('Show Alarms Completed!');
+      if (this.totalItems % this.itemsPerPage === 0) {
+        this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage);
+      } else {
+        this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage + 1);
+      }
+    
+      for (let i = 1; i <= this.numberOfPaginators; i++) {
+        this.paginators.push(i);
+      }
     } catch (err) {
       console.error('Error: ' + err);
       this.tableData = [];
+      this.paginators = [];
     } finally {
-      this.timerSubscription = timer(9000).subscribe(() => this.getData());
+      if(type == 'init'){
+        this.timerSubscription = timer(9000).subscribe(() => this.getData('init'));
+      }
     }
   }
 
