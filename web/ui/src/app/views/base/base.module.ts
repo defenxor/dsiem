@@ -9,11 +9,14 @@ import { TablesComponent } from './tables.component';
 // Components Routing
 import { BaseRoutingModule } from './base-routing.module';
 
+import { MomentModule } from 'ngx-moment';
+
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
     BaseRoutingModule,
+    MomentModule
   ],
   declarations: [
     TablesComponent,
