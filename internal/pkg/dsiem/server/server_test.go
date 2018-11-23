@@ -50,7 +50,7 @@ func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 	go natsServer.Start()
 
 	// Wait for accept loop(s) to be started
-	if !natsServer.ReadyForConnections(15 * time.Second) {
+	if !natsServer.ReadyForConnections(5 * time.Second) {
 		panic("Unable to start NATS Server in Go Routine")
 	}
 	return natsServer
@@ -72,9 +72,12 @@ func initServer(cfg Config, t *testing.T, expectError bool) {
 	cfg.BpChan = testBpChan
 	err := Start(cfg)
 	if !expectError && err != nil {
-		t.Fatal("server start return error: " + err.Error())
+		// t.Fatal("server start return error: " + err.Error())
+		// fmt.Println("server start return error: " + err.Error())
+		t.Fatal("server start return error:", err)
 	}
 	if expectError && err == nil {
+		// t.Fatal("error expected but start returns nil")
 		t.Fatal("error expected but start returns nil")
 	}
 }
@@ -104,6 +107,8 @@ func TestServerStartupAndFileServer(t *testing.T) {
 
 	fixDir := path.Join(d, "internal", "pkg", "dsiem", "server", "fixtures")
 
+	//	fServer.ReadTimeout = time.Second * 1
+
 	var cfg Config
 	cfg.EvtChan = make(chan event.NormalizedEvent)
 	cfg.MsqCluster = "nats://127.0.0.1:4222"
@@ -111,22 +116,30 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	cfg.NodeName = "nodename"
 	cfg.Addr = "127.0.0.1"
 	cfg.Port = 8080
+	cfg.WebSocket = false
+	cfg.Pprof = false
 	cfg.Webd = path.Join(fixDir, "web")
 	cfg.WriteableConfig = true
-	cfg.Pprof = true
-	cfg.WebSocket = true
 
-	time.AfterFunc(time.Second, func() {
-		go RunDefaultServer()
-	})
-	defer stopNats(t)
+	// this is used to reach server's connection error handling code for msq
+	// time.AfterFunc(time.Second, func() {
+	//	go RunDefaultServer()
+	// })
 
 	cfg.Confd = `/\/\/\/`
 	cfg.Mode = "cluster-frontend"
 
-	go initServer(cfg, t, false)
-	// wait for msg queue to be connected
-	time.Sleep(time.Second * 4)
+	// first reach the server to msq connection error handling code
+	time.AfterFunc(time.Second, func() {
+		RunDefaultServer()
+	})
+	initServer(cfg, t, false)
+	stopServer(t)
+	defer stopNats(t)
+
+	// now start the server for real
+	initServer(cfg, t, false)
+	time.Sleep(time.Second) // without this test for 500 below often returns 200
 
 	url := "http://" + cfg.Addr + ":" + strconv.Itoa(cfg.Port)
 
@@ -138,11 +151,11 @@ func TestServerStartupAndFileServer(t *testing.T) {
 
 	stopServer(t)
 
-	// reinit frontend with extra params
+	// re-init frontend with extra params
 	cfg.Confd = path.Join(fixDir, "configs")
 	cfg.MaxEPS = 1000
 	cfg.MinEPS = 100
-	go initServer(cfg, t, false)
+	initServer(cfg, t, false)
 	time.Sleep(time.Second * 4)
 
 	httpTest(t, url+"/config/payload.exe", "POST", "zpl01t", 418)
@@ -160,34 +173,29 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	stopServer(t)
 
 	cfg.Mode = "cluster-backend"
-	go initServer(cfg, t, false)
+	initServer(cfg, t, false)
 	stopServer(t)
 
 	cfg.Mode = "standalone"
-	go initServer(cfg, t, false)
+	initServer(cfg, t, false)
 	fmt.Println("sending true to bpCh")
-	time.Sleep(time.Second)
-
 	cmu.Lock()
 	testBpChan <- true
 	cmu.Unlock()
-	time.Sleep(time.Second)
 
 	stopServer(t)
 
 	// expected errors on server startup
 
 	cfg.MinEPS = 2000
-	go initServer(cfg, t, true)
-	time.Sleep(time.Second)
+	initServer(cfg, t, true)
 
 	cfg.Port = 0
-	go initServer(cfg, t, true)
-	time.Sleep(time.Second)
+	initServer(cfg, t, true)
 
 	cfg.Addr = "wrong"
-	go initServer(cfg, t, true)
-	time.Sleep(time.Second)
+	initServer(cfg, t, true)
+	stopServer(t)
 }
 
 func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
@@ -195,8 +203,23 @@ func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
 	if err != nil {
 		t.Fatal("Error received from httpClient", url, ":", err)
 	}
-	if code != expectedStatusCode {
+	if code != expectedStatusCode && expectedStatusCode != 500 {
 		t.Fatal("Received", code, "from", url, "expected", expectedStatusCode)
+	}
+	if code != expectedStatusCode && expectedStatusCode == 500 {
+		fmt.Println("Flaky server test result detected, for", url, "retrying for 3 times every sec ..")
+		for i := 0; i < 10; i++ {
+			fmt.Println("attempt ", i+1, "..")
+			_, code, err := httpClient(url, method, data)
+			if err != nil {
+				t.Fatal("Flaky test workaround receive error from httpClient", url, ":", err)
+			}
+			if code == expectedStatusCode {
+				return
+			}
+			time.Sleep(time.Second)
+		}
+		t.Fatal("Flaky test received", code, "from", url, "expected", expectedStatusCode)
 	}
 }
 

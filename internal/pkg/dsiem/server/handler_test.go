@@ -41,8 +41,7 @@ func TestServerHandlers(t *testing.T) {
 	cfg.WebSocket = true
 
 	cfg.Mode = "standalone"
-	go initServer(cfg, t, false)
-	time.Sleep(time.Second)
+	initServer(cfg, t, false)
 
 	url := "http://" + cfg.Addr + ":" + strconv.Itoa(cfg.Port)
 
