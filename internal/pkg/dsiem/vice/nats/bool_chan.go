@@ -107,12 +107,16 @@ func (t *Transport) makePublisherBool(name string) (chan bool, error) {
 				return
 			case msg := <-ch:
 				if err := c.Publish(name, msg); err != nil {
-					t.errChan <- vice.Err{Name: name, Err: err}
-					time.Sleep(1 * time.Second)
+					t.handlePublishError(name, err)
 				}
 			}
 		}
 	}()
 
 	return ch, nil
+}
+
+func (t *Transport) handlePublishError(name string, err error) {
+	t.errChan <- vice.Err{Name: name, Err: err}
+	time.Sleep(1 * time.Second)
 }

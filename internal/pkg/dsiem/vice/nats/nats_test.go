@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -151,6 +152,13 @@ func TestNATS(t *testing.T) {
 	}
 	if !sBp {
 		t.Fatal("Expected sBp: true, actual:", sBp)
+	}
+
+	s.handlePublishError("test", errors.New("test error"))
+	expectedErrMsg := "test error: |test|"
+	e := <-sErrChan
+	if e.Error() != expectedErrMsg {
+		t.Error("Expected error msg:", expectedErrMsg, ", actual:", e.Error())
 	}
 
 	rDone := r.Done()
