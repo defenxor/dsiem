@@ -81,7 +81,7 @@ Frontends listen for normalized events from logstash and distribute them to back
 Frontends also serve incoming request for configuration management from web UI.
 
 Backends receive events on the message queue channel, perform correlation based on configured directive rules,
-and then send results/alarms to elasticsearch through local filebeat.
+and then send results/alarms to elasticsearch through local Filebeat.
 
 Standalone mode perform both frontend and backend functions in a single dsiem instance directly, without the need for
 external message queue.

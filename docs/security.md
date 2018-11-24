@@ -1,6 +1,6 @@
 # Notes on Security
 
-This section briefly describe how Dsiem design and implementation addresses security concerns.
+This section briefly describes how Dsiem design and implementation addresses security concerns.
 
 *If you instead want to report security-sensitive information (like a potential security bug), then please send an email to devs@defenxor.com. The GPG public key for that address can be found [here](https://pgp.mit.edu/pks/lookup?search=devs%40defenxor.com)*.
 

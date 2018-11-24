@@ -1,7 +1,8 @@
 # Dsiem Plugin
 
-Dsiem plugin is a Logstash configuration file whose function is to clone events parsed by Logstash, convert it to a standard format called `Normalized Event`, and send it to Dsiem for processing. The fields of a normalized event is shown in the following table.
+Dsiem plugin is a Logstash configuration file whose function is to clone events parsed by Logstash, convert it to a standard format called `Normalized Event`, and send it to Dsiem for processing.
 
+Dsiem plugin can be created automatically from existing index in Elasticsearch with the help of `dpluger` tool. But before jumping into that, let's first review the fields of a normalized event, i.e. the main output of a Dsiem plugin, shown in the following table.
 
 | Field   |      Description      |  Mandatory | Usable in Correlation Rules |
 |----------|-------------|------|------|
@@ -25,8 +26,6 @@ Dsiem plugin is a Logstash configuration file whose function is to clone events 
 | custom_data2 |  The text content for the extra/custom field defined by `custom_label2` | No | Yes
 | custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
 | custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes
-
-Dsiem plugin can be created automatically from existing index in Elasticsearch with the help of `dpluger` tool.
 
 ## Creating a Dsiem Plugin
 
