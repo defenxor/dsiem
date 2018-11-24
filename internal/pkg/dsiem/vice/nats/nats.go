@@ -72,9 +72,6 @@ type Transport struct {
 // New returns a new Transport
 func New(opts ...Option) *Transport {
 	var options Options
-	for _, o := range opts {
-		o(&options)
-	}
 
 	return &Transport{
 		NatsAddr: DefaultAddr,
@@ -93,16 +90,6 @@ func New(opts ...Option) *Transport {
 		natsConn:    options.Conn,
 		natsEncoded: options.UseEncoded,
 	}
-}
-
-func (t *Transport) newConnection() (*nats.Conn, error) {
-	var err error
-	if t.natsConn != nil {
-		return t.natsConn, err
-	}
-
-	t.natsConn, err = nats.Connect(t.NatsAddr)
-	return t.natsConn, err
 }
 
 func (t *Transport) newEncodedConnection() (*nats.EncodedConn, error) {
