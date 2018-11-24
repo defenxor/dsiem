@@ -140,7 +140,7 @@ func TestWorker(t *testing.T) {
 		err = Start(ch, msq, msqPrefix, nodeName, wd, frontend)
 		if err != nil {
 			fmt.Println("Flaky worker test result detected, attempted start so far:", i+1, "..")
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 2)
 		} else {
 			break
 		}
