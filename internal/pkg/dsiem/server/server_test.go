@@ -121,12 +121,7 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	cfg.Webd = path.Join(fixDir, "web")
 	cfg.WriteableConfig = true
 
-	// this is used to reach server's connection error handling code for msq
-	// time.AfterFunc(time.Second, func() {
-	//	go RunDefaultServer()
-	// })
-
-	cfg.Confd = `/\/\/\/`
+	cfg.Confd = `\/\/\/\/`
 	cfg.Mode = "cluster-frontend"
 
 	// first reach the server to msq connection error handling code
@@ -211,7 +206,7 @@ func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
 		t.Fatal("Received", code, "from", url, "expected", expectedStatusCode)
 	}
 	if code != expectedStatusCode && expectedStatusCode == 500 {
-		fmt.Println("Flaky server test result detected, for", url, "retrying for 3 times every sec ..")
+		fmt.Println("Flaky server test result detected, for", url, "retrying for 3 times every 2 sec ..")
 		for i := 0; i < 10; i++ {
 			fmt.Println("attempt ", i+1, "..")
 			_, code, err := httpClient(url, method, data)
@@ -221,7 +216,7 @@ func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
 			if code == expectedStatusCode {
 				return
 			}
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 2)
 		}
 		t.Fatal("Flaky test received", code, "from", url, "expected", expectedStatusCode)
 	}
