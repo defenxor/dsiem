@@ -36,22 +36,22 @@ func TestInit(t *testing.T) {
 	if err == nil {
 		t.Fatal(err)
 	}
-	assets = networkAssets{}
+	assets = NetworkAssets{}
 	err = Init(path.Join(fDir, "asset3"))
 	if err == nil {
 		t.Fatal(err)
 	}
-	assets = networkAssets{}
+	assets = NetworkAssets{}
 	err = Init(path.Join(fDir, "asset4"))
 	if err == nil {
 		t.Fatal(err)
 	}
-	assets = networkAssets{}
+	assets = NetworkAssets{}
 	err = Init(path.Join(fDir, "assetX"))
 	if err == nil {
 		t.Fatal(err)
 	}
-	assets = networkAssets{}
+	assets = NetworkAssets{}
 	err = Init(path.Join(fDir, "asset1"))
 	if err != nil {
 		t.Fatal(err)
