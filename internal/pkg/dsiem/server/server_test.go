@@ -160,6 +160,10 @@ func TestServerStartupAndFileServer(t *testing.T) {
 
 	httpTest(t, url+"/config/payload.exe", "POST", "zpl01t", 418)
 	httpTest(t, url+"/config/valid.json", "POST", "{}", 201)
+	httpTest(t, url+"/config/intel_hack.json", "POST", "{ \"foo\":\"bar\"}", 418)
+	httpTest(t, url+"/config/vuln_hack.json", "POST", "{ \"foo\":\"bar\"}", 418)
+	httpTest(t, url+"/config/directives_hack.json", "POST", "{ \"foo\":\"bar\"}", 418)
+	httpTest(t, url+"/config/assets_hack.json", "POST", "{ \"foo\":\"bar\"}", 418)
 	httpTest(t, url+"/config/payload.exe", "DELETE", "", 418)
 	httpTest(t, url+"/config/valid.json", "DELETE", "", 200)
 	httpTest(t, url+"/config/doesntexist.json", "DELETE", "", 400)
