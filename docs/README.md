@@ -8,6 +8,7 @@ Available topics are:
 * [Event Processing Flow](./event_processing.md)
 * [Directive and Alarm Processing](./directive_and_alarm.md)
 * [Dsiem Command and Tools](./commands.md)
+* [Web Interfaces](./web_interface.md)
 * [Dsiem Plugins](./plugins.md)
 * [Advanced Deployment](./adv_deployment.md)
 * [Notes on Security](./security.md)
