@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"regexp"
 	"time"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -151,7 +150,16 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	content := ctx.PostBody()
 	log.Info(log.M{Msg: "Upload file request for '" + filename + "' from " + clientAddr})
+	err := isUploadContentValid(filename, content)
+	if err != nil {
+		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding."})
+		fmt.Fprintf(ctx, "Invalid content detected, parsing error message is: %s\n", err.Error())
+		ctx.SetStatusCode(fasthttp.StatusTeapot)
+		return
+	}
+
 	file := path.Join(c.Confd, filename)
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
@@ -160,7 +168,7 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	defer f.Close()
-	_, err = f.Write(ctx.PostBody())
+	_, err = f.Write(content)
 	if err != nil {
 		fmt.Fprintf(ctx, "Cannot write to target file location\n")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
@@ -168,15 +176,6 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 	}
 	fmt.Fprintf(ctx, "File "+filename+" uploaded successfully\n")
 	ctx.SetStatusCode(fasthttp.StatusCreated)
-}
-
-func isCfgFileNameValid(filename string) (ok bool) {
-	r, err := regexp.Compile(`[a-zA-Z0-9_-]+.json`)
-	if err != nil {
-		return
-	}
-	ok = r.MatchString(filename)
-	return
 }
 
 func handleEvents(ctx *fasthttp.RequestCtx) {
