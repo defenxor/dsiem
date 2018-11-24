@@ -45,12 +45,13 @@ var (
 	vulnFileGlob           = "vuln_*.json"
 	maxSecondToWaitForVuln = time.Duration(5)
 	vulnCache              *cache.Cache
-	vulns                  vulnSources
+	vulns                  VulnSources
 	vulnPlugins            = vuln.Checkers
 	vulnCheckers           = []vulnChecker{}
 )
 
-type vulnSource struct {
+// VulnSource represents entry in vuln_*.json config file
+type VulnSource struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
 	Enabled bool   `json:"enabled"`
@@ -59,8 +60,9 @@ type vulnSource struct {
 	Config  string `json:"config"`
 }
 
-type vulnSources struct {
-	VulnSources []vulnSource `json:"vuln_sources"`
+// VulnSources represents collection of VulnSource
+type VulnSources struct {
+	VulnSources []VulnSource `json:"vuln_sources"`
 }
 
 type vulnChecker struct {
@@ -165,7 +167,7 @@ func InitVuln(confDir string, cacheDuration int) error {
 	}
 
 	for i := range files {
-		var it vulnSources
+		var it VulnSources
 		file, err := os.Open(files[i])
 		if err != nil {
 			return err

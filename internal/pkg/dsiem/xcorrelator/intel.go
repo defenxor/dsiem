@@ -40,12 +40,13 @@ var (
 	intelCache              *cache.Cache
 	intelFileGlob           = "intel_*.json"
 	maxSecondToWaitForIntel = time.Duration(5)
-	intels                  intelSources
+	intels                  IntelSources
 	intelPlugins            = intel.Checkers
 	checkers                = []intelCheckers{}
 )
 
-type intelSource struct {
+// IntelSource represents entry in intel_*.json config file
+type IntelSource struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
 	Enabled bool   `json:"enabled"`
@@ -53,8 +54,9 @@ type intelSource struct {
 	Config  string `json:"config"`
 }
 
-type intelSources struct {
-	IntelSources []intelSource `json:"intel_sources"`
+// IntelSource represents collection of IntelSource
+type IntelSources struct {
+	IntelSources []IntelSource `json:"intel_sources"`
 }
 
 type intelCheckers struct {
@@ -159,7 +161,7 @@ func InitIntel(confDir string, cacheDuration int) error {
 	}
 
 	for i := range files {
-		var it intelSources
+		var it IntelSources
 		file, err := os.Open(files[i])
 		if err != nil {
 			return err

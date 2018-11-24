@@ -41,18 +41,20 @@ const (
 var ranger cidranger.Ranger
 var whitelist cidranger.Ranger
 
-type networkAsset struct {
+// NetworkAsset represents a single entry in assets_*.json config file
+type NetworkAsset struct {
 	Name        string `json:"name"`
 	Cidr        string `json:"cidr"`
 	Value       int    `json:"value"`
 	Whitelisted bool   `json:"whitelisted"`
 }
 
-type networkAssets struct {
-	NetworkAssets []networkAsset `json:"assets"`
+// NetworkAssets represents collection of NetworkAsset
+type NetworkAssets struct {
+	NetworkAssets []NetworkAsset `json:"assets"`
 }
 
-var assets networkAssets
+var assets NetworkAssets
 
 type assetEntry struct {
 	ipNet net.IPNet
@@ -85,7 +87,7 @@ func Init(confDir string) error {
 	}
 
 	for i := range files {
-		var a networkAssets
+		var a NetworkAssets
 		file, err := os.Open(files[i])
 		if err != nil {
 			return err
