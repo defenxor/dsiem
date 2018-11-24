@@ -17,6 +17,9 @@
 package main
 
 import (
+	"os/signal"
+	"sync"
+
 	"github.com/defenxor/dsiem/internal/pkg/nesd"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
@@ -112,5 +115,19 @@ Start server listening on for vulnerability lookup request`,
 		if err != nil {
 			exit("Cannot start server", err)
 		}
+		waitInterruptSignal()
 	},
+}
+
+func waitInterruptSignal() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var ch chan os.Signal
+	ch = make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		wg.Done()
+	}()
+	wg.Wait()
 }

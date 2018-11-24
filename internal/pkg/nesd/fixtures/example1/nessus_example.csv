@@ -1,0 +1,5 @@
+"Plugin ID","CVE","CVSS","Risk","Host","Protocol","Port","Name","Synopsis","Description","Solution","See Also","Plugin Output"
+"10114","CVE-1999-0524",,"None","192.168.225.196","icmp",0,"ICMP Timestamp Request Remote Date Disclosure","It is possible to determine the exact time set on the remote host.","The remote host answers to an ICMP timestamp request.  This allows an
+attacker to know the date that is set on the targeted machine, which
+may assist an unauthenticated, remote attacker in defeating time-based
+authentication protocols.

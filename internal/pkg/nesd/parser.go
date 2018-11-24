@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/gocarina/gocsv/v2"
@@ -68,22 +67,18 @@ func InitCSV(dir string) error {
 
 	for i := range files {
 		var n nessusScans
-		if !fs.FileExist(files[i]) {
-			return errors.New("Cannot find " + files[i])
-		}
 		file, err := os.Open(files[i])
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+		if err == nil {
+			defer file.Close()
 
-		byteValue, _ := ioutil.ReadAll(file)
-		err = gocsv.UnmarshalBytes(byteValue, &n.entries)
-		if err != nil {
-			return err
-		}
-		for j := range n.entries {
-			vulns.entries = append(vulns.entries, n.entries[j])
+			byteValue, _ := ioutil.ReadAll(file)
+			err = gocsv.UnmarshalBytes(byteValue, &n.entries)
+			if err != nil {
+				return err
+			}
+			for j := range n.entries {
+				vulns.entries = append(vulns.entries, n.entries[j])
+			}
 		}
 	}
 

@@ -1,0 +1,93 @@
+package nesd
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path"
+	"strings"
+	"testing"
+	"time"
+
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+)
+
+func TestServer(t *testing.T) {
+	log.Setup(true)
+	err := Start("", 0)
+	if err == nil {
+		t.Fatal("expected error due to bad port")
+	}
+	err = Start("", 8081)
+	if err == nil {
+		t.Fatal("expected error due to bad address")
+	}
+
+	if !csvInitialized {
+		dir, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		csvDir := path.Join(dir, "fixtures", "example2")
+		InitCSV(csvDir)
+	}
+	err = Start("127.0.0.1", 8081)
+
+	// http://dsiem-nesd:8081/?ip=${ip}&port=${port}\"
+	url := "http://127.0.0.1:8081/?"
+	httpTest(t, url, "GET", "", 400)
+	httpTest(t, url+"ip=foo&port=bar", "GET", "", 418)
+	httpTest(t, url+"ip=192.168.225.196&port=0", "GET", "", 418)
+	httpTest(t, url+"ip=192.168.225.196&port=31337", "GET", "", 200)
+	httpTest(t, url+"ip=192.168.225.196&port=80", "GET", "", 200)
+	httpTest(t, url+"ip=192.168.225.196&port=161", "GET", "", 200)
+
+}
+
+func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
+	_, code, err := httpClient(url, method, data)
+	if err != nil {
+		t.Fatal("Error received from httpClient", url, ":", err)
+	}
+	if code != expectedStatusCode && expectedStatusCode != 500 {
+		t.Fatal("Received", code, "from", url, "expected", expectedStatusCode)
+	}
+	if code != expectedStatusCode && expectedStatusCode == 500 {
+		fmt.Println("Flaky server test result detected, for", url, "retrying for 3 times every sec ..")
+		for i := 0; i < 10; i++ {
+			fmt.Println("attempt ", i+1, "..")
+			_, code, err := httpClient(url, method, data)
+			if err != nil {
+				t.Fatal("Flaky test workaround receive error from httpClient", url, ":", err)
+			}
+			if code == expectedStatusCode {
+				return
+			}
+			time.Sleep(time.Second)
+		}
+		t.Fatal("Flaky test received", code, "from", url, "expected", expectedStatusCode)
+	}
+}
+
+func httpClient(url, method, data string) (out string, statusCode int, err error) {
+	client := &http.Client{}
+	r := strings.NewReader(data)
+	req, err := http.NewRequest(method, url, r)
+	if err != nil {
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	out = string(body)
+	statusCode = resp.StatusCode
+	return
+}

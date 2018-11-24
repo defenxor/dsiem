@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
@@ -31,25 +32,25 @@ import (
 var csvDir string
 
 // Start the server
-func Start(addr string, port int) error {
+func Start(addr string, port int) (err error) {
 	if a := net.ParseIP(addr); a == nil {
-		return errors.New(addr + " is not a valid IP address")
+		err = errors.New(addr + " is not a valid IP address")
 	}
 	if port < 1 || port > 65535 {
-		return errors.New("Invalid TCP port number")
+		err = errors.New("Invalid TCP port number")
 	}
-
+	if err != nil {
+		return
+	}
 	p := strconv.Itoa(port)
-	for {
-		router := httprouter.New()
-		router.GET("/", handler)
-		log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
-		err := http.ListenAndServe(addr+":"+p, router)
-		if err != nil {
-			log.Warn(log.M{Msg: "Error from http.ListenAndServe: " + err.Error()})
-		}
-	}
-	// return nil
+	router := httprouter.New()
+	router.GET("/", handler)
+	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
+	go func() {
+		err = http.ListenAndServe(addr+":"+p, router)
+	}()
+	time.Sleep(time.Second * 3)
+	return
 }
 
 func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -82,12 +83,9 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	b, err := json.MarshalIndent(&vulns.V, "", "  ")
-	if err != nil {
-		log.Warn(log.M{Msg: "Cannot encode result for " + ip + ":" + port + ". Error: " + err.Error()})
-		http.Error(w, "Cannot encode result", 500)
-		return
-	}
+	// can't trigger this error, input from findMatch is already type-checked and correct
+	b, _ := json.MarshalIndent(&vulns.V, "", "  ")
+
 	n := strconv.Itoa(len(vulns.V))
 	log.Info(log.M{Msg: "Returning " + n + " positive result for " + ip + ":" + port + " to " + clientAddr})
 	_, err = w.Write(b)
