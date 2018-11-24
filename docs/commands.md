@@ -3,9 +3,9 @@
 Dsiem comes with the following executable files:
 
 * **dsiem** : the main dsiem executable for running the correlation engine.
-* **dpluger** : for creating [SIEM plugin](./plugins.md) automatically by reading the fields of existing Elasticsearch index.
+* **dpluger** : for creating [Dsiem plugin](./dsiem_plugin.md) automatically by reading the fields of existing Elasticsearch index.
 * **dtester** : for sending simulated events that match your directive rules in order to test them. Dtester can send directly to Dsiem (therefore emulating Logstash), or save the events to a log file to be harvested by Filebeat for testing end-to-end processing pipelines.
-* **nesd** : a [vulnerability lookup plugin](./plugins.md) that serves Nessus CSV export files over the network to be queried by Dsiem.
+* **nesd** : a [vulnerability lookup plugin](./ti_vuln_plugins.md) that serves Nessus CSV export files over the network to be queried by Dsiem.
 * **ossimcnv** : for converting OSSIM directive XML file (e.g. userdirectives.xml) to Dsiem's directive file format (JSON).
 
 On the [Release page](https://github.com/defenxor/dsiem/releases), the main `dsiem` command is distributed in `dsiem-server_${os}_amd64.zip` and the others in `dsiem-tools_${os}-amd64.zip`, where `os` is one of linux, darwin, or windows.

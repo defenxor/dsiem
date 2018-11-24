@@ -27,30 +27,7 @@ After that, still based on the same unique identifier, the event is then process
 
 ## Processing Cloned ⟶ Normalized Events
 
-As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others. The following table shows the complete list of fields of a `Normalized Event`.
-
-| Field   |      Description      |  Mandatory | Usable in Correlation Rules |
-|----------|-------------|------|------|
-| timestamp | The original event timestamp in ISO8601 format, not to be confused with Logstash builtin `@timestamp` | Yes | No, but this is used to detect out-of-order events and transit time.
-| event_id | UUID for the event, typically generated using [Logstash UUID filter plugin](https://www.elastic.co/guide/en/logstash/current/plugins-filters-uuid.html) if the event doesn't already have one. | Yes | No
-| title | Description of the event. | Yes | No
-| sensor | String identifier of the device that produces/captures the event. Examples: hostname of the IPS device, firewall, or the processing Logstash node. | Yes | No
-| src_ip | Source IP, should refer to the sender for network communication based events. For host-based events, use the host main IP address if it's available on the event's record, or just use `127.0.0.1`. | Yes | Yes
-| dst_ip |    Destination IP, should refer to the receiver for network communication based events. Host-based events should just use the same address as `src_ip` or `127.0.0.1` |   Yes | Yes
-| protocol |  Network protocol used, such as TCP, UDP, ICMP, etc. | No | Yes
-| src_port | Source port number, typically refers to TCP or UDP ports, but may also be any identifying number like ICMP type number, etc. | No | Yes
-| dst_port | Source port number, typically refers to TCP or UDP ports, but may also be any identifying number like ICMP type number, etc. |  No | Yes
-| product | Product-type of the device that generates the event, i.e. firewall, IDS/IPS, etc. | Yes | Yes, in taxonomy-based rules.
-| category | The event's category, relative to the product type. For example, if the product type is firewall, event's category maybe `Allowed Traffic`,`Denied Traffic`, `Dropped Traffic`, `Port Scan` etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in taxonomy-based rules
-| subcategory |  further breakdown of the event's category. For example, if the category is `Code Injection Attack`, subcategory maybe `SQL Injection`, `HTTP Parameter Injection`, etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in taxonomy-based rules
-| plugin_id | A unique number that identifies the plugin. For example, `1001` for Suricata eve.json based events as used in Dsiem default config (`1001` is also used in OSSIM by default for Suricata UnifiedThreat logs)  | Yes, if `product` or `category` is empty | Yes, in plugin-based rules
-| plugin_sid |  A unique number that identifies the event *within* the plugin. |Yes, if `product` or `category` is empty | Yes, in plugin-based rules
-| custom_label1 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
-| custom_data1 |  The text content for the extra/custom field defined by `custom_label1` | No | Yes
-| custom_label2 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
-| custom_data2 |  The text content for the extra/custom field defined by `custom_label2` | No | Yes
-| custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
-| custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes
+As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others. The full list of fields of a `Normalized Event` is shown in [Dsiem Plugins](./dsiem_plugin.md) page.
 
 In addition to converting the cloned event to a normalized event format, `70_siem-plugin-suricata.conf` also adds field `"[@metadata][siem_data_type]" => "normalizedEvent"` to become its new identifier.
 
