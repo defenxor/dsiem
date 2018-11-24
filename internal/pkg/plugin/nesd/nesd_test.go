@@ -51,7 +51,7 @@ func startNesd(d string, t *testing.T) {
 
 	err = nesdsrv.Start("127.0.0.1", 8081)
 	if err != nil {
-		t.Error("Cannot start server", err)
+		t.Fatal("Cannot start server", err)
 	}
 }
 

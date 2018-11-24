@@ -22,7 +22,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"time"
+	"sync"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
@@ -30,6 +30,8 @@ import (
 )
 
 var csvDir string
+var httpSrv http.Server
+var mu sync.Mutex
 
 // Start the server
 func Start(addr string, port int) (err error) {
@@ -46,10 +48,9 @@ func Start(addr string, port int) (err error) {
 	router := httprouter.New()
 	router.GET("/", handler)
 	log.Info(log.M{Msg: "Server listening on " + addr + ":" + p})
-	go func() {
-		err = http.ListenAndServe(addr+":"+p, router)
-	}()
-	time.Sleep(time.Second * 3)
+	httpSrv.Addr = addr + ":" + p
+	httpSrv.Handler = router
+	err = httpSrv.ListenAndServe()
 	return
 }
 

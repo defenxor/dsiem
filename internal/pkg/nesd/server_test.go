@@ -1,6 +1,7 @@
 package nesd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,12 +15,14 @@ import (
 )
 
 func TestServer(t *testing.T) {
+	ctx := context.Background()
 	log.Setup(true)
 	err := Start("", 0)
 	if err == nil {
 		t.Fatal("expected error due to bad port")
 	}
-	err = Start("", 8081)
+
+	err = Start("", 8085)
 	if err == nil {
 		t.Fatal("expected error due to bad address")
 	}
@@ -32,10 +35,16 @@ func TestServer(t *testing.T) {
 		csvDir := path.Join(dir, "fixtures", "example2")
 		InitCSV(csvDir)
 	}
-	err = Start("127.0.0.1", 8081)
+	go func() {
+		err = Start("127.0.0.1", 8085)
+		if err != nil && err.Error() != "http: Server closed" {
+			t.Fatal(err)
+		}
+	}()
+	time.Sleep(time.Second * 2)
+	defer httpSrv.Shutdown(ctx)
 
-	// http://dsiem-nesd:8081/?ip=${ip}&port=${port}\"
-	url := "http://127.0.0.1:8081/?"
+	url := "http://127.0.0.1:8085/?"
 	httpTest(t, url, "GET", "", 400)
 	httpTest(t, url+"ip=foo&port=bar", "GET", "", 418)
 	httpTest(t, url+"ip=192.168.225.196&port=0", "GET", "", 418)
