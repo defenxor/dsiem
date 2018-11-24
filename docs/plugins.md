@@ -10,11 +10,91 @@ For now, threat intel and vulnerability lookup plugins can only be created by wr
 
 ## Creating a SIEM Plugin
 
+Suppose your elasticsearch is located at http://elasticsearch:9200 and there is an index there named `suricata-*` for Suricata IDS that you want to create a plugin for. Here are the steps to do it:
+
 * Download and extract the latest version of `dsiem-tools` from this project release page.
 
-* Create an empty `dpluger` config file to use:
+* Create an empty `dpluger` config file template to use:
+  ```shell
+  $ ./dpluger create -a http://elasticsearch:9200 -i "suricata-*" -n "suricata" -c dpluger_suricata.json
+  ```
+* The above will create a dpluger config file named `dpluger_suricata.json` in the current directory. The content of the file will be something like this:
+```json
+{
+  "name": "suricata",
+  "type": "SID",
+  "output_file": "70_siem-plugin-suricata.conf",
+  "index_pattern": "suricata-*",
+  "elasticsearch_address": "http://elasticsearch:9200",
+  "identifier_field": "INSERT_LOGSTASH_IDENTIFYING_FIELD_HERE (example: [application] or [fields][log_type] etc)",
+  "identifier_value": "INSERT_IDENTIFYING_FIELD_VALUE_HERE (example: suricata)",
+  "identifier_filter": "INSERT_ADDITIONAL_FILTER_HERE_HERE (example: and [alert])",
+  "field_mapping": {
+    "title": "es:INSERT_ES_FIELDNAME_HERE",
+    "timestamp": "es:INSERT_ES_FIELDNAME_HERE",
+    "timestamp_format": "INSERT_TIMESTAMP_FORMAT_HERE (example: ISO8601)",
+    "sensor": "es:INSERT_ES_FIELDNAME_HERE",
+    "plugin_id": "INSERT_PLUGIN_NUMBER_HERE",
+    "plugin_sid": "es:INSERT_ES_FIELDNAME_HERE or collect:INSERT_ES_FIELDNAME_HERE",
+    "product": "INSERT_PRODUCT_NAME_HERE",
+    "src_ip": "es:INSERT_ES_FIELDNAME_HERE",
+    "src_port": "es:INSERT_ES_FIELDNAME_HERE",
+    "dst_ip": "es:INSERT_ES_FIELDNAME_HERE",
+    "dst_port": "es:INSERT_ES_FIELDNAME_HERE",
+    "protocol": "es:INSERT_ES_FIELDNAME_HERE or INSERT_PROTOCOL_NAME_HERE"
+  }
+}
+```
+* The next step is to edit that file so the field references and identifiers match with the actual field names in the target Elasticsearch `suricata-*` index. For index generated from Suricata Eve JSON format, which is also used in the [example Docker Compose deployments](https://github.com/defenxor/dsiem/tree/master/deployments/docker), the final config should be something like this:
 
-TODO
+```json
+{
+  "name": "suricata",
+  "type": "SID",
+  "output_file": "70_siem-plugin-suricata.conf",
+  "index_pattern": "suricata-*",
+  "elasticsearch_address": "http://elasticsearch:9200",
+  "identifier_field": "[application]",
+  "identifier_value": "suricata",
+  "identifier_filter": "and [alert]",
+  "field_mapping": {
+    "title": "es:alert.signature",
+    "timestamp": "es:timestamp",
+    "timestamp_format": "ISO8601",
+    "sensor": "es:host.name",
+    "plugin_id": "1001",
+    "plugin_sid": "es:alert.signature_id",
+    "product": "Intrusion Detection System",
+    "category": "es:alert.category",
+    "src_ip": "es:src_ip",
+    "src_port": "es:src_port",
+    "dst_ip": "es:dest_ip",
+    "dst_port": "es:dest_port",
+    "protocol": "es:proto"
+  }
+}
+```
+* After that we can start `dpluger` again with `run` command. This will verify the existence of each field on the target Elasticsearch index, and then create a ready to use Logstash configuration file.
+
+```bash
+$ ./dpluger run -c dpluger_suricata.json
+Creating plugin (logstash config) for suricata, using ES: http://elasticsearch:9200 and index pattern: suricata-*
+2018-11-24T22:52:32.686+0700    INFO    Found ES version 6.4.2
+Checking existence of field alert.signature... OK
+Checking existence of field timestamp... OK
+Checking existence of field host.name... OK
+Checking existence of field alert.signature_id... OK
+Checking existence of field alert.category... OK
+Checking existence of field src_ip... OK
+Checking existence of field src_port... OK
+Checking existence of field dest_ip... OK
+Checking existence of field dest_port... OK
+Checking existence of field proto... OK
+Logstash conf file created.
+```
+* The generated Logstash config file (i.e. a Dsiem SIEM plugin) will be  [`70_siem-plugin-suricata.conf`](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/70_siem-plugin-suricata.conf) located in the current directory.
+To use the plugin, just copy it to Logstash configuration directory and reload Logstash.
+
 
 ## About Threat Intel Lookup Plugin
 

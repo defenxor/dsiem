@@ -29,23 +29,19 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 
 On the diagram above:
 
-* Log sources send their logs to Syslog/Filebeat, which then send it to Logstash with a unique identifying field.
-
-* Logstash parses the logs using different filters based on the log sources type, and send the results to Elasticsearch, typically creating a single index pattern for each log type (e.g. `suricata-*` for logs received from Suricata IDS, `ssh-*` for SSH logs, etc.). 
+* Log sources send their logs to Syslog/Filebeat, which then send it to Logstash with a unique identifying field. Logstash then parses the logs using different filters based on the log sources type, and send the results to Elasticsearch, typically creating a single index pattern for each log type (e.g. `suricata-*` for logs received from Suricata IDS, `ssh-*` for SSH logs, etc.). 
 
 * The above is a common pattern used for monitoring logs with ELK stack, so dsiem is pre-configured to integrate with that kind of scenario.
 
-* Dsiem uses a special purpose logstash config file to clone incoming event from log sources, right after logstash has done parsing it. Through the same config file, the new cloned event is processed (independently from the original event) to collect Dsiem required fields like Title, Source IP, Destination IP, and so on.
-
-  *This special logstash config file in Dsiem can be thought of as what usually called a SIEM plugin, collector, or connector in other platform. Example for Suricata IDS Eve JSON log is shown [here](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/70_siem-plugin-suricata.conf).*
+* Dsiem uses a special purpose logstash config file to clone incoming event from log sources, right after logstash has done parsing it. Through the same config file, the new cloned event is used (independently from the original event) to collect Dsiem required fields like Title, Source IP, Destination IP, and so on.
     
-* The output the above step is called *Normalized Event* because it represent logs from multiple different sources in a single format that has a set of common fields. This event is then sent to Dsiem through Logstash HTTP output plugin, and to Elasticsearch under index name pattern ```siem_events-*``` for further use.
+* The output the above step is called *Normalized Event* because it represent logs from multiple different sources in a single format that has a set of common fields. This event is then sent to Dsiem through Logstash HTTP output plugin, and to Elasticsearch under index name pattern `siem_events-*`.
 
 * Dsiem correlates incoming normalized events based on the configured directive rules, perform threat intel and vulnerability lookups, and then generates an alarm if the rules conditions are met. This alarm is then written to a local log file, that is harvested by a local Filebeat configured to send its content to Logstash.
 
-* At the logstash end, there's another Dsiem [special config file](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf) that reads those submitted alarms and push them to the final SIEM alarm index in Elasticsearch. This config file ensures that further updates made by Dsiem to the same alarm will also update the corresponding Elasticsearch document instead of creating a new one.
+* At the logstash end, there's another Dsiem [special config file](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf) that reads those submitted alarms and push them to the final SIEM alarm index in Elasticsearch.
     
-The end result of the above process is that now we can watch for new alarms and updates to an existing one just by monitoring a single Elasticsearch index.
+The final result of the above processes is that now we can watch for new alarms and updates to an existing one just by monitoring a single Elasticsearch index.
 
 ## Installation
 

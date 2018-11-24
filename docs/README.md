@@ -10,5 +10,6 @@ Available topics are:
 * [Dsiem Command and Tools](./commands.md)
 * [Web Interfaces](./web_interface.md)
 * [Dsiem Plugins](./plugins.md)
+* [Threat Intel and Vulnerability Lookup Plugins](./plugins.md)
 * [Advanced Deployment](./adv_deployment.md)
 * [Notes on Security](./security.md)
