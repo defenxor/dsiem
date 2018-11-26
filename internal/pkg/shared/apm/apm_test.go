@@ -50,13 +50,17 @@ func TestAPM(t *testing.T) {
 		t.Error("Expected result to be 'result test'")
 	}
 
-	defer tx.Recover()
-
 	// dont know how to verify the output of these without checking the output at apm server
 	tx.SetCustom("key", "val")
 	tx.SetError(errors.New("Test error"))
-
+	tx.Recover()
 	tx.End()
+
+	// longtimeAgo := time.Now().AddDate(-30, 0, 0)
+	//	tx = StartTransaction("test", "test2", &longtimeAgo)
+	//	time.Sleep(time.Second)
+	tx.End()
+	defer tx.Recover()
 	trick := false // this is just a workaround to skip vet on reachable t.Error below
 	if !trick {
 		panic("panic")
