@@ -30,8 +30,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/cache"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/pkg/intel"
-
-	"github.com/elastic/apm-agent-go"
 )
 
 var (
@@ -94,11 +92,11 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 	successQuery := false
 
 	for _, v := range checkers {
-		var tx *elasticapm.Transaction
+		var tx *apm.Transaction
 		if apm.Enabled() {
-			tx = elasticapm.DefaultTracer.StartTransaction("Threat Intel Lookup", "SIEM")
-			tx.Context.SetCustom("Term", term)
-			tx.Context.SetCustom("Provider", v.name)
+			tx = apm.StartTransaction("Threat Intel Lookup", "SIEM", nil)
+			tx.SetCustom("Term", term)
+			tx.SetCustom("Provider", v.name)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*maxSecondToWaitForIntel)
 		// ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
@@ -107,7 +105,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 			log.Warn(log.M{Msg: "Error received from intel checker " + v.name + ": " + err.Error()})
 			cancel()
 			if apm.Enabled() {
-				tx.Result = err.Error()
+				tx.Result(err.Error())
 				tx.End()
 			}
 			continue
@@ -122,9 +120,9 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 
 		if apm.Enabled() {
 			if found {
-				tx.Result = "Intel found"
+				tx.Result("Intel found")
 			} else {
-				tx.Result = "Intel not found"
+				tx.Result("Intel not found")
 			}
 			tx.End()
 		}

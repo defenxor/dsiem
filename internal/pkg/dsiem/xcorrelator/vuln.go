@@ -27,8 +27,6 @@ import (
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
-	"github.com/elastic/apm-agent-go"
-
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -100,11 +98,11 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 	successQuery := false
 
 	for _, v := range vulnCheckers {
-		var tx *elasticapm.Transaction
+		var tx *apm.Transaction
 		if apm.Enabled() {
-			tx = elasticapm.DefaultTracer.StartTransaction("Vulnerability Lookup", "SIEM")
-			tx.Context.SetCustom("Term", term)
-			tx.Context.SetCustom("Provider", v.name)
+			tx = apm.StartTransaction("Vulnerability Lookup", "SIEM", nil)
+			tx.SetCustom("Term", term)
+			tx.SetCustom("Provider", v.name)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*maxSecondToWaitForVuln)
 		f, r, err := v.CheckIPPort(ctx, ip, port)
@@ -112,7 +110,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 			log.Warn(log.M{Msg: "Error received from vuln checker " + v.name + ": " + err.Error()})
 			cancel()
 			if apm.Enabled() {
-				tx.Result = err.Error()
+				tx.Result(err.Error())
 				tx.End()
 			}
 			continue
@@ -127,9 +125,9 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 
 		if apm.Enabled() {
 			if found {
-				tx.Result = "Vuln found"
+				tx.Result("Vuln found")
 			} else {
-				tx.Result = "Vuln not found"
+				tx.Result("Vuln not found")
 			}
 			tx.End()
 		}
