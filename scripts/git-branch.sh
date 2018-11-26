@@ -52,7 +52,8 @@ if [ "$cmd" == "sync" ]; then
   git pull --rebase && \
   # put all of your changes on this branch on top of master
   git checkout $thisbranch && \
-  git rebase master
+  git rebase master && \
+  echo note you may need to use git force --push to sync your local branch to the remote
   exit $?
 fi
 
