@@ -31,6 +31,7 @@ export class AppComponent implements OnInit {
     }, error => {
       console.log(`[ES Check] Disconnected from ${this.elasticsearch} - ${error}`);
     }).then(() => {
+      // changed observable subscription to promise
       timer(5000).toPromise().then(
         () => this.checkES(),
         err => console.log('unable to finish timer', err.message)
