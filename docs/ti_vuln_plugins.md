@@ -1,20 +1,6 @@
-# Plugins
-
-There's 3 kinds of plugin in Dsiem: SIEM plugin, Threat Intel lookup plugin, and Vulnerability lookup plugin.
-
-SIEM plugin is a Logstash configuration file whose function is to clone events parsed by Logstash, normalizes it to a standard format, and send it to Dsiem for processing. SIEM plugin can be created automatically from existing index in Elasticsearch with the help of  `dpluger` tool.
+# Threat Intelligence and Vulnerability Lookup Plugins
 
 Threat intel plugin enriches content of an alarm whenever it involves a public IP address that is listed in one of the plugin backend databases. The same goes for Vulnerability lookup plugin, but here the search is done based on IP and port combination, and the alarm IP address to lookup will also be done against private IP addresses.
-
-For now, threat intel and vulnerability lookup plugins can only be created by writing a Go package that implement the required interface.
-
-## Creating a SIEM Plugin
-
-* Download and extract the latest version of `dsiem-tools` from this project release page.
-
-* Create an empty `dpluger` config file to use:
-
-TODO
 
 ## About Threat Intel Lookup Plugin
 
@@ -29,7 +15,7 @@ type Checker interface {
 `Initialize` will receive its `config` content from the text defined in `configs/intel_*.json` file. This allows user to pass in
 custom data in any format to the plugin to configure its behavior.
 
-`CheckIP` will receive its `ip` parameter from SIEM alarm's source and destination IP addresses. The plugin should then check that address against its sources (e.g. by database lookups, API calls, etc.), and return `found=true` if there's a matching entry for that address. If that's the case, Dsiem expects the plugin to also return more detail information in multiple `intel.Result` struct as follows:
+`CheckIP` will receive its `ip` parameter from SIEM alarm's source and destination IP addresses. The plugin should then check that address against its sources (e.g. by database lookups, API calls, etc.), and return `found=true` if there's a matching entry for it. If that's the case, Dsiem expects the plugin to also return more detail information in multiple `intel.Result` struct as follows:
 
 ```go
 // Result defines the struct that must be returned by an intel plugin
@@ -75,7 +61,7 @@ A working example of this can be found in [Nesd](https://github.com/defenxor/dsi
 
 First you need a working Go development environment. Just follow the instruction from [here](https://golang.org/doc/install) to get started.
 
-Next clone this repository and test the build process for `dsiem` binary. Example on Linux or OSX system would be:
+Next clone this repository and test the build process for `dsiem` binary. Example on a Linux or OSX system:
 
 ```bash
 $ git clone https://github.com/defenxor/dsiem
@@ -85,7 +71,7 @@ $ go build ./cmd/dsiem
 
 You should now have a `dsiem` binary in the current directory, and ready to start developing a plugin.
 
-A quick way of creating a new intel plugin by copying Wise is shown below. The same steps should also apply for making a new vulnerability lookup plugin based on Nesd.
+A quick way of creating a new intel plugin by using Wise as template is shown below. The same steps should also apply for making a new vulnerability lookup plugin based on Nesd.
 
 ```bash
 # prepare the new plugin files based on wise
