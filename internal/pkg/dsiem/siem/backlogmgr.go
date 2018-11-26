@@ -178,7 +178,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		// stickydiff cannot be used on 1st rule, so we pass nil
 		if !rule.DoesEventMatch(evt, d.Rules[0], nil, evt.ConnID) {
 			if apm.Enabled() && tx != nil {
-				tx.Result("Event doesnt match rule")
+				tx.Result("Event doesn't match rule")
 				tx.End()
 			}
 			continue // back to chan loop
