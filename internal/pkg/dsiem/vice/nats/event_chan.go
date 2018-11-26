@@ -19,8 +19,6 @@ package nats
 import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice"
-
-	"time"
 )
 
 // Receive gets a channel on which to receive messages
@@ -108,8 +106,7 @@ func (t *Transport) makePublisher(name string) (chan event.NormalizedEvent, erro
 				return
 			case msg := <-ch:
 				if err := c.Publish(name, msg); err != nil {
-					t.errChan <- vice.Err{Name: name, Err: err}
-					time.Sleep(1 * time.Second)
+					t.handlePublishError(name, err)
 				}
 			}
 		}
