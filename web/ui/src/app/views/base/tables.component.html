@@ -6,6 +6,15 @@
           <i class="fa fa-align-justify"></i> Alarm List
         </div>
         <div class="card-body">
+          <button type="button" class="btn btn-primary text-right" (click)="startStopTimer('off')" 
+            *ngIf="timer_status == 'on'" tooltip="Click to turn-off auto refresh" placement="top">
+            Turn-Off Auto Refresh (refreshing in {{refreshSec}} seconds)
+          </button>
+          <button type="button" class="btn btn-dark text-right" (click)="startStopTimer('on')" 
+            *ngIf="timer_status == 'off'" tooltip="Click to turn-on auto refresh" placement="top">
+            Turn On Auto Refresh
+          </button>
+          <br/><br/>
           <table class="table table-striped">
             <thead>
               <tr>

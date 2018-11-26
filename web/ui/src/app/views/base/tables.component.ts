@@ -25,6 +25,9 @@ export class TablesComponent implements AfterViewInit {
   lastVisibleIndex: number = this.itemsPerPage;
   firstVisiblePaginator = 0;
   lastVisiblePaginator = this.numberOfVisiblePaginators;
+  timer_status = 'on';
+  refreshSec;
+  intrvl;
 
   constructor(private es: ElasticsearchService) {
     this.elasticsearch = this.es.getServer();
@@ -38,7 +41,12 @@ export class TablesComponent implements AfterViewInit {
 
   async getData(type, from=0, size=0) {
     var that = this;
+    clearInterval(this.intrvl);
     try {
+      this.refreshSec = 10;
+      this.intrvl = setInterval(function(){
+        if(that.refreshSec > 0) that.refreshSec--;
+      }, 1000);
       let resp;
       if(type == 'init'){
         resp = await this.es.getAllDocumentsPaging(TablesComponent.INDEX, TablesComponent.TYPE, 0, this.itemsPerPage);
@@ -78,7 +86,7 @@ export class TablesComponent implements AfterViewInit {
         this.tableData.push(tempArr);
       })
       // console.log(this.tableData);
-      // console.log('Show Alarms Completed!');
+      console.log('Show Alarms Completed!');
       if (this.totalItems % this.itemsPerPage === 0) {
         this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage);
       } else {
@@ -220,4 +228,18 @@ export class TablesComponent implements AfterViewInit {
     this.reload(this.firstVisibleIndex, this.itemsPerPage);
   }
 
+  startStopTimer(status){
+    if(status == 'off'){
+      if (this.timerSubscription) {
+        this.timerSubscription.unsubscribe();
+        this.timer_status = 'off';
+        clearInterval(this.intrvl);
+      }
+    } else {
+      this.getData('init');
+      this.timer_status = 'on';
+    }
+  }
+
 }
+
