@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"os/signal"
 	"sync"
 
@@ -102,6 +103,9 @@ Start server listening on for vulnerability lookup request`,
 		addr := viper.GetString("address")
 		port := viper.GetInt("port")
 
+		if csvDir == "" {
+			exit("wrong startup parameter", errors.New("csvdir cannot be empty"))
+		}
 		log.Setup(viper.GetBool("debug"))
 
 		log.Info(log.M{Msg: "Starting " + progName + " " + version})
