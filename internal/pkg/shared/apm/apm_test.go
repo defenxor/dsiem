@@ -55,6 +55,10 @@ func TestAPM(t *testing.T) {
 	tx.SetError(errors.New("Test error"))
 	tx.Recover()
 	tx.End()
+	tx.Result("Try to change result")
+	if tx.Tx.Result == "Try to change result" {
+		t.Fatal("Expected to not be able to set result after End()")
+	}
 
 	// longtimeAgo := time.Now().AddDate(-30, 0, 0)
 	//	tx = StartTransaction("test", "test2", &longtimeAgo)

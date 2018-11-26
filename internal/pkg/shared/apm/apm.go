@@ -84,14 +84,16 @@ func (t *Transaction) SetCustom(key string, value interface{}) {
 	defer t.Unlock()
 	defer t.Recover()
 	t.Tx.Context.SetCustom(key, value)
-	return
 }
 
 // Result set the result for the transaction
 func (t *Transaction) Result(value string) {
 	t.Lock()
+	defer t.Unlock()
+	if t.ended {
+		return
+	}
 	t.Tx.Result = value
-	t.Unlock()
 }
 
 // SetError set and send error fom the transaction
@@ -106,17 +108,10 @@ func (t *Transaction) SetError(err error) {
 // End completes the transaction
 func (t *Transaction) End() {
 	t.Lock()
+	defer t.Unlock()
 	if t.ended {
 		return
 	}
 	t.ended = true
-	// handle erratic APM duration, discard the tx if duration > 30 minutes
-	//d := time.Since(t.Tx.Timestamp)
-	// 30 * 60 * 1000,000,000 (ns)
-	//if d > 1800000000000 {
-	//	t.Tx.Discard()
-	//} else {
 	t.Tx.End()
-	//}
-	t.Unlock()
 }
