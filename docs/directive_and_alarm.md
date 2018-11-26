@@ -1,6 +1,6 @@
 # Directive and Alarm
 
-Similar to [OSSIM](https://www.alienvault.com/products/ossim), Dsiem directive contains a set of rules that will be used to evaluate incoming [Normalized Events](./event_processing.md#processing-cloned--normalized-events). Directive triggers alarms when enough of its rules condition are met.
+Similar to [OSSIM](https://www.alienvault.com/products/ossim), Dsiem directive contains a set of rules that will be used to evaluate incoming [Normalized Events](./dsiem_plugin.md#normalized-event). Directive triggers alarms when enough of its rules condition are met.
 
 The following is an example of a dsiem directive.
 
