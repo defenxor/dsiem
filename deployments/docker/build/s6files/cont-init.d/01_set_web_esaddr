@@ -1,6 +1,6 @@
 #!/bin/bash
 
-target="web/dist/assets/config/esconfig.json"
+target="/dsiem/web/dist/assets/config/esconfig.json"
 
 # may provide complete DSIEM_WEB_ESURL or SITE_ID-based composition
 
