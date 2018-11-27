@@ -1,3 +1,3 @@
 #!/usr/bin/with-contenv sh
-exec /dsiem/dsiem serve
+exec /dsiem/dsiem serve 2>&1
 
