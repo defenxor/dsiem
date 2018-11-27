@@ -46,7 +46,8 @@ func Enable(e bool) {
 // Transaction wraps transaction from elasticapm Default tracer and make it concurrency safe
 type Transaction struct {
 	sync.Mutex
-	Tx *elasticapm.Transaction
+	Tx    *elasticapm.Transaction
+	ended bool
 }
 
 // StartTransaction returns a mutex protected elasticapm.Transaction, with optional starting time
@@ -73,6 +74,12 @@ func (t *Transaction) Recover() {
 
 // SetCustom set custom value for the transaction
 func (t *Transaction) SetCustom(key string, value interface{}) {
+	/*
+		if either of the following still occur:
+		- index out of range error in Tx.Context.SetCustom
+		- concurrent map write in Tx.Context.SetTag
+		then this func should be set to no op
+	*/
 	t.Lock()
 	defer t.Unlock()
 	defer t.Recover()
@@ -82,8 +89,11 @@ func (t *Transaction) SetCustom(key string, value interface{}) {
 // Result set the result for the transaction
 func (t *Transaction) Result(value string) {
 	t.Lock()
+	defer t.Unlock()
+	if t.ended {
+		return
+	}
 	t.Tx.Result = value
-	t.Unlock()
 }
 
 // SetError set and send error fom the transaction
@@ -98,6 +108,10 @@ func (t *Transaction) SetError(err error) {
 // End completes the transaction
 func (t *Transaction) End() {
 	t.Lock()
+	defer t.Unlock()
+	if t.ended {
+		return
+	}
+	t.ended = true
 	t.Tx.End()
-	t.Unlock()
 }
