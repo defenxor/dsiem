@@ -31,16 +31,20 @@ The following table shows the fields of a `Normalized Event`:
 
 ## Creating a Dsiem Plugin
 
-Dsiem plugin can be created automatically from an existing index in Elasticsearch with the help of `dpluger` tool. The Logstash config file created by `dpluger` can then be used to filter and parse incoming events in order to produce normalized events, and with the help of [`80_siem.conf](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf), send them to Dsiem for further processing.
+Dsiem plugin can be created automatically from an existing index in Elasticsearch with the help of `dpluger` tool. The Logstash config file created by `dpluger` can then be used to filter and parse incoming events in order to produce normalized events and, with the help of [`80_siem.conf](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf), send them to Dsiem for further processing.
 
-Examples on how to use `dpluger` are given below.
+There are two types of Dsiem plugin:
+* SID-based plugin: produces normalized events to be processed later by a directive [`PluginRule`](./directive_and_alarm.md#about-directive-rules)
+* Taxonomy-based plugin: produces normalized events for directive [`TaxonomyRule`](./directive_and_alarm.md#about-directive-rules).
 
-### Example 1
+Examples on how to create them with `dpluger` assistance are given below.
+
+### Example 1: SID-based Plugin
 Suppose your elasticsearch is located at http://elasticsearch:9200 and there is an index there named `suricata-*` for Suricata IDS that you want to create a plugin for. Here are the steps to do it:
 
 * Download and extract the latest version of `dsiem-tools` from this project release page.
 
-* Create an empty `dpluger` config file template to use:
+* Create an empty dpluger config file template to use:
   ```shell
   $ ./dpluger create -a http://elasticsearch:9200 -i "suricata-*" -n "suricata" -c dpluger_suricata.json
   ```
@@ -121,11 +125,11 @@ Suppose your elasticsearch is located at http://elasticsearch:9200 and there is 
 * The generated Logstash config file (i.e. a Dsiem SIEM plugin) will be  [`70_siem-plugin-suricata.conf`](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/70_siem-plugin-suricata.conf) located in the current directory.
 To use the plugin, just copy it to Logstash configuration directory and reload Logstash.
 
-### Example 2
+### Example 2: SID-based Plugin with Generated Plugin SID
 
 In the previous example, each type of event produced by Suricata has a uniq identifier in `alert.signature_id` that can be used for `plugin_sid` in the resulting normalized event.
 
-But what if the source index doesn't have such field? in that case `dpluger` can be told to look for uniq entries in certain fields (such as title, etc.) and assign each of them with a uniq `plugin_sid` number. To do that, just set `plugin_sid` to `collect:ES.field.name`, as in the example dpluger config file that we can use for McAfee NSP below:
+But what if the source index doesn't have such field? in that case `dpluger` can be instructed to look for uniq entries in certain fields (such as title, etc.) and assign a `plugin_sid` number for each of them. To do that, just set `plugin_sid` to `collect:ES.field.name`, as in the example dpluger config file that we can use for McAfee NSP below:
 ```json
 {
   "name": "mcafee-nsp",
@@ -152,7 +156,7 @@ But what if the source index doesn't have such field? in that case `dpluger` can
   }
 }
 ```
-Using the above config, `dpluger` will gather uniq entries in `signature` field of `mcafee-nsp-*` index, and generate entries for `plugin_sid` field based that. The following shows an excerpt of the relevant part of the generated Logstash config file for this:
+Using the above config, `dpluger` will gather uniq entries in `signature` field of `mcafee-nsp-*` index, and generate entries for `plugin_sid` field based that. The following shows an excerpt of the relevant part of the generated Logstash config file that does this:
 
 ```yaml
 translate {
@@ -164,7 +168,7 @@ translate {
           "HTTP: Internet Media Tunneling through HTTP" => "3"
           "NETBIOS-SS: Windows SMB Remote Code Execution Vulnerability" => "4"
 ```
-Running `dpluger` with `collect:` as shown above will also creates a TSV reference file like the following:
+Running `dpluger` with `collect:` as shown above will also creates the following TSV reference file:
 ```tsv
 plugin	id	sid	title
 mcafee-nsp	1832	1	BlueCoat: Blue Coat BCAAA Stack Buffer Overflow Vulnerability
@@ -177,6 +181,40 @@ mcafee-nsp	1832	7	DoS: Cisco Syslog DoS
 ```
 The content of that TSV file will be used as a starting point and lookup table on future `dpluger` runs. In other words, it is safe to run `dpluger` repeatedly against the same index (for instance, to update the lookup dictionary when new uniq values are added), because all of the previously detected titles will retain their SID number.
 
-### Example 3
+### Example 3: Taxonomy-based Plugin
 
-TODO: taxonomy plugin type example
+Supply `-t` parameter to `dpluger` to generate a template for a taxonomy-based plugin:
+
+```shell
+$ ./dpluger create -i firewall-* -t Taxonomy
+```
+
+the resulting `dpluger_config.json` file would be:
+
+```JSON
+{
+  "name": "suricata",
+  "type": "Taxonomy",
+  "output_file": "70_siem-plugin-suricata.conf",
+  "index_pattern": "firewall-*",
+  "elasticsearch_address": "http://elasticsearch:9200",
+  "identifier_field": "INSERT_LOGSTASH_IDENTIFYING_FIELD_HERE (example: [application] or [fields][log_type] etc)",
+  "identifier_value": "INSERT_IDENTIFYING_FIELD_VALUE_HERE (example: suricata)",
+  "identifier_filter": "INSERT_ADDITIONAL_FILTER_HERE_HERE (example: and [alert])",
+  "field_mapping": {
+    "title": "es:INSERT_ES_FIELDNAME_HERE",
+    "timestamp": "es:INSERT_ES_FIELDNAME_HERE",
+    "timestamp_format": "INSERT_TIMESTAMP_FORMAT_HERE (example: ISO8601)",
+    "sensor": "es:INSERT_ES_FIELDNAME_HERE",
+    "product": "INSERT_PRODUCT_NAME_HERE",
+    "category": "es:INSERT_ES_FIELDNAME_HERE",
+    "subcategory": "es:INSERT_ES_FIELDNAME_HERE",
+    "src_ip": "es:INSERT_ES_FIELDNAME_HERE",
+    "src_port": "es:INSERT_ES_FIELDNAME_HERE",
+    "dst_ip": "es:INSERT_ES_FIELDNAME_HERE",
+    "dst_port": "es:INSERT_ES_FIELDNAME_HERE",
+    "protocol": "es:INSERT_ES_FIELDNAME_HERE or INSERT_PROTOCOL_NAME_HERE"
+  }
+}
+```
+Notice how `plugin_id` and `plugin_sid` keys are replaced with `product`, `category`, and `subcategory`. From here on, the steps to complete the plugin is similar with those outlined in Example 1 above.
