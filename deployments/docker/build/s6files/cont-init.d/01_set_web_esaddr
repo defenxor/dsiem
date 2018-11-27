@@ -1,0 +1,24 @@
+#!/bin/bash
+
+target="web/dist/assets/config/esconfig.json"
+
+# may provide complete DSIEM_WEB_ESURL or SITE_ID-based composition
+
+[ -z "$DSIEM_WEB_ESURL" ] && [ -z "$SITE_ID" ] && \
+  echo "DSIEM_WEB_ESURL or SITE_ID env var is not set, exiting." && exit 0
+
+if [ ! -z "$SITE_ID" ]; then
+([ -z "$ES_PROTO" ] || [ -z "$ES_HOSTNAME" ] || [ -z "$SITE_DOMAIN" ] || [ -z "$ES_PORT" ] || [ -z "$SITE_PREFIX" ]) && \
+  echo SITE_ID requires ES_PROTO, ES_HOSTNAME, SITE_DOMAIN, SITE_PREFIX, ES_PORT env vars && exit 0
+ESAddress="${ES_PROTO}://${ES_HOSTNAME}.${SITE_PREFIX}${SITE_ID}.${SITE_DOMAIN}:${ES_PORT}"
+fi
+
+if [ ! -z "$DSIEM_WEB_ESURL" ]; then
+ESAddress=$DSIEM_WEB_ESURL
+fi
+
+cat <<EOF >$target
+{
+    "elasticsearch": "$ESAddress"
+}
+EOF

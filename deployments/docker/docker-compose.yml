@@ -54,6 +54,8 @@ services:
       - siemnet
     volumes:
       - dsiem-log:/dsiem/logs
+    environment:
+      - DSIEM_WEB_ESURL=http://localhost:9200
 
   filebeat:
     container_name: filebeat
