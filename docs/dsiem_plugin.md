@@ -22,12 +22,12 @@ The following table shows the fields of a `Normalized Event`:
 | subcategory |  further breakdown of the event's category. For example, if the category is `Code Injection Attack`, subcategory maybe `SQL Injection`, `HTTP Parameter Injection`, etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in [TaxonomyRule](./directive_and_alarm.md#about-directive-rules)
 | plugin_id | A unique number that identifies the plugin. For example, `1001` for Suricata eve.json based events as used in Dsiem default config (`1001` is also used in OSSIM by default for Suricata UnifiedThreat logs)  | Yes, if `product` or `category` is empty | Yes, in [PluginRule](./directive_and_alarm.md#about-directive-rules)
 | plugin_sid |  A unique number that identifies the event *within* the plugin. |Yes, if `product` or `category` is empty | Yes, in [PluginRule](./directive_and_alarm.md#about-directive-rules)
-| custom_label1 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
-| custom_data1 |  The text content for the extra/custom field defined by `custom_label1` | No | Yes
-| custom_label2 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
-| custom_data2 |  The text content for the extra/custom field defined by `custom_label2` | No | Yes
-| custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | Yes
-| custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes
+| custom_label1 | A text identifier for an extra/custom field to use for correlation rules | No | No
+| custom_data1 |  The text content for the extra/custom field defined by `custom_label1` | No | Yes, but not implemented yet
+| custom_label2 | A text identifier for an extra/custom field to use for correlation rules | No | No
+| custom_data2 |  The text content for the extra/custom field defined by `custom_label2` | No | Yes, but not implemented yet
+| custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | No
+| custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes, but not implemented yet
 
 ## Creating a Dsiem Plugin
 
