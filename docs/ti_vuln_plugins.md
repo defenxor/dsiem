@@ -1,6 +1,6 @@
 # Threat Intelligence and Vulnerability Lookup Plugins
 
-Threat intel plugin enriches content of an alarm whenever it involves a public IP address that is listed in one of the plugin backend databases. The same goes for Vulnerability lookup plugin, but here the search is done based on IP and port combination, and the alarm IP address to lookup will also be done against private IP addresses.
+Threat intel plugin enriches content of an alarm whenever it involves a public IP address that is listed in one of the plugin backend databases. The same goes for Vulnerability lookup plugin, but here the search is done based on IP and port combination, and the alarm's IP address to lookup will also include any private IP addresses.
 
 ## About Threat Intel Lookup Plugin
 
@@ -96,7 +96,7 @@ $ go build ./cmd/dsiem
 After that, you can start dsiem and verify that the plugin is loaded correctly like so:
 
 ```bash
-./dsiem serve | grep intel
+$ ./dsiem serve | grep intel
 {"level":"INFO","ts":"2018-11-20T21:35:04.238+0700","msg":"Adding intel plugin Myintel"}
 {"level":"INFO","ts":"2018-11-20T21:35:04.239+0700","msg":"Adding intel plugin Wise"}
 {"level":"INFO","ts":"2018-11-20T21:35:04.239+0700","msg":"Loaded 2 threat intelligence sources."}

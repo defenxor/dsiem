@@ -1,14 +1,14 @@
 # Advanced Deployment
 
-Dsiem support clustering mode for horizontal scalability. In this mode, each instance of dsiem will run either as frontend or backend node, with NATS messaging in between to facilitate communication. The architecture is depicted in the following diagram.
+Dsiem supports clustering mode for horizontal scalability. In this mode, each instance of dsiem will run either as frontend or backend node, with NATS messaging in between to facilitate communication. The architecture is depicted in the following diagram.
 
-![Advanced Architecture](/docs/images/advanced-arch.png)
+![Advanced Architecture](./images/advanced-arch.png)
 
 ## About the Architecture
 
-* Frontend nodes is responsible for validating and parsing incoming normalized events from Logstash, and forwarding its results to backend nodes through NATS messaging system. Since frontends do not maintain states, Logstash can be easily configured to load balance between them (for example, using DNS round-robin or Kubernetes load balancer).
+* Frontend nodes are responsible for validating and parsing incoming normalized events from Logstash, and forwarding results to backend nodes through NATS messaging system. Since frontends do not maintain states, Logstash can be easily configured to load balance between them (for example, using DNS round-robin or Kubernetes load balancer).
 
-* Each backend node is assigned with a different set of (exclusive) directive rules to use for processing events. For example, a directive rule for detecting port scan maybe assigned only to backend A, and another directive that alert on SSH failed logins maybe assigned only to backend B. This simple way of distributing workload means that all the backends can work independently, using an in memory storage, and do not have to share states with each other.
+* Each backend node is assigned with a different set of (exclusive) directive rules to use for processing events. For example, a directive rule for detecting port scan maybe assigned only to backend A, and another directive that alert on SSH failed logins maybe assigned only to backend B. This simple way of distributing workload means that all backends can work independently, using an in memory storage, and do not have to sync states with each other.
 
 * That however, does entail that *every* event sent from frontends will have to be delivered/broadcasted to all backends in order to evaluate them against all rules. This could potentially introduce network bottleneck from NATS to backends. It also means that the rules assigned to a failing backend will not be picked up by other nodes.
 

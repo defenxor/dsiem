@@ -1,14 +1,24 @@
-# Web Interface
+# Web Interfaces
 
-Dsiem comes with an Angular-based web UI for managing alarms and quick pivoting to the relevant sections in Kibana for further analysis. In addition, there's also an example Kibana dashboard ready for import, and Elastic APM integration for instrumentation/tracing.
+Dsiem comes with an Angular-based web UI for managing alarms and quick pivoting to the relevant sections in Kibana for further analysis. In addition, there's also an example Kibana dashboard ready for import, and Elastic APM integration for performance monitoring.
 
 ## Dsiem Web UI
 
-TODO
+The web UI is accessible from http://dsiem-address:8080/ui/.
+
+![Dsiem Web UI](./images/web-ui.png)
+
+You can click on an alarm to see its detail. Then from there you can interact with the following cell:
+* **Status**: to change the alarm Status from `Open` to `In-Progress` or `Closed`.
+* **Tag**: to change the alarm's tag from `Identified Threat` to `False Positive`, `Valid Threat`, or `Security Incident`.
+
+The above statuses and tags can be customized by supplying the appropriate dsiem [startup parameter](./commands.md#dsiem-command-flags).
 
 ## Kibana Dashboard
 
-TODO
+Dsiem's example Kibana dashboard can be imported using the step provided [here](./installation.md#importing-kibana-dashboard). The result should be similar to this:
+
+![Dsiem Web UI](./images/kbn-dashboard.png)
 
 ## APM Integration
 

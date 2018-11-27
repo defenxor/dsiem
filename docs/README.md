@@ -5,11 +5,11 @@ This directory contains Dsiem documentation pages until there's a need for a ded
 Available topics are:
 
 * [Installation](./installation.md)
-* [Event Processing Flow](./event_processing.md)
-* [Directive and Alarm Processing](./directive_and_alarm.md)
+* [Web Interfaces](./web_interfaces.md)
 * [Dsiem Command and Tools](./commands.md)
-* [Web Interfaces](./web_interface.md)
+* [Event Processing Flow](./event_processing.md)
 * [Dsiem Plugin](./dsiem_plugin.md)
+* [Directive and Alarm](./directive_and_alarm.md)
 * [Threat Intel and Vulnerability Lookup Plugins](./ti_vuln_plugins.md)
 * [Advanced Deployment](./adv_deployment.md)
 * [Notes on Security](./security.md)

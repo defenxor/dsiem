@@ -13,36 +13,42 @@ Then after you get a feel on how everything fits together, you can start integra
 * Clone this repository:
 
     ```shell
-    git clone https://github.com/defenxor/dsiem
+    $ git clone https://github.com/defenxor/dsiem
     ```
 
 * Suricata needs to know which network interface to monitor traffic on. Tell it to use one of the active network interface on the host system like this (for `bash` shell):
 
     ```shell
-    export PROMISC_INTERFACE=eth0
+    $ export PROMISC_INTERFACE=eth0
     ```
   
     Replace `eth0` above with the actual interface name. For testing purpose, it's not necessary to configure the interface to really operate in promiscuous mode.
 
+* Set the owner of filebeat config file to root ([here's why](https://www.elastic.co/guide/en/beats/libbeat/6.4/config-file-permissions.html)):
+    ```shell
+    $ cd dsiem/deployments/docker && \
+    sudo chown root conf/filebeat/filebeat.yml
+    ```
+
 * Run ELK, Suricata, and Dsiem in standalone mode:
   
     ```shell
-    cd dsiem/deployments/docker && \
-    docker-compose up
+    $ docker-compose pull
+    $ docker-compose up
     ```
 
-* Everything should be up and ready for testing in a few minutes.
-
-* Here's things to note about the environment created by `docker-compose`:
+* Everything should be up and ready for testing in a few minutes. Here's things to note about the environment created by `docker-compose`:
   
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
     * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled, so you can easily trigger a test just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
     * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
 
+#### Importing Kibana Dashboard
+
 * Once Kibana is up at http://localhost:5601, you can import Dsiem dashboard and its dependencies using the following command:
 
     ```shell
-    ./scripts/kbndashboard-import.sh localhost
+    $ ./scripts/kbndashboard-import.sh localhost
     ```
 
 ### Using Existing ELK
@@ -53,7 +59,7 @@ Then after you get a feel on how everything fits together, you can start integra
 
     ```shell
 
-    [ "$EUID" -ne 0 ] && echo must be run as root! || (\
+    $ [ "$EUID" -ne 0 ] && echo must be run as root! || (\
     export DSIEM_DIR=/var/dsiem && \
     mkdir -p $DSIEM_DIR && \
     curl https://github.com/defenxor/dsiem/releases/download/v0.1.0/dsiem-server-linux-amd64.zip -O /tmp/ && \
@@ -80,7 +86,7 @@ Then after you get a feel on how everything fits together, you can start integra
   
     ```shell
 
-    [ "$EUID" -ne 0 ] && echo must be run as root! || ( \
+    $ [ "$EUID" -ne 0 ] && echo must be run as root! || ( \
     cat <<EOF > /etc/systemd/system/dsiem.service 
     [Unit]
     Description=Dsiem
@@ -105,7 +111,7 @@ Then after you get a feel on how everything fits together, you can start integra
 * Import Kibana dashboard from `deployments/kibana/dashboard-siem.json`. This step will also install all Kibana index-patterns (`siem_alarms` and `siem_events`) that will be linked to from Dsiem web UI.
 
     ```shell
-    ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname}
+    $ ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname}
     ```
 
 ## Uninstalling Dsiem
@@ -113,12 +119,12 @@ Then after you get a feel on how everything fits together, you can start integra
 For `docker-compose` installation, just run the following:
 
 ```shell
-cd dsiem/deployments/docker && \
+$ cd dsiem/deployments/docker && \
 docker-compose down -v
 ```
 or
 ```shell
-cd dsiem/deployments/docker && \
+$ cd dsiem/deployments/docker && \
 docker-compose -f docker-compose-cluster.yml down -v
 ```
 
