@@ -43,6 +43,8 @@ Then after you get a feel on how everything fits together, you can start integra
     * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled, so you can easily trigger a test just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
     * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
 
+#### Importing Kibana Dashboard
+
 * Once Kibana is up at http://localhost:5601, you can import Dsiem dashboard and its dependencies using the following command:
 
     ```shell
