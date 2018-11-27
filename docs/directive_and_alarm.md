@@ -2,7 +2,23 @@
 
 Similar to [OSSIM](https://www.alienvault.com/products/ossim), Dsiem directive contains a set of rules that will be used to evaluate incoming [Normalized Events](./dsiem_plugin.md#normalized-event). Directive triggers alarms when enough of its rules condition are met.
 
-The following is an example of a dsiem directive.
+## About Directive Rules
+
+There are two types of directive rules in Dsiem, `PluginRule` and `TaxonomyRule`. As suggested in the [Normalized Events](./dsiem_plugin.md#normalized-event) table, PluginRule differentiate events based on `PluginID` and `Plugin_SID` fields, while TaxonomyRule uses `Product`, `Category`, and optionally `Subcategory` fields.
+
+`PluginRule` should be used if you want to do correlation based on specific events produced by specific brand of devices. On the other hand, `TaxonomyRule` allows correlation to be done based on a group of events that share similar characteristic.
+
+As an example, suppose you have the following security devices in your network: Suricata IDS, SomebrandNG IDS, Pfsense Firewall, SomeRouterNG Firewall.
+
+`PluginRule` will allow you to define a directive that says, "Raise alarm if Suricata IDS detects SQL injection or XSS attacks that isn't blocked by SomeRouterNG Firewall". In contrast, `TaxonomyRule` allow definition of a more general directive that says, "Raise alarm if an IDS detects web application attack that isn't blocked by firewall".
+
+Despite its obvious flexibility, `TaxonomyRule` does require you to maintain a custom classification/taxonomy scheme that isn't required by `PluginRule`. In the above example, using `TaxonomyRule` means you will have to know and classify which events from Suricata or SomebrandNG are "web application attack", and which events in PfSense and SomeRouterNG means "not blocking".
+
+As a general guide, `TaxonomyRule` should be preferred when there are similar type of product (like IDS and firewall above) to cover since it will prevent a lot of redundant directives. But if that's not the case, `PluginRule` will likely offer an easier to maintain plugin/parser configuration.
+
+## Directive and Rules Processing
+
+The following is an example of a dsiem directive that has several `PluginRule`.
 
 ```json
 {
@@ -65,7 +81,7 @@ By using [Dsiem startup parameter](commands.md#dsiem-command-flags), you can the
 - Medium risk ⟶ risk value of 3 to 6
 - High risk ⟶ risk value of 7 to 10 
 
-### Example Directive to Alarm Processing
+### Example Directive ⟶ Alarm Processing
 
 Let's say Dsiem is configured with the above `Ping Flood from SRC_IP` directive, and an `assets_*.json` that defines an asset value of 2 for `10.0.0.0/8` network.
 
