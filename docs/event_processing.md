@@ -50,4 +50,4 @@ For practical purposes, the processing flow described above means that the follo
 
 * All SIEM plugins (i.e. output of `dpluger` tool) file name should start with a number that is less than 80, for example `70_siem-plugin-suricata.conf`. This is to ensure that they will all be read before `80_siem.conf`.
 
-* All log sources filters must be put in a file whose name starts with a number that is less than all the SIEM plugins name. For example if the SIEM plugins names start with `70_*`, then the log source filters should start with `60_*` or `50_*` (like `50_suricata.conf` in the above example). This ensures that they will all be read before the SIEM plugins that expect to clone their results.
+* All log sources filters must be put in a file whose name starts with a number that is less than all the SIEM plugins name. For example if the SIEM plugins names start with 70_\*, then the log source filters should start with 60_\* or 50_\* (like `50_suricata.conf` in the above example). This ensures that they will all be read before the SIEM plugins that expect to clone their results.
