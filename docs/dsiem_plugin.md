@@ -8,7 +8,7 @@ The following table shows the fields of a `Normalized Event`:
 
 | Field   |      Description      |  Mandatory | Usable in Correlation Rules |
 |----------|-------------|------|------|
-| timestamp | The original event timestamp in ISO8601 format, not to be confused with Logstash builtin `@timestamp` | Yes | No, but this is used to detect out-of-order events and transit time.
+| timestamp | The original event timestamp in ISO8601 format, not to be confused with Logstash builtin `@timestamp`. | Yes | No, but this is used to detect out-of-order events and transit time.
 | event_id | UUID for the event, typically generated using [Logstash UUID filter plugin](https://www.elastic.co/guide/en/logstash/current/plugins-filters-uuid.html) if the event doesn't already have one. | Yes | No
 | title | Description of the event. | Yes | No
 | sensor | String identifier of the device that produces/captures the event. Examples: hostname of the IPS device, firewall, or the processing Logstash node. | Yes | No
@@ -17,17 +17,17 @@ The following table shows the fields of a `Normalized Event`:
 | protocol |  Network protocol used, such as TCP, UDP, ICMP, etc. | No | Yes
 | src_port | Source port number, typically refers to TCP or UDP ports, but may also be any identifying number like ICMP type number, etc. | No | Yes
 | dst_port | Source port number, typically refers to TCP or UDP ports, but may also be any identifying number like ICMP type number, etc. |  No | Yes
-| product | Product-type of the device that generates the event, i.e. firewall, IDS/IPS, etc. | Yes | Yes, in [TaxonomyRule](./directive_and_alarm.md#about-directive-rules).
+| product | Product-type of the device that generates the event, i.e. firewall, IDS/IPS, etc. | Yes | Yes, in [TaxonomyRule](./directive_and_alarm.md#about-directive-rules)
 | category | The event's category, relative to the product type. For example, if the product type is firewall, event's category maybe `Allowed Traffic`,`Denied Traffic`, `Dropped Traffic`, `Port Scan` etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in [TaxonomyRule](./directive_and_alarm.md#about-directive-rules)
 | subcategory |  further breakdown of the event's category. For example, if the category is `Code Injection Attack`, subcategory maybe `SQL Injection`, `HTTP Parameter Injection`, etc. | Yes, if `plugin_id` or `plugin_sid` is empty | Yes, in [TaxonomyRule](./directive_and_alarm.md#about-directive-rules)
 | plugin_id | A unique number that identifies the plugin. For example, `1001` for Suricata eve.json based events as used in Dsiem default config (`1001` is also used in OSSIM by default for Suricata UnifiedThreat logs)  | Yes, if `product` or `category` is empty | Yes, in [PluginRule](./directive_and_alarm.md#about-directive-rules)
 | plugin_sid |  A unique number that identifies the event *within* the plugin. |Yes, if `product` or `category` is empty | Yes, in [PluginRule](./directive_and_alarm.md#about-directive-rules)
-| custom_label1 | A text identifier for an extra/custom field to use for correlation rules | No | No
-| custom_data1 |  The text content for the extra/custom field defined by `custom_label1` | No | Yes, but not implemented yet
-| custom_label2 | A text identifier for an extra/custom field to use for correlation rules | No | No
-| custom_data2 |  The text content for the extra/custom field defined by `custom_label2` | No | Yes, but not implemented yet
-| custom_label3 | A text identifier for an extra/custom field to use for correlation rules | No | No
-| custom_data3 |  The text content for the extra/custom field defined by `custom_label3` | No | Yes, but not implemented yet
+| custom_label1 | A text identifier for an extra/custom field to use for correlation rules. | No | No
+| custom_data1 |  The text content for the extra/custom field defined by `custom_label1`. | No | Yes, but not implemented yet
+| custom_label2 | A text identifier for an extra/custom field to use for correlation rules. | No | No
+| custom_data2 |  The text content for the extra/custom field defined by `custom_label2`. | No | Yes, but not implemented yet
+| custom_label3 | A text identifier for an extra/custom field to use for correlation rules. | No | No
+| custom_data3 |  The text content for the extra/custom field defined by `custom_label3`. | No | Yes, but not implemented yet
 
 ## Creating a Dsiem Plugin
 
