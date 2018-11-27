@@ -1,4 +1,4 @@
-# Event Processing
+# Event Processing Flow
 
 This section provides more details on how event processing works in Dsiem, compared to the rather simplified version description on the main [Readme](https://github.com/defenxor/dsiem/#how-it-works). We'll use the following diagram and <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/">Dsiem example Logstash and Filebeat configuration files</a> as reference.
 
@@ -27,17 +27,17 @@ After that, still based on the same unique identifier, the event is then process
 
 ## Processing Cloned ⟶ Normalized Events
 
-As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others. The full list of fields of a `Normalized Event` is shown in [Dsiem Plugins](./dsiem_plugin.md) page.
+As for the cloned event, `70_siem-plugin-suricata.conf` converts it into a `Normalized Event`. This is a standardized format that has a set of common fields shared by all incoming events such as Source IP, Destination IP, Title, and others. The full list of fields of a `Normalized Event` is shown [here](./dsiem_plugin.md#normalized-event).
 
-In addition to converting the cloned event to a normalized event format, `70_siem-plugin-suricata.conf` also adds field `"[@metadata][siem_data_type]" => "normalizedEvent"` to become its new identifier.
+In addition to converting the cloned event to a normalized event format, `70_siem-plugin-suricata.conf` also adds field `"[@metadata][siem_data_type]" => "normalizedEvent"` to become the new event identifier.
 
-the cloned event is then picked up based on its new identifier by <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf">80_siem.conf</a>. In there, a copy of the cloned event is sent to Elasticsearch for final storage in `siem_events-*` index, and another copy is sent to Dsiem for event correlation. At this point, the processing flow of the cloned event is complete.
+the cloned event is then picked up based on that new identifier by <a href="https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/conf.d/80_siem.conf">80_siem.conf</a>. In there, a copy of the cloned event is sent to Elasticsearch for final storage in `siem_events-*` index, and another copy is sent to Dsiem for event correlation. At this point, the processing flow of the cloned event is complete.
 
 ## Generating Alarms
 
 Dsiem performs event correlation on all incoming `Normalized Event` based on its configured directive rules. Dsiem generates `Alarm` if the directive rule condition are met by a series of incoming events within a given period of time. Refer to [Directive and Alarm](./directive_and_alarm.md) doc for more detail on how alarms are generated. 
 
-Dsiem stores generated `Alarm` and subsequent updates to it in a log file which is then harvested by a local Filebeat. In addition to the alarm it self, Dsiem also store `Alarm_events` record that link each alarm to the `Normalized Event`s that trigger its creation. Just like `Alarm`, those records are also harvested by the local Filebeat instance.
+Dsiem stores generated `Alarm` and subsequent updates to it in a log file which is then harvested by a local Filebeat. In addition to the alarm itself, Dsiem also stores `Alarm_events` records that link each alarm to the `Normalized Events` that trigger its creation. Just like `Alarm`, those records are also harvested by the local Filebeat instance.
 
 ## Processing Alarms
 

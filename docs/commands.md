@@ -116,7 +116,7 @@ Global Flags:
       --dev     Enable development environment specific setting
 ```
 
-We try to provide sensible defaults, so there's no need to supply additional flags unless there's a specific need for it. For instance, in order to run dsiem in standalone mode you only need to run:
+We try to provide sensible defaults, so there's no need to supply additional flags unless there's a specific need to override them. For instance, in order to run dsiem in standalone mode you only need to run:
 ```shell
 $ ./dsiem serve
 ```

@@ -1,6 +1,6 @@
 # Dsiem Plugin
 
-Dsiem plugin is a Logstash configuration file whose function is to clone events parsed by Logstash, convert it to a standard format called `Normalized Event`, and send it to Dsiem for processing.
+Dsiem plugin is a Logstash configuration file whose function is to clone events parsed by Logstash, convert them to a standard format called `Normalized Event`, and send them to Dsiem for processing.
 
 ## Normalized Event
 
@@ -170,7 +170,7 @@ translate {
 ```
 Running `dpluger` with `collect:` as shown above will also create the following TSV reference file:
 ```tsv
-plugin	id	sid	title
+plugin	        id	sid	title
 mcafee-nsp	1832	1	BlueCoat: Blue Coat BCAAA Stack Buffer Overflow Vulnerability
 mcafee-nsp	1832	2	P2P: TeamViewer Traffic Detected
 mcafee-nsp	1832	3	HTTP: Internet Media Tunneling through HTTP
@@ -179,7 +179,7 @@ mcafee-nsp	1832	5	NETBIOS-SS: Illegal Secondary Transaction request seen
 mcafee-nsp	1832	6	P2P: BitTorrent Meta-Info Retrieving
 mcafee-nsp	1832	7	DoS: Cisco Syslog DoS
 ```
-The content of that TSV file will be used as a starting point and lookup table on future `dpluger` runs. In other words, it is safe to run `dpluger` repeatedly against the same index (for instance, to update the lookup dictionary when new uniq values are added), because all of the previously detected titles will retain their SID number.
+The content of that TSV file will be used as a starting point and lookup table on future `dpluger` runs. This means it is safe to run `dpluger` repeatedly against the same index (for instance, to update the lookup dictionary when new uniq values are added), because all of the previously detected titles will retain their SID number.
 
 ### Example 3: Taxonomy-based Plugin
 
