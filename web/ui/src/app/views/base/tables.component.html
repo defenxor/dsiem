@@ -18,6 +18,7 @@
           <table class="table table-striped">
             <thead>
               <tr>
+                <th>Action</th>
                 <th>AlarmID</th>
                 <th>Title</th>
                 <th>Created</th>
@@ -31,6 +32,11 @@
             </thead>
             <tbody>
               <tr *ngFor="let alarm of tableData">
+                <td>
+                  <a tooltip="Click to see alarm details" placement="bottom" style="cursor:pointer; color: #000000" [routerLink]="['/data/alarm-detail', alarm.id]">
+                    <i class="fa fa-eye" ></i>
+                  </a>
+                </td>
                 <td>{{alarm.id}}</td>
                 <td>{{alarm.title}}</td>
                 <td>{{alarm.timestamp | amTimeAgo}}</td>
