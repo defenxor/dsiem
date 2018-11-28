@@ -88,6 +88,34 @@
       </div>
     </div>
 
+    <div class="row" *ngIf="alarmVuln.length > 0">
+      <div class="col-lg-12">
+        <div class="card">
+          <div class="card-header">
+            Vulnerabilities
+          </div>
+          <div class="card-body">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Provider</th>  
+                  <th>Term</th>  
+                  <th>Result</th>  
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let v of alarmVuln">
+                  <td>{{v.provider}}</td>
+                  <td>{{v.term}}</td>
+                  <td>{{v.result}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <div class="col-lg-12">
         <div class="card">
