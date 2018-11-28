@@ -10,6 +10,7 @@ import { TablesComponent } from './tables.component';
 import { BaseRoutingModule } from './base-routing.module';
 
 import { MomentModule } from 'ngx-moment';
+import { DetailalarmComponent } from './detailalarm.component';
 
 @NgModule({
   imports: [
@@ -20,6 +21,7 @@ import { MomentModule } from 'ngx-moment';
   ],
   declarations: [
     TablesComponent,
+    DetailalarmComponent
   ]
 })
 export class BaseModule { }
