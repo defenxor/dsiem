@@ -22,11 +22,28 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of alarm">
+                <tr *ngFor="let row of alarm" [style.height]="wide == true ? '230px' : 'auto'">
                   <td>{{alarmID}}</td>
                   <td>{{row._source.timestamp | amTimeAgo}}</td>
                   <td>{{row._source.updated_time | amTimeAgo}}</td>
-                  <td>{{row._source.status}}</td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('alrm-status-', alarmID)">{{row._source.status}}</label>
+                    &nbsp;
+                    <i class="fa fa-clock-o" style="color: red" *ngIf="isProcessingUpdateStatus"></i>
+                    <div class="btn-group" id="alrm-status-{{alarmID}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-status-', alarmID)">
+                        change
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, 'Open')" style="cursor: pointer">Open</a>
+                        <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, 'In-Progress')" style="cursor: pointer">In-Progress</a>
+                        <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, 'Closed')" style="cursor: pointer">Closed</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-alrm-status-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-status-', alarmID); wide=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td>{{row._source.risk_class}}</td>
                   <td>{{row._source.tag}}</td>
                   <td>{{row._source.src_ips}}</td>
