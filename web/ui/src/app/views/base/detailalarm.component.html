@@ -63,7 +63,8 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let rule of alarmRules">
+                <tr *ngFor="let rule of alarmRules" tooltip="Click to see events" style="cursor:pointer"
+                (click)="getEventsDetail('init', alarmID, rule.stage, null, null, rule.events_count)">
                   <td>{{rule.stage}}</td>
                   <td>{{rule.start_time | amFromUnix| amTimeAgo}}</td>
                   <td>{{rule.end_time | amFromUnix| amTimeAgo}}</td>
@@ -78,6 +79,72 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card">
+          <div class="card-header">
+            Event Detail
+          </div>
+          <div class="card-body">
+            <ng-template #empty><td>-</td></ng-template>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Title</th>
+                  <th>Source</th>
+                  <th>Destination</th>
+                  <th>Protocol</th>
+                  <th>Port From</th>
+                  <th>Port To</th>
+                  <th>Sensor</th>
+                  <th>Plugin</th>
+                  <th>Plugin SID</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let event of evnts">
+                  <td>{{event.timestamp | amTimeAgo}}</td>
+                  <td>{{event.title}}</td>
+                  <td>{{event.src_ip}}</td>
+                  <td>{{event.dst_ip}}</td>
+                  <td>{{event.protocol}}</td>
+                  <td *ngIf="event.port_from; else empty">{{event.port_from}}</td>
+                  <td *ngIf="event.port_to; else empty">{{event.port_to}}</td>
+                  <td>{{event.sensor}}</td>
+                  <td>{{event.plugin_id}}</td>
+                  <td>{{event.plugin_sid}}</td>
+                </tr>
+              </tbody>
+            </table>
+            <ul class="pagination">
+                <li class="page-item clearfix d-none d-md-block" (click)="firstPage()" [ngClass]="{disabled: activePage == 1}">
+                  <a class="page-link">First</a>
+                </li>
+                <li class="page-item" (click)="previousPage($event)" [ngClass]="{disabled: activePage == 1}">
+                  <a class="page-link" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                    <span class="sr-only">Previous</span>
+                  </a>
+                </li>
+                <li #pages *ngFor="let page of paginators | slice:firstVisiblePaginator:lastVisiblePaginator; let i = index" class="page-item" [ngClass]="{active: i + firstVisiblePaginator + 1 == activePage}">
+                  <a class="page-link waves-light" (click)="changePage($event)" mdbWavesEffect>{{page}}</a>
+                </li>
+                <li class="page-item" (click)="nextPage($event)" [ngClass]="{disabled: activePage == numberOfPaginators}">
+                  <a class="page-link" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                    <span class="sr-only">Next</span>
+                  </a>
+                </li>
+                <li class="page-item clearfix d-none d-md-block" (click)="lastPage()" [ngClass]="{disabled: activePage == numberOfPaginators}">
+                  <a class="page-link">Last</a>
+                </li>
+              </ul>
           </div>
         </div>
       </div>
