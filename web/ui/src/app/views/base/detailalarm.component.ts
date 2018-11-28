@@ -31,6 +31,8 @@ export class DetailalarmComponent implements OnInit {
   lastVisibleIndex: number = this.itemsPerPage;
   firstVisiblePaginator = 0;
   lastVisiblePaginator = this.numberOfVisiblePaginators;
+  wide;
+  isProcessingUpdateStatus = false;
 
   constructor(private route: ActivatedRoute, private es: ElasticsearchService) { }
 
@@ -207,6 +209,44 @@ export class DetailalarmComponent implements OnInit {
       this.firstVisiblePaginator = this.lastVisiblePaginator - (this.numberOfPaginators % this.numberOfVisiblePaginators);
     }
     this.getEventsDetail('pagination', this.alarmID, this.stage, this.firstVisibleIndex, this.itemsPerPage, this.totalItems);
+  }
+
+  openDropdown(key, param){
+    document.getElementById(key+param).style.display = 'block';
+    document.getElementById('close-'+key+param).style.display = 'block';
+  }
+
+  closeDropdown(key, param){
+    document.getElementById(key+param).style.display = 'none';
+    document.getElementById('close-'+key+param).style.display = 'none';
+  }
+
+  resetHeight(key, alarmID){
+    let a = document.getElementById(key+alarmID).getAttribute('class');
+    // console.log(a);
+    if(a.indexOf('open') > -1){
+      this.wide = false;
+    } else {
+      this.wide = true;
+    }
+  }
+
+  changeAlarmStatus(_id, status){
+    this.es.updateAlarmStatusById(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id, status).then((res)=>{
+      console.log(res);
+      this.isProcessingUpdateStatus = true;
+      this.closeDropdown('alrm-status-', this.alarmID);
+      this.wide = false;
+      setTimeout(() => {
+        this.es.getAlarms(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id).then((resp)=>{
+          this.alarm = resp.hits.hits;
+          console.log(this.alarm);
+          this.isProcessingUpdateStatus = false;
+        });
+      }, 5000);
+    }).catch(err=>{
+      console.log('ERROR: ', err);
+    })
   }
 
 }

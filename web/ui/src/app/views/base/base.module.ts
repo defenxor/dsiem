@@ -12,6 +12,7 @@ import { BaseRoutingModule } from './base-routing.module';
 
 import { MomentModule } from 'ngx-moment';
 import { TooltipModule} from 'ngx-bootstrap';
+import { BsDropdownModule} from 'ngx-bootstrap/dropdown';
 
 @NgModule({
   imports: [
@@ -19,7 +20,8 @@ import { TooltipModule} from 'ngx-bootstrap';
     FormsModule,
     BaseRoutingModule,
     MomentModule,
-    TooltipModule.forRoot()
+    TooltipModule.forRoot(),
+    BsDropdownModule.forRoot()
   ],
   declarations: [
     TablesComponent,
