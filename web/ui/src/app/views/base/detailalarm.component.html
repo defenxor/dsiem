@@ -30,7 +30,11 @@
                   <td>{{row._source.risk_class}}</td>
                   <td>{{row._source.tag}}</td>
                   <td>{{row._source.src_ips}}</td>
-                  <td>{{row._source.dst_ips}}</td>
+                  <td>
+                    <div *ngFor="let d of row._source.dst_ips">
+                      <span>{{d}}</span>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>

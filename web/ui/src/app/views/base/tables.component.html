@@ -45,7 +45,11 @@
                 <td>{{alarm.risk_class}}</td>
                 <td>{{alarm.tag}}</td>
                 <td>{{alarm.src_ips}}</td>
-                <td>{{alarm.dst_ips}}</td>
+                <td>
+                  <div *ngFor="let d of alarm.dst_ips">
+                    <span>{{d}}</span>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
