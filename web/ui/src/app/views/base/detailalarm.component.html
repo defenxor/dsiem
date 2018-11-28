@@ -22,7 +22,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of alarm" [style.height]="wide == true ? '230px' : 'auto'">
+                <tr *ngFor="let row of alarm" [style.height]="wide == true ? '260px' : 'auto'">
                   <td>{{alarmID}}</td>
                   <td>{{row._source.timestamp | amTimeAgo}}</td>
                   <td>{{row._source.updated_time | amTimeAgo}}</td>
@@ -45,7 +45,25 @@
                     </div>
                   </td>
                   <td>{{row._source.risk_class}}</td>
-                  <td>{{row._source.tag}}</td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('alrm-tag-', alarmID)">{{row._source.tag}}</label>
+                    &nbsp;
+                    <i class="fa fa-clock-o" style="color: red" *ngIf="isProcessingUpdateTag"></i>
+                    <div class="btn-group" id="alrm-tag-{{alarmID}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-tag-', alarmID)">
+                        change
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'Identified Threat')" style="cursor: pointer">Identified Threat</a>
+                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'False Positive')" style="cursor: pointer">False Positive</a>
+                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'Valid Threat')" style="cursor: pointer">Valid Threat</a>
+                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'Security Incident')" style="cursor: pointer">Security Incident</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-alrm-tag-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-tag-', alarmID); wide=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td>{{row._source.src_ips}}</td>
                   <td>
                     <div *ngFor="let d of row._source.dst_ips">
