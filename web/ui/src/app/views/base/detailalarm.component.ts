@@ -13,6 +13,7 @@ export class DetailalarmComponent implements OnInit {
   private stage;
   public alarm = [];
   public alarmRules = [];
+  public alarmVuln = [];
   public evnts = [];
   private isShowEventDetails: boolean;
   private static readonly ALARM_INDEX = 'siem_alarms';
@@ -69,6 +70,7 @@ export class DetailalarmComponent implements OnInit {
           that.getEventsDetail('init', that.alarmID, that.alarmRules[1].stage, null, null, that.alarmRules[1].events_count);
         }
       });
+      if(element._source.vulnerabilities) this.alarmVuln = element._source.vulnerabilities;
     });
   }
 
