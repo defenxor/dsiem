@@ -1,42 +1,85 @@
 <div class="animated fadeIn">
-  <div class="row">
-    <div class="col-lg-12">
-      <div class="card">
-        <div class="card-header">
-          <div *ngFor="let row of alarm">
-            <i class="fa fa-align-justify"></i> {{row._source.title}}
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card">
+          <div class="card-header">
+            <div *ngFor="let row of alarm">
+              {{row._source.title}}
+            </div>
           </div>
-        </div>
-        <div class="card-body">
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>AlarmID</th>
-                <th>Created</th>
-                <th>Updated</th>
-                <th>Status</th>
-                <th>Risk</th>
-                <th>Tag</th>
-                <th>Sources</th>
-                <th>Destinations</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of alarm">
-                <td>{{alarmID}}</td>
-                <td>{{row._source.timestamp | amTimeAgo}}</td>
-                <td>{{row._source.updated_time | amTimeAgo}}</td>
-                <td>{{row._source.status}}</td>
-                <td>{{row._source.risk_class}}</td>
-                <td>{{row._source.tag}}</td>
-                <td>{{row._source.src_ips}}</td>
-                <td>{{row._source.dst_ips}}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="card-body">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>AlarmID</th>
+                  <th>Created</th>
+                  <th>Updated</th>
+                  <th>Status</th>
+                  <th>Risk</th>
+                  <th>Tag</th>
+                  <th>Sources</th>
+                  <th>Destinations</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of alarm">
+                  <td>{{alarmID}}</td>
+                  <td>{{row._source.timestamp | amTimeAgo}}</td>
+                  <td>{{row._source.updated_time | amTimeAgo}}</td>
+                  <td>{{row._source.status}}</td>
+                  <td>{{row._source.risk_class}}</td>
+                  <td>{{row._source.tag}}</td>
+                  <td>{{row._source.src_ips}}</td>
+                  <td>{{row._source.dst_ips}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
-
+  
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card">
+          <div class="card-header">
+            Rules
+          </div>
+          <div class="card-body">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Corr. Stage</th>
+                  <th>Started</th>
+                  <th>Ended</th>
+                  <th>Status</th>
+                  <th>Name</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Protocol</th>
+                  <th>Port From</th>
+                  <th>Port To</th>
+                  <th>Events</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let rule of alarmRules">
+                  <td>{{rule.stage}}</td>
+                  <td>{{rule.start_time | amFromUnix| amTimeAgo}}</td>
+                  <td>{{rule.end_time | amFromUnix| amTimeAgo}}</td>
+                  <td>{{setStatus(rule)}}</td>
+                  <td>{{rule.name}}</td>
+                  <td>{{rule.from}}</td>
+                  <td>{{rule.to}}</td>
+                  <td>{{rule.protocol}}</td>
+                  <td>{{rule.port_from}}</td>
+                  <td>{{rule.port_to}}</td>
+                  <td>{{rule.events_count}}/{{rule.occurrence}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>  
