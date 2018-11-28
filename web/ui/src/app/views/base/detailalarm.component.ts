@@ -33,6 +33,7 @@ export class DetailalarmComponent implements OnInit {
   lastVisiblePaginator = this.numberOfVisiblePaginators;
   wide;
   isProcessingUpdateStatus = false;
+  isProcessingUpdateTag = false;
 
   constructor(private route: ActivatedRoute, private es: ElasticsearchService) { }
 
@@ -242,6 +243,24 @@ export class DetailalarmComponent implements OnInit {
           this.alarm = resp.hits.hits;
           console.log(this.alarm);
           this.isProcessingUpdateStatus = false;
+        });
+      }, 5000);
+    }).catch(err=>{
+      console.log('ERROR: ', err);
+    })
+  }
+  
+  changeAlarmTag(_id, tag){
+    this.es.updateAlarmTagById(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id, tag).then((res)=>{
+      console.log(res);
+      this.isProcessingUpdateTag = true;
+      this.closeDropdown('alrm-tag-', this.alarmID);
+      this.wide = false;
+      setTimeout(() => {
+        this.es.getAlarms(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id).then((resp)=>{
+          this.alarm = resp.hits.hits;
+          console.log(this.alarm);
+          this.isProcessingUpdateTag = false;
         });
       }, 5000);
     }).catch(err=>{
