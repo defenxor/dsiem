@@ -5,19 +5,21 @@ import { NgModule } from '@angular/core';
 
 // Tabel Component
 import { TablesComponent } from './tables.component';
+import { DetailalarmComponent } from './detailalarm.component';
 
 // Components Routing
 import { BaseRoutingModule } from './base-routing.module';
 
 import { MomentModule } from 'ngx-moment';
-import { DetailalarmComponent } from './detailalarm.component';
+import { TooltipModule} from 'ngx-bootstrap';
 
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
     BaseRoutingModule,
-    MomentModule
+    MomentModule,
+    TooltipModule.forRoot()
   ],
   declarations: [
     TablesComponent,
