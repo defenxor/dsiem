@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 import { TablesComponent } from './tables.component';
+import { DetailalarmComponent } from './detailalarm.component';
 
 const routes: Routes = [
   {
@@ -8,16 +9,21 @@ const routes: Routes = [
     component: TablesComponent,
     data: {
       title: 'Data'
-    },
-    children: [
-      {
-        path: 'alarm-list',
-        component: TablesComponent,
-        data: {
-          title: 'Alarm List'
-        }
-      },
-    ]
+    }
+  },
+  {
+    path: 'alarm-list',
+    component: TablesComponent,
+    data: {
+      title: 'Alarm List'
+    }
+  },
+  {
+    path: 'alarm-detail/:alarmID',
+    component: DetailalarmComponent,
+    data: {
+      title: 'Alarm Detail'
+    }
   }
 ];
 
