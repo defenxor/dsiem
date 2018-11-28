@@ -39,6 +39,12 @@ export class TablesComponent implements AfterViewInit {
     }, 100);
   }
 
+  ngOnDestroy() {
+    if (this.timerSubscription) {
+      this.timerSubscription.unsubscribe();
+    }
+  }
+
   async getData(type, from=0, size=0) {
     var that = this;
     clearInterval(this.intrvl);
