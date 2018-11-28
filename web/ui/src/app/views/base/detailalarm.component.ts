@@ -14,6 +14,7 @@ export class DetailalarmComponent implements OnInit {
   public alarm = [];
   public alarmRules = [];
   public alarmVuln = [];
+  public alarmIntelHits = [];
   public evnts = [];
   private isShowEventDetails: boolean;
   private static readonly ALARM_INDEX = 'siem_alarms';
@@ -71,6 +72,7 @@ export class DetailalarmComponent implements OnInit {
         }
       });
       if(element._source.vulnerabilities) this.alarmVuln = element._source.vulnerabilities;
+      if(element._source.intel_hits) this.alarmIntelHits = element._source.intel_hits;
     });
   }
 

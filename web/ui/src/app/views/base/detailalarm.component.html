@@ -116,6 +116,34 @@
       </div>
     </div>
 
+    <div class="row" *ngIf="alarmIntelHits.length > 0">
+      <div class="col-lg-12">
+        <div class="card">
+          <div class="card-header">
+            Threat Intel
+          </div>
+          <div class="card-body">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Provider</th>  
+                  <th>Term</th>  
+                  <th>Result</th>  
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let i of alarmIntelHits">
+                  <td>{{i.provider}}</td>
+                  <td>{{i.term}}</td>
+                  <td>{{i.result}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <div class="col-lg-12">
         <div class="card">
