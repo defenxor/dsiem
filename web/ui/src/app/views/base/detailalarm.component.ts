@@ -9,6 +9,7 @@ export class DetailalarmComponent implements OnInit {
   private sub: any;
   private alarmID;
   public alarm = [];
+  public alarmRules = [];
   private static readonly ALARM_INDEX = 'siem_alarms';
   private static readonly TYPE = 'doc';
 
@@ -40,6 +41,24 @@ export class DetailalarmComponent implements OnInit {
       }))
     }))
     this.alarm = tempAlarms;
+    tempAlarms.forEach(element => {
+      this.alarmRules = element._source.rules;
+    });
+  }
+
+  setStatus(rule) {
+    if (rule["status"] != "") return rule["status"]
+    if (rule["status"] == "" && rule["start_time"] == 0) {
+      return "inactive"
+    }
+    if (rule["status"] == "" && rule["start_time"] > 0) {
+      return "active"
+    }
+    let deadline = rule["start_time"] + rule["timeout"]
+    let now = Math.round((new Date()).getTime() / 1000)
+    if (now > deadline) {
+      return "timeout"
+    }
   }
 
 }
