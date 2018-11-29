@@ -1,3 +1,4 @@
 {
-    "elasticsearch": "http://localhost:9200"
+    "elasticsearch": "http://localhost:9200",
+    "kibana": "http://localhost:5601"
 }
