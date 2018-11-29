@@ -1,6 +1,8 @@
 import { Component, OnInit, ViewChildren, QueryList } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
+import { Http } from '@angular/http';
+import { map } from 'rxjs/operators';
 
 @Component({
   templateUrl: './detailalarm.component.html',
@@ -32,10 +34,12 @@ export class DetailalarmComponent implements OnInit {
   firstVisiblePaginator = 0;
   lastVisiblePaginator = this.numberOfVisiblePaginators;
   wide;
+  wideEv = [];
   isProcessingUpdateStatus = false;
   isProcessingUpdateTag = false;
+  kibanaUrl;
 
-  constructor(private route: ActivatedRoute, private es: ElasticsearchService) { }
+  constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http) { }
 
   ngOnDestroy(){
     this.sub.unsubscribe();
@@ -45,7 +49,23 @@ export class DetailalarmComponent implements OnInit {
     this.sub = this.route.params.subscribe(params => {
       this.alarmID = params['alarmID'];
       this.getAlarmDetail(this.alarmID);
-    })
+    });
+    this.loadConfig().then(res=>{
+      this.kibanaUrl = res['kibana'];
+    });
+  }
+
+  loadConfig(){
+    var that = this;
+    return new Promise((resolve, reject)=>{
+      that.http.get('./assets/config/esconfig.json').pipe(
+        map(res => res.json())
+      ).toPromise()
+      .then( 
+        res => resolve(res),
+        err => reject(err) 
+      )
+    });
   }
 
   async getAlarmDetail(alarmID){
@@ -266,6 +286,27 @@ export class DetailalarmComponent implements OnInit {
     }).catch(err=>{
       console.log('ERROR: ', err);
     })
+  }
+
+  openKibana(index, key, value){
+    let url;
+    if(index == 'suricata'){
+      url = this.kibanaUrl+"/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:"+index+",key:"+key+",negate:!f,params:(query:'"+value+"',type:phrase),type:phrase,value:'"+value+"'),query:(match:("+key+":(query:'"+value+"',type:phrase))))),index:'"+index+"-*',interval:auto,query:(language:lucene,query:''),sort:!('@timestamp',desc))"
+    } else {
+      url = this.kibanaUrl+"/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:"+index+",key:"+key+",negate:!f,params:(query:'"+value+"',type:phrase),type:phrase,value:'"+value+"'),query:(match:("+key+":(query:'"+value+"',type:phrase))))),index:"+index+",interval:auto,query:(language:lucene,query:''),sort:!('@timestamp',desc))"
+    }
+
+    window.open(url, '_blank');
+  }
+
+  resetHeightEv(key, alarmID,index){
+    let a = document.getElementById(key+alarmID).getAttribute('class');
+    // console.log(a);
+    if(a.indexOf('open') > -1){
+      this.wideEv[index] = false;
+    } else {
+      this.wideEv[index] = true;
+    }
   }
 
 }

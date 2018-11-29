@@ -23,7 +23,22 @@
               </thead>
               <tbody>
                 <tr *ngFor="let row of alarm" [style.height]="wide == true ? '260px' : 'auto'">
-                  <td>{{alarmID}}</td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('alrm-id-', alarmID)"
+                    tooltip="Click to query {{alarmID}} at kibana">{{alarmID}}</label>
+                    &nbsp;
+                    <div class="btn-group" id="alrm-id-{{alarmID}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-id-', alarmID)">
+                        query {{alarmID}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_alarms', '_id', alarmID)" style="cursor: pointer">siem_alarms</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-alrm-id-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-id-', alarmID); wide=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td>{{row._source.timestamp | amTimeAgo}}</td>
                   <td>{{row._source.updated_time | amTimeAgo}}</td>
                   <td>
@@ -44,7 +59,22 @@
                       </button>
                     </div>
                   </td>
-                  <td>{{row._source.risk_class}}</td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('alrm-risk-', alarmID)"
+                    tooltip="Click to query {{row._source.risk_class}} at kibana">{{row._source.risk_class}}</label>
+                    &nbsp;
+                    <div class="btn-group" id="alrm-risk-{{alarmID}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-risk-', alarmID)">
+                        query {{row._source.risk_class}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_alarms', 'risk_class', row._source.risk_class)" style="cursor: pointer">siem_alarms</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-alrm-risk-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-risk-', alarmID); wide=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('alrm-tag-', alarmID)">{{row._source.tag}}</label>
                     &nbsp;
@@ -64,10 +94,38 @@
                       </button>
                     </div>
                   </td>
-                  <td>{{row._source.src_ips}}</td>
                   <td>
-                    <div *ngFor="let d of row._source.dst_ips">
-                      <span>{{d}}</span>
+                    <label style="cursor: pointer" (click)="openDropdown('alrm-src-ip-', alarmID)"
+                    tooltip="Click to query {{row._source.src_ips}} at kibana">{{row._source.src_ips}}</label>
+                    &nbsp;
+                    <div class="btn-group" id="alrm-src-ip-{{alarmID}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-src-ip-', alarmID)">
+                        query {{row._source.src_ips}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_alarms', 'src_ips', row._source.src_ips)" style="cursor: pointer">siem_alarms</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-alrm-src-ip-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-src-ip-', alarmID); wide=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <div *ngFor="let d of row._source.dst_ips; let i=index">
+                      <label style="cursor: pointer" (click)="openDropdown('alrm-dst-ip-', i+'-'+alarmID)"
+                      tooltip="Click to query {{d}} at kibana">{{d}}</label>
+                      &nbsp;
+                      <div class="btn-group" id="alrm-dst-ip-{{i}}-{{alarmID}}" dropdown style="display: none">
+                        <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-dst-ip-', i+'-'+alarmID)">
+                          query {{d}}
+                        </button>
+                        <ul *dropdownMenu class="dropdown-menu" role="menu">
+                          <a class="dropdown-item" (click)="openKibana('siem_alarms', 'dst_ips', d)" style="cursor: pointer">siem_alarms</a>
+                        </ul>
+                        <button type="button" class="close" aria-label="Close" id="close-alrm-dst-ip-{{i}}-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-dst-ip-', i+'-'+alarmID); wide=false">
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -203,11 +261,59 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let event of evnts">
+                <tr *ngFor="let event of evnts; let i=index" [style.height]="wideEv[i] == true ? '230px' : 'auto'">
                   <td>{{event.timestamp | amTimeAgo}}</td>
-                  <td>{{event.title}}</td>
-                  <td>{{event.src_ip}}</td>
-                  <td>{{event.dst_ip}}</td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('title-', event.event_id)"
+                    tooltip="Click to query {{event.title}} at kibana">{{event.title}}</label>
+                    &nbsp;
+                    <div class="btn-group" id="title-{{event.event_id}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('title-', event.event_id, i)">
+                        query {{event.title}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_events', 'title', event.title)" style="cursor: pointer">siem_event</a>
+                        <a class="dropdown-item" (click)="openKibana('suricata', 'alert.signature', event.title)" style="cursor: pointer">suricata</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-title-{{event.event_id}}" style="display: none" (click)="closeDropdown('title-', event.event_id); wideEv[i]=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('src-ip-', event.event_id)"
+                    tooltip="Click to query {{event.src_ip}} at kibana">{{event.src_ip}}</label>
+                    &nbsp;
+                    <div class="btn-group" id="src-ip-{{event.event_id}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('src-ip-', event.event_id, i)">
+                        query {{event.src_ip}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_events', 'src_ip', event.src_ip)" style="cursor: pointer">siem_event</a>
+                        <a class="dropdown-item" (click)="openKibana('suricata', 'src_ip', event.src_ip)" style="cursor: pointer">suricata</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-src-ip-{{event.event_id}}" style="display: none" (click)="closeDropdown('src-ip-', event.event_id); wideEv[i]=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('dst-ip-', event.event_id)"
+                    tooltip="Click to query {{event.dst_ip}} at kibana">{{event.dst_ip}}</label>
+                    &nbsp;
+                    <div class="btn-group" id="dst-ip-{{event.event_id}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('dst-ip-', event.event_id, i)">
+                        query {{event.dst_ip}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_events', 'dst_ip', event.dst_ip)" style="cursor: pointer">siem_event</a>
+                        <a class="dropdown-item" (click)="openKibana('suricata', 'dest_ip', event.dst_ip)" style="cursor: pointer">suricata</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-dst-ip-{{event.event_id}}" style="display: none" (click)="closeDropdown('dst-ip-', event.event_id); wideEv[i]=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td>{{event.protocol}}</td>
                   <td *ngIf="event.port_from; else empty">{{event.port_from}}</td>
                   <td *ngIf="event.port_to; else empty">{{event.port_to}}</td>
