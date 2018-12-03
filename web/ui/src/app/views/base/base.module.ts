@@ -15,6 +15,7 @@ import { TooltipModule} from 'ngx-bootstrap';
 import { BsDropdownModule} from 'ngx-bootstrap/dropdown';
 import { ModalModule } from 'ngx-bootstrap/modal';
 import { AlertModule } from 'ngx-bootstrap/alert';
+import { NgxSpinnerModule } from 'ngx-spinner';
 
 @NgModule({
   imports: [
@@ -25,7 +26,8 @@ import { AlertModule } from 'ngx-bootstrap/alert';
     TooltipModule.forRoot(),
     BsDropdownModule.forRoot(),
     ModalModule.forRoot(),
-    AlertModule.forRoot()
+    AlertModule.forRoot(),
+    NgxSpinnerModule
   ],
   declarations: [
     TablesComponent,

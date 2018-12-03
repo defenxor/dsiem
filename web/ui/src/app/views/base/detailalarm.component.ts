@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { Http } from '@angular/http';
 import { map } from 'rxjs/operators';
+import { NgxSpinnerService } from 'ngx-spinner';
 
 @Component({
   templateUrl: './detailalarm.component.html',
@@ -39,7 +40,8 @@ export class DetailalarmComponent implements OnInit {
   isProcessingUpdateTag = false;
   kibanaUrl;
 
-  constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http) { }
+  constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http,
+    private spinner: NgxSpinnerService) { }
 
   ngOnDestroy(){
     this.sub.unsubscribe();
@@ -70,6 +72,7 @@ export class DetailalarmComponent implements OnInit {
 
   async getAlarmDetail(alarmID){
     var that = this;
+    that.spinner.show();
     let resp = await this.es.getAlarms(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, alarmID)
     var tempAlarms = resp.hits.hits;
     await Promise.all(tempAlarms.map(async (e) => {
@@ -97,6 +100,7 @@ export class DetailalarmComponent implements OnInit {
       if(element._source.vulnerabilities) this.alarmVuln = element._source.vulnerabilities;
       if(element._source.intel_hits) this.alarmIntelHits = element._source.intel_hits;
     });
+    that.spinner.hide();
   }
 
   setStatus(rule) {
@@ -253,8 +257,10 @@ export class DetailalarmComponent implements OnInit {
   }
 
   changeAlarmStatus(_id, status){
+    this.spinner.show();
     this.es.updateAlarmStatusById(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id, status).then((res)=>{
       console.log(res);
+      this.spinner.hide();
       this.isProcessingUpdateStatus = true;
       this.closeDropdown('alrm-status-', this.alarmID);
       this.wide = false;
@@ -267,12 +273,15 @@ export class DetailalarmComponent implements OnInit {
       }, 5000);
     }).catch(err=>{
       console.log('ERROR: ', err);
+      this.spinner.hide();
     })
   }
   
   changeAlarmTag(_id, tag){
+    this.spinner.show();
     this.es.updateAlarmTagById(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id, tag).then((res)=>{
       console.log(res);
+      this.spinner.hide();
       this.isProcessingUpdateTag = true;
       this.closeDropdown('alrm-tag-', this.alarmID);
       this.wide = false;
@@ -285,6 +294,7 @@ export class DetailalarmComponent implements OnInit {
       }, 5000);
     }).catch(err=>{
       console.log('ERROR: ', err);
+      this.spinner.hide();
     })
   }
 
