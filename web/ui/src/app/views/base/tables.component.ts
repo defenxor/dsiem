@@ -3,6 +3,8 @@ import { ElasticsearchService } from '../../elasticsearch.service';
 import { AlarmSource } from './alarm.interface';
 import { timer } from 'rxjs';
 import { ModalDirective } from 'ngx-bootstrap';
+import { NgxSpinnerService } from 'ngx-spinner';
+
 
 @Component({
   templateUrl: 'tables.component.html'
@@ -39,7 +41,7 @@ export class TablesComponent implements AfterViewInit {
   errMsg;
   disabledBtn;
 
-  constructor(private es: ElasticsearchService) {
+  constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService) {
     this.elasticsearch = this.es.getServer();
   }
 
@@ -57,6 +59,7 @@ export class TablesComponent implements AfterViewInit {
 
   async getData(type, from=0, size=0) {
     var that = this;
+    that.spinner.show();
     clearInterval(this.intrvl);
     try {
       this.refreshSec = 10;
@@ -112,10 +115,12 @@ export class TablesComponent implements AfterViewInit {
       for (let i = 1; i <= this.numberOfPaginators; i++) {
         this.paginators.push(i);
       }
+      that.spinner.hide();
     } catch (err) {
       console.error('Error: ' + err);
       this.tableData = [];
       this.paginators = [];
+      this.spinner.hide();
     } finally {
       if(type == 'init'){
         this.timerSubscription = timer(9000).subscribe(() => this.getData('init'));
@@ -265,6 +270,7 @@ export class TablesComponent implements AfterViewInit {
 
   async removeAlarm(){
     var that = this;
+    that.spinner.show();
     that.startStopTimer('off');
     that.disabledBtn = true;
     console.log('id to remove: ', that.alarmIdToRemove);
@@ -337,6 +343,7 @@ export class TablesComponent implements AfterViewInit {
 
       removeAlarm().then((c)=>{
         console.log(c);
+        that.spinner.hide();
         that.isRemoved = true;
         that.tableData.splice(that.alarmIndexToRemove, 1);
         setTimeout(() => {
@@ -347,6 +354,7 @@ export class TablesComponent implements AfterViewInit {
       }, 
       (error)=>{
         console.log(error);
+        that.spinner.hide();
         that.isNotRemoved = true;
         that.errMsg = error;
         that.tableData.splice(that.alarmIndexToRemove, 1);
