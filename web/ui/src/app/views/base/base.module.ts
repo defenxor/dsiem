@@ -13,6 +13,8 @@ import { BaseRoutingModule } from './base-routing.module';
 import { MomentModule } from 'ngx-moment';
 import { TooltipModule} from 'ngx-bootstrap';
 import { BsDropdownModule} from 'ngx-bootstrap/dropdown';
+import { ModalModule } from 'ngx-bootstrap/modal';
+import { AlertModule } from 'ngx-bootstrap/alert';
 
 @NgModule({
   imports: [
@@ -21,7 +23,9 @@ import { BsDropdownModule} from 'ngx-bootstrap/dropdown';
     BaseRoutingModule,
     MomentModule,
     TooltipModule.forRoot(),
-    BsDropdownModule.forRoot()
+    BsDropdownModule.forRoot(),
+    ModalModule.forRoot(),
+    AlertModule.forRoot()
   ],
   declarations: [
     TablesComponent,
