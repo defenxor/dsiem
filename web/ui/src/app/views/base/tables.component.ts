@@ -1,7 +1,8 @@
-import { Component, AfterViewInit, ViewChildren, QueryList } from '@angular/core';
+import { Component, AfterViewInit, ViewChildren, QueryList, ViewChild } from '@angular/core';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { AlarmSource } from './alarm.interface';
 import { timer } from 'rxjs';
+import { ModalDirective } from 'ngx-bootstrap';
 
 @Component({
   templateUrl: 'tables.component.html'
@@ -9,7 +10,10 @@ import { timer } from 'rxjs';
 export class TablesComponent implements AfterViewInit {
 
   @ViewChildren('pages') pages: QueryList<any>;
+  @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
   private static readonly INDEX = 'siem_alarms';
+  private static readonly INDEX_ALARM_EVENT = 'siem_alarm_events-*';
+  private static readonly INDEX_EVENT = 'siem_events-*';
   private static readonly TYPE = 'doc';
   elasticsearch: string;
   tempAlarms: AlarmSource[];
@@ -28,6 +32,12 @@ export class TablesComponent implements AfterViewInit {
   timer_status = 'on';
   refreshSec;
   intrvl;
+  alarmIdToRemove;
+  alarmIndexToRemove;
+  isRemoved;
+  isNotRemoved;
+  errMsg;
+  disabledBtn;
 
   constructor(private es: ElasticsearchService) {
     this.elasticsearch = this.es.getServer();
@@ -245,6 +255,157 @@ export class TablesComponent implements AfterViewInit {
       this.getData('init');
       this.timer_status = 'on';
     }
+  }
+
+  confirmBeforeRemove(alarmID, alarmIndex){
+    this.alarmIdToRemove = alarmID;
+    this.alarmIndexToRemove = alarmIndex;
+    this.confirmModalRemove.show();
+  }
+
+  async removeAlarm(){
+    var that = this;
+    that.startStopTimer('off');
+    that.disabledBtn = true;
+    console.log('id to remove: ', that.alarmIdToRemove);
+    that.confirmModalRemove.hide();
+
+    var promRemoveAE = function(){
+      new Promise((resolveAE, rejectAE)=>{
+        that.es.getAlarmEventsWithoutStage(TablesComponent.INDEX_ALARM_EVENT, TablesComponent.TYPE, that.alarmIdToRemove).then(res=>{
+          
+          if(res.hits.hits){
+
+            var tempAlarmEvent = res.hits.hits;
+            var numOfAlarmEvent = tempAlarmEvent.length;
+
+            if(numOfAlarmEvent < 4500){
+              var removeAlarmEvent = function(){
+                return new Promise((resolveRemove, reject)=>{
+                  that.removeAllAlarmEvent().then((r)=>{
+                    // console.log(r);
+                    return resolveRemove('remove alarm event done');
+                  });
+                });
+              }
+              
+            } else {
+              
+              var removeAlarmEvent = function(){
+                return new Promise((resolveRemove, reject)=>{
+                  for(var i=1; i <= Math.floor(numOfAlarmEvent/4500)+1; i++){
+                    new Promise((resolveFor, reject2)=>{
+                      that.removeAllAlarmEvent().then((r)=>{
+                        // console.log(i + ': ', r);
+                        resolveFor('done');
+                        if(i == Math.floor(numOfAlarmEvent/9000)+1) return resolveRemove('remove all alarm event done');
+                      });
+                    });
+                  }
+                });
+              }
+              
+            }
+          
+            removeAlarmEvent().then((res)=>{
+              // console.log(res);
+              resolveAE('done');
+            });
+
+          }
+          
+        },
+        (error)=>{
+          console.log(error);
+        });
+      });
+    }
+
+    promRemoveAE();
+    setTimeout(() => {
+      promRemoveAE();
+
+      var removeAlarm = function(){
+        return new Promise(function(resolve, reject){
+          that.es.removeAlarmById(TablesComponent.INDEX, TablesComponent.TYPE, that.alarmIdToRemove).then(resAlarm => {
+            if(resAlarm.deleted == 1) resolve('Deleting alarm '+ that.alarmIdToRemove + ' done');
+          }, (error)=>{
+            reject(error);
+          });
+        });
+      }
+
+      removeAlarm().then((c)=>{
+        console.log(c);
+        that.isRemoved = true;
+        that.tableData.splice(that.alarmIndexToRemove, 1);
+        setTimeout(() => {
+          that.isRemoved = false;
+          that.disabledBtn = false;
+          that.startStopTimer('on');
+        }, 5000);
+      }, 
+      (error)=>{
+        console.log(error);
+        that.isNotRemoved = true;
+        that.errMsg = error;
+        that.tableData.splice(that.alarmIndexToRemove, 1);
+        setTimeout(() => {
+          that.isNotRemoved = false;
+          that.disabledBtn = false;
+          that.startStopTimer('on');
+        }, 5000);
+      });
+
+    }, 3000);
+
+  }
+
+  async removeAllAlarmEvent(){
+    var that = this, arrDelete = [], size = 4500;
+
+    var prom = function(){
+      return new Promise(function(resolve, reject){
+        that.es.getAllAlarmEvents(TablesComponent.INDEX_ALARM_EVENT, TablesComponent.TYPE, that.alarmIdToRemove, size).then(res=>{
+          var tempAlarmEvent = res.hits.hits;
+          
+          //delete alarm event
+          for(var i=0; i <= tempAlarmEvent.length-1; i++){
+            let idx = tempAlarmEvent[i]['_index'];
+            arrDelete.push(
+              {
+                delete: {
+                  _index: idx,
+                  _type: tempAlarmEvent[i]['_type'],
+                  _id: tempAlarmEvent[i]['_id']
+                }
+              }
+            );
+          }
+
+          //delete event
+          for(var i=0; i <= tempAlarmEvent.length-1; i++){
+            let arridx = tempAlarmEvent[i]['_index'].split('-')[1];
+            arrDelete.push(
+              {
+                delete: {
+                  _index: 'siem_events-' + arridx,
+                  _type: TablesComponent.TYPE,
+                  _id: tempAlarmEvent[i]['_source']['event_id']
+                }
+              }
+            );
+            if(i == tempAlarmEvent.length-1) resolve('done');
+          }
+        });
+      });
+    }
+
+    return prom().then(()=>{
+      this.es.removeAlarmEvent(arrDelete).then((r)=>{
+      });
+    });
+
   }
 
 }

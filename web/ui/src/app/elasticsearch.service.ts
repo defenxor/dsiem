@@ -151,6 +151,28 @@ export class ElasticsearchService {
     }
   }
 
+  private buildQueryAllAlarmEvents (alarmId, size) {
+    return {
+      "size": size,
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match_all": {}
+            },
+            {
+              "match_phrase": {
+                "alarm_id": {
+                  "query": alarmId
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+
   private buildQueryEvents (eventId) {
     return {
       "query": {
@@ -348,6 +370,15 @@ export class ElasticsearchService {
     })
   }
 
+  getAllAlarmEvents(_index, _type, alarmId, size): any {
+    return this.client.search({
+      index: _index,
+      type: _type,
+      body: this.buildQueryAllAlarmEvents(alarmId, size),
+      filterPath: ['hits.hits']
+    })
+  }
+
   async removeEventById(_index, _type, _id){
     return await this.client.deleteByQuery({
       index: _index,
@@ -417,6 +448,13 @@ export class ElasticsearchService {
           }
         }
       }
+    });
+  }
+
+  async removeAlarmEvent(params){
+    return await this.client.bulk({
+      body: params
+    }, function (err, resp) {
     });
   }
 }

@@ -10,11 +10,38 @@
             *ngIf="timer_status == 'on'" tooltip="Click to turn-off auto refresh" placement="top">
             Turn-Off Auto Refresh (refreshing in {{refreshSec}} seconds)
           </button>
-          <button type="button" class="btn btn-dark text-right" (click)="startStopTimer('on')" 
+          <button type="button" [disabled]="disabledBtn" class="btn btn-dark text-right" (click)="startStopTimer('on')" 
             *ngIf="timer_status == 'off'" tooltip="Click to turn-on auto refresh" placement="top">
             Turn On Auto Refresh
           </button>
           <br/><br/>
+          <div bsModal #confirmModalRemove="bs-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myBasicModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title" id="myModalLabel">Warning</h4>
+                  <button type="button" class="close" aria-label="Close" (click)="confirmModalRemove.hide()">
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  You are about to remove alarm with ID: <b>{{alarmIdToRemove}}</b>
+                  <br>
+                  Do you want to continue?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" aria-label="Close" (click)="confirmModalRemove.hide()">No</button>
+                  <button type="button" class="btn btn-primary" aria-label="Close" (click)="removeAlarm()">Yes</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <alert type="success" id="alert-success" *ngIf="isRemoved">
+            Alarm <strong>{{alarmIdToRemove}}</strong> successfully removed!
+          </alert>
+          <alert type="danger" id="alert-failed" *ngIf="isNotRemoved">
+            <strong>Error!</strong> {{errMsg}}
+          </alert>
           <table class="table table-striped">
             <thead>
               <tr>
@@ -31,10 +58,14 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let alarm of tableData">
+              <tr *ngFor="let alarm of tableData; let i=index">
                 <td>
                   <a tooltip="Click to see alarm details" placement="bottom" style="cursor:pointer; color: #000000" [routerLink]="['/data/alarm-detail', alarm.id]">
                     <i class="fa fa-eye" ></i>
+                  </a>
+                  &nbsp;
+                  <a tooltip="Click to remove this row" placement="bottom" style="cursor:pointer; color: red" (click)="confirmBeforeRemove(alarm.id, i)">
+                    <i class="fa fa-trash" ></i>
                   </a>
                 </td>
                 <td>{{alarm.id}}</td>
