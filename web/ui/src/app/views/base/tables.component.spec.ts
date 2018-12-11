@@ -40,4 +40,8 @@ describe('Alarm List Component', ()=>{
     expect(app).toBeTruthy();
   });
 
+  it('elasticsearch alarm index should be siem_alarms', () => {
+    expect(app.esIndex).toContain('siem_alarms');
+  });
+
 });
