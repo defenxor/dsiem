@@ -68,4 +68,10 @@ describe('Alarm List Component', ()=>{
     expect(title).toContain('Warning');
   });
 
+  it('shoud have turn-off button when timer is on', ()=>{
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('.btn-primary').textContent;
+    expect(title).toContain('Turn-Off Auto Refresh');
+  });
+
 });
