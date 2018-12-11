@@ -108,4 +108,13 @@ describe('Alarm List Component', ()=>{
     app.isRemoved = false;
   });
 
+  it('shoud have alert danger when alarm deleted occured error', ()=>{
+    app.isNotRemoved = true;
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('#alert-failed').textContent;
+    expect(title).toContain('Error!');
+    app.isNotRemoved = false;
+  });
+
+
 });
