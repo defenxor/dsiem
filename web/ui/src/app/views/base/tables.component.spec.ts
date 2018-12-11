@@ -56,4 +56,10 @@ describe('Alarm List Component', ()=>{
     expect(app.esType).toContain('doc');
   });
 
+  it('shoud have alarm list title', ()=>{
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('.card-header').textContent;
+    expect(title).toContain('Alarm List');
+  });
+
 });
