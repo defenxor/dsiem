@@ -74,4 +74,11 @@ describe('Alarm List Component', ()=>{
     expect(title).toContain('Turn-Off Auto Refresh');
   });
 
+  it('shoud have turn-on button when timer is off', ()=>{
+    app.timer_status = 'off';
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('.btn-dark').textContent;
+    expect(title).toContain('Turn On Auto Refresh');
+  });
+
 });
