@@ -52,4 +52,8 @@ describe('Alarm List Component', ()=>{
     expect(app.esIndexEvent).toContain('siem_events-*');
   });
 
+  it('elasticsearch type should be doc', () => {
+    expect(app.esType).toContain('doc');
+  });
+
 });
