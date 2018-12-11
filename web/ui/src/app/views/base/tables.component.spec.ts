@@ -89,4 +89,8 @@ describe('Alarm List Component', ()=>{
     expect(app.itemsPerPage).toEqual(10);
   });
 
+  it('should have initial timer status on', () => {
+    expect(app.timer_status).toBe('on');
+  });
+
 });
