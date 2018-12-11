@@ -81,4 +81,8 @@ describe('Alarm List Component', ()=>{
     expect(title).toContain('Turn On Auto Refresh');
   });
 
+  it('should have initial 20 total data displayed', () => {
+    expect(app.totalItems).toEqual(20);
+  });
+
 });
