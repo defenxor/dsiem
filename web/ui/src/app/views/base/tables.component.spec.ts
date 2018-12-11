@@ -100,4 +100,12 @@ describe('Alarm List Component', ()=>{
     expect(app.timer_status).toBe('off');
   }));
 
+  it('shoud have alert success when alarm deleted succesfully', ()=>{
+    app.isRemoved = true;
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('#alert-success').textContent;
+    expect(title).toContain('successfully removed');
+    app.isRemoved = false;
+  });
+
 });
