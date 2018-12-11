@@ -85,4 +85,8 @@ describe('Alarm List Component', ()=>{
     expect(app.totalItems).toEqual(20);
   });
 
+  it('should have initial 10 data displayed per page', () => {
+    expect(app.itemsPerPage).toEqual(10);
+  });
+
 });
