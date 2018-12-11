@@ -48,4 +48,8 @@ describe('Alarm List Component', ()=>{
     expect(app.esIndexAlarmEvent).toContain('siem_alarm_events-*');
   });
 
+  it('elasticsearch event index should be siem_events-*', () => {
+    expect(app.esIndexEvent).toContain('siem_events-*');
+  });
+
 });
