@@ -20,10 +20,10 @@ export class DetailalarmComponent implements OnInit {
   public alarmIntelHits = [];
   public evnts = [];
   private isShowEventDetails: boolean;
-  private static readonly ALARM_INDEX = 'siem_alarms';
-  private static readonly ALARMEVENT_INDEX = 'siem_alarm_events-*';
-  private static readonly EVENT_INDEX = 'siem_events-*';
-  private static readonly TYPE = 'doc';
+  esIndex = 'siem_alarms';
+  esIndexAlarmEvent = 'siem_alarm_events-*';
+  esIndexEvent = 'siem_events-*';
+  esType = 'doc';
   totalItems;
   itemsPerPage = 5;
   numberOfVisiblePaginators = 10;
@@ -73,7 +73,7 @@ export class DetailalarmComponent implements OnInit {
   async getAlarmDetail(alarmID){
     var that = this;
     that.spinner.show();
-    let resp = await this.es.getAlarms(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, alarmID)
+    let resp = await this.es.getAlarms(this.esIndex, this.esType, alarmID)
     var tempAlarms = resp.hits.hits;
     await Promise.all(tempAlarms.map(async (e) => {
       await Promise.all(e["_source"]["rules"].map(async (r) => {
@@ -89,7 +89,7 @@ export class DetailalarmComponent implements OnInit {
     this.alarm = tempAlarms;
     tempAlarms.forEach(element => {
       this.alarmRules = element._source.rules;
-      this.es.getAlarmEventsPagination(DetailalarmComponent.ALARMEVENT_INDEX, DetailalarmComponent.TYPE, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage).then(function(alev){
+      this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage).then(function(alev){
         console.log(alev);
         if(alev['hits'] != undefined){
           that.getEventsDetail('init', that.alarmID, that.alarmRules[0].stage, null, null, that.alarmRules[0].events_count);
@@ -133,12 +133,12 @@ export class DetailalarmComponent implements OnInit {
       size = size;
     }
     
-    this.es.getAlarmEventsPagination(DetailalarmComponent.ALARMEVENT_INDEX, DetailalarmComponent.TYPE, id, stage, from, size).then(function(alev){
+    this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size).then(function(alev){
       console.log(alev['hits']['hits']);
       var prom = function(){
         return new Promise(function(resolve, reject){
           alev['hits']['hits'].forEach(element => {
-            that.es.getEvents(DetailalarmComponent.EVENT_INDEX, DetailalarmComponent.TYPE, element['_source']['event_id']).then(function(ev){
+            that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']).then(function(ev){
               let jml = 0;
               ev['hits']['hits'].forEach(element2 => {
                 that.evnts.push(element2['_source']);
@@ -258,14 +258,14 @@ export class DetailalarmComponent implements OnInit {
 
   changeAlarmStatus(_id, status){
     this.spinner.show();
-    this.es.updateAlarmStatusById(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id, status).then((res)=>{
+    this.es.updateAlarmStatusById(this.esIndex, this.esType, _id, status).then((res)=>{
       console.log(res);
       this.spinner.hide();
       this.isProcessingUpdateStatus = true;
       this.closeDropdown('alrm-status-', this.alarmID);
       this.wide = false;
       setTimeout(() => {
-        this.es.getAlarms(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id).then((resp)=>{
+        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp)=>{
           this.alarm = resp.hits.hits;
           console.log(this.alarm);
           this.isProcessingUpdateStatus = false;
@@ -279,14 +279,14 @@ export class DetailalarmComponent implements OnInit {
   
   changeAlarmTag(_id, tag){
     this.spinner.show();
-    this.es.updateAlarmTagById(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id, tag).then((res)=>{
+    this.es.updateAlarmTagById(this.esIndex, this.esType, _id, tag).then((res)=>{
       console.log(res);
       this.spinner.hide();
       this.isProcessingUpdateTag = true;
       this.closeDropdown('alrm-tag-', this.alarmID);
       this.wide = false;
       setTimeout(() => {
-        this.es.getAlarms(DetailalarmComponent.ALARM_INDEX, DetailalarmComponent.TYPE, _id).then((resp)=>{
+        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp)=>{
           this.alarm = resp.hits.hits;
           console.log(this.alarm);
           this.isProcessingUpdateTag = false;

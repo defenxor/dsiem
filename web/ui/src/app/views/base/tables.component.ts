@@ -13,10 +13,10 @@ export class TablesComponent implements AfterViewInit {
 
   @ViewChildren('pages') pages: QueryList<any>;
   @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
-  private static readonly INDEX = 'siem_alarms';
-  private static readonly INDEX_ALARM_EVENT = 'siem_alarm_events-*';
-  private static readonly INDEX_EVENT = 'siem_events-*';
-  private static readonly TYPE = 'doc';
+  esIndex = 'siem_alarms';
+  esIndexAlarmEvent = 'siem_alarm_events-*';
+  esIndexEvent = 'siem_events-*';
+  esType = 'doc';
   elasticsearch: string;
   tempAlarms: AlarmSource[];
   tableData: object[] = [];
@@ -68,9 +68,9 @@ export class TablesComponent implements AfterViewInit {
       }, 1000);
       let resp;
       if(type == 'init'){
-        resp = await this.es.getAllDocumentsPaging(TablesComponent.INDEX, TablesComponent.TYPE, 0, this.itemsPerPage);
+        resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, 0, this.itemsPerPage);
       } else if(type == 'pagination'){
-        resp = await this.es.getAllDocumentsPaging(TablesComponent.INDEX, TablesComponent.TYPE, from-1, size);
+        resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from-1, size);
       }
       this.tempAlarms = resp.hits.hits
       await Promise.all(this.tempAlarms.map(async (e) => {
@@ -130,7 +130,7 @@ export class TablesComponent implements AfterViewInit {
 
   async reload(from, size){
     try {
-      let resp = await this.es.getAllDocumentsPaging(TablesComponent.INDEX, TablesComponent.TYPE, from-1, size)
+      let resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from-1, size)
       this.tempAlarms = resp.hits.hits
       await Promise.all(this.tempAlarms.map(async (e) => {
         // e["_source"].timestamp = e["_source"]["@timestamp"]
@@ -278,7 +278,7 @@ export class TablesComponent implements AfterViewInit {
 
     var promRemoveAE = function(){
       new Promise((resolveAE, rejectAE)=>{
-        that.es.getAlarmEventsWithoutStage(TablesComponent.INDEX_ALARM_EVENT, TablesComponent.TYPE, that.alarmIdToRemove).then(res=>{
+        that.es.getAlarmEventsWithoutStage(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove).then(res=>{
           
           if(res.hits.hits){
 
@@ -333,7 +333,7 @@ export class TablesComponent implements AfterViewInit {
 
       var removeAlarm = function(){
         return new Promise(function(resolve, reject){
-          that.es.removeAlarmById(TablesComponent.INDEX, TablesComponent.TYPE, that.alarmIdToRemove).then(resAlarm => {
+          that.es.removeAlarmById(that.esIndex, that.esType, that.alarmIdToRemove).then(resAlarm => {
             if(resAlarm.deleted == 1) resolve('Deleting alarm '+ that.alarmIdToRemove + ' done');
           }, (error)=>{
             reject(error);
@@ -374,7 +374,7 @@ export class TablesComponent implements AfterViewInit {
 
     var prom = function(){
       return new Promise(function(resolve, reject){
-        that.es.getAllAlarmEvents(TablesComponent.INDEX_ALARM_EVENT, TablesComponent.TYPE, that.alarmIdToRemove, size).then(res=>{
+        that.es.getAllAlarmEvents(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove, size).then(res=>{
           var tempAlarmEvent = res.hits.hits;
           
           //delete alarm event
@@ -398,7 +398,7 @@ export class TablesComponent implements AfterViewInit {
               {
                 delete: {
                   _index: 'siem_events-' + arridx,
-                  _type: TablesComponent.TYPE,
+                  _type: that.esType,
                   _id: tempAlarmEvent[i]['_source']['event_id']
                 }
               }
