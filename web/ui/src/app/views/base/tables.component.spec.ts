@@ -62,4 +62,10 @@ describe('Alarm List Component', ()=>{
     expect(title).toContain('Alarm List');
   });
 
+  it('shoud have warning modal title', ()=>{
+    fixture.detectChanges();
+    const title = fixture.nativeElement.querySelector('#myModalLabel').textContent;
+    expect(title).toContain('Warning');
+  });
+
 });
