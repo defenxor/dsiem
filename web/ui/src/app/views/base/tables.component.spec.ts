@@ -116,5 +116,18 @@ describe('Alarm List Component', ()=>{
     app.isNotRemoved = false;
   });
 
+  it('shoud have alarm list header table ', ()=>{
+    const title = fixture.nativeElement.querySelector('tr').textContent;
+    expect(title).toContain('Action');
+    expect(title).toContain('AlarmID');
+    expect(title).toContain('Title');
+    expect(title).toContain('Created');
+    expect(title).toContain('Updated');
+    expect(title).toContain('Status');
+    expect(title).toContain('Risk');
+    expect(title).toContain('Tag');
+    expect(title).toContain('Sources');
+    expect(title).toContain('Destinations');
+  });
 
 });
