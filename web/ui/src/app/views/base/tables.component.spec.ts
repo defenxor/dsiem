@@ -1,4 +1,4 @@
-import { TestBed, async } from '@angular/core/testing';
+import { TestBed, async, fakeAsync } from '@angular/core/testing';
 import { TablesComponent } from './tables.component';
 import { RouterTestingModule } from '@angular/router/testing';
 import { NgxSpinnerModule, NgxSpinnerService } from 'ngx-spinner';
@@ -6,6 +6,7 @@ import { ModalModule, AlertModule, ModalDirective } from 'ngx-bootstrap';
 import { MomentModule } from 'ngx-moment';
 import { HttpModule } from '@angular/http';
 import { ElasticsearchService } from '../../elasticsearch.service';
+import { timer } from 'rxjs';
 
 describe('Alarm List Component', ()=>{
 
@@ -33,6 +34,7 @@ describe('Alarm List Component', ()=>{
 
     fixture = TestBed.createComponent(TablesComponent);
     app = fixture.debugElement.componentInstance;
+    app.timerSubscription =  timer(9000).subscribe();
     
   }));
 
@@ -92,5 +94,10 @@ describe('Alarm List Component', ()=>{
   it('should have initial timer status on', () => {
     expect(app.timer_status).toBe('on');
   });
+
+  it('timer should off when turn-off button clicked', fakeAsync(()=>{
+    app.startStopTimer('off');
+    expect(app.timer_status).toBe('off');
+  }));
 
 });
