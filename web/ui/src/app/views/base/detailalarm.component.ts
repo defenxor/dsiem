@@ -11,9 +11,9 @@ import { NgxSpinnerService } from 'ngx-spinner';
 export class DetailalarmComponent implements OnInit {
 
   @ViewChildren('pages') pages: QueryList<any>;
-  private sub: any;
-  private alarmID;
-  private stage;
+  public sub: any;
+  public alarmID;
+  public stage;
   public alarm = [];
   public alarmRules = [];
   public alarmVuln = [];
