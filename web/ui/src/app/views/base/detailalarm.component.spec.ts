@@ -515,4 +515,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should have title \'rules\' on card header', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const title = document.querySelectorAll('.card-header')[1].textContent;
+      expect(title).toContain('Rules');
+      done();
+    }, 100);
+  });
+
 });
