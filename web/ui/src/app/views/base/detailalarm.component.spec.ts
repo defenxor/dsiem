@@ -585,5 +585,16 @@ describe('Detail Alarm Component', ()=>{
     fixture.detectChanges();
     expect(app.activePage).toEqual(1);
   });
-  
+
+  it('active page should last page when last link on pagination clicked', (done)=>{
+    setTimeout(() => {
+      app.lastPage();
+      fixture.detectChanges();
+      const lastPage = app.numberOfPaginators;
+      const activePage = app.activePage;
+      expect(activePage).toEqual(lastPage);
+      done();
+    }, 100);
+  });
+
 });
