@@ -11,15 +11,15 @@ import { NgxSpinnerService } from 'ngx-spinner';
 export class DetailalarmComponent implements OnInit {
 
   @ViewChildren('pages') pages: QueryList<any>;
-  private sub: any;
-  private alarmID;
-  private stage;
-  public alarm = [];
-  public alarmRules = [];
-  public alarmVuln = [];
-  public alarmIntelHits = [];
-  public evnts = [];
-  private isShowEventDetails: boolean;
+  sub: any;
+  alarmID;
+  stage;
+  alarm = [];
+  alarmRules = [];
+  alarmVuln = [];
+  alarmIntelHits = [];
+  evnts = [];
+  isShowEventDetails: boolean;
   esIndex = 'siem_alarms';
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndexEvent = 'siem_events-*';
