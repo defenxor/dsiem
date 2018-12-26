@@ -502,4 +502,17 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm source ips on datatable', (done)=>{
+    const tempArray = [];
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const source_ips = document.querySelectorAll('label')[4].textContent;
+      tempArray.push(source_ips);
+      expect(tempArray).toEqual(responseAlarmDetail.hits.hits[0]['_source']['src_ips']);
+      done();
+    }, 100);
+  });
+
 });
