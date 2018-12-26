@@ -556,4 +556,10 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should have link to first page on pagination', ()=>{
+    fixture.detectChanges();
+    const first = fixture.nativeElement.querySelector('.pagination').textContent;
+    expect(first).toContain('First');
+  });
+
 });
