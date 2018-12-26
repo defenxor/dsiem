@@ -345,5 +345,15 @@ describe('Alarm List Component', ()=>{
       done();
     }, 1000);
   });
-  
+
+  it('should return alarm source ip on datatable', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+      const src_ips = fixture.nativeElement.querySelector('.table').textContent;
+      expect(src_ips).toContain(app.tableData[0]['src_ips']);
+      done();
+    }, 1000);
+  });
+
 });
