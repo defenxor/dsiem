@@ -458,4 +458,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm id on datatable', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const alarmid = document.querySelectorAll('label')[0].textContent;
+      expect(alarmid).toEqual(alarmID);
+      done();
+    }, 100);
+  });
+
 });
