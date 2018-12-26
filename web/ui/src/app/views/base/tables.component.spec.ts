@@ -296,4 +296,14 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
+  it('should return alarm id on datatable', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+      const id = fixture.nativeElement.querySelector('.table').textContent;
+      expect(id).toContain(app.tableData[0]['id']);
+      done();
+    }, 1000);
+  });
+
 });
