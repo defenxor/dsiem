@@ -2,7 +2,7 @@ import { TestBed, async, fakeAsync } from '@angular/core/testing';
 import { TablesComponent } from './tables.component';
 import { RouterTestingModule } from '@angular/router/testing';
 import { NgxSpinnerModule, NgxSpinnerService } from 'ngx-spinner';
-import { ModalModule, AlertModule, ModalDirective } from 'ngx-bootstrap';
+import { ModalModule, AlertModule } from 'ngx-bootstrap';
 import { MomentModule } from 'ngx-moment';
 import { HttpModule } from '@angular/http';
 import { ElasticsearchService } from '../../elasticsearch.service';
@@ -11,8 +11,8 @@ import { timer } from 'rxjs';
 describe('Alarm List Component', ()=>{
 
   let fixture;
-  let app;
-
+  let app: TablesComponent;
+  
   beforeEach(async(() => {
     TestBed.configureTestingModule({
       declarations: [
@@ -24,7 +24,7 @@ describe('Alarm List Component', ()=>{
         ModalModule.forRoot(),
         AlertModule.forRoot(),
         MomentModule,
-        HttpModule
+        HttpModule,
       ],
       providers: [
         NgxSpinnerService,
@@ -35,7 +35,7 @@ describe('Alarm List Component', ()=>{
     fixture = TestBed.createComponent(TablesComponent);
     app = fixture.debugElement.componentInstance;
     app.timerSubscription =  timer(9000).subscribe();
-    
+
   }));
 
   it('should create the app', () => {
@@ -96,8 +96,10 @@ describe('Alarm List Component', ()=>{
   });
 
   it('timer should off when turn-off button clicked', fakeAsync(()=>{
+    app.timerSubscription =  timer(9000).subscribe();
     app.startStopTimer('off');
     expect(app.timer_status).toBe('off');
+    app.timerSubscription.unsubscribe();
   }));
 
   it('shoud have alert success when alarm deleted succesfully', ()=>{
