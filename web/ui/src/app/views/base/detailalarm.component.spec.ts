@@ -436,4 +436,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm detail data', (done)=>{
+    app.getAlarmDetail(alarmID);
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.alarm).toEqual(responseAlarmDetail.hits.hits);
+      done();
+    }, 100);
+  });
+
 });
