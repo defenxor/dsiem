@@ -406,4 +406,14 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('elasticsearch type should be doc', (done) => {
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.esType).toContain('doc');
+      done();
+    }, 100);
+  });
+
 });
