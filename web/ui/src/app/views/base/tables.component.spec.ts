@@ -374,4 +374,10 @@ describe('Alarm List Component', ()=>{
     expect(next).toContain('Next');
   });
 
+  it('should have link to last page on pagination', ()=>{
+    fixture.detectChanges();
+    const last = fixture.nativeElement.querySelector('.pagination').textContent;
+    expect(last).toContain('Last');
+  });
+
 });
