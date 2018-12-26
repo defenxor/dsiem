@@ -325,4 +325,14 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
+  it('should return alarm risk on datatable', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+      const risk = fixture.nativeElement.querySelector('.table').textContent;
+      expect(risk).toContain(app.tableData[0]['risk_class']);
+      done();
+    }, 1000);
+  });
+
 });
