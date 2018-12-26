@@ -491,4 +491,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm tag on datatable', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const tag = document.querySelectorAll('label')[3].textContent;
+      expect(tag).toEqual(responseAlarmDetail.hits.hits[0]['_source']['tag']);
+      done();
+    }, 100);
+  });
+
 });
