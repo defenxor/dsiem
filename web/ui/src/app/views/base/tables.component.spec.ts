@@ -316,4 +316,14 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
+  it('should return alarm status on datatable', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+      const status = fixture.nativeElement.querySelector('.table').textContent;
+      expect(status).toContain(app.tableData[0]['status']);
+      done();
+    }, 1000);
+  });
+
 });
