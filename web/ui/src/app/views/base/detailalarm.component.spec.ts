@@ -562,4 +562,10 @@ describe('Detail Alarm Component', ()=>{
     expect(first).toContain('First');
   });
 
+  it('should have link to previous page on pagination', ()=>{
+    fixture.detectChanges();
+    const prev = fixture.nativeElement.querySelector('.pagination').textContent;
+    expect(prev).toContain('Previous');
+  });
+
 });
