@@ -426,4 +426,14 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should have initial 10 number of visible paginators', (done) => {
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.numberOfVisiblePaginators).toEqual(10);
+      done();
+    }, 100);
+  });
+
 });
