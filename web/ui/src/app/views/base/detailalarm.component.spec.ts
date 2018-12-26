@@ -447,4 +447,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should have alarm title on card header', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const title = fixture.nativeElement.querySelector('.card-header').textContent;
+      expect(title).toContain(responseAlarmDetail.hits.hits[0]['_source']['title']);
+      done();
+    }, 100);
+  });
+
 });
