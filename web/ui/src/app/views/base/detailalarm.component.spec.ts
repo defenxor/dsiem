@@ -650,4 +650,25 @@ describe('Detail Alarm Component', ()=>{
     }, 6000);
   });
 
+  it('should change alarm tag', (done)=>{
+    app.alarmID = alarmID;
+    setTimeout(() => {
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      app.openDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      app.changeAlarmTag(alarmID, 'Identified Threat');
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      expect(app.isProcessingUpdateTag).toBeFalsy();
+      fixture.detectChanges();
+      expect(app.alarm).toEqual(responseAlarmDetail.hits.hits);
+      done();
+    }, 6000);
+  });
+
 });
