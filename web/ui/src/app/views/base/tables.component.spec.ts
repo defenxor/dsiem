@@ -336,4 +336,14 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
+  it('should return alarm tag on datatable', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+      const tag = fixture.nativeElement.querySelector('.table').textContent;
+      expect(tag).toContain(app.tableData[0]['tag']);
+      done();
+    }, 1000);
+  });
+  
 });
