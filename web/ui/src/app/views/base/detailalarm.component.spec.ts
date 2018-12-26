@@ -416,4 +416,14 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should have initial 5 data displayed per page', (done) => {
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.itemsPerPage).toEqual(5);
+      done();
+    }, 100);
+  });
+
 });
