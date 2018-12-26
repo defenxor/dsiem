@@ -397,4 +397,15 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
+  it('active page should page 2 when link 2 on pagination clicked', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      const destinationPage = 2;
+      app.changePage({ 'target' : { 'text' : destinationPage }});
+      fixture.detectChanges();
+      expect(app.activePage).toEqual(destinationPage);
+      done();
+    }, 1000);
+  });
+
 });
