@@ -480,4 +480,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm risk on datatable', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const risk = document.querySelectorAll('label')[2].textContent;
+      expect(risk).toEqual(responseAlarmDetail.hits.hits[0]['_source']['risk_class']);
+      done();
+    }, 100);
+  });
+
 });
