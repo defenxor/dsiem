@@ -409,4 +409,24 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
+  it('should remove alarm', (done)=>{
+    app.timerSubscription = timer(9000).subscribe();
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+    }, 1000);
+    setTimeout(() => {
+      app.alarmIdToRemove = 'iM0V7PdTp';
+      app.alarmIndexToRemove = 0;
+      app.removeAlarm();
+      fixture.detectChanges();
+    }, 10000);
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.tableData).toEqual([]);
+      app.timerSubscription.unsubscribe();
+      done();
+    }, 15000);
+  });
+
 });
