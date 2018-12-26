@@ -629,4 +629,25 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should change alarm status', (done)=>{
+    app.alarmID = alarmID;
+    setTimeout(() => {
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      app.openDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      app.changeAlarmStatus(alarmID, 'Open');
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      expect(app.isProcessingUpdateStatus).toBeFalsy();
+      fixture.detectChanges();
+      expect(app.alarm).toEqual(responseAlarmDetail.hits.hits);
+      done();
+    }, 6000);
+  });
+
 });
