@@ -469,4 +469,15 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm status on datatable', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      const status = document.querySelectorAll('label')[1].textContent;
+      expect(status).toEqual(responseAlarmDetail.hits.hits[0]['_source']['status']);
+      done();
+    }, 100);
+  });
+
 });
