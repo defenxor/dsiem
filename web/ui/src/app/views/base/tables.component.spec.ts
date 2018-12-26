@@ -6,14 +6,157 @@ import { ModalModule, AlertModule } from 'ngx-bootstrap';
 import { MomentModule } from 'ngx-moment';
 import { HttpModule } from '@angular/http';
 import { ElasticsearchService } from '../../elasticsearch.service';
-import { timer } from 'rxjs';
+import { timer, of } from 'rxjs';
 
 describe('Alarm List Component', ()=>{
 
   let fixture;
   let app: TablesComponent;
+  let serviceStub: any;
+  let responseAllDocument;
+  let responseCount;
+  let responseRemoveById;
+  let originalTimeout;
   
   beforeEach(async(() => {
+
+    responseAllDocument = {
+      "hits": {
+        "hits": [
+          {
+            "sort": [
+              1544338159026
+            ],
+            "_id": "iM0V7PdTp",
+            "_index": "siem_alarms",
+            "_score": null,
+            "_source": {
+                "@timestamp": "2018-12-09T06:49:19.026Z",
+                "category": "Misc Activity",
+                "dst_ips": [
+                  "10.8.100.1"
+                ],
+                "id": "iM0V7PdTp",
+                "kingdom": "Reconnaissance & Probing",
+                "networks": [
+                  "10.0.0.0/8"
+                ],
+                "risk": 1,
+                "risk_class": "Low",
+                "rules": [
+                  {
+                    "category": "",
+                    "end_time": 1544338032,
+                    "events_count": 1,
+                    "from": "HOME_NET",
+                    "name": "ICMP Ping",
+                    "occurrence": 1,
+                    "plugin_id": 1001,
+                    "plugin_sid": [
+                      2100384
+                    ],
+                    "port_from": "ANY",
+                    "port_to": "ANY",
+                    "protocol": "ICMP",
+                    "rcvd_time": 1544338073,
+                    "reliability": 1,
+                    "stage": 1,
+                    "start_time": 1544338032,
+                    "status": "finished",
+                    "timeout": 0,
+                    "to": "ANY",
+                    "type": "PluginRule"
+                  },
+                  {
+                    "category": "",
+                    "end_time": 1544338109,
+                    "events_count": 300,
+                    "from": "10.8.100.58",
+                    "name": "ICMP Ping",
+                    "occurrence": 300,
+                    "plugin_id": 1001,
+                    "plugin_sid": [
+                      2100384
+                    ],
+                    "port_from": "ANY",
+                    "port_to": "ANY",
+                    "protocol": "ICMP",
+                    "rcvd_time": 0,
+                    "reliability": 6,
+                    "stage": 2,
+                    "start_time": 1544338032,
+                    "status": "finished",
+                    "timeout": 600,
+                    "to": "ANY",
+                    "type": "PluginRule"
+                  },
+                  {
+                    "category": "",
+                    "end_time": 0,
+                    "events_count": 917,
+                    "from": "10.8.100.58",
+                    "name": "ICMP Ping",
+                    "occurrence": 10000,
+                    "plugin_id": 1001,
+                    "plugin_sid": [
+                      2100384
+                    ],
+                    "port_from": "ANY",
+                    "port_to": "ANY",
+                    "protocol": "ICMP",
+                    "rcvd_time": 0,
+                    "reliability": 10,
+                    "stage": 3,
+                    "start_time": 0,
+                    "status": "",
+                    "timeout": 3600,
+                    "to": "ANY",
+                    "type": "PluginRule"
+                  }
+                ],
+                "src_ips": [
+                  "10.8.100.58"
+                ],
+                "status": "Open",
+                "tag": "Identified Threat",
+                "timestamp": "2018-12-09T06:47:53.000Z",
+                "title": "Ping Flood from 10.8.100.58",
+                "updated_time": "2018-12-09T06:49:10.000Z"
+            },
+            "_type": "doc"
+          }
+        ],
+        "max_score": null,
+        "total": 364292
+      },
+      "timed_out": false,
+      "took": 8,
+      "_shards": {
+        "failed": 0,
+        "skipped": 0,
+        "successful": 2,
+        "total": 2
+      }
+    }
+
+    responseCount = {
+      count: 10,
+    }
+
+    responseRemoveById = {
+      deleted: 1,
+    }
+
+    serviceStub = {
+      getAllDocumentsPaging: () => responseAllDocument,
+      getServer: () => of(),
+      countEvents: () => responseCount,
+      getAlarmEventsWithoutStage: ()  => new Promise((resolve)=>{ resolve(responseAllDocument)}),
+      removeAlarmById: () => new Promise((resolve)=>{ resolve(responseRemoveById)}),
+      getAllAlarmEvents: () => new Promise((resolve)=>{ resolve(responseAllDocument)}),
+      removeAlarmEvent: () => new Promise((resolve)=>{ resolve('')})
+    }
+
     TestBed.configureTestingModule({
       declarations: [
         TablesComponent
@@ -28,15 +171,23 @@ describe('Alarm List Component', ()=>{
       ],
       providers: [
         NgxSpinnerService,
-        ElasticsearchService
+        { provide: ElasticsearchService, useValue: serviceStub }
       ]
     }).compileComponents();
+  }));
 
+  beforeEach(()=>{
+    originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     fixture = TestBed.createComponent(TablesComponent);
     app = fixture.debugElement.componentInstance;
-    app.timerSubscription =  timer(9000).subscribe();
+    fixture.detectChanges();
+  });
 
-  }));
+  afterEach(()=>{
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+    fixture.detectChanges();
+  });
 
   it('should create the app', () => {
     expect(app).toBeTruthy();
@@ -134,6 +285,15 @@ describe('Alarm List Component', ()=>{
     expect(title).toContain('Tag');
     expect(title).toContain('Sources');
     expect(title).toContain('Destinations');
+  });
+
+  it('should return alarm data', (done)=>{
+    app.getData('init');
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.tempAlarms).toEqual(responseAllDocument.hits.hits);
+      done();
+    }, 1000);
   });
 
 });
