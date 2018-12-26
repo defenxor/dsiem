@@ -536,4 +536,14 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm intel hits data if exists', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.alarmIntelHits).toEqual(responseAlarmDetail.hits.hits[0]['_source']['intel_hits']);
+      done();
+    }, 100);
+  });
+
 });
