@@ -611,4 +611,22 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should close dropdown', (done)=>{
+    app.alarmID = alarmID;
+    setTimeout(() => {
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      app.openDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+    }, 100);
+    setTimeout(() => {
+      app.closeDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+      let status = document.getElementById('alrm-id-'+alarmID).style.display;
+      expect(status).toEqual('none');
+      done();
+    }, 100);
+  });
+
 });
