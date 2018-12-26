@@ -396,4 +396,14 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('elasticsearch event index should be siem_events-*', (done) => {
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.esIndexEvent).toContain('siem_events-*');
+      done();
+    }, 100);
+  });
+
 });
