@@ -380,4 +380,10 @@ describe('Alarm List Component', ()=>{
     expect(last).toContain('Last');
   });
 
+  it('active page should first page when first link on pagination clicked', ()=>{
+    app.firstPage();
+    fixture.detectChanges();
+    expect(app.activePage).toEqual(1);
+  });
+
 });
