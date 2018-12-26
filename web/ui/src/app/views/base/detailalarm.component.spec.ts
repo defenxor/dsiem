@@ -546,4 +546,14 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('should return alarm vulnerabilities data if exists', (done)=>{
+    app.alarmID = alarmID;
+    fixture.detectChanges();
+    setTimeout(() => {
+      fixture.detectChanges();
+      expect(app.alarmVuln).toEqual(responseAlarmDetail.hits.hits[0]['_source']['vulnerabilities']);
+      done();
+    }, 100);
+  });
+
 });
