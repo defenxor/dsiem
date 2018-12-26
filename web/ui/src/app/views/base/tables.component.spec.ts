@@ -95,6 +95,10 @@ describe('Alarm List Component', ()=>{
     expect(app.timer_status).toBe('on');
   });
 
+  it('should have initial 10 number of visible paginators', () => {
+    expect(app.numberOfVisiblePaginators).toEqual(10);
+  });
+
   it('timer should off when turn-off button clicked', fakeAsync(()=>{
     app.timerSubscription =  timer(9000).subscribe();
     app.startStopTimer('off');
