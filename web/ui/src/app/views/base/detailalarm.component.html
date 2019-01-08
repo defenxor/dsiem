@@ -136,7 +136,7 @@
         </div>
       </div>
     </div>
-  
+
     <div class="row">
       <div class="col-lg-12">
         <div class="card">
@@ -144,6 +144,7 @@
             Rules
           </div>
           <div class="card-body">
+            <ng-template #empty><td>-</td></ng-template>
             <table class="table table-striped">
               <thead>
                 <tr>
@@ -164,15 +165,15 @@
                 <tr *ngFor="let rule of alarmRules" tooltip="Click to see events" style="cursor:pointer"
                 (click)="getEventsDetail('init', alarmID, rule.stage, null, null, rule.events_count)">
                   <td>{{rule.stage}}</td>
-                  <td>{{rule.start_time | amFromUnix| amTimeAgo}}</td>
-                  <td>{{rule.end_time | amFromUnix| amTimeAgo}}</td>
+                  <td *ngIf="rule.start_time > 0; else empty">{{rule.start_time | amFromUnix| amTimeAgo}}</td>
+                  <td *ngIf="rule.end_time > 0; else empty">{{rule.end_time | amFromUnix| amTimeAgo}}</td>
                   <td>{{setStatus(rule)}}</td>
                   <td>{{rule.name}}</td>
                   <td>{{rule.from}}</td>
                   <td>{{rule.to}}</td>
-                  <td>{{rule.protocol}}</td>
-                  <td>{{rule.port_from}}</td>
-                  <td>{{rule.port_to}}</td>
+                  <td *ngIf="rule.protocol; else empty">{{rule.protocol}}</td>
+                  <td *ngIf="rule.port_from; else empty">{{rule.port_from}}</td>
+                  <td *ngIf="rule.port_to; else empty">{{rule.port_to}}</td>
                   <td>{{rule.events_count}}/{{rule.occurrence}}</td>
                 </tr>
               </tbody>
