@@ -105,7 +105,7 @@ export class TablesComponent implements AfterViewInit {
         this.tableData.push(tempArr);
       })
       // console.log(this.tableData);
-      console.log('Show Alarms Completed!');
+      // console.log('Show Alarms Completed!');
       if (this.totalItems % this.itemsPerPage === 0) {
         this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage);
       } else {
