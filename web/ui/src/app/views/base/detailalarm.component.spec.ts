@@ -330,8 +330,8 @@ describe('Detail Alarm Component', ()=>{
       countEvents: () => responseCount,
       getAlarmEventsPagination: () => new Promise((resolve)=>{ resolve(responseAlarmEvent)}),
       getEvents: () => new Promise((resolve)=>{ resolve(responseEvents)}),
-      updateAlarmStatusById: () => new Promise((resolve)=>{ resolve('')}),
-      updateAlarmTagById: () => new Promise((resolve)=>{ resolve('')})
+      updateAlarmStatusById: () => new Promise((resolve)=>{ resolve('done')}),
+      updateAlarmTagById: () => new Promise((resolve)=>{ resolve('done')})
     }
 
     TestBed.configureTestingModule({
@@ -369,6 +369,7 @@ describe('Detail Alarm Component', ()=>{
     app.alarmIntelHits = [];
     app.evnts = [];
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+    app.ngOnDestroy();
     fixture.detectChanges();
   })
 
@@ -597,72 +598,93 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
+  it('active page should page 2 when link 2 on pagination clicked', (done)=>{
+    setTimeout(() => {
+      const destinationPage = 2;
+      app.totalItems = 6;
+      app.numberOfPaginators = 2;
+      app.changePage({ 'target' : { 'text' : 2 }});
+      fixture.detectChanges();
+      expect(app.activePage).toEqual(destinationPage);
+      done();
+    }, 1000);
+  });
+
   it('should open dropdown', (done)=>{
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
-    }, 100);
+    }, 1000);
     setTimeout(() => {
       app.openDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+      app.resetHeightEv('title-', '5f03dfbc-45c7-42f3-8442-8e4556ab7ebb', 0);
+      app.resetHeight('alrm-id-', alarmID);
       fixture.detectChanges();
       let status = document.getElementById('alrm-id-'+alarmID).style.display;
       expect(status).toEqual('block');
       done();
-    }, 100);
-  });
-
-  it('should close dropdown', (done)=>{
-    app.alarmID = alarmID;
-    setTimeout(() => {
-      fixture.detectChanges();
-    }, 100);
-    setTimeout(() => {
-      app.openDropdown('alrm-id-', alarmID);
-      fixture.detectChanges();
-    }, 100);
-    setTimeout(() => {
-      app.closeDropdown('alrm-id-', alarmID);
-      fixture.detectChanges();
-      let status = document.getElementById('alrm-id-'+alarmID).style.display;
-      expect(status).toEqual('none');
-      done();
-    }, 100);
+    }, 1000);
   });
 
   it('should change alarm status', (done)=>{
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
-    }, 100);
+    }, 500);
     setTimeout(() => {
       app.openDropdown('alrm-id-', alarmID);
       fixture.detectChanges();
-    }, 100);
+    }, 500);
     setTimeout(() => {
       app.changeAlarmStatus(alarmID, 'Open');
       fixture.detectChanges();
-    }, 100);
+    }, 500);
     setTimeout(() => {
       expect(app.isProcessingUpdateStatus).toBeFalsy();
-      fixture.detectChanges();
+      // fixture.detectChanges();
       expect(app.alarm).toEqual(responseAlarmDetail.hits.hits);
       done();
     }, 6000);
+  });
+
+  it('should close dropdown', (done)=>{
+    app.alarmID = alarmID;
+    setTimeout(() => {
+      fixture.detectChanges();
+    }, 1000);
+    setTimeout(() => {
+      app.openDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+      app.resetHeightEv('title-', '5f03dfbc-45c7-42f3-8442-8e4556ab7ebb', 0);
+      app.resetHeight('alrm-id-', alarmID);
+      fixture.detectChanges();
+    }, 1000);
+    setTimeout(() => {
+      app.closeDropdown('alrm-id-', alarmID);
+      fixture.detectChanges();
+      app.wideEv[0] = false;
+      app.wide = false;
+      fixture.detectChanges();
+      let status = document.getElementById('alrm-id-'+alarmID).style.display;
+      expect(status).toEqual('none');
+      done();
+    }, 1000);
   });
 
   it('should change alarm tag', (done)=>{
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
-    }, 100);
+    }, 500);
     setTimeout(() => {
       app.openDropdown('alrm-id-', alarmID);
       fixture.detectChanges();
-    }, 100);
+    }, 500);
     setTimeout(() => {
       app.changeAlarmTag(alarmID, 'Identified Threat');
       fixture.detectChanges();
-    }, 100);
+    }, 500);
     setTimeout(() => {
       expect(app.isProcessingUpdateTag).toBeFalsy();
       fixture.detectChanges();
@@ -672,3 +694,4 @@ describe('Detail Alarm Component', ()=>{
   });
 
 });
+
