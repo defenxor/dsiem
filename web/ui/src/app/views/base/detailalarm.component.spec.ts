@@ -388,10 +388,10 @@ describe('Detail Alarm Component', ()=>{
   });
 
   it('elasticsearch alarm event index should be siem_alarm_events-*', (done) => {
-    app.alarmID = alarmID;
-    fixture.detectChanges();
+    // app.alarmID = alarmID;
+    // fixture.detectChanges();
     setTimeout(() => {
-      fixture.detectChanges();
+      // fixture.detectChanges();
       expect(app.esIndexAlarmEvent).toContain('siem_alarm_events-*');
       done();
     }, 100);
@@ -676,21 +676,21 @@ describe('Detail Alarm Component', ()=>{
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
-    }, 500);
+    }, 1000);
     setTimeout(() => {
       app.openDropdown('alrm-id-', alarmID);
       fixture.detectChanges();
-    }, 500);
+    }, 1000);
     setTimeout(() => {
       app.changeAlarmTag(alarmID, 'Identified Threat');
       fixture.detectChanges();
-    }, 500);
+    }, 1000);
     setTimeout(() => {
       expect(app.isProcessingUpdateTag).toBeFalsy();
       fixture.detectChanges();
       expect(app.alarm).toEqual(responseAlarmDetail.hits.hits);
       done();
-    }, 6000);
+    }, 8000);
   });
 
 });
