@@ -92,6 +92,9 @@
             "assets": [
               "src/assets",
               "src/favicon.ico"
+            ],
+            "codeCoverageExclude": [
+              "src/app/elasticsearch.service.ts"
             ]
           }
         },
