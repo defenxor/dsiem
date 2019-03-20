@@ -1,10 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { Router, NavigationEnd } from '@angular/router';
-import { ElasticsearchService } from './elasticsearch.service'
-import { timer } from 'rxjs';
+import {Component,OnInit} from '@angular/core';
+import {Router,NavigationEnd} from '@angular/router';
+import {ElasticsearchService} from './elasticsearch.service'
+import {timer} from 'rxjs';
 
 @Component({
-  // tslint:disable-next-line
   selector: 'body',
   template: '<router-outlet></router-outlet>'
 })
@@ -17,12 +16,6 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     this.checkES();
-    this.router.events.subscribe((evt) => {
-      if (!(evt instanceof NavigationEnd)) {
-        return;
-      }
-      window.scrollTo(0, 0);
-    });
   }
 
   checkES() {
