@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
-import { Http } from "@angular/http";
-import { map } from "rxjs/operators";
+import { Http } from '@angular/http';
+import { map } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 
 @Injectable({
@@ -12,38 +12,38 @@ export class ElasticsearchService {
   private server: string;
 
   querylast5mins = {
-    "size" : 50,
-    "query": {
-      "range" : {
-        "timestamp" : {
-          "gte" : "now-5m",
-            "lt" :  "now"
+    'size' : 50,
+    'query': {
+      'range' : {
+        'timestamp' : {
+          'gte' : 'now-5m',
+            'lt' :  'now'
            }
         }
      },
-     "sort": { "@timestamp" : "desc" }
-  }
+     'sort': { '@timestamp' : 'desc' }
+  };
 
   queryalldocs = {
-    "size": 20,
+    'size': 20,
     'query': {
       'match_all': {}
     },
-    "sort": { "@timestamp" : "desc" }
+    'sort': { '@timestamp' : 'desc' }
   };
 
-  private queryalldocspaging(from, size){
+  queryalldocspaging(from, size) {
     return {
-      "from": from,
-      "size": size,
+      'from': from,
+      'size': size,
       'query': {
         'match_all': {}
       },
-      "sort": { "@timestamp" : "desc" }
-    }
-  };
+      'sort': { '@timestamp' : 'desc' }
+    };
+  }
 
-  constructor(private http:Http) {
+  constructor(private http: Http) {
     this.loadConfig().then(
       res => {
         this.server = res['elasticsearch'];
@@ -52,170 +52,170 @@ export class ElasticsearchService {
         }
       },
       err => console.log(`[ES] Unable to load config file, ${err}`)
-    )
+    );
     // this.server = environment.elasticsearch
     // if (!this.client) {
     //   this.connect();
     // }
   }
 
-  loadConfig(){
+  loadConfig() {
     return new Promise( (resolve, reject) => {
       this.http.get('./assets/config/esconfig.json').pipe(
         map(res => res.json())
       ).toPromise()
-      .then( 
+      .then(
         res => resolve(res),
-        err => reject(err) 
-      )
-    })
+        err => reject(err)
+      );
+    });
   }
 
-  private buildQueryAlarmEvents (alarmId, stage) {
+  buildQueryAlarmEvents(alarmId, stage) {
     return {
-      "query": {
-        "bool": {
-          "must": [
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "stage": {
-                  "query": stage
+              'match_phrase': {
+                'stage': {
+                  'query': stage
                 }
               }
             },
             {
-              "match_phrase": {
-                "alarm_id": {
-                  "query": alarmId
+              'match_phrase': {
+                'alarm_id': {
+                  'query': alarmId
                 }
               }
             }
           ]
         }
       }
-    }
+    };
   }
 
-  private buildQueryAlarmEventsPagination (alarmId, stage, from, size) {
+  buildQueryAlarmEventsPagination(alarmId, stage, from, size) {
     return {
-      "from": from,
-      "size": size,
-      "query": {
-        "bool": {
-          "must": [
+      'from': from,
+      'size': size,
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "stage": {
-                  "query": stage
+              'match_phrase': {
+                'stage': {
+                  'query': stage
                 }
               }
             },
             {
-              "match_phrase": {
-                "alarm_id": {
-                  "query": alarmId
+              'match_phrase': {
+                'alarm_id': {
+                  'query': alarmId
                 }
               }
             }
           ]
         }
       }
-    }
+    };
   }
 
-  private buildQueryAlarmEventsWithoutStage (alarmId) {
+  buildQueryAlarmEventsWithoutStage(alarmId) {
     return {
-      "size": 10000,
-      "query": {
-        "bool": {
-          "must": [
+      'size': 10000,
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "alarm_id": {
-                  "query": alarmId
+              'match_phrase': {
+                'alarm_id': {
+                  'query': alarmId
                 }
               }
             }
           ]
         }
       }
-    }
+    };
   }
 
-  private buildQueryAllAlarmEvents (alarmId, size) {
+  buildQueryAllAlarmEvents(alarmId, size) {
     return {
-      "size": size,
-      "query": {
-        "bool": {
-          "must": [
+      'size': size,
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "alarm_id": {
-                  "query": alarmId
+              'match_phrase': {
+                'alarm_id': {
+                  'query': alarmId
                 }
               }
             }
           ]
         }
       }
-    }
+    };
   }
 
-  private buildQueryEvents (eventId) {
+  buildQueryEvents(eventId) {
     return {
-      "query": {
-        "bool": {
-          "must": [
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "event_id": {
-                  "query": eventId
+              'match_phrase': {
+                'event_id': {
+                  'query': eventId
                 }
               }
             }
           ]
         }
       }
-    }
+    };
   }
 
-  private buildQueryAlarms (alarmId) {
+  buildQueryAlarms(alarmId) {
     return {
-      "query": {
-        "bool": {
-          "must": [
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "_id": {
-                  "query": alarmId
+              'match_phrase': {
+                '_id': {
+                  'query': alarmId
                 }
               }
             }
           ]
         }
       }
-    }
+    };
   }
 
-  private connect() {
+  connect() {
     this.client = new Client({
       // host:  environment.elasticsearch,
       host:  this.server,
@@ -224,8 +224,8 @@ export class ElasticsearchService {
     });
   }
 
-  public getServer() {
-    return this.server
+  getServer() {
+    return this.server;
   }
 
   createIndex(name): any {
@@ -256,39 +256,39 @@ export class ElasticsearchService {
       index: _index,
       type: _type,
       body: this.querylast5mins
-    })
+    });
   }
 
   countEvents(_index, alarmId, stage): any {
-    let b = `{
-      "query": {
-        "bool": {
-          "must": [
+    const b = `{
+      'query': {
+        'bool': {
+          'must': [
             {
-              "match_all": {}
+              'match_all': {}
             },
             {
-              "match_phrase": {
-                "stage": {
-                  "query": ${stage}
+              'match_phrase': {
+                'stage': {
+                  'query': ${stage}
                 }
               }
             },
             {
-              "match_phrase": {
-                "alarm_id": {
-                  "query": "${alarmId}"
+              'match_phrase': {
+                'alarm_id': {
+                  'query': '${alarmId}'
                 }
               }
             }
           ]
         }
       }
-    }`
+    }`;
     return this.client.count({
       index: _index,
       body: b
-    })
+    });
   }
 
   getAlarmEvents(_index, _type, alarmId, stage): any {
@@ -297,7 +297,7 @@ export class ElasticsearchService {
       type: _type,
       body: this.buildQueryAlarmEvents(alarmId, stage),
       filterPath: ['hits.hits._source']
-    })
+    });
   }
 
   getAlarmEventsPagination(_index, _type, alarmId, stage, from, size): any {
@@ -306,7 +306,7 @@ export class ElasticsearchService {
       type: _type,
       body: this.buildQueryAlarmEventsPagination(alarmId, stage, from, size),
       filterPath: ['hits.hits._source']
-    })
+    });
   }
 
   getEvents(_index, _type, eventId): any {
@@ -315,7 +315,7 @@ export class ElasticsearchService {
       type: _type,
       body: this.buildQueryEvents(eventId),
       filterPath: ['hits.hits._source']
-    })
+    });
   }
 
   getAllDocumentsPaging(_index, _type, from, size): any {
@@ -332,10 +332,10 @@ export class ElasticsearchService {
       type: _type,
       body: this.buildQueryAlarms(alarmId),
       filterPath: ['hits.hits._source']
-    })
+    });
   }
 
-  async updateAlarmStatusById(_index, _type, _id, status){
+  async updateAlarmStatusById(_index, _type, _id, status) {
     return await this.client.update({
       index: _index,
       type: _type,
@@ -348,7 +348,7 @@ export class ElasticsearchService {
     });
   }
 
-  async updateAlarmTagById(_index, _type, _id, tag){
+  async updateAlarmTagById(_index, _type, _id, tag) {
     return await this.client.update({
       index: _index,
       type: _type,
@@ -367,7 +367,7 @@ export class ElasticsearchService {
       type: _type,
       body: this.buildQueryAlarmEventsWithoutStage(alarmId),
       filterPath: ['hits.hits']
-    })
+    });
   }
 
   getAllAlarmEvents(_index, _type, alarmId, size): any {
@@ -376,10 +376,10 @@ export class ElasticsearchService {
       type: _type,
       body: this.buildQueryAllAlarmEvents(alarmId, size),
       filterPath: ['hits.hits']
-    })
+    });
   }
 
-  async removeEventById(_index, _type, _id){
+  async removeEventById(_index, _type, _id) {
     return await this.client.deleteByQuery({
       index: _index,
       body: {
@@ -403,7 +403,7 @@ export class ElasticsearchService {
     });
   }
 
-  async removeAlarmById(_index, _type, _id){
+  async removeAlarmById(_index, _type, _id) {
     return await this.client.deleteByQuery({
       index: _index,
       body: {
@@ -427,7 +427,7 @@ export class ElasticsearchService {
     });
   }
 
-  async removeAlarmEventById(_index, _type, _id){
+  async removeAlarmEventById(_index, _type, _id) {
     return await this.client.deleteByQuery({
       index: _index,
       body: {
@@ -451,10 +451,11 @@ export class ElasticsearchService {
     });
   }
 
-  async removeAlarmEvent(params){
+  async removeAlarmEvent(params) {
     return await this.client.bulk({
       body: params
     }, function (err, resp) {
     });
   }
 }
+

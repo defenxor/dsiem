@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, ViewChildren, QueryList, ViewChild } from '@angular/core';
+import { Component, AfterViewInit, ViewChildren, QueryList, ViewChild, OnDestroy } from '@angular/core';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { AlarmSource } from './alarm.interface';
 import { timer } from 'rxjs';
@@ -9,7 +9,7 @@ import { NgxSpinnerService } from 'ngx-spinner';
 @Component({
   templateUrl: 'tables.component.html'
 })
-export class TablesComponent implements AfterViewInit {
+export class TablesComponent implements AfterViewInit, OnDestroy {
 
   @ViewChildren('pages') pages: QueryList<any>;
   @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
@@ -45,8 +45,8 @@ export class TablesComponent implements AfterViewInit {
     this.elasticsearch = this.es.getServer();
   }
 
-  ngAfterViewInit(){
-    setTimeout(()=>{
+  ngAfterViewInit() {
+    setTimeout(() => {
       this.getData('init');
     }, 100);
   }
@@ -57,40 +57,44 @@ export class TablesComponent implements AfterViewInit {
     }
   }
 
-  async getData(type, from=0, size=0) {
-    var that = this;
+  async getData(type, from= 0, size= 0) {
+    const that = this;
     that.spinner.show();
     clearInterval(this.intrvl);
     try {
       this.refreshSec = 10;
-      this.intrvl = setInterval(function(){
-        if(that.refreshSec > 0) that.refreshSec--;
+      this.intrvl = setInterval(function() {
+        if (that.refreshSec > 0) {
+          that.refreshSec--;
+        }
       }, 1000);
       let resp;
-      if(type == 'init'){
+      if (type === 'init') {
         resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, 0, this.itemsPerPage);
-      } else if(type == 'pagination'){
-        resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from-1, size);
+      } else if (type === 'pagination') {
+        resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from - 1, size);
       }
-      this.tempAlarms = resp.hits.hits
+      this.tempAlarms = resp.hits.hits;
       await Promise.all(this.tempAlarms.map(async (e) => {
-        // e["_source"].timestamp = e["_source"]["@timestamp"]
-        e["_source"].id = e["_id"]
-        await Promise.all(e["_source"]["rules"].map(async (r) => {
-          if (r["status"] == "finished") {
-            r["events_count"] = r["occurrence"]
-            Promise.resolve()
+        // e['_source'].timestamp = e['_source']['@timestamp']
+        e['_source'].id = e['_id'];
+        await Promise.all(e['_source']['rules'].map(async (r) => {
+          if (r['status'] === 'finished') {
+            r['events_count'] = r['occurrence'];
+            Promise.resolve();
           } else {
-            let response = await this.es.countEvents("siem_alarm_events-*", e["_id"], r["stage"])
-            r["events_count"] = response.count  
+            const response = await this.es.countEvents('siem_alarm_events-*', e['_id'], r['stage']);
+            r['events_count'] = response.count;
           }
-        }))
-      }))
+        }));
+      }));
       this.tableData = [];
       this.paginators = [];
-      if (type == 'init') this.activePage = 1;
-      this.tempAlarms.forEach((a)=>{
-        var tempArr = {
+      if (type === 'init') {
+        this.activePage = 1;
+      }
+      this.tempAlarms.forEach((a) => {
+        const tempArr = {
           id: a['_source']['id'],
           title: a['_source']['title'],
           timestamp: a['_source']['timestamp'],
@@ -100,10 +104,10 @@ export class TablesComponent implements AfterViewInit {
           tag: a['_source']['tag'],
           src_ips: a['_source']['src_ips'],
           dst_ips: a['_source']['dst_ips'],
-          actions: '<i class="fa fa-eye" title="click here to see details" style="cursor:pointer; color:#ff9800"></i>'
+          actions: '<i class=\'fa fa-eye\' title=\'click here to see details\' style=\'cursor:pointer; color:#ff9800\'></i>'
         };
         this.tableData.push(tempArr);
-      })
+      });
       // console.log(this.tableData);
       // console.log('Show Alarms Completed!');
       if (this.totalItems % this.itemsPerPage === 0) {
@@ -111,7 +115,7 @@ export class TablesComponent implements AfterViewInit {
       } else {
         this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage + 1);
       }
-    
+
       for (let i = 1; i <= this.numberOfPaginators; i++) {
         this.paginators.push(i);
       }
@@ -122,33 +126,33 @@ export class TablesComponent implements AfterViewInit {
       this.paginators = [];
       this.spinner.hide();
     } finally {
-      if(type == 'init'){
+      if (type === 'init') {
         this.timerSubscription = timer(9000).subscribe(() => this.getData('init'));
       }
     }
   }
 
-  async reload(from, size){
+  async reload(from, size) {
     try {
-      let resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from-1, size)
-      this.tempAlarms = resp.hits.hits
+      const resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from - 1, size);
+      this.tempAlarms = resp.hits.hits;
       await Promise.all(this.tempAlarms.map(async (e) => {
-        // e["_source"].timestamp = e["_source"]["@timestamp"]
-        e["_source"].id = e["_id"]
-        await Promise.all(e["_source"]["rules"].map(async (r) => {
-          if (r["status"] == "finished") {
-            r["events_count"] = r["occurrence"]
-            Promise.resolve()
+        // e['_source'].timestamp = e['_source']['@timestamp']
+        e['_source'].id = e['_id'];
+        await Promise.all(e['_source']['rules'].map(async (r) => {
+          if (r['status'] === 'finished') {
+            r['events_count'] = r['occurrence'];
+            Promise.resolve();
           } else {
-            let response = await this.es.countEvents("siem_alarm_events-*", e["_id"], r["stage"])
-            r["events_count"] = response.count  
+            const response = await this.es.countEvents('siem_alarm_events-*', e['_id'], r['stage']);
+            r['events_count'] = response.count;
           }
-        }))
-      }))
+        }));
+      }));
       this.tableData = [];
       this.paginators = [];
-      this.tempAlarms.forEach((a)=>{
-        var tempArr = {
+      this.tempAlarms.forEach((a) => {
+        const tempArr = {
           id: a['_source']['id'],
           title: a['_source']['title'],
           timestamp: a['_source']['timestamp'],
@@ -158,10 +162,10 @@ export class TablesComponent implements AfterViewInit {
           tag: a['_source']['tag'],
           src_ips: a['_source']['src_ips'],
           dst_ips: a['_source']['dst_ips'],
-          actions: '<i class="fa fa-eye" title="click here to see details" style="cursor:pointer; color:#ff9800"></i>'
+          actions: '<i class=\'fa fa-eye\' title=\'click here to see details\' style=\'cursor:pointer; color:#ff9800\'></i>'
         };
         this.tableData.push(tempArr);
-      })
+      });
       // console.log(this.tableData);
       // console.log('Show Alarms Completed!');
       if (this.totalItems % this.itemsPerPage === 0) {
@@ -169,7 +173,7 @@ export class TablesComponent implements AfterViewInit {
       } else {
         this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage + 1);
       }
-    
+
       for (let i = 1; i <= this.numberOfPaginators; i++) {
         this.paginators.push(i);
       }
@@ -249,8 +253,8 @@ export class TablesComponent implements AfterViewInit {
     this.reload(this.firstVisibleIndex, this.itemsPerPage);
   }
 
-  startStopTimer(status){
-    if(status == 'off'){
+  startStopTimer(status) {
+    if (status === 'off') {
       if (this.timerSubscription) {
         this.timerSubscription.unsubscribe();
         this.timer_status = 'off';
@@ -262,86 +266,91 @@ export class TablesComponent implements AfterViewInit {
     }
   }
 
-  confirmBeforeRemove(alarmID, alarmIndex){
+  confirmBeforeRemove(alarmID, alarmIndex) {
     this.alarmIdToRemove = alarmID;
     this.alarmIndexToRemove = alarmIndex;
     this.confirmModalRemove.show();
   }
 
-  async removeAlarm(){
-    var that = this;
+  async removeAlarm() {
+    const that = this;
     that.spinner.show();
     that.startStopTimer('off');
     that.disabledBtn = true;
     console.log('id to remove: ', that.alarmIdToRemove);
     that.confirmModalRemove.hide();
 
-    var promRemoveAE = function(){
-      new Promise((resolveAE, rejectAE)=>{
-        that.es.getAlarmEventsWithoutStage(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove).then(res=>{
-          
-          if(res.hits.hits){
+    const promRemoveAE = function() {
+      return new Promise((resolveAE) => {
+        that.es.getAlarmEventsWithoutStage(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove).then(res => {
 
-            var tempAlarmEvent = res.hits.hits;
-            var numOfAlarmEvent = tempAlarmEvent.length;
+          if (res.hits.hits) {
 
-            if(numOfAlarmEvent < 4500){
-              var removeAlarmEvent = function(){
-                return new Promise((resolveRemove, reject)=>{
-                  that.removeAllAlarmEvent().then((r)=>{
+            const tempAlarmEvent = res.hits.hits;
+            const numOfAlarmEvent = tempAlarmEvent.length;
+            let removeAlarmEvent;
+
+            if (numOfAlarmEvent < 4500) {
+              removeAlarmEvent = function() {
+                return new Promise((resolveRemove, reject) => {
+                  that.removeAllAlarmEvent().then((r) => {
                     // console.log(r);
                     return resolveRemove('remove alarm event done');
                   });
                 });
-              }
-              
+              };
+
             } else {
-              
-              var removeAlarmEvent = function(){
-                return new Promise((resolveRemove, reject)=>{
-                  for(var i=1; i <= Math.floor(numOfAlarmEvent/4500)+1; i++){
-                    new Promise((resolveFor, reject2)=>{
-                      that.removeAllAlarmEvent().then((r)=>{
+
+              removeAlarmEvent = function() {
+                return new Promise((resolveRemove, reject) => {
+                  for (let i = 1; i <= Math.floor(numOfAlarmEvent / 4500) + 1; i++) {
+                    return new Promise((resolveFor) => {
+                      that.removeAllAlarmEvent().then((r) => {
                         // console.log(i + ': ', r);
                         resolveFor('done');
-                        if(i == Math.floor(numOfAlarmEvent/9000)+1) return resolveRemove('remove all alarm event done');
+                        if (i === Math.floor(numOfAlarmEvent / 9000) + 1) {
+                          return resolveRemove('remove all alarm event done');
+                        }
                       });
                     });
                   }
                 });
-              }
-              
+              };
+
             }
-          
-            removeAlarmEvent().then((res)=>{
+
+            removeAlarmEvent().then(() => {
               // console.log(res);
               resolveAE('done');
             });
 
           }
-          
+
         },
-        (error)=>{
+        (error) => {
           console.log(error);
         });
       });
-    }
+    };
 
     promRemoveAE();
     setTimeout(() => {
       promRemoveAE();
 
-      var removeAlarm = function(){
-        return new Promise(function(resolve, reject){
+      const removeAlarm = function() {
+        return new Promise(function(resolve, reject) {
           that.es.removeAlarmById(that.esIndex, that.esType, that.alarmIdToRemove).then(resAlarm => {
-            if(resAlarm.deleted == 1) resolve('Deleting alarm '+ that.alarmIdToRemove + ' done');
-          }, (error)=>{
+            if (resAlarm.deleted === 1) {
+              resolve('Deleting alarm ' + that.alarmIdToRemove + ' done');
+            }
+          }, (error) => {
             reject(error);
           });
         });
-      }
+      };
 
-      removeAlarm().then((c)=>{
+      removeAlarm().then((c) => {
         console.log(c);
         that.spinner.hide();
         that.isRemoved = true;
@@ -351,8 +360,8 @@ export class TablesComponent implements AfterViewInit {
           that.disabledBtn = false;
           that.startStopTimer('on');
         }, 5000);
-      }, 
-      (error)=>{
+      },
+      (error) => {
         console.log(error);
         that.spinner.hide();
         that.isNotRemoved = true;
@@ -369,17 +378,17 @@ export class TablesComponent implements AfterViewInit {
 
   }
 
-  async removeAllAlarmEvent(){
-    var that = this, arrDelete = [], size = 4500;
+  async removeAllAlarmEvent() {
+    const that = this, arrDelete = [], size = 4500;
 
-    var prom = function(){
-      return new Promise(function(resolve, reject){
-        that.es.getAllAlarmEvents(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove, size).then(res=>{
-          var tempAlarmEvent = res.hits.hits;
-          
-          //delete alarm event
-          for(var i=0; i <= tempAlarmEvent.length-1; i++){
-            let idx = tempAlarmEvent[i]['_index'];
+    const prom = function() {
+      return new Promise(function(resolve, reject) {
+        that.es.getAllAlarmEvents(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove, size).then(res => {
+          const tempAlarmEvent = res.hits.hits;
+
+          // delete alarm event
+          for (let i = 0; i <= tempAlarmEvent.length - 1; i++) {
+            const idx = tempAlarmEvent[i]['_index'];
             arrDelete.push(
               {
                 delete: {
@@ -391,9 +400,9 @@ export class TablesComponent implements AfterViewInit {
             );
           }
 
-          //delete event
-          for(var i=0; i <= tempAlarmEvent.length-1; i++){
-            let arridx = tempAlarmEvent[i]['_index'].split('-')[1];
+          // delete event
+          for (let i = 0; i <= tempAlarmEvent.length - 1; i++) {
+            const arridx = tempAlarmEvent[i]['_index'].split('-')[1];
             arrDelete.push(
               {
                 delete: {
@@ -403,18 +412,19 @@ export class TablesComponent implements AfterViewInit {
                 }
               }
             );
-            if(i == tempAlarmEvent.length-1) resolve('done');
+            if (i === tempAlarmEvent.length - 1) {
+              resolve('done');
+            }
           }
         });
       });
-    }
+    };
 
-    return prom().then(()=>{
-      this.es.removeAlarmEvent(arrDelete).then((r)=>{
+    return prom().then(() => {
+      this.es.removeAlarmEvent(arrDelete).then((r) => {
       });
     });
 
   }
 
 }
-

@@ -1,18 +1,18 @@
-import { DetailalarmComponent } from "./detailalarm.component";
-import { async, TestBed } from "@angular/core/testing";
-import { NgxSpinnerModule, NgxSpinnerService } from "ngx-spinner";
-import { MomentModule } from "ngx-moment";
-import { HttpModule } from "@angular/http";
-import { RouterTestingModule } from "@angular/router/testing";
-import { ElasticsearchService } from "../../elasticsearch.service";
-import { ModalModule, AlertModule, TooltipModule } from "ngx-bootstrap";
-import { of } from "rxjs";
+import { DetailalarmComponent } from './detailalarm.component';
+import { async, TestBed } from '@angular/core/testing';
+import { NgxSpinnerModule, NgxSpinnerService } from 'ngx-spinner';
+import { MomentModule } from 'ngx-moment';
+import { HttpModule } from '@angular/http';
+import { RouterTestingModule } from '@angular/router/testing';
+import { ElasticsearchService } from '../../elasticsearch.service';
+import { ModalModule, AlertModule, TooltipModule } from 'ngx-bootstrap';
+import { of } from 'rxjs';
 
-describe('Detail Alarm Component', ()=>{
+describe('Detail Alarm Component', () => {
 
   let fixture;
   let app: DetailalarmComponent;
-  let alarmID: string = 'iM0V7PdTp';
+  const alarmID = 'iM0V7PdTp';
   let serviceStub;
   let responseAlarmDetail;
   let responseCount;
@@ -23,322 +23,322 @@ describe('Detail Alarm Component', ()=>{
   beforeEach(async(() => {
 
     responseAlarmDetail = {
-      "hits": {
-        "hits": [
+      'hits': {
+        'hits': [
           {
-            "_source":
+            '_source':
               {
-                "@timestamp": "2018-12-17T17:19:52.171Z",
-                "category": "Misc Activity",
-                "dst_ips": [
-                  "10.8.100.1"
+                '@timestamp': '2018-12-17T17:19:52.171Z',
+                'category': 'Misc Activity',
+                'dst_ips': [
+                  '10.8.100.1'
                 ],
-                "kingdom": "Reconnaissance & Probing",
-                "networks": [
-                  "10.0.0.0/8"
+                'kingdom': 'Reconnaissance & Probing',
+                'networks': [
+                  '10.0.0.0/8'
                 ],
-                "risk": 1,
-                "risk_class": "Low",
-                "rules": [
+                'risk': 1,
+                'risk_class': 'Low',
+                'rules': [
                   {
-                    "category": "",
-                    "end_time": 1545067044,
-                    "events_count": 1,
-                    "from": "ANY",
-                    "name": "ICMP Ping",
-                    "occurrence": 1,
-                    "plugin_id": 1001,
-                    "plugin_sid": [
+                    'category': '',
+                    'end_time': 1545067044,
+                    'events_count': 1,
+                    'from': 'ANY',
+                    'name': 'ICMP Ping',
+                    'occurrence': 1,
+                    'plugin_id': 1001,
+                    'plugin_sid': [
                       2100384
                     ],
-                    "port_from": "ANY",
-                    "port_to": "ANY",
-                    "protocol": "ICMP",
-                    "rcvd_time": 1545067090,
-                    "reliability": 1,
-                    "stage": 1,
-                    "start_time": 1545067044,
-                    "status": "finished",
-                    "timeout": 0,
-                    "to": "HOME_NET",
-                    "type": "PluginRule"
+                    'port_from': 'ANY',
+                    'port_to': 'ANY',
+                    'protocol': 'ICMP',
+                    'rcvd_time': 1545067090,
+                    'reliability': 1,
+                    'stage': 1,
+                    'start_time': 1545067044,
+                    'status': 'finished',
+                    'timeout': 0,
+                    'to': 'HOME_NET',
+                    'type': 'PluginRule'
                   },
                   {
-                    "category": "",
-                    "end_time": 1545067146,
-                    "events_count": 6,
-                    "from": "ANY",
-                    "name": "ICMP Ping",
-                    "occurrence": 400,
-                    "plugin_id": 1001,
-                    "plugin_sid": [
+                    'category': '',
+                    'end_time': 1545067146,
+                    'events_count': 6,
+                    'from': 'ANY',
+                    'name': 'ICMP Ping',
+                    'occurrence': 400,
+                    'plugin_id': 1001,
+                    'plugin_sid': [
                       2100384
                     ],
-                    "port_from": "ANY",
-                    "port_to": "ANY",
-                    "protocol": "ICMP",
-                    "rcvd_time": 0,
-                    "reliability": 6,
-                    "stage": 2,
-                    "start_time": 1545067044,
-                    "status": "finished",
-                    "timeout": 3600,
-                    "to": "10.8.100.1",
-                    "type": "PluginRule"
+                    'port_from': 'ANY',
+                    'port_to': 'ANY',
+                    'protocol': 'ICMP',
+                    'rcvd_time': 0,
+                    'reliability': 6,
+                    'stage': 2,
+                    'start_time': 1545067044,
+                    'status': 'finished',
+                    'timeout': 3600,
+                    'to': '10.8.100.1',
+                    'type': 'PluginRule'
                   },
                   {
-                    "category": "",
-                    "end_time": 0,
-                    "events_count": 0,
-                    "from": "ANY",
-                    "name": "ICMP Ping",
-                    "occurrence": 10000,
-                    "plugin_id": 1001,
-                    "plugin_sid": [
+                    'category': '',
+                    'end_time': 0,
+                    'events_count': 0,
+                    'from': 'ANY',
+                    'name': 'ICMP Ping',
+                    'occurrence': 10000,
+                    'plugin_id': 1001,
+                    'plugin_sid': [
                       2100384
                     ],
-                    "port_from": "ANY",
-                    "port_to": "ANY",
-                    "protocol": "ICMP",
-                    "rcvd_time": 0,
-                    "reliability": 10,
-                    "stage": 3,
-                    "start_time": 0,
-                    "status": "",
-                    "timeout": 3600,
-                    "to": "10.8.100.1",
-                    "type": "PluginRule"
+                    'port_from': 'ANY',
+                    'port_to': 'ANY',
+                    'protocol': 'ICMP',
+                    'rcvd_time': 0,
+                    'reliability': 10,
+                    'stage': 3,
+                    'start_time': 0,
+                    'status': '',
+                    'timeout': 3600,
+                    'to': '10.8.100.1',
+                    'type': 'PluginRule'
                   }
                 ],
-                "src_ips": [
-                  "10.8.100.58"
+                'src_ips': [
+                  '10.8.100.58'
                 ],
-                "status": "Open",
-                "tag": "Identified Threat",
-                "timestamp": "2018-12-17T17:18:10.000Z",
-                "title": "Ping Flood to 10.8.100.1",
-                "updated_time": "2018-12-17T17:19:51.000Z",
-                "intel_hits": [
+                'status': 'Open',
+                'tag': 'Identified Threat',
+                'timestamp': '2018-12-17T17:18:10.000Z',
+                'title': 'Ping Flood to 10.8.100.1',
+                'updated_time': '2018-12-17T17:19:51.000Z',
+                'intel_hits': [
                   {
-                    "provider": "Wise",
-                    "term": "115.79.79.91",
-                    "result": "Malicious Host"
+                    'provider': 'Wise',
+                    'term': '115.79.79.91',
+                    'result': 'Malicious Host'
                   }
                 ],
-                "vulnerabilities": [
+                'vulnerabilities': [
                   {
-                    "provider": "Nessus",
-                    "term": "10.23.51.67:88",
-                    "result": "Critical - PHP Unsupported Version Detection"
+                    'provider': 'Nessus',
+                    'term': '10.23.51.67:88',
+                    'result': 'Critical - PHP Unsupported Version Detection'
                   },
                   {
-                    "provider": "Nessus",
-                    "term": "10.23.51.67:88",
-                    "result": "High - PHP 5.4.x < 5.4.17 Buffer Overflow"
+                    'provider': 'Nessus',
+                    'term': '10.23.51.67:88',
+                    'result': 'High - PHP 5.4.x < 5.4.17 Buffer Overflow'
                   }
                 ]
               }
           }
         ]
       }
-    }
+    };
 
     responseCount = {
       count: 10,
-    }
+    };
 
     responseAlarmEvent = {
-      "hits": {
-        "hits":
+      'hits': {
+        'hits':
         [
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:16:20.063Z",
-              "alarm_id": "xblyZpeTp",
-              "event_id": "e65294a7-17f3-46d8-a71d-2e1cf7066e2a",
-              "stage": 2
+            '_source': {
+              '@timestamp': '2018-12-17T17:16:20.063Z',
+              'alarm_id': 'xblyZpeTp',
+              'event_id': 'e65294a7-17f3-46d8-a71d-2e1cf7066e2a',
+              'stage': 2
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:18:17.171Z",
-              "alarm_id": "xblyZpeTp",
-              "event_id": "5f03dfbc-45c7-42f3-8442-8e4556ab7ebb",
-              "stage": 2
+            '_source': {
+              '@timestamp': '2018-12-17T17:18:17.171Z',
+              'alarm_id': 'xblyZpeTp',
+              'event_id': '5f03dfbc-45c7-42f3-8442-8e4556ab7ebb',
+              'stage': 2
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:20:20.063Z",
-              "alarm_id": "xblyZpeTp",
-              "event_id": "a65294a7-17f3-46d8-a71d-2e1cf7066abc",
-              "stage": 2
+            '_source': {
+              '@timestamp': '2018-12-17T17:20:20.063Z',
+              'alarm_id': 'xblyZpeTp',
+              'event_id': 'a65294a7-17f3-46d8-a71d-2e1cf7066abc',
+              'stage': 2
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:21:17.171Z",
-              "alarm_id": "xblyZpeTp",
-              "event_id": "8f03dfbc-45c7-42f3-8442-8e4556ab7def",
-              "stage": 2
+            '_source': {
+              '@timestamp': '2018-12-17T17:21:17.171Z',
+              'alarm_id': 'xblyZpeTp',
+              'event_id': '8f03dfbc-45c7-42f3-8442-8e4556ab7def',
+              'stage': 2
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:23:20.063Z",
-              "alarm_id": "xblyZpeTp",
-              "event_id": "g65294a7-17f3-46d8-a71d-2e1cf7066ghi",
-              "stage": 2
+            '_source': {
+              '@timestamp': '2018-12-17T17:23:20.063Z',
+              'alarm_id': 'xblyZpeTp',
+              'event_id': 'g65294a7-17f3-46d8-a71d-2e1cf7066ghi',
+              'stage': 2
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:24:17.171Z",
-              "alarm_id": "xblyZpeTp",
-              "event_id": "7f03dfbc-45c7-42f3-8442-8e4556ab7jkl",
-              "stage": 2
+            '_source': {
+              '@timestamp': '2018-12-17T17:24:17.171Z',
+              'alarm_id': 'xblyZpeTp',
+              'event_id': '7f03dfbc-45c7-42f3-8442-8e4556ab7jkl',
+              'stage': 2
             }
           }
         ]
       }
-    }
+    };
 
     responseEvents = {
-      "hits": {
-        "hits": [
+      'hits': {
+        'hits': [
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:17:32.036Z",
-              "category": "Attempted Information Leak",
-              "dst_ip": "10.7.105.191",
-              "dst_port": 22,
-              "event_id": "5f03dfbc-45c7-42f3-8442-8e4556ab7ebb",
-              "plugin_id": 1001,
-              "plugin_sid": 2001219,
-              "product": "Intrusion Detection System",
-              "protocol": "TCP",
-              "sensor": "k8sworker1d",
-              "src_index_pattern": "suricata-*",
-              "src_ip": "10.8.100.58",
-              "src_port": 50341,
-              "timestamp": "2018-12-17T17:17:31.083Z",
-              "title": "ET SCAN Potential SSH Scan"
+            '_source': {
+              '@timestamp': '2018-12-17T17:17:32.036Z',
+              'category': 'Attempted Information Leak',
+              'dst_ip': '10.7.105.191',
+              'dst_port': 22,
+              'event_id': '5f03dfbc-45c7-42f3-8442-8e4556ab7ebb',
+              'plugin_id': 1001,
+              'plugin_sid': 2001219,
+              'product': 'Intrusion Detection System',
+              'protocol': 'TCP',
+              'sensor': 'k8sworker1d',
+              'src_index_pattern': 'suricata-*',
+              'src_ip': '10.8.100.58',
+              'src_port': 50341,
+              'timestamp': '2018-12-17T17:17:31.083Z',
+              'title': 'ET SCAN Potential SSH Scan'
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:17:32.036Z",
-              "category": "Attempted Information Leak",
-              "dst_ip": "10.7.105.187",
-              "dst_port": 22,
-              "event_id": "e65294a7-17f3-46d8-a71d-2e1cf7066e2a",
-              "plugin_id": 1001,
-              "plugin_sid": 2001219,
-              "product": "Intrusion Detection System",
-              "protocol": "TCP",
-              "sensor": "k8sworker1d",
-              "src_index_pattern": "suricata-*",
-              "src_ip": "10.8.100.58",
-              "src_port": 50341,
-              "timestamp": "2018-12-17T17:17:31.083Z",
-              "title": "ET SCAN Potential SSH Scan"
+            '_source': {
+              '@timestamp': '2018-12-17T17:17:32.036Z',
+              'category': 'Attempted Information Leak',
+              'dst_ip': '10.7.105.187',
+              'dst_port': 22,
+              'event_id': 'e65294a7-17f3-46d8-a71d-2e1cf7066e2a',
+              'plugin_id': 1001,
+              'plugin_sid': 2001219,
+              'product': 'Intrusion Detection System',
+              'protocol': 'TCP',
+              'sensor': 'k8sworker1d',
+              'src_index_pattern': 'suricata-*',
+              'src_ip': '10.8.100.58',
+              'src_port': 50341,
+              'timestamp': '2018-12-17T17:17:31.083Z',
+              'title': 'ET SCAN Potential SSH Scan'
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:17:32.036Z",
-              "category": "Attempted Information Leak",
-              "dst_ip": "10.7.105.10",
-              "dst_port": 22,
-              "event_id": "a65294a7-17f3-46d8-a71d-2e1cf7066abc",
-              "plugin_id": 1001,
-              "plugin_sid": 2001219,
-              "product": "Intrusion Detection System",
-              "protocol": "TCP",
-              "sensor": "k8sworker1d",
-              "src_index_pattern": "suricata-*",
-              "src_ip": "10.8.100.58",
-              "src_port": 50341,
-              "timestamp": "2018-12-17T17:17:31.083Z",
-              "title": "ET SCAN Potential SSH Scan"
+            '_source': {
+              '@timestamp': '2018-12-17T17:17:32.036Z',
+              'category': 'Attempted Information Leak',
+              'dst_ip': '10.7.105.10',
+              'dst_port': 22,
+              'event_id': 'a65294a7-17f3-46d8-a71d-2e1cf7066abc',
+              'plugin_id': 1001,
+              'plugin_sid': 2001219,
+              'product': 'Intrusion Detection System',
+              'protocol': 'TCP',
+              'sensor': 'k8sworker1d',
+              'src_index_pattern': 'suricata-*',
+              'src_ip': '10.8.100.58',
+              'src_port': 50341,
+              'timestamp': '2018-12-17T17:17:31.083Z',
+              'title': 'ET SCAN Potential SSH Scan'
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:17:32.036Z",
-              "category": "Attempted Information Leak",
-              "dst_ip": "10.7.105.8",
-              "dst_port": 22,
-              "event_id": "8f03dfbc-45c7-42f3-8442-8e4556ab7def",
-              "plugin_id": 1001,
-              "plugin_sid": 2001219,
-              "product": "Intrusion Detection System",
-              "protocol": "TCP",
-              "sensor": "k8sworker1d",
-              "src_index_pattern": "suricata-*",
-              "src_ip": "10.8.100.58",
-              "src_port": 50341,
-              "timestamp": "2018-12-17T17:17:31.083Z",
-              "title": "ET SCAN Potential SSH Scan"
+            '_source': {
+              '@timestamp': '2018-12-17T17:17:32.036Z',
+              'category': 'Attempted Information Leak',
+              'dst_ip': '10.7.105.8',
+              'dst_port': 22,
+              'event_id': '8f03dfbc-45c7-42f3-8442-8e4556ab7def',
+              'plugin_id': 1001,
+              'plugin_sid': 2001219,
+              'product': 'Intrusion Detection System',
+              'protocol': 'TCP',
+              'sensor': 'k8sworker1d',
+              'src_index_pattern': 'suricata-*',
+              'src_ip': '10.8.100.58',
+              'src_port': 50341,
+              'timestamp': '2018-12-17T17:17:31.083Z',
+              'title': 'ET SCAN Potential SSH Scan'
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:17:32.036Z",
-              "category": "Attempted Information Leak",
-              "dst_ip": "10.7.105.153",
-              "dst_port": 22,
-              "event_id": "g65294a7-17f3-46d8-a71d-2e1cf7066ghi",
-              "plugin_id": 1001,
-              "plugin_sid": 2001219,
-              "product": "Intrusion Detection System",
-              "protocol": "TCP",
-              "sensor": "k8sworker1d",
-              "src_index_pattern": "suricata-*",
-              "src_ip": "10.8.100.58",
-              "src_port": 50341,
-              "timestamp": "2018-12-17T17:17:31.083Z",
-              "title": "ET SCAN Potential SSH Scan"
+            '_source': {
+              '@timestamp': '2018-12-17T17:17:32.036Z',
+              'category': 'Attempted Information Leak',
+              'dst_ip': '10.7.105.153',
+              'dst_port': 22,
+              'event_id': 'g65294a7-17f3-46d8-a71d-2e1cf7066ghi',
+              'plugin_id': 1001,
+              'plugin_sid': 2001219,
+              'product': 'Intrusion Detection System',
+              'protocol': 'TCP',
+              'sensor': 'k8sworker1d',
+              'src_index_pattern': 'suricata-*',
+              'src_ip': '10.8.100.58',
+              'src_port': 50341,
+              'timestamp': '2018-12-17T17:17:31.083Z',
+              'title': 'ET SCAN Potential SSH Scan'
             }
           },
           {
-            "_source": {
-              "@timestamp": "2018-12-17T17:17:32.036Z",
-              "category": "Attempted Information Leak",
-              "dst_ip": "10.7.105.80",
-              "dst_port": 22,
-              "event_id": "7f03dfbc-45c7-42f3-8442-8e4556ab7jkl",
-              "plugin_id": 1001,
-              "plugin_sid": 2001219,
-              "product": "Intrusion Detection System",
-              "protocol": "TCP",
-              "sensor": "k8sworker1d",
-              "src_index_pattern": "suricata-*",
-              "src_ip": "10.8.100.58",
-              "src_port": 50341,
-              "timestamp": "2018-12-17T17:17:31.083Z",
-              "title": "ET SCAN Potential SSH Scan"
+            '_source': {
+              '@timestamp': '2018-12-17T17:17:32.036Z',
+              'category': 'Attempted Information Leak',
+              'dst_ip': '10.7.105.80',
+              'dst_port': 22,
+              'event_id': '7f03dfbc-45c7-42f3-8442-8e4556ab7jkl',
+              'plugin_id': 1001,
+              'plugin_sid': 2001219,
+              'product': 'Intrusion Detection System',
+              'protocol': 'TCP',
+              'sensor': 'k8sworker1d',
+              'src_index_pattern': 'suricata-*',
+              'src_ip': '10.8.100.58',
+              'src_port': 50341,
+              'timestamp': '2018-12-17T17:17:31.083Z',
+              'title': 'ET SCAN Potential SSH Scan'
             }
           }
         ]
       }
-    }
+    };
 
     serviceStub = {
-      getAlarms: () => new Promise((resolve)=>{ resolve(responseAlarmDetail)}),
+      getAlarms: () => new Promise((resolve) => { resolve(responseAlarmDetail); }),
       getServer: () => of(),
       countEvents: () => responseCount,
-      getAlarmEventsPagination: () => new Promise((resolve)=>{ resolve(responseAlarmEvent)}),
-      getEvents: () => new Promise((resolve)=>{ resolve(responseEvents)}),
-      updateAlarmStatusById: () => new Promise((resolve)=>{ resolve('done')}),
-      updateAlarmTagById: () => new Promise((resolve)=>{ resolve('done')})
-    }
+      getAlarmEventsPagination: () => new Promise((resolve) => { resolve(responseAlarmEvent); }),
+      getEvents: () => new Promise((resolve) => { resolve(responseEvents); }),
+      updateAlarmStatusById: () => new Promise((resolve) => { resolve('done'); }),
+      updateAlarmTagById: () => new Promise((resolve) => { resolve('done'); })
+    };
 
     TestBed.configureTestingModule({
       declarations: [
         DetailalarmComponent
       ],
-      imports: [ 
+      imports: [
         RouterTestingModule,
         NgxSpinnerModule,
         ModalModule.forRoot(),
@@ -354,7 +354,7 @@ describe('Detail Alarm Component', ()=>{
     }).compileComponents();
   }));
 
-  beforeEach(()=>{
+  beforeEach(() => {
     originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
     fixture = TestBed.createComponent(DetailalarmComponent);
@@ -362,7 +362,7 @@ describe('Detail Alarm Component', ()=>{
     fixture.detectChanges();
   });
 
-  afterEach(()=>{
+  afterEach(() => {
     app.alarm = [];
     app.alarmRules = [];
     app.alarmVuln = [];
@@ -371,7 +371,7 @@ describe('Detail Alarm Component', ()=>{
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
     app.ngOnDestroy();
     fixture.detectChanges();
-  })
+  });
 
   it('should create the app', () => {
     expect(app).toBeTruthy();
@@ -437,7 +437,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm detail data', (done)=>{
+  it('should return alarm detail data', (done) => {
     app.getAlarmDetail(alarmID);
     app.alarmID = alarmID;
     fixture.detectChanges();
@@ -448,7 +448,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should have alarm title on card header', (done)=>{
+  it('should have alarm title on card header', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -459,7 +459,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm id on datatable', (done)=>{
+  it('should return alarm id on datatable', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -470,7 +470,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm status on datatable', (done)=>{
+  it('should return alarm status on datatable', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -481,7 +481,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm risk on datatable', (done)=>{
+  it('should return alarm risk on datatable', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -492,7 +492,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm tag on datatable', (done)=>{
+  it('should return alarm tag on datatable', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -503,7 +503,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm source ips on datatable', (done)=>{
+  it('should return alarm source ips on datatable', (done) => {
     const tempArray = [];
     app.alarmID = alarmID;
     fixture.detectChanges();
@@ -516,7 +516,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should have title \'rules\' on card header', (done)=>{
+  it('should have title \'rules\' on card header', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -527,7 +527,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm rules data', (done)=>{
+  it('should return alarm rules data', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -537,7 +537,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm intel hits data if exists', (done)=>{
+  it('should return alarm intel hits data if exists', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -547,7 +547,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should return alarm vulnerabilities data if exists', (done)=>{
+  it('should return alarm vulnerabilities data if exists', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
@@ -557,37 +557,37 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('should have link to first page on pagination', ()=>{
+  it('should have link to first page on pagination', () => {
     fixture.detectChanges();
     const first = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(first).toContain('First');
   });
 
-  it('should have link to previous page on pagination', ()=>{
+  it('should have link to previous page on pagination', () => {
     fixture.detectChanges();
     const prev = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(prev).toContain('Previous');
   });
 
-  it('should have link to next page on pagination', ()=>{
+  it('should have link to next page on pagination', () => {
     fixture.detectChanges();
     const next = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(next).toContain('Next');
   });
 
-  it('should have link to last page on pagination', ()=>{
+  it('should have link to last page on pagination', () => {
     fixture.detectChanges();
     const last = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(last).toContain('Last');
   });
 
-  it('active page should first page when first link on pagination clicked', ()=>{
+  it('active page should first page when first link on pagination clicked', () => {
     app.firstPage();
     fixture.detectChanges();
     expect(app.activePage).toEqual(1);
   });
 
-  it('active page should last page when last link on pagination clicked', (done)=>{
+  it('active page should last page when last link on pagination clicked', (done) => {
     setTimeout(() => {
       app.lastPage();
       fixture.detectChanges();
@@ -598,7 +598,7 @@ describe('Detail Alarm Component', ()=>{
     }, 100);
   });
 
-  it('active page should page 2 when link 2 on pagination clicked', (done)=>{
+  it('active page should page 2 when link 2 on pagination clicked', (done) => {
     setTimeout(() => {
       const destinationPage = 2;
       app.totalItems = 6;
@@ -610,7 +610,7 @@ describe('Detail Alarm Component', ()=>{
     }, 1000);
   });
 
-  it('should open dropdown', (done)=>{
+  it('should open dropdown', (done) => {
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
@@ -621,13 +621,13 @@ describe('Detail Alarm Component', ()=>{
       app.resetHeightEv('title-', '5f03dfbc-45c7-42f3-8442-8e4556ab7ebb', 0);
       app.resetHeight('alrm-id-', alarmID);
       fixture.detectChanges();
-      let status = document.getElementById('alrm-id-'+alarmID).style.display;
+      const status = document.getElementById('alrm-id-' + alarmID).style.display;
       expect(status).toEqual('block');
       done();
     }, 1000);
   });
 
-  it('should change alarm status', (done)=>{
+  it('should change alarm status', (done) => {
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
@@ -648,7 +648,7 @@ describe('Detail Alarm Component', ()=>{
     }, 6000);
   });
 
-  it('should close dropdown', (done)=>{
+  it('should close dropdown', (done) => {
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();
@@ -666,13 +666,13 @@ describe('Detail Alarm Component', ()=>{
       app.wideEv[0] = false;
       app.wide = false;
       fixture.detectChanges();
-      let status = document.getElementById('alrm-id-'+alarmID).style.display;
+      const status = document.getElementById('alrm-id-' + alarmID).style.display;
       expect(status).toEqual('none');
       done();
     }, 1000);
   });
 
-  it('should change alarm tag', (done)=>{
+  it('should change alarm tag', (done) => {
     app.alarmID = alarmID;
     setTimeout(() => {
       fixture.detectChanges();

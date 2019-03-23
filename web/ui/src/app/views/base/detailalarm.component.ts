@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChildren, QueryList } from '@angular/core';
+import { Component, OnInit, ViewChildren, QueryList, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { Http } from '@angular/http';
@@ -8,7 +8,7 @@ import { NgxSpinnerService } from 'ngx-spinner';
 @Component({
   templateUrl: './detailalarm.component.html',
 })
-export class DetailalarmComponent implements OnInit {
+export class DetailalarmComponent implements OnInit, OnDestroy {
 
   @ViewChildren('pages') pages: QueryList<any>;
   sub: any;
@@ -43,7 +43,7 @@ export class DetailalarmComponent implements OnInit {
   constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http,
     private spinner: NgxSpinnerService) { }
 
-  ngOnDestroy(){
+  ngOnDestroy() {
     this.sub.unsubscribe();
   }
 
@@ -52,120 +52,131 @@ export class DetailalarmComponent implements OnInit {
       this.alarmID = params['alarmID'];
       this.getAlarmDetail(this.alarmID);
     });
-    this.loadConfig().then(res=>{
+    this.loadConfig().then(res => {
       this.kibanaUrl = res['kibana'];
     });
   }
 
-  loadConfig(){
-    var that = this;
-    return new Promise((resolve, reject)=>{
+  loadConfig() {
+    const that = this;
+    return new Promise((resolve, reject) => {
       that.http.get('./assets/config/esconfig.json').pipe(
         map(res => res.json())
       ).toPromise()
-      .then( 
+      .then(
         res => resolve(res),
-        err => reject(err) 
-      )
+        err => reject(err)
+      );
     });
   }
 
-  async getAlarmDetail(alarmID){
-    var that = this;
+  async getAlarmDetail(alarmID) {
+    const that = this;
     that.spinner.show();
-    let resp = await this.es.getAlarms(this.esIndex, this.esType, alarmID)
-    var tempAlarms = resp.hits.hits;
+    const resp = await this.es.getAlarms(this.esIndex, this.esType, alarmID);
+    const tempAlarms = resp.hits.hits;
     await Promise.all(tempAlarms.map(async (e) => {
-      await Promise.all(e["_source"]["rules"].map(async (r) => {
-        if (r["status"] == "finished") {
-          r["events_count"] = r["occurrence"]
-          Promise.resolve()
+      await Promise.all(e['_source']['rules'].map(async (r) => {
+        if (r['status'] === 'finished') {
+          r['events_count'] = r['occurrence'];
+          Promise.resolve();
         } else {
-          let response = await this.es.countEvents("siem_alarm_events-*", alarmID, r["stage"])
-          r["events_count"] = response.count  
+          const response = await this.es.countEvents('siem_alarm_events-*', alarmID, r['stage']);
+          r['events_count'] = response.count;
         }
-      }))
-    }))
+      }));
+    }));
     this.alarm = tempAlarms;
     tempAlarms.forEach(element => {
       this.alarmRules = element._source.rules;
-      this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage).then(function(alev){
+      this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage)
+      .then(function(alev) {
         console.log(alev);
-        if(alev['hits'] != undefined){
+        if (alev['hits'] !== undefined) {
           that.getEventsDetail('init', that.alarmID, that.alarmRules[0].stage, null, null, that.alarmRules[0].events_count);
         } else {
           that.getEventsDetail('init', that.alarmID, that.alarmRules[1].stage, null, null, that.alarmRules[1].events_count);
         }
       });
-      if(element._source.vulnerabilities) this.alarmVuln = element._source.vulnerabilities;
-      if(element._source.intel_hits) this.alarmIntelHits = element._source.intel_hits;
+      if (element._source.vulnerabilities) {
+        this.alarmVuln = element._source.vulnerabilities;
+      }
+      if (element._source.intel_hits) {
+        this.alarmIntelHits = element._source.intel_hits;
+      }
     });
     that.spinner.hide();
   }
 
   setStatus(rule) {
-    if (rule["status"] != "") return rule["status"]
-    if (rule["status"] == "" && rule["start_time"] == 0) {
-      return "inactive"
+    if (rule['status'] !== '') {
+      return rule['status'];
     }
-    if (rule["status"] == "" && rule["start_time"] > 0) {
-      return "active"
+    if (rule['status'] === '' && rule['start_time'] === 0) {
+      return 'inactive';
     }
-    let deadline = rule["start_time"] + rule["timeout"]
-    let now = Math.round((new Date()).getTime() / 1000)
+    if (rule['status'] === '' && rule['start_time'] > 0) {
+      return 'active';
+    }
+    const deadline = rule['start_time'] + rule['timeout'];
+    const now = Math.round((new Date()).getTime() / 1000);
     if (now > deadline) {
-      return "timeout"
+      return 'timeout';
     }
   }
 
-  getEventsDetail(type, id, stage, from=0, size=0, allsize=0){
-    var that = this;
+  getEventsDetail(type, id, stage, from= 0, size= 0, allsize= 0) {
+    const that = this;
     that.evnts = [];
     that.paginators = [];
     that.stage = stage;
     that.totalItems = allsize;
     // that.isShowEventDetails = false;
-    if(type == 'init'){
+    if (type === 'init') {
       from = 0;
       size = that.itemsPerPage;
-    } else if(type == 'pagination'){
-      from = from-1;
+    } else if (type === 'pagination') {
+      from = from - 1;
       size = size;
     }
-    
-    this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size).then(function(alev){
+
+    this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size).then(function(alev) {
       console.log(alev['hits']['hits']);
-      var prom = function(){
-        return new Promise(function(resolve, reject){
+      const prom = function() {
+        return new Promise(function(resolve, reject) {
           alev['hits']['hits'].forEach(element => {
-            that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']).then(function(ev){
+            that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']).then(function(ev) {
               let jml = 0;
               ev['hits']['hits'].forEach(element2 => {
                 that.evnts.push(element2['_source']);
                 jml++;
-                if(jml == ev['hits']['hits'].length) return resolve(that.evnts);
+                if (jml === ev['hits']['hits'].length) {
+                  return resolve(that.evnts);
+                }
               });
             });
           });
         });
-      }
+      };
 
-      prom().then(v=>{
+      prom().then(v => {
         that.isShowEventDetails = true;
-        if (type == 'init') that.activePage = 1;
+        if (type === 'init') {
+          that.activePage = 1;
+        }
         if (that.totalItems % that.itemsPerPage === 0) {
           that.numberOfPaginators = Math.floor(that.totalItems / that.itemsPerPage);
         } else {
           that.numberOfPaginators = Math.floor(that.totalItems / that.itemsPerPage + 1);
         }
-      
+
         for (let i = 1; i <= that.numberOfPaginators; i++) {
           that.paginators.push(i);
         }
-      })
-    }).catch(err=>{
+      });
+    }).catch(err => {
       console.log('ERROR: ', err);
-    })
+    });
   }
 
   async changePage(event: any) {
@@ -236,83 +247,91 @@ export class DetailalarmComponent implements OnInit {
     this.getEventsDetail('pagination', this.alarmID, this.stage, this.firstVisibleIndex, this.itemsPerPage, this.totalItems);
   }
 
-  openDropdown(key, param){
-    document.getElementById(key+param).style.display = 'block';
-    document.getElementById('close-'+key+param).style.display = 'block';
+  openDropdown(key, param) {
+    document.getElementById(key + param).style.display = 'block';
+    document.getElementById('close-' + key + param).style.display = 'block';
   }
 
-  closeDropdown(key, param){
-    document.getElementById(key+param).style.display = 'none';
-    document.getElementById('close-'+key+param).style.display = 'none';
+  closeDropdown(key, param) {
+    document.getElementById(key + param).style.display = 'none';
+    document.getElementById('close-' + key + param).style.display = 'none';
   }
 
-  resetHeight(key, alarmID){
-    let a = document.getElementById(key+alarmID).getAttribute('class');
+  resetHeight(key, alarmID) {
+    const a = document.getElementById(key + alarmID).getAttribute('class');
     // console.log(a);
-    if(a.indexOf('open') > -1){
+    if ( a.indexOf('open') > -1) {
       this.wide = false;
     } else {
       this.wide = true;
     }
   }
 
-  changeAlarmStatus(_id, status){
+  changeAlarmStatus(_id, status) {
     this.spinner.show();
-    this.es.updateAlarmStatusById(this.esIndex, this.esType, _id, status).then((res)=>{
+    this.es.updateAlarmStatusById(this.esIndex, this.esType, _id, status).then((res) => {
       console.log(res);
       this.spinner.hide();
       this.isProcessingUpdateStatus = true;
       this.closeDropdown('alrm-status-', this.alarmID);
       this.wide = false;
       setTimeout(() => {
-        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp)=>{
+        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp) => {
           this.alarm = resp.hits.hits;
           console.log(this.alarm);
           this.isProcessingUpdateStatus = false;
         });
       }, 5000);
-    }).catch(err=>{
+    }).catch(err => {
       console.log('ERROR: ', err);
       this.spinner.hide();
-    })
+    });
   }
-  
-  changeAlarmTag(_id, tag){
+
+  changeAlarmTag(_id, tag) {
     this.spinner.show();
-    this.es.updateAlarmTagById(this.esIndex, this.esType, _id, tag).then((res)=>{
+    this.es.updateAlarmTagById(this.esIndex, this.esType, _id, tag).then((res) => {
       console.log(res);
       this.spinner.hide();
       this.isProcessingUpdateTag = true;
       this.closeDropdown('alrm-tag-', this.alarmID);
       this.wide = false;
       setTimeout(() => {
-        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp)=>{
+        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp) => {
           this.alarm = resp.hits.hits;
           console.log(this.alarm);
           this.isProcessingUpdateTag = false;
         });
       }, 5000);
-    }).catch(err=>{
+    }).catch(err => {
       console.log('ERROR: ', err);
       this.spinner.hide();
-    })
+    });
   }
 
-  openKibana(index, key, value){
+  openKibana(index, key, value) {
     let url;
-    if(index == 'suricata'){
-      url = this.kibanaUrl+"/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:"+index+",key:"+key+",negate:!f,params:(query:'"+value+"',type:phrase),type:phrase,value:'"+value+"'),query:(match:("+key+":(query:'"+value+"',type:phrase))))),index:'"+index+"-*',interval:auto,query:(language:lucene,query:''),sort:!('@timestamp',desc))"
+    if (index === 'suricata') {
+      url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
+      url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
+      url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:' + key + ',negate:!f,params:(query:\'' + value + '\',type:phrase)';
+      url += ',type:phrase,value:\'' + value + '\'),query:(match:(' + key + ':(query:\'' + value + '\',type:phrase))))),index:\'';
+      url += index + '-*\',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';
     } else {
-      url = this.kibanaUrl+"/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:"+index+",key:"+key+",negate:!f,params:(query:'"+value+"',type:phrase),type:phrase,value:'"+value+"'),query:(match:("+key+":(query:'"+value+"',type:phrase))))),index:"+index+",interval:auto,query:(language:lucene,query:''),sort:!('@timestamp',desc))"
+      url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
+      url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
+      url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:' + key + ',negate:!f,params:(query:\'' + value + '\',type:phrase)';
+      url += ',type:phrase,value:\'' + value + '\'),query:(match:(' + key + ':(query:\'' + value + '\',type:phrase))))),index:';
+      url += index + ',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';
     }
 
     window.open(url, '_blank');
   }
 
-  resetHeightEv(key, alarmID,index){
-    let a = document.getElementById(key+alarmID).getAttribute('class');
+  resetHeightEv(key, alarmID, index) {
+    const a = document.getElementById(key + alarmID).getAttribute('class');
     // console.log(a);
-    if(a.indexOf('open') > -1){
+    if (a.indexOf('open') > -1) {
       this.wideEv[index] = false;
     } else {
       this.wideEv[index] = true;
