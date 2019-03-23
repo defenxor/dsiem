@@ -7,12 +7,12 @@ describe('Elasticsearch Service', () => {
     TestBed.configureTestingModule({
       declarations: [
       ],
-      imports: [ 
+      imports: [
         HttpModule
       ]
     }).compileComponents();
   });
-  
+
   it('should be created', () => {
     const service: ElasticsearchService = TestBed.get(ElasticsearchService);
     expect(service).toBeTruthy();
