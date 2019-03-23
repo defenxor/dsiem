@@ -27,7 +27,7 @@ export interface Alarm {
         plugin_sid: number;
         occurrence: number;
         events_count: number;
-    }]
+    }];
 }
 
 export interface AlarmSource {

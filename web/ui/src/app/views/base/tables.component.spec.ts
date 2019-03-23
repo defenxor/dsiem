@@ -8,7 +8,7 @@ import { HttpModule } from '@angular/http';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { timer, of } from 'rxjs';
 
-describe('Alarm List Component', ()=>{
+describe('Alarm List Component', () => {
 
   let fixture;
   let app: TablesComponent;
@@ -17,151 +17,151 @@ describe('Alarm List Component', ()=>{
   let responseCount;
   let responseRemoveById;
   let originalTimeout;
-  
+
   beforeEach(async(() => {
 
     responseAllDocument = {
-      "hits": {
-        "hits": [
+      'hits': {
+        'hits': [
           {
-            "sort": [
+            'sort': [
               1544338159026
             ],
-            "_id": "iM0V7PdTp",
-            "_index": "siem_alarms",
-            "_score": null,
-            "_source": {
-                "@timestamp": "2018-12-09T06:49:19.026Z",
-                "category": "Misc Activity",
-                "dst_ips": [
-                  "10.8.100.1"
+            '_id': 'iM0V7PdTp',
+            '_index': 'siem_alarms',
+            '_score': null,
+            '_source': {
+                '@timestamp': '2018-12-09T06:49:19.026Z',
+                'category': 'Misc Activity',
+                'dst_ips': [
+                  '10.8.100.1'
                 ],
-                "id": "iM0V7PdTp",
-                "kingdom": "Reconnaissance & Probing",
-                "networks": [
-                  "10.0.0.0/8"
+                'id': 'iM0V7PdTp',
+                'kingdom': 'Reconnaissance & Probing',
+                'networks': [
+                  '10.0.0.0/8'
                 ],
-                "risk": 1,
-                "risk_class": "Low",
-                "rules": [
+                'risk': 1,
+                'risk_class': 'Low',
+                'rules': [
                   {
-                    "category": "",
-                    "end_time": 1544338032,
-                    "events_count": 1,
-                    "from": "HOME_NET",
-                    "name": "ICMP Ping",
-                    "occurrence": 1,
-                    "plugin_id": 1001,
-                    "plugin_sid": [
+                    'category': '',
+                    'end_time': 1544338032,
+                    'events_count': 1,
+                    'from': 'HOME_NET',
+                    'name': 'ICMP Ping',
+                    'occurrence': 1,
+                    'plugin_id': 1001,
+                    'plugin_sid': [
                       2100384
                     ],
-                    "port_from": "ANY",
-                    "port_to": "ANY",
-                    "protocol": "ICMP",
-                    "rcvd_time": 1544338073,
-                    "reliability": 1,
-                    "stage": 1,
-                    "start_time": 1544338032,
-                    "status": "finished",
-                    "timeout": 0,
-                    "to": "ANY",
-                    "type": "PluginRule"
+                    'port_from': 'ANY',
+                    'port_to': 'ANY',
+                    'protocol': 'ICMP',
+                    'rcvd_time': 1544338073,
+                    'reliability': 1,
+                    'stage': 1,
+                    'start_time': 1544338032,
+                    'status': 'finished',
+                    'timeout': 0,
+                    'to': 'ANY',
+                    'type': 'PluginRule'
                   },
                   {
-                    "category": "",
-                    "end_time": 1544338109,
-                    "events_count": 300,
-                    "from": "10.8.100.58",
-                    "name": "ICMP Ping",
-                    "occurrence": 300,
-                    "plugin_id": 1001,
-                    "plugin_sid": [
+                    'category': '',
+                    'end_time': 1544338109,
+                    'events_count': 300,
+                    'from': '10.8.100.58',
+                    'name': 'ICMP Ping',
+                    'occurrence': 300,
+                    'plugin_id': 1001,
+                    'plugin_sid': [
                       2100384
                     ],
-                    "port_from": "ANY",
-                    "port_to": "ANY",
-                    "protocol": "ICMP",
-                    "rcvd_time": 0,
-                    "reliability": 6,
-                    "stage": 2,
-                    "start_time": 1544338032,
-                    "status": "finished",
-                    "timeout": 600,
-                    "to": "ANY",
-                    "type": "PluginRule"
+                    'port_from': 'ANY',
+                    'port_to': 'ANY',
+                    'protocol': 'ICMP',
+                    'rcvd_time': 0,
+                    'reliability': 6,
+                    'stage': 2,
+                    'start_time': 1544338032,
+                    'status': 'finished',
+                    'timeout': 600,
+                    'to': 'ANY',
+                    'type': 'PluginRule'
                   },
                   {
-                    "category": "",
-                    "end_time": 0,
-                    "events_count": 917,
-                    "from": "10.8.100.58",
-                    "name": "ICMP Ping",
-                    "occurrence": 10000,
-                    "plugin_id": 1001,
-                    "plugin_sid": [
+                    'category': '',
+                    'end_time': 0,
+                    'events_count': 917,
+                    'from': '10.8.100.58',
+                    'name': 'ICMP Ping',
+                    'occurrence': 10000,
+                    'plugin_id': 1001,
+                    'plugin_sid': [
                       2100384
                     ],
-                    "port_from": "ANY",
-                    "port_to": "ANY",
-                    "protocol": "ICMP",
-                    "rcvd_time": 0,
-                    "reliability": 10,
-                    "stage": 3,
-                    "start_time": 0,
-                    "status": "",
-                    "timeout": 3600,
-                    "to": "ANY",
-                    "type": "PluginRule"
+                    'port_from': 'ANY',
+                    'port_to': 'ANY',
+                    'protocol': 'ICMP',
+                    'rcvd_time': 0,
+                    'reliability': 10,
+                    'stage': 3,
+                    'start_time': 0,
+                    'status': '',
+                    'timeout': 3600,
+                    'to': 'ANY',
+                    'type': 'PluginRule'
                   }
                 ],
-                "src_ips": [
-                  "10.8.100.58"
+                'src_ips': [
+                  '10.8.100.58'
                 ],
-                "status": "Open",
-                "tag": "Identified Threat",
-                "timestamp": "2018-12-09T06:47:53.000Z",
-                "title": "Ping Flood from 10.8.100.58",
-                "updated_time": "2018-12-09T06:49:10.000Z"
+                'status': 'Open',
+                'tag': 'Identified Threat',
+                'timestamp': '2018-12-09T06:47:53.000Z',
+                'title': 'Ping Flood from 10.8.100.58',
+                'updated_time': '2018-12-09T06:49:10.000Z'
             },
-            "_type": "doc"
+            '_type': 'doc'
           }
         ],
-        "max_score": null,
-        "total": 364292
+        'max_score': null,
+        'total': 364292
       },
-      "timed_out": false,
-      "took": 8,
-      "_shards": {
-        "failed": 0,
-        "skipped": 0,
-        "successful": 2,
-        "total": 2
+      'timed_out': false,
+      'took': 8,
+      '_shards': {
+        'failed': 0,
+        'skipped': 0,
+        'successful': 2,
+        'total': 2
       }
-    }
+    };
 
     responseCount = {
       count: 10,
-    }
+    };
 
     responseRemoveById = {
       deleted: 1,
-    }
+    };
 
     serviceStub = {
       getAllDocumentsPaging: () => responseAllDocument,
       getServer: () => of(),
       countEvents: () => responseCount,
-      getAlarmEventsWithoutStage: ()  => new Promise((resolve)=>{ resolve(responseAllDocument)}),
-      removeAlarmById: () => new Promise((resolve)=>{ resolve(responseRemoveById)}),
-      getAllAlarmEvents: () => new Promise((resolve)=>{ resolve(responseAllDocument)}),
-      removeAlarmEvent: () => new Promise((resolve)=>{ resolve('')})
-    }
+      getAlarmEventsWithoutStage: ()  => new Promise((resolve) => { resolve(responseAllDocument); }),
+      removeAlarmById: () => new Promise((resolve) => { resolve(responseRemoveById); }),
+      getAllAlarmEvents: () => new Promise((resolve) => { resolve(responseAllDocument); }),
+      removeAlarmEvent: () => new Promise((resolve) => { resolve(''); })
+    };
 
     TestBed.configureTestingModule({
       declarations: [
         TablesComponent
       ],
-      imports: [ 
+      imports: [
         RouterTestingModule,
         NgxSpinnerModule,
         ModalModule.forRoot(),
@@ -176,7 +176,7 @@ describe('Alarm List Component', ()=>{
     }).compileComponents();
   }));
 
-  beforeEach(()=>{
+  beforeEach(() => {
     originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     fixture = TestBed.createComponent(TablesComponent);
@@ -184,7 +184,7 @@ describe('Alarm List Component', ()=>{
     fixture.detectChanges();
   });
 
-  afterEach(()=>{
+  afterEach(() => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
     fixture.detectChanges();
   });
@@ -209,25 +209,25 @@ describe('Alarm List Component', ()=>{
     expect(app.esType).toContain('doc');
   });
 
-  it('shoud have alarm list title', ()=>{
+  it('shoud have alarm list title', () => {
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('.card-header').textContent;
     expect(title).toContain('Alarm List');
   });
 
-  it('shoud have warning modal title', ()=>{
+  it('shoud have warning modal title', () => {
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('#myModalLabel').textContent;
     expect(title).toContain('Warning');
   });
 
-  it('shoud have turn-off button when timer is on', ()=>{
+  it('shoud have turn-off button when timer is on', () => {
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('.btn-primary').textContent;
     expect(title).toContain('Turn-Off Auto Refresh');
   });
 
-  it('shoud have turn-on button when timer is off', ()=>{
+  it('shoud have turn-on button when timer is off', () => {
     app.timer_status = 'off';
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('.btn-dark').textContent;
@@ -250,14 +250,14 @@ describe('Alarm List Component', ()=>{
     expect(app.numberOfVisiblePaginators).toEqual(10);
   });
 
-  it('timer should off when turn-off button clicked', fakeAsync(()=>{
+  it('timer should off when turn-off button clicked', fakeAsync(() => {
     app.timerSubscription =  timer(9000).subscribe();
     app.startStopTimer('off');
     expect(app.timer_status).toBe('off');
     app.timerSubscription.unsubscribe();
   }));
 
-  it('shoud have alert success when alarm deleted succesfully', ()=>{
+  it('shoud have alert success when alarm deleted succesfully', () => {
     app.isRemoved = true;
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('#alert-success').textContent;
@@ -265,7 +265,7 @@ describe('Alarm List Component', ()=>{
     app.isRemoved = false;
   });
 
-  it('shoud have alert danger when alarm deleted occured error', ()=>{
+  it('shoud have alert danger when alarm deleted occured error', () => {
     app.isNotRemoved = true;
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('#alert-failed').textContent;
@@ -273,7 +273,7 @@ describe('Alarm List Component', ()=>{
     app.isNotRemoved = false;
   });
 
-  it('shoud have alarm list header table ', ()=>{
+  it('shoud have alarm list header table ', () => {
     const title = fixture.nativeElement.querySelector('tr').textContent;
     expect(title).toContain('Action');
     expect(title).toContain('AlarmID');
@@ -287,7 +287,7 @@ describe('Alarm List Component', ()=>{
     expect(title).toContain('Destinations');
   });
 
-  it('should return alarm data', (done)=>{
+  it('should return alarm data', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -296,7 +296,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should return alarm id on datatable', (done)=>{
+  it('should return alarm id on datatable', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -306,7 +306,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should return alarm title on datatable', (done)=>{
+  it('should return alarm title on datatable', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -316,7 +316,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should return alarm status on datatable', (done)=>{
+  it('should return alarm status on datatable', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -326,7 +326,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should return alarm risk on datatable', (done)=>{
+  it('should return alarm risk on datatable', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -336,7 +336,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should return alarm tag on datatable', (done)=>{
+  it('should return alarm tag on datatable', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -346,7 +346,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should return alarm source ip on datatable', (done)=>{
+  it('should return alarm source ip on datatable', (done) => {
     app.getData('init');
     setTimeout(() => {
       fixture.detectChanges();
@@ -356,37 +356,37 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should have link to first page on pagination', ()=>{
+  it('should have link to first page on pagination', () => {
     fixture.detectChanges();
     const first = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(first).toContain('First');
   });
 
-  it('should have link to previous page on pagination', ()=>{
+  it('should have link to previous page on pagination', () => {
     fixture.detectChanges();
     const prev = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(prev).toContain('Previous');
   });
 
-  it('should have link to next page on pagination', ()=>{
+  it('should have link to next page on pagination', () => {
     fixture.detectChanges();
     const next = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(next).toContain('Next');
   });
 
-  it('should have link to last page on pagination', ()=>{
+  it('should have link to last page on pagination', () => {
     fixture.detectChanges();
     const last = fixture.nativeElement.querySelector('.pagination').textContent;
     expect(last).toContain('Last');
   });
 
-  it('active page should first page when first link on pagination clicked', ()=>{
+  it('active page should first page when first link on pagination clicked', () => {
     app.firstPage();
     fixture.detectChanges();
     expect(app.activePage).toEqual(1);
   });
 
-  it('active page should last page when last link on pagination clicked', (done)=>{
+  it('active page should last page when last link on pagination clicked', (done) => {
     app.getData('init');
     setTimeout(() => {
       app.lastPage();
@@ -398,7 +398,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('active page should page 2 when link 2 on pagination clicked', (done)=>{
+  it('active page should page 2 when link 2 on pagination clicked', (done) => {
     app.getData('init');
     setTimeout(() => {
       const destinationPage = 2;
@@ -409,7 +409,7 @@ describe('Alarm List Component', ()=>{
     }, 1000);
   });
 
-  it('should remove alarm', (done)=>{
+  it('should remove alarm', (done) => {
     app.timerSubscription = timer(9000).subscribe();
     app.getData('init');
     setTimeout(() => {
