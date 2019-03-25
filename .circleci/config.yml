@@ -52,12 +52,12 @@ jobs:
           paths:
             - "web/ui/node_modules"
       # this will be enabled once the web UI code is ready for it
-      # - run:
-      #     name: Linting
-      #     command: cd web/ui && npm run lint
-      # - run:
-      #     name: Testing
-      #     command: cd web/ui && npm run test
+      - run:
+          name: Linting
+          command: cd web/ui && npm run lint
+      - run:
+          name: Testing
+          command: cd web/ui && npm run test
       - run:
           name: build dist
           command: |
