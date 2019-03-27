@@ -57,7 +57,7 @@ jobs:
           command: cd web/ui && npm run lint
       - run:
           name: Testing
-          command: cd web/ui && npm run test
+          command: export COVERALLS_REPO_TOKEN=$COVERALLS_TOKEN && cd web/ui && npm run test
       - run:
           name: build dist
           command: |
