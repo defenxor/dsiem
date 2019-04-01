@@ -17,10 +17,10 @@ module.exports = function (config) {
     client:{
       clearContext: false // leave Jasmine Spec Runner output visible in browser
     },
-    coverageReporter: {
-      type: 'lcov', // lcov or lcovonly are required for generating lcov.info files
-      dir: 'coverage/'
-    },
+    // coverageReporter: {
+    //   type: 'lcov', // lcov or lcovonly are required for generating lcov.info files
+    //   dir: 'coverage/'
+    // },
     coverageIstanbulReporter: {
       dir: require('path').join(__dirname, 'coverage'), reports: [ 'html', 'lcovonly', 'text-summary' ],
       fixWebpackSourcePaths: true
@@ -28,7 +28,8 @@ module.exports = function (config) {
     angularCli: {
       environment: 'dev'
     },
-    reporters: ['progress', 'kjhtml', 'coverage', 'coveralls'],
+    // reporters: ['progress', 'kjhtml', 'coverage', 'coveralls'],
+    reporters: ['progress', 'kjhtml', 'coveralls'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
