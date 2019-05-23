@@ -177,6 +177,10 @@ jobs:
             else
               echo "release_tag is not set."
             fi
+notify:
+  webhooks:
+    - url: https://coveralls.io/webhook?repo_token=oG1RFMslYemlSTBZFlj1tWDAva89z5xKo
+
 workflows:
   version: 2
   build-test-release:
