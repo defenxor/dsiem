@@ -26,7 +26,7 @@ jobs:
             go test -v -cover -race -timeout=60s -coverprofile=./coverage.out $(go list ./...)
             GOFLAGS=-mod= goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       # goveralls will ignore vendor dir and download stuff, so we cache its results here
-      - save_cache:
+      - save_cache:go
           key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
@@ -177,6 +177,10 @@ jobs:
             else
               echo "release_tag is not set."
             fi
+notify:
+  webhooks:
+    - url: https://coveralls.io/webhook?repo_token=oG1RFMslYemlSTBZFlj1tWDAva89z5xKo
+
 workflows:
   version: 2
   build-test-release:
