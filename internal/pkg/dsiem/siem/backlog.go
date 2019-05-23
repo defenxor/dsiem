@@ -353,24 +353,24 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 	b.setStatusTime()
 
 	// dont wait for I/O
-	b.RLock()
-	go func(b *backLog) {
-		err := b.updateElasticsearch(e)
-		if err != nil {
-			b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
-			if apm.Enabled() {
-				tx.SetError(err)
-				tx.Result("Failed to append and write event")
-				tx.End()
-			}
-		} else {
-			if apm.Enabled() {
-				tx.Result("Event appended to backlog")
-				tx.End()
-			}
+	// b.RLock()
+	// go func(b *backLog) {
+	err := b.updateElasticsearch(e)
+	if err != nil {
+		b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
+		if apm.Enabled() {
+			tx.SetError(err)
+			tx.Result("Failed to append and write event")
+			tx.End()
 		}
-	}(b)
-	b.RUnlock()
+	} else {
+		if apm.Enabled() {
+			tx.Result("Event appended to backlog")
+			tx.End()
+		}
+	}
+	// }(b)
+	// b.RUnlock()
 }
 
 func (b *backLog) isLastStage() (ret bool) {
