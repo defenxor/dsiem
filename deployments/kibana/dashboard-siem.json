@@ -20,11 +20,11 @@
     {
       "id": "a0f5c810-b339-11e8-b3e4-11404c6637fe",
       "type": "visualization",
-      "updated_at": "2018-09-25T07:03:44.515Z",
-      "version": 7,
+      "updated_at": "2019-05-13T20:19:45.376Z",
+      "version": 9,
       "attributes": {
         "title": "SIEM - Tag Category",
-        "visState": "{\"title\":\"SIEM - Tag Category\",\"type\":\"tagcloud\",\"params\":{\"scale\":\"log\",\"orientation\":\"single\",\"minFontSize\":13,\"maxFontSize\":32,\"showLabel\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"category.raw\",\"otherBucket\":true,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "visState": "{\"title\":\"SIEM - Tag Category\",\"type\":\"tagcloud\",\"params\":{\"scale\":\"log\",\"orientation\":\"single\",\"minFontSize\":13,\"maxFontSize\":32,\"showLabel\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"category.keyword\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\",\"otherBucket\":true,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
         "uiStateJSON": "{}",
         "description": "",
         "version": 1,
@@ -36,11 +36,11 @@
     {
       "id": "56c8e620-b337-11e8-b3e4-11404c6637fe",
       "type": "visualization",
-      "updated_at": "2018-09-08T09:05:06.060Z",
-      "version": 5,
+      "updated_at": "2019-05-13T20:20:18.752Z",
+      "version": 6,
       "attributes": {
         "title": "SIEM - Alarm Kingdom",
-        "visState": "{\"title\":\"SIEM - Alarm Kingdom\",\"type\":\"histogram\",\"params\":{\"type\":\"histogram\",\"grid\":{\"categoryLines\":false,\"style\":{\"color\":\"#eee\"},\"valueAxis\":\"ValueAxis-1\"},\"categoryAxes\":[{\"id\":\"CategoryAxis-1\",\"type\":\"category\",\"position\":\"bottom\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\"},\"labels\":{\"show\":true,\"truncate\":100,\"rotate\":0},\"title\":{}}],\"valueAxes\":[{\"id\":\"ValueAxis-1\",\"name\":\"LeftAxis-1\",\"type\":\"value\",\"position\":\"left\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\",\"mode\":\"normal\",\"setYExtents\":false,\"defaultYExtents\":false},\"labels\":{\"show\":true,\"rotate\":0,\"filter\":false,\"truncate\":100},\"title\":{\"text\":\"Count\"}}],\"seriesParams\":[{\"show\":\"true\",\"type\":\"area\",\"mode\":\"normal\",\"data\":{\"label\":\"Count\",\"id\":\"1\"},\"valueAxis\":\"ValueAxis-1\",\"drawLinesBetweenPoints\":true,\"showCircles\":true,\"interpolate\":\"step-after\"}],\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"times\":[],\"addTimeMarker\":true,\"radiusRatio\":35},\"aggs\":[{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"4\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"split\",\"params\":{\"field\":\"kingdom.raw\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"_term\",\"row\":true}}]}",
+        "visState": "{\"title\":\"SIEM - Alarm Kingdom\",\"type\":\"histogram\",\"params\":{\"type\":\"histogram\",\"grid\":{\"categoryLines\":false,\"style\":{\"color\":\"#eee\"},\"valueAxis\":\"ValueAxis-1\"},\"categoryAxes\":[{\"id\":\"CategoryAxis-1\",\"type\":\"category\",\"position\":\"bottom\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\"},\"labels\":{\"show\":true,\"truncate\":100,\"rotate\":0},\"title\":{}}],\"valueAxes\":[{\"id\":\"ValueAxis-1\",\"name\":\"LeftAxis-1\",\"type\":\"value\",\"position\":\"left\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\",\"mode\":\"normal\",\"setYExtents\":false,\"defaultYExtents\":false},\"labels\":{\"show\":true,\"rotate\":0,\"filter\":false,\"truncate\":100},\"title\":{\"text\":\"Count\"}}],\"seriesParams\":[{\"show\":\"true\",\"type\":\"area\",\"mode\":\"normal\",\"data\":{\"label\":\"Count\",\"id\":\"1\"},\"valueAxis\":\"ValueAxis-1\",\"drawLinesBetweenPoints\":true,\"showCircles\":true,\"interpolate\":\"step-after\"}],\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"times\":[],\"addTimeMarker\":true,\"radiusRatio\":35},\"aggs\":[{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"4\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"split\",\"params\":{\"field\":\"kingdom.keyword\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"_key\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"row\":true}}]}",
         "uiStateJSON": "{}",
         "description": "",
         "version": 1,
@@ -84,16 +84,16 @@
     {
       "id": "820da8f0-b465-11e8-b3e4-11404c6637fe",
       "type": "visualization",
-      "updated_at": "2018-09-09T19:21:10.143Z",
-      "version": 1,
+      "updated_at": "2019-05-13T20:30:26.143Z",
+      "version": 3,
       "attributes": {
         "title": "SIEM - Control Status Tag Risk",
-        "visState": "{\"title\":\"SIEM - Control Status Tag Risk\",\"type\":\"input_control_vis\",\"params\":{\"controls\":[{\"id\":\"1536520507633\",\"indexPattern\":\"siem_alarms\",\"fieldName\":\"status.raw\",\"parent\":\"\",\"label\":\"Status\",\"type\":\"list\",\"options\":{\"type\":\"terms\",\"multiselect\":true,\"size\":5,\"order\":\"desc\"}},{\"id\":\"1536520643529\",\"indexPattern\":\"siem_alarms\",\"fieldName\":\"tag.keyword\",\"parent\":\"\",\"label\":\"Tag\",\"type\":\"list\",\"options\":{\"type\":\"terms\",\"multiselect\":true,\"size\":5,\"order\":\"desc\"}},{\"id\":\"1536520687909\",\"indexPattern\":\"siem_alarms\",\"fieldName\":\"risk_class.keyword\",\"parent\":\"\",\"label\":\"Risk\",\"type\":\"list\",\"options\":{\"type\":\"terms\",\"multiselect\":true,\"size\":3,\"order\":\"desc\"}},{\"id\":\"1536520836444\",\"indexPattern\":\"\",\"fieldName\":\"\",\"parent\":\"\",\"label\":\"\",\"type\":\"list\",\"options\":{\"type\":\"terms\",\"multiselect\":true,\"size\":5,\"order\":\"desc\"}}],\"updateFiltersOnChange\":true,\"useTimeFilter\":false,\"pinFilters\":false},\"aggs\":[]}",
+        "visState": "{\"aggs\":[],\"params\":{\"controls\":[{\"fieldName\":\"status.keyword\",\"id\":\"1536520507633\",\"indexPattern\":\"siem_alarms\",\"label\":\"Status\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":5,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"},{\"fieldName\":\"tag.keyword\",\"id\":\"1536520643529\",\"indexPattern\":\"siem_alarms\",\"label\":\"Tag\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":5,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"},{\"fieldName\":\"risk_class.keyword\",\"id\":\"1536520687909\",\"indexPattern\":\"siem_alarms\",\"label\":\"Risk\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":3,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"},{\"fieldName\":\"\",\"id\":\"1536520836444\",\"indexPattern\":\"\",\"label\":\"\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":5,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"}],\"pinFilters\":false,\"updateFiltersOnChange\":true,\"useTimeFilter\":false},\"title\":\"SIEM - Control Status Tag Risk\",\"type\":\"input_control_vis\"}",
         "uiStateJSON": "{}",
         "description": "",
         "version": 1,
         "kibanaSavedObjectMeta": {
-          "searchSourceJSON": "{}"
+          "searchSourceJSON": "{\"query\":{\"language\":\"lucene\",\"query\":\"\"},\"filter\":[]}"
         }
       }
     },
@@ -174,8 +174,8 @@
     {
       "id": "siem_alarms",
       "type": "index-pattern",
-      "updated_at": "2018-11-09T18:53:04.145Z",
-      "version": 73,
+      "updated_at": "2019-05-13T20:22:27.921Z",
+      "version": 80,
       "attributes": {
         "title": "siem_alarms",
         "timeFieldName": "@timestamp",
@@ -186,8 +186,8 @@
     {
       "id": "siem_events",
       "type": "index-pattern",
-      "updated_at": "2018-11-08T14:50:14.362Z",
-      "version": 3,
+      "updated_at": "2019-05-13T20:13:49.287Z",
+      "version": 5,
       "attributes": {
         "title": "siem_events-*",
         "timeFieldName": "@timestamp",
