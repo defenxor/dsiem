@@ -106,7 +106,7 @@ func merge() <-chan bool {
 	return out
 }
 
-func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
+func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent, minAlarmLifetime int) {
 
 	for {
 		evt := <-ch
@@ -197,7 +197,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent) {
 		// blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
-		blogs.bl[b.ID].start(evt)
+		blogs.bl[b.ID].start(evt, minAlarmLifetime)
 	}
 }
 

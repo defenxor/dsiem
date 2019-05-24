@@ -68,6 +68,8 @@ func init() {
 	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling incoming events")
 	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. number of incoming events/second")
 	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
+	serverCmd.Flags().IntP("minAlarmLifetime", "l", 0,
+		"Min. alarm lifetime in minutes. Backlog won't expire sooner than this regardless rule timeouts. This is to support processing of delayed events")
 	serverCmd.Flags().IntP("holdDuration", "n", 10, "Duration in seconds before resetting overload condition state")
 	serverCmd.Flags().Bool("apm", false, "Enable elastic APM instrumentation")
 	serverCmd.Flags().Bool("writeableConfig", false, "Whether to allow configuration file update through HTTP")
@@ -95,6 +97,7 @@ func init() {
 	viper.BindPFlag("maxDelay", serverCmd.Flags().Lookup("maxDelay"))
 	viper.BindPFlag("maxEPS", serverCmd.Flags().Lookup("maxEPS"))
 	viper.BindPFlag("minEPS", serverCmd.Flags().Lookup("minEPS"))
+	viper.BindPFlag("minAlarmLifetime", serverCmd.Flags().Lookup("minAlarmLifetime"))
 	viper.BindPFlag("holdDuration", serverCmd.Flags().Lookup("holdDuration"))
 	viper.BindPFlag("cacheDuration", serverCmd.Flags().Lookup("cacheDuration"))
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
@@ -207,6 +210,7 @@ external message queue.`,
 		esapm := viper.GetBool("apm")
 		writeableConfig := viper.GetBool("writeableConfig")
 		websocket := viper.GetBool("websocket")
+		minAlarmLifetime := viper.GetInt("minAlarmLifetime")
 
 		if err := checkMode(mode, msq, node, frontend); err != nil {
 			exit("Incorrect mode configuration", err)
@@ -274,7 +278,7 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize Vulnerability scan result", err)
 			}
-			err = siem.InitDirectives(confDir, eventChan)
+			err = siem.InitDirectives(confDir, eventChan, minAlarmLifetime)
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}
