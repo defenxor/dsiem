@@ -19,11 +19,12 @@ package dpluger
 import "reflect"
 
 type pluginTemplate struct {
-	P          Plugin
-	Creator    string
-	CreateDate string
-	R          tsvRef
-	SIDField   string
+	P             Plugin
+	Creator       string
+	CreateDate    string
+	R             tsvRef
+	SIDField      string
+	SIDFieldPlain string
 }
 
 func (pt pluginTemplate) IsPluginRule() bool {
