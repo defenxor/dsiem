@@ -229,6 +229,7 @@ func createPluginCollect(plugin Plugin, confFile, creator string, validate bool)
 	pt.Creator = creator
 	pt.SIDField = getLogstashFieldNotation(
 		strings.Replace(plugin.Fields.Title, "collect:", "", 1))
+	pt.SIDFieldPlain = pt.SIDField
 	pt.SIDField = "%{" + pt.SIDField + "}"
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 	transformToLogstashField(&pt.P.Fields)
