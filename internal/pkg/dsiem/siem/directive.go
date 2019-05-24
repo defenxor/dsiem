@@ -60,7 +60,7 @@ var uCases Directives
 
 // InitDirectives initialize directive from directive_*.json files in confDir then start
 // backlog manager for each directive
-func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
+func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLifetime int) error {
 
 	var dirchan []chan event.NormalizedEvent
 	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob)
@@ -81,7 +81,7 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent) error {
 		l := blogs.RLock()
 		allBacklogs = append(allBacklogs, blogs)
 		l.Unlock()
-		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i])
+		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i], minAlarmLifetime)
 	}
 
 	// copy incoming events to all directive channels

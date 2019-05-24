@@ -44,20 +44,21 @@ var (
 type backLog struct {
 	// deadlock.RWMutex
 	sync.RWMutex
-	ID           string    `json:"backlog_id"`
-	StatusTime   int64     `json:"status_time"`
-	Risk         int       `json:"risk"`
-	CurrentStage int       `json:"current_stage"`
-	HighestStage int       `json:"highest_stage"`
-	Directive    directive `json:"directive"`
-	SrcIPs       []string  `json:"src_ips"`
-	DstIPs       []string  `json:"dst_ips"`
-	LastEvent    event.NormalizedEvent
-	chData       chan event.NormalizedEvent
-	chDone       chan struct{}
-	chFound      chan bool
-	deleted      bool      // flag for deletion process
-	bLogs        *backlogs // pointer to parent, for locking delete operation?
+	ID               string    `json:"backlog_id"`
+	StatusTime       int64     `json:"status_time"`
+	Risk             int       `json:"risk"`
+	CurrentStage     int       `json:"current_stage"`
+	HighestStage     int       `json:"highest_stage"`
+	Directive        directive `json:"directive"`
+	SrcIPs           []string  `json:"src_ips"`
+	DstIPs           []string  `json:"dst_ips"`
+	LastEvent        event.NormalizedEvent
+	chData           chan event.NormalizedEvent
+	chDone           chan struct{}
+	chFound          chan bool
+	deleted          bool      // flag for deletion process
+	bLogs            *backlogs // pointer to parent, for locking delete operation?
+	minAlarmLifetime int64
 }
 
 type siemAlarmEvents struct {
@@ -66,7 +67,9 @@ type siemAlarmEvents struct {
 	Event string `json:"event_id"`
 }
 
-func (b *backLog) start(initialEvent event.NormalizedEvent) {
+func (b *backLog) start(initialEvent event.NormalizedEvent, minAlarmLifetime int) {
+	// convert to int64 and to seconds
+	b.minAlarmLifetime = int64(minAlarmLifetime * 60)
 	b.processMatchedEvent(initialEvent, 0)
 	go b.newEventProcessor()
 	go b.expirationChecker()
@@ -200,15 +203,16 @@ func (b *backLog) isTimeInOrder(idx int, ts int64) bool {
 }
 
 func (b *backLog) isExpired() bool {
-	now := time.Now().Unix()
+	limit := time.Now().Unix()
 	b.RLock()
+	limit = limit - b.minAlarmLifetime
 	cs := b.CurrentStage
 	idx := cs - 1
 	start := b.Directive.Rules[idx].StartTime
 	timeout := b.Directive.Rules[idx].Timeout
 	b.RUnlock()
 	maxTime := start + timeout
-	return maxTime < now
+	return maxTime < limit
 }
 
 func (b *backLog) setRuleEndTime(e event.NormalizedEvent) {
