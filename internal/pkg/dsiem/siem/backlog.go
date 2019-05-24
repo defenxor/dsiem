@@ -205,9 +205,7 @@ func (b *backLog) isTimeInOrder(idx int, ts int64) bool {
 func (b *backLog) isExpired() bool {
 	limit := time.Now().Unix()
 	b.RLock()
-	if b.minAlarmLifetime > 0 {
-		limit = limit - b.minAlarmLifetime
-	}
+	limit = limit - b.minAlarmLifetime
 	cs := b.CurrentStage
 	idx := cs - 1
 	start := b.Directive.Rules[idx].StartTime

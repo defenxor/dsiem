@@ -114,7 +114,7 @@ func TestBacklogMgr(t *testing.T) {
 		}
 	}()
 
-	go allBacklogs[0].manager(dctives, ch)
+	go allBacklogs[0].manager(dctives, ch, 0)
 
 	holdSecDuration := 4
 	if err = InitBackLogManager(tmpLog, bpChOutput, holdSecDuration); err != nil {

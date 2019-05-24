@@ -121,7 +121,7 @@ func TestBackLog(t *testing.T) {
 	}()
 
 	fmt.Println("first event (by start)")
-	go b.start(e)
+	go b.start(e,0)
 
 	// will also raise stage
 	fmt.Print("under pressure ..")
@@ -145,10 +145,12 @@ func TestBackLog(t *testing.T) {
 	verifyEventOutput(t, e, b.chData, "cannot parse event timestamp")
 
 	fmt.Print("Check expiration ..")
+	// maxTime < limit
 	if !b.isExpired() {
 		t.Fatal("expected to not yet expire")
 	}
 	fmt.Println("OK")
+
 
 	fmt.Print("Check deletion ..")
 	verifyFuncOutput(t, func() {
