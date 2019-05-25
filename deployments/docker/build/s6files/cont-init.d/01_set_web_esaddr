@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/with-contenv bash
 
 target="/dsiem/web/dist/assets/config/esconfig.json"
 
