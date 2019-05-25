@@ -1,8 +1,12 @@
 #!/bin/bash
 jc=$(ls /dsiem/configs/*.json 2>/dev/null | wc -l)
 
-# only when empty
-if [ "$jc" == "0" ]; then
+[ "$DSIEM_MODE" == "cluster-backend" ] && isbackend=true || isbackend=false
+
+# only when empty or non backend mode. Backends initially will start with an empty config and pull
+# them from frontend.
+
+if [ "$jc" == "0" ] && ! $isbackend; then
   echo "/dsiem/configs has no config file, prepopulating it from /dsiem/configs-dist."
   cp /dsiem/configs-dist/* /dsiem/configs/
 fi
