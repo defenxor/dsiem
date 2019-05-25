@@ -73,5 +73,10 @@ if [ "$cmd" == "ci-status" ]; then
 fi
 
 # for the rest of useful commands, just pass it directly to hub
-[ "$cmd" == "pull-request" ] || [ "$cmd" == "push" ] || [ "$cmd" == "commit" ] && (echo $cmd is not a supported command && exit 1) 
-hub $cmd
+if [ "$cmd" == "pull-request" ] || [ "$cmd" == "push" ] || [ "$cmd" == "commit" ]; then
+  hub $cmd
+  exit $?
+else 
+  echo $cmd is not a supported command
+  exit 1
+fi
