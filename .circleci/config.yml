@@ -22,9 +22,10 @@ jobs:
           command: |
             go fmt ./...
             go vet ./...
-            GOFLAGS=-mod= go get github.com/mattn/goveralls
+            # GOFLAGS=-mod= go get github.com/mattn/goveralls
             go test -v -cover -race -timeout=60s -coverprofile=./coverage.out $(go list ./...)
-            GOFLAGS=-mod= goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
+            bash <(curl -s https://codecov.io/bash)
+            # GOFLAGS=-mod= goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       # goveralls will ignore vendor dir and download stuff, so we cache its results here
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}
@@ -57,7 +58,8 @@ jobs:
           command: cd web/ui && npm run lint
       - run:
           name: Testing
-          command: export COVERALLS_REPO_TOKEN=$COVERALLS_TOKEN && cd web/ui && npm run test
+          # command: export COVERALLS_REPO_TOKEN=$COVERALLS_TOKEN && cd web/ui && npm run test
+          command: cd web/ui && npm run test && bash <(curl -s https://codecov.io/bash)
       - run:
           name: build dist
           command: |
