@@ -15,7 +15,9 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.checkES();
+    setTimeout(() => {
+      this.checkES();
+    }, 500);
   }
 
   checkES() {
