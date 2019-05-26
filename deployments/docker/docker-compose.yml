@@ -72,7 +72,7 @@ services:
 
   suricata:
     container_name: suricata
-    image: dtagdevsec/suricata:1710
+    image: defenxor/suricata:1710
     network_mode: "host"
     cap_add:
      - NET_ADMIN
