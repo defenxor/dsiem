@@ -220,7 +220,7 @@ export class ElasticsearchService {
       // host:  environment.elasticsearch,
       host:  this.server,
       log: 'info',
-      apiVersion: '6.3'
+      // apiVersion: '6.3'
     });
   }
 
