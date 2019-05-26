@@ -9,7 +9,7 @@ import { environment } from '../environments/environment';
 })
 export class ElasticsearchService {
   private client: Client;
-  private server: string;
+  public server: string;
 
   querylast5mins = {
     'size' : 50,
@@ -220,7 +220,7 @@ export class ElasticsearchService {
       // host:  environment.elasticsearch,
       host:  this.server,
       log: 'info',
-      apiVersion: '6.3'
+      // apiVersion: '6.3'
     });
   }
 
