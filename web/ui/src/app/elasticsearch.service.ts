@@ -261,23 +261,23 @@ export class ElasticsearchService {
 
   countEvents(_index, alarmId, stage): any {
     const b = `{
-      'query': {
-        'bool': {
-          'must': [
+      "query": {
+        "bool": {
+          "must": [
             {
-              'match_all': {}
+              "match_all": {}
             },
             {
-              'match_phrase': {
-                'stage': {
-                  'query': ${stage}
+              "match_phrase": {
+                "stage": {
+                  "query": ${stage}
                 }
               }
             },
             {
-              'match_phrase': {
-                'alarm_id': {
-                  'query': '${alarmId}'
+              "match_phrase": {
+                "alarm_id": {
+                  "query": "${alarmId}"
                 }
               }
             }
