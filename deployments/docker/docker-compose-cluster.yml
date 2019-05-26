@@ -54,7 +54,8 @@ services:
       - DSIEM_NODE=dsiem
       - DSIEM_MSQ=nats://dsiem-nats:4222
       - DSIEM_PORT=8080
-      - DSIEM_WEB_ESURL=http://localhost:9200     
+      - DSIEM_WEB_ESURL=http://localhost:9200
+      - DSIEM_WEB_KBNURL=http://localhost:5601
     ports:
       - "8080:8080"
     networks:

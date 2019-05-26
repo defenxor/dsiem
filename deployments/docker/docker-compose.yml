@@ -56,6 +56,7 @@ services:
       - dsiem-log:/dsiem/logs
     environment:
       - DSIEM_WEB_ESURL=http://localhost:9200
+      - DSIEM_WEB_KBNURL=http://localhost:5601
 
   filebeat:
     container_name: filebeat
