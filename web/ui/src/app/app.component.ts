@@ -11,18 +11,18 @@ export class AppComponent implements OnInit {
   private elasticsearch: string;
 
   constructor(private router: Router, private es: ElasticsearchService) {
-    this.elasticsearch = this.es.getServer();
   }
 
   ngOnInit() {
     setTimeout(() => {
       this.checkES();
+      this.elasticsearch = this.es.getServer();
     }, 500);
   }
 
   checkES() {
     this.es.isAvailable().then(() => {
-      console.log(`[ES Check] Connectd to ${this.elasticsearch}`);
+      console.log(`[ES Check] Connected to ${this.elasticsearch}`);
     }, error => {
       console.log(`[ES Check] Disconnected from ${this.elasticsearch} - ${error}`);
     }).then(() => {
