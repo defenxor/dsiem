@@ -9,7 +9,7 @@ import { environment } from '../environments/environment';
 })
 export class ElasticsearchService {
   private client: Client;
-  public server: string;
+  private server: string;
 
   querylast5mins = {
     'size' : 50,
