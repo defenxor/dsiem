@@ -108,6 +108,7 @@ func merge() <-chan bool {
 
 func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent, minAlarmLifetime int) {
 
+mainLoop:
 	for {
 		evt := <-ch
 
@@ -172,7 +173,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent, min
 				tx.Result("Event consumed by backlog")
 				tx.End()
 			}
-			continue
+			continue mainLoop
 		}
 		// now for new backlog
 		// stickydiff cannot be used on 1st rule, so we pass nil
@@ -181,8 +182,24 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent, min
 				tx.Result("Event doesn't match rule")
 				tx.End()
 			}
-			continue // back to chan loop
+			continue mainLoop // back to chan loop
 		}
+
+		// compare the event against all backlogs starting event ID to prevent duplicates
+		// due to 
+		l = blogs.RLock()
+		for _, v := range blogs.bl {
+			for _, j := range v.Directive.Rules[0].Events {
+				if j == evt.EventID {
+					log.Info(log.M{Msg: "skipping backlog creation for event " + j +
+						", it's already used in backlog " + v.ID})
+					l.Unlock()
+					continue mainLoop // back to chan loop
+				}
+			}
+		}
+		l.Unlock()
+
 		b, err := createNewBackLog(d, evt)
 		if err != nil {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
@@ -190,7 +207,7 @@ func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent, min
 				tx.Result("Fail to create new backlog")
 				tx.End()
 			}
-			continue
+			continue mainLoop
 		}
 		blogs.Lock()
 		blogs.bl[b.ID] = b

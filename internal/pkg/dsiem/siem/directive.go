@@ -217,11 +217,16 @@ func validateDirective(d *directive, res *Directives) (err error) {
 				return errors.New("TaxonomyRule requires Category to be defined")
 			}
 		}
-		if v.Reliability < 1 || v.Reliability > 10 {
-			// return errors.New("Reliability must be defined between 1 to 10")
+		// reliability maybe 0 for the first rule!
+		if v.Reliability < 0 {
 			log.Warn(log.M{Msg: "Directive " + strconv.Itoa(d.ID) + " rule " + strconv.Itoa(v.Stage) +
-				" has wrong reliability set (" + strconv.Itoa(v.Reliability) + "), configuring it to 1"})
-			d.Rules[j].Reliability = 1
+				" has wrong reliability set (" + strconv.Itoa(v.Reliability) + "), configuring it to 0"})
+			d.Rules[j].Reliability = 0
+		}
+		if v.Reliability > 10 {
+			log.Warn(log.M{Msg: "Directive " + strconv.Itoa(d.ID) + " rule " + strconv.Itoa(v.Stage) +
+				" has wrong reliability set (" + strconv.Itoa(v.Reliability) + "), configuring it to 10"})
+			d.Rules[j].Reliability = 10
 		}
 		isFirstStage := v.Stage == 1
 		if err := validateFromTo(v.From, isFirstStage); err != nil {

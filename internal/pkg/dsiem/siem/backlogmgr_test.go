@@ -160,18 +160,28 @@ func TestBacklogMgr(t *testing.T) {
 	// this should create new backlog
 	fmt.Print("5th event ..")
 	e.ConnID = 5
+	e.EventID = "2"
 	e.SrcIP = "192.168.0.1"
 	e.DstIP = "192.168.0.3"
 	verifyEventOutput(t, e, ch, "Creating new backlog")
 
 	if len(allBacklogs[0].bl) != 2 {
 		t.Fatal("allBacklogs.bl is expected to have a length of 2")
+	} else {
+		t.Log("backlogs total event = 2 as expected.")
 	}
 
-	// will not match rule
+	// should not trigger new backlog due to duplicate event ID
 	fmt.Print("6th event ..")
-	e.PluginSID = 31337
 	e.ConnID = 6
+	e.SrcIP = "192.168.0.100"
+	e.DstIP = "192.168.0.1"
+	verifyEventOutput(t, e, ch, "skipping backlog creation for event")
+
+	// will not match rule nor existing backlogs
+	fmt.Print("7th event ..")
+	e.PluginSID = 31337
+	e.ConnID = 7
 	verifyEventOutput(t, e, ch, "backlog doeseventmatch false")
 
 	var blID string

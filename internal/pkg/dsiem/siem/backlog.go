@@ -268,7 +268,17 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		return
 	}
 
-	// reach max occurrence, but not in last stage. Increase stage.
+	// reach max occurrence, but not in last stage.
+
+	// recalc risk, updateAlarm if there's an increase
+	riskChanged := b.calcRisk(e.ConnID)
+	if riskChanged {
+		// this LastEvent is used to get ports by alarm
+		b.setLastEvent(e)
+		b.updateAlarm(e.ConnID, true, tx)
+	}
+
+	// Increase stage.
 	b.increaseStage(e)
 
 	// set rule startTime for the new stage
@@ -285,13 +295,6 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		tx.Result("Stage increased")
 	}
 
-	// recalc risk, the new stage will have a different reliability
-	riskChanged := b.calcRisk(e.ConnID)
-	if riskChanged {
-		// this LastEvent is used to get ports by alarm
-		b.setLastEvent(e)
-		b.updateAlarm(e.ConnID, true, tx)
-	}
 }
 
 func (b *backLog) info(msg string, connID uint64) {
@@ -420,6 +423,13 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	b.RLock()
 	s := b.CurrentStage
 	idx := s - 1
+
+	if len(b.Directive.Rules[idx].Events) == 0 {
+		b.debug("skip calculating risk, no event received for this stage yet", connID)
+		riskChanged = false
+		return
+	}
+
 	value := 0
 	for i := range b.SrcIPs {
 		v := asset.GetValue(b.SrcIPs[i])
@@ -437,7 +447,7 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	pRisk := b.Risk
 	reliability := b.Directive.Rules[idx].Reliability
 	priority := b.Directive.Priority
-	risk := priority * reliability * value / 25
+	risk := priority * reliability * value / 25	
 	//
 	//		"SrcIPs:", b.SrcIPs, "DstIPs:", b.DstIPs, "asset value:", value, "rel:",
 	//		reliability, "prio:", priority, "risk:", risk)
