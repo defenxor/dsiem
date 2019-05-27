@@ -26,6 +26,7 @@ web/dist
 web/ui/dist
 
 temp/
+test/
 test/pprof_results
 configs/dsiem_config.json
 logs
