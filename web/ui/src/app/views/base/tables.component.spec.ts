@@ -17,6 +17,7 @@ describe('Alarm List Component', () => {
   let responseCount;
   let responseRemoveById;
   let originalTimeout;
+  let esService: ElasticsearchService;
 
   beforeEach(async(() => {
 
@@ -150,6 +151,7 @@ describe('Alarm List Component', () => {
     serviceStub = {
       getAllDocumentsPaging: () => responseAllDocument,
       getServer: () => of(),
+      isAvailable: () => new Promise((resolve, reject) => { resolve('done'); }),
       countEvents: () => responseCount,
       getAlarmEventsWithoutStage: ()  => new Promise((resolve) => { resolve(responseAllDocument); }),
       removeAlarmById: () => new Promise((resolve) => { resolve(responseRemoveById); }),
@@ -181,11 +183,15 @@ describe('Alarm List Component', () => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     fixture = TestBed.createComponent(TablesComponent);
     app = fixture.debugElement.componentInstance;
+    esService = TestBed.get(ElasticsearchService);
     fixture.detectChanges();
   });
 
   afterEach(() => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+    app.checkES = () => {
+      return null;
+    };
     fixture.detectChanges();
   });
 
@@ -427,6 +433,24 @@ describe('Alarm List Component', () => {
       app.timerSubscription.unsubscribe();
       done();
     }, 15000);
+  });
+
+  it('should resolve isAvailable method', () => {
+    const spy = spyOn(esService, 'isAvailable').and.callFake(() => {
+      return Promise.resolve();
+    });
+    const component = fixture.componentInstance;
+    component.checkES();
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('should reject isAvailable method', () => {
+    const spy = spyOn(esService, 'isAvailable').and.callFake(() => {
+      return Promise.reject();
+    });
+    const component = fixture.componentInstance;
+    component.checkES();
+    expect(spy).toHaveBeenCalled();
   });
 
 });
