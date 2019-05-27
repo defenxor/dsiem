@@ -436,17 +436,17 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
 
   checkES() {
     this.es.isAvailable().then(() => {
-      console.log("Connected to ES " + this.elasticsearch)
-      this.statusConnected = "Connected to ES " + this.elasticsearch;
+      console.log('Connected to ES ' + this.elasticsearch);
+      this.statusConnected = 'Connected to ES ' + this.elasticsearch;
       this.statusDisconnected = null;
     }, error => {
-      console.log("Disconnected from ES " + this.elasticsearch)
-      this.statusDisconnected = "Disconnected from ES " + this.elasticsearch;
+      console.log('Disconnected from ES ' + this.elasticsearch);
+      this.statusDisconnected = 'Disconnected from ES ' + this.elasticsearch;
       this.statusConnected = null;
-      console.error('Elasticsearch is down', error)
+      console.error('Elasticsearch is down', error);
     }).then(() => {
       this.timerSubscriptionStatus = timer(5000).subscribe(() => this.checkES());
-    })
+    });
   }
 
 }
