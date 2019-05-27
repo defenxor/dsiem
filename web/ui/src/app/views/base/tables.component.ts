@@ -40,9 +40,13 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
   isNotRemoved;
   errMsg;
   disabledBtn;
+  statusDisconnected = '';
+  statusConnected = '';
+  timerSubscriptionStatus: any;
 
   constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService) {
     this.elasticsearch = this.es.getServer();
+    this.checkES();
   }
 
   ngAfterViewInit() {
@@ -54,6 +58,9 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy() {
     if (this.timerSubscription) {
       this.timerSubscription.unsubscribe();
+    }
+    if (this.timerSubscriptionStatus) {
+      this.timerSubscriptionStatus.unsubscribe();
     }
   }
 
@@ -425,6 +432,21 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
       });
     });
 
+  }
+
+  checkES() {
+    this.es.isAvailable().then(() => {
+      console.log("Connected to ES " + this.elasticsearch)
+      this.statusConnected = "Connected to ES " + this.elasticsearch;
+      this.statusDisconnected = null;
+    }, error => {
+      console.log("Disconnected from ES " + this.elasticsearch)
+      this.statusDisconnected = "Disconnected from ES " + this.elasticsearch;
+      this.statusConnected = null;
+      console.error('Elasticsearch is down', error)
+    }).then(() => {
+      this.timerSubscriptionStatus = timer(5000).subscribe(() => this.checkES());
+    })
   }
 
 }
