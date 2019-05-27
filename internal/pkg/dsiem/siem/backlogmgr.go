@@ -187,7 +187,7 @@ mainLoop:
 
 		// compare the event against all backlogs starting event ID to prevent duplicates
 		// due to concurrency
-		l = blogs.RLock()
+		blogs.Lock()
 		for _, v := range blogs.bl {
 			for _, j := range v.Directive.Rules[0].Events {
 				if j == evt.EventID {
@@ -197,12 +197,12 @@ mainLoop:
 						tx.Result("Event already used in backlog" + v.ID)
 						tx.End()
 					}
-					l.Unlock()
+					blogs.Unlock()
 					continue mainLoop // back to chan loop
 				}
 			}
 		}
-		l.Unlock()
+		blogs.Unlock()
 
 		// lock from here also to prevent duplicates
 		blogs.Lock()

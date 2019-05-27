@@ -136,11 +136,11 @@ func TestBacklogMgr(t *testing.T) {
 
 	fmt.Print("first event ..")
 	e.Timestamp = time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339)
-	e.ConnID = 1
 	verifyEventOutput(t, e, ch, "stage increased")
 
 	fmt.Print("second event ..")
 	e.ConnID = 2
+	e.EventID = "2"
 	verifyEventOutput(t, e, ch, "backlog updating")
 
 	fmt.Print("3rd event, will also fail updating ES ..")
