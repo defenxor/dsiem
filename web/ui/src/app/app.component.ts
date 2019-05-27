@@ -14,10 +14,10 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    setTimeout(() => {
-      this.checkES();
-      this.elasticsearch = this.es.getServer();
-    }, 500);
+    // setTimeout(() => {
+      // this.checkES();
+      // this.elasticsearch = this.es.getServer();
+    // }, 500);
   }
 
   checkES() {
