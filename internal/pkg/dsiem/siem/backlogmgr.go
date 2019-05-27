@@ -124,8 +124,27 @@ mainLoop:
 			tx.SetCustom("directive_id", d.ID)
 		}
 
+		// compare the event against all backlogs starting event ID to prevent duplicates
+		// due to concurrency
+		l := blogs.RLock()
+		for _, v := range blogs.bl {
+			for _, j := range v.Directive.Rules[0].Events {
+				if j == evt.EventID {
+					log.Info(log.M{Msg: "skipping backlog creation for event " + j +
+						", it's already used in backlog " + v.ID})
+					if apm.Enabled() && tx != nil {
+						tx.Result("Event already used in backlog" + v.ID)
+						tx.End()
+					}
+					l.Unlock()
+					continue mainLoop // back to chan loop
+				}
+			}
+		}
+		l.Unlock()
+
 		found := false
-		l := blogs.RLock() // to prevent concurrent r/w with delete()
+		l = blogs.RLock() // to prevent concurrent r/w with delete()
 		// TODO:
 		// maybe check event against all rules here, if non match then continue
 		// this will avoid checking against all backlogs which could be in 1000s compared to
@@ -184,25 +203,6 @@ mainLoop:
 			}
 			continue mainLoop // back to chan loop
 		}
-
-		// compare the event against all backlogs starting event ID to prevent duplicates
-		// due to concurrency
-		l = blogs.RLock()
-		for _, v := range blogs.bl {
-			for _, j := range v.Directive.Rules[0].Events {
-				if j == evt.EventID {
-					log.Info(log.M{Msg: "skipping backlog creation for event " + j +
-						", it's already used in backlog " + v.ID})
-					if apm.Enabled() && tx != nil {
-						tx.Result("Event already used in backlog" + v.ID)
-						tx.End()
-					}
-					l.Unlock()
-					continue mainLoop // back to chan loop
-				}
-			}
-		}
-		l.Unlock()
 
 		// lock from here also to prevent duplicates
 		blogs.Lock()
