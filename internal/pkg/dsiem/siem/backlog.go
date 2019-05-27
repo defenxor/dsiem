@@ -289,10 +289,10 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 	// b.setStatus("active", e.ConnID, tx)
 	if apm.Enabled() {
-		b.RLock()
+		b.Lock()
 		tx.SetCustom("backlog_stage", b.CurrentStage)
-		b.RUnlock()
 		tx.Result("Stage increased")
+		b.Unlock()
 	}
 }
 

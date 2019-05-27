@@ -116,7 +116,7 @@ mainLoop:
 		if apm.Enabled() {
 			if evt.RcvdTime == 0 {
 				log.Warn(log.M{Msg: "Cannot parse event received time, skipping event", CId: evt.ConnID})
-				continue
+				continue mainLoop
 			}
 			tStart := time.Unix(evt.RcvdTime, 0)
 			tx = apm.StartTransaction("Frontend to Backend", "SIEM", &tStart)
@@ -186,13 +186,17 @@ mainLoop:
 		}
 
 		// compare the event against all backlogs starting event ID to prevent duplicates
-		// due to 
+		// due to concurrency
 		l = blogs.RLock()
 		for _, v := range blogs.bl {
 			for _, j := range v.Directive.Rules[0].Events {
 				if j == evt.EventID {
 					log.Info(log.M{Msg: "skipping backlog creation for event " + j +
 						", it's already used in backlog " + v.ID})
+					if apm.Enabled() && tx != nil {
+						tx.Result("Event already used in backlog" + v.ID)
+						tx.End()
+					}
 					l.Unlock()
 					continue mainLoop // back to chan loop
 				}
@@ -200,6 +204,8 @@ mainLoop:
 		}
 		l.Unlock()
 
+		// lock from here also to prevent duplicates
+		blogs.Lock()
 		b, err := createNewBackLog(d, evt)
 		if err != nil {
 			log.Warn(log.M{Msg: "Fail to create new backlog", DId: d.ID, CId: evt.ConnID})
@@ -207,9 +213,9 @@ mainLoop:
 				tx.Result("Fail to create new backlog")
 				tx.End()
 			}
+			blogs.Unlock()
 			continue mainLoop
 		}
-		blogs.Lock()
 		blogs.bl[b.ID] = b
 		// blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs
