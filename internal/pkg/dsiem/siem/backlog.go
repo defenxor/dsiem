@@ -294,7 +294,6 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 		b.RUnlock()
 		tx.Result("Stage increased")
 	}
-
 }
 
 func (b *backLog) info(msg string, connID uint64) {
@@ -339,7 +338,10 @@ func (b *backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transa
 	vStatTime := b.StatusTime
 	vID := b.ID
 	b.RUnlock()
-	go alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vSrcPort,
+
+	// running this under goroutine seem to make processMatchedEvent
+	// fails to record startTime
+	alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vSrcPort,
 		vDstPort, vRisk, vStatTime, tmp, connID, checkIntelVuln, tx)
 }
 
@@ -447,7 +449,7 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	pRisk := b.Risk
 	reliability := b.Directive.Rules[idx].Reliability
 	priority := b.Directive.Priority
-	risk := priority * reliability * value / 25	
+	risk := priority * reliability * value / 25
 	//
 	//		"SrcIPs:", b.SrcIPs, "DstIPs:", b.DstIPs, "asset value:", value, "rel:",
 	//		reliability, "prio:", priority, "risk:", risk)
