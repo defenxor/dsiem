@@ -160,7 +160,7 @@ Using the above config, `dpluger` will gather uniq entries in `signature` field 
 
 ```yaml
 translate {
-        field => "%{[signature]}"
+        field => "%[signature]"
         destination => "[plugin_sid]"
         dictionary => {
           "BlueCoat: Blue Coat BCAAA Stack Buffer Overflow Vulnerability" => "1"
