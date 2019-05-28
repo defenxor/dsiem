@@ -1,4 +1,4 @@
-/*
+
 Copyright (c) 2019 PT Defender Nusa Semesta and contributors, All rights reserved.
 
 This file is part of Dsiem.
@@ -14,14 +14,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
-*/
-import { Component } from '@angular/core';
 
-@Component({
-  templateUrl: '500.component.html'
-})
-export class P500Component {
-
-  constructor() { }
-
-}
