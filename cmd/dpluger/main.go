@@ -172,6 +172,10 @@ var directiveCmd = &cobra.Command{
 			exit("dirNumber must be greater than 0", errors.New("wrong dirNumber"))
 		}
 
+		if !fs.FileExist(tsvFile) {
+			exit(tsvFile+" doesn't exist", errors.New("wrong TSVFile parameter"))
+		}
+
 		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, category, priority, reliability, dirNumber); err != nil {
 			exit("Cannot create directive file", err)
 		}
