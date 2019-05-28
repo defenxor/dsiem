@@ -1,7 +1,7 @@
 {
   "title": [
     {
-      "pattern": "^(build|ci|docs|feat|fix|perf|refactor|style|test):\\s",
+      "pattern": "^(build|ci|docs|feat|fix|perf|refactor|style|test|chore):\\s",
       "message": "PR title needs to be prefixed with a type, e.g. refactor: the title."
     }
   ]
