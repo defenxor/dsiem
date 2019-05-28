@@ -106,7 +106,7 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		dirNumber = dirNumber + 1
 	}
 
-	b, err := json.MarshalIndent(dirs.Dirs, "", "  ")
+	b, err := json.MarshalIndent(dirs, "", "  ")
 	if err != nil {
 		return
 	}
