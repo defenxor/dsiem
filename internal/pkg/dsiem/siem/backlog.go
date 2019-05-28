@@ -49,7 +49,7 @@ type backLog struct {
 	Risk             int       `json:"risk"`
 	CurrentStage     int       `json:"current_stage"`
 	HighestStage     int       `json:"highest_stage"`
-	Directive        directive `json:"directive"`
+	Directive        Directive `json:"directive"`
 	SrcIPs           []string  `json:"src_ips"`
 	DstIPs           []string  `json:"dst_ips"`
 	LastEvent        event.NormalizedEvent

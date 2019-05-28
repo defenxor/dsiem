@@ -41,7 +41,8 @@ const (
 	directiveFileGlob = "directives_*.json"
 )
 
-type directive struct {
+// Directive represents a SIEM use case that has several correlation rules
+type Directive struct {
 	ID          int                   `json:"id"`
 	Name        string                `json:"name"`
 	Priority    int                   `json:"priority"`
@@ -53,7 +54,7 @@ type directive struct {
 
 // Directives group directive together
 type Directives struct {
-	Dirs []directive `json:"directives"`
+	Dirs []Directive `json:"directives"`
 }
 
 var uCases Directives
@@ -156,7 +157,7 @@ func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives,
 	return
 }
 
-func validateDirective(d *directive, res *Directives) (err error) {
+func validateDirective(d *Directive, res *Directives) (err error) {
 	for _, v := range res.Dirs {
 		if v.ID == d.ID {
 			return errors.New(strconv.Itoa(d.ID) + " is already used as an ID by other directive")
@@ -294,7 +295,7 @@ func validateFromTo(s string, isFirstRule bool) (err error) {
 	return nil
 }
 
-func copyDirective(dst *directive, src directive, e event.NormalizedEvent) {
+func copyDirective(dst *Directive, src Directive, e event.NormalizedEvent) {
 	dst.ID = src.ID
 	dst.Priority = src.Priority
 	dst.Kingdom = src.Kingdom
