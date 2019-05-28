@@ -144,7 +144,7 @@ var createCmd = &cobra.Command{
 		if err := dpluger.CreateConfig(config, address, index, name, typ); err != nil {
 			exit("Cannot parse config file", err)
 		}
-		fmt.Println("Template created. in " + config + "\n" +
+		fmt.Println("Template created in " + config + "\n" +
 			"Now you should edit the generated template and insert the appropriate parameters and ES field names.")
 	},
 }
