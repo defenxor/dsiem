@@ -18,7 +18,7 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 * Loosely coupled, designed to be composable with other infrastructure platform, and doesn't try to do everything. Loose coupling also means that it's possible to use Dsiem as an OSSIM-style correlation engine with non ELK stack if needed.
 * Batteries included:
     * A directive conversion tool that reads OSSIM XML directive file and translate it to Dsiem JSON-style config.
-    * A SIEM plugin creator tool that will read off an existing index pattern from Elasticsearch, and creates the necessary Logstash configuration to clone the relevant fields' content to Dsiem.
+    * A SIEM plugin creator tool that will read off an existing index pattern from Elasticsearch, and creates the necessary Logstash configuration to clone the relevant fields' content to Dsiem. The tool can also generate basic directive required by Dsiem to correlate received events and generate alarm.
     * A helper tool to serve Nessus CSV files over the network to Dsiem.
     * A light weight Angular web UI just for basic alarms management (closing, tagging), and easy pivoting to the relevant indices in Kibana to perform the actual analysis.
 * Obviously a cloud-native, twelve-factor app, and all that jazz.
