@@ -34,22 +34,22 @@ type DirectiveRule struct {
 	Stage       int      `json:"stage"`
 	PluginID    int      `json:"plugin_id"`
 	PluginSID   []int    `json:"plugin_sid"`
-	Product     []string `json:"product"`
-	Category    string   `json:"category"`
-	SubCategory []string `json:"subcategory"`
+	Product     []string `json:"product,omitempty"`
+	Category    string   `json:"category,omitempty"`
+	SubCategory []string `json:"subcategory,omitempty"`
 	Occurrence  int      `json:"occurrence"`
 	From        string   `json:"from"`
 	To          string   `json:"to"`
 	Type        string   `json:"type"`
 	PortFrom    string   `json:"port_from"`
 	PortTo      string   `json:"port_to"`
-	Protocol    string   `json:"protocol"`
+	Protocol    string   `json:"protocol,omitempty"`
 	Reliability int      `json:"reliability"`
 	Timeout     int64    `json:"timeout"`
-	StartTime   int64    `json:"start_time"`
-	EndTime     int64    `json:"end_time"`
-	RcvdTime    int64    `json:"rcvd_time"`
-	Status      string   `json:"status"`
+	StartTime   int64    `json:"start_time,omitempty"`
+	EndTime     int64    `json:"end_time,omitempty"`
+	RcvdTime    int64    `json:"rcvd_time,omitempty"`
+	Status      string   `json:"status,omitempty"`
 	Events      []string `json:"events,omitempty"`
 	StickyDiff  string   `json:"sticky_different,omitempty"`
 }

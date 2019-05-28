@@ -106,7 +106,7 @@ func merge() <-chan bool {
 	return out
 }
 
-func (blogs *backlogs) manager(d directive, ch <-chan event.NormalizedEvent, minAlarmLifetime int) {
+func (blogs *backlogs) manager(d Directive, ch <-chan event.NormalizedEvent, minAlarmLifetime int) {
 
 mainLoop:
 	for {
@@ -260,7 +260,7 @@ func (blogs *backlogs) delete(b *backLog) {
 	}()
 }
 
-func createNewBackLog(d directive, e event.NormalizedEvent) (bp *backLog, err error) {
+func createNewBackLog(d Directive, e event.NormalizedEvent) (bp *backLog, err error) {
 	bid, err := idgen.GenerateID()
 	if err != nil {
 		return
@@ -268,7 +268,7 @@ func createNewBackLog(d directive, e event.NormalizedEvent) (bp *backLog, err er
 	log.Info(log.M{Msg: "Creating new backlog", DId: d.ID, CId: e.ConnID})
 	b := backLog{}
 	b.ID = bid
-	b.Directive = directive{}
+	b.Directive = Directive{}
 
 	copyDirective(&b.Directive, d, e)
 	initBackLogRules(&b.Directive, e)
@@ -290,7 +290,7 @@ func createNewBackLog(d directive, e event.NormalizedEvent) (bp *backLog, err er
 	return
 }
 
-func initBackLogRules(d *directive, e event.NormalizedEvent) {
+func initBackLogRules(d *Directive, e event.NormalizedEvent) {
 	for i := range d.Rules {
 		// the first rule cannot use reference to other
 		if i == 0 {

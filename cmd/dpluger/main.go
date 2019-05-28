@@ -42,18 +42,35 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(createCmd)
+	rootCmd.AddCommand(directiveCmd)
 	rootCmd.PersistentFlags().StringP("config", "c", "dpluger_config.json", "config file to use")
 	createCmd.Flags().StringP("address", "a", "http://elasticsearch:9200", "Elasticsearch endpoint to use")
 	createCmd.Flags().StringP("indexPattern", "i", "suricata-*", "index pattern to read fields from")
 	createCmd.Flags().StringP("name", "n", "suricata", "the name of the generated plugin")
 	createCmd.Flags().StringP("type", "t", "SID", "the type of the generated plugin, can be SID or Taxonomy")
 	runCmd.Flags().BoolP("validate", "v", true, "Check whether each referred ES field exists on the target index")
+	directiveCmd.Flags().StringP("tsvFile", "f", "", "dpluger TSV file to use")
+	directiveCmd.Flags().StringP("outFile", "o", "directives_dsiem.json", "directive file to create")
+	directiveCmd.Flags().StringP("priority", "p", "3", "default priority to use (1 - 5)")
+	directiveCmd.Flags().StringP("reliability", "r", "1", "reliability to use (0 - 10) for stage 1")
+	directiveCmd.Flags().StringP("kingdom", "k", "Environmental Awareness", "default kingdom to use")
+	directiveCmd.Flags().StringP("category", "t", "Misc Activity", "default category to use")
+	directiveCmd.Flags().IntP("dirNumber", "i", 50001, "Starting directive number")
+
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
 	viper.BindPFlag("index", createCmd.Flags().Lookup("indexPattern"))
 	viper.BindPFlag("name", createCmd.Flags().Lookup("name"))
 	viper.BindPFlag("type", createCmd.Flags().Lookup("type"))
 	viper.BindPFlag("validate", runCmd.Flags().Lookup("validate"))
+	viper.BindPFlag("tsvFile", directiveCmd.Flags().Lookup("tsvFile"))
+	viper.BindPFlag("outFile", directiveCmd.Flags().Lookup("outFile"))
+	viper.BindPFlag("priority", directiveCmd.Flags().Lookup("priority"))
+	viper.BindPFlag("reliability", directiveCmd.Flags().Lookup("reliability"))
+	viper.BindPFlag("kingdom", directiveCmd.Flags().Lookup("kingdom"))
+	viper.BindPFlag("category", directiveCmd.Flags().Lookup("category"))
+	viper.BindPFlag("dirNumber", directiveCmd.Flags().Lookup("dirNumber"))
+
 }
 
 func initConfig() {
@@ -129,5 +146,40 @@ var createCmd = &cobra.Command{
 		}
 		fmt.Println("Template created. in " + config + "\n" +
 			"Now you should edit the generated template and insert the appropriate parameters and ES field names.")
+	},
+}
+
+var directiveCmd = &cobra.Command{
+	Use:   "directive",
+	Short: "Creates a DSIEM directive file from dpluger TSV",
+	Long:  `Creates a DSIEM directive file from dpluger TSV`,
+	Run: func(cmd *cobra.Command, args []string) {
+		tsvFile := viper.GetString("tsvFile")
+		outFile := viper.GetString("outFile")
+		priority := viper.GetInt("priority")
+		reliability := viper.GetInt("reliability")
+		kingdom := viper.GetString("kingdom")
+		category := viper.GetString("category")
+		dirNumber := viper.GetInt("dirNumber")
+
+		if priority < 1 || priority > 5 {
+			exit("Priority must be between 1 and 5", errors.New("wrong priority"))
+		}
+		if reliability < 0 || reliability > 10 {
+			exit("Reliability must be between 0 - 10", errors.New("wrong reliability"))
+		}
+		if dirNumber < 1 {
+			exit("dirNumber must be greater than 0", errors.New("wrong dirNumber"))
+		}
+
+		if !fs.FileExist(tsvFile) {
+			exit(tsvFile+" doesn't exist", errors.New("wrong TSVFile parameter"))
+		}
+
+		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, category, priority, reliability, dirNumber); err != nil {
+			exit("Cannot create directive file", err)
+		}
+		fmt.Println("Directive created in " + outFile + "\n" +
+			"Now you should edit the generated file and deploy it to dsiem frontend configs directory")
 	},
 }
