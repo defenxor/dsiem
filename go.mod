@@ -22,6 +22,7 @@ require (
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
+	github.com/mmta/addlicense v0.0.0-20190528223012-ed6db19df688 // indirect
 	github.com/nats-io/gnatsd v1.3.0
 	github.com/nats-io/go-nats v1.6.0
 	github.com/nats-io/nuid v1.0.0 // indirect
