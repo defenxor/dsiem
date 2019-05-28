@@ -115,3 +115,153 @@ The following processing will take place:
   * None of these events match backlog #2 2nd rule condition.
 
 Then if no more matching event is found, backlog #2 will expires and be removed after 10 minutes (600s), while backlog #1 will expires in 1 hour (3600s).
+
+## Creating a Dsiem Directive
+
+Basic Dsiem directives can be created automatically by parsing TSV files produced by `dpluger` tool during [Dsiem plugin creation process](dsiem_plugin.md#example-2-sid-based-plugin-with-generated-plugin-sid). These directives are basic because they're only looking for events that have identical `PluginID` and `PluginSID` combination, and identical source and destination IP address pair.
+
+For example, given a `sangfor_plugin-sids.tsv` file with the following content:
+```tsv
+plugin      id      sid     title
+sangforIPS  20001   1       Botnet
+sangforIPS  20001   2       Abnormal Connection
+```
+
+we can use the following `dpluger` command:
+```console
+./dpluger directive -i 3001 -f sangfor_plugin-sids.tsv
+```
+To automatically generate this `directives_dsiem.json` file:
+```json
+{
+  "directives": [
+    {
+      "id": 3001,
+      "name": "Botnet (SRC_IP to DST_IP)",
+      "priority": 3,
+      "kingdom": "Environmental Awareness",
+      "category": "Misc Activity",
+      "rules": [
+        {
+          "name": "Botnet",
+          "stage": 1,
+          "plugin_id": 20001,
+          "plugin_sid": [
+            1
+          ],
+          "occurrence": 1,
+          "from": "ANY",
+          "to": "ANY",
+          "type": "PluginRule",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 1,
+          "timeout": 0
+        },
+        {
+          "name": "Botnet",
+          "stage": 2,
+          "plugin_id": 20001,
+          "plugin_sid": [
+            1
+          ],
+          "occurrence": 10,
+          "from": ":1",
+          "to": ":1",
+          "type": "PluginRule",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 5,
+          "timeout": 3600
+        },
+        {
+          "name": "Botnet",
+          "stage": 3,
+          "plugin_id": 20001,
+          "plugin_sid": [
+            1
+          ],
+          "occurrence": 10000,
+          "from": ":1",
+          "to": ":1",
+          "type": "PluginRule",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 10,
+          "timeout": 21600
+        }
+      ]
+    },
+    {
+      "id": 3002,
+      "name": "Abnormal Connection (SRC_IP to DST_IP)",
+      "priority": 3,
+      "kingdom": "Environmental Awareness",
+      "category": "Misc Activity",
+      "rules": [
+        {
+          "name": "Abnormal Connection",
+          "stage": 1,
+          "plugin_id": 20001,
+          "plugin_sid": [
+            2
+          ],
+          "occurrence": 1,
+          "from": "ANY",
+          "to": "ANY",
+          "type": "PluginRule",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 1,
+          "timeout": 0
+        },
+        {
+          "name": "Abnormal Connection",
+          "stage": 2,
+          "plugin_id": 20001,
+          "plugin_sid": [
+            2
+          ],
+          "occurrence": 10,
+          "from": ":1",
+          "to": ":1",
+          "type": "PluginRule",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 5,
+          "timeout": 3600
+        },
+        {
+          "name": "Abnormal Connection",
+          "stage": 3,
+          "plugin_id": 20001,
+          "plugin_sid": [
+            2
+          ],
+          "occurrence": 10000,
+          "from": ":1",
+          "to": ":1",
+          "type": "PluginRule",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 10,
+          "timeout": 21600
+        }
+      ]
+    }
+  ]
+}
+```
+The generated directives above have the following characteristics:
+- Directive IDs are assigned sequentially starting with the number provided by the `-i` parameter to `dpluger`. This parameter is required to prevent conflicting IDs with directives already defined in other files.
+- Each directive has 3 correlation rule stages:
+  - stage 1: match a single event that has similar `PluginID` and `PluginSID` combination as specified by each row of the TSV file.
+  - stage 2: has similar condition with stage 1, with an added requirement for the events to also match stage 1 source and destination IP addresses. This stage is set to match up to 10 events within 3,600 seconds (1 hour).
+  - stage 3: has similar condition with stage 2, but is setup to match up to 10,000 events within 6 hour.
+- The directive priority value (1) and the correlation rules reliability value (for each consecutive stages: 1, 5, 10) are set so that the directive will trigger an alarm when stage 2 receives its first event. This is true if the events source or destination IP address include an asset whose value are at least 2 (the default asset value).
