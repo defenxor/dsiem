@@ -83,7 +83,7 @@ filter {
     ] {
 
       translate {
-        field => "{{.SIDField}}"
+        field => "{{.SIDFieldPlain}}"
         destination => "[plugin_sid]"
         dictionary => { {{- range $k,$v := .R.Sids }}
           "{{$v.SIDTitle}}" => "{{$v.SID}}"{{end}}
