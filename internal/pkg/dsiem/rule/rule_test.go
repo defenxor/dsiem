@@ -149,6 +149,40 @@ func TestRule(t *testing.T) {
 	r17 := r1
 	r17.PortTo = "1337"
 
+	// rules with custom data
+
+	rc1 := r1
+	rc1.CustomData1 = "deny"
+	ec1 := e1
+
+	rc2 := rc1
+	ec2 := ec1
+	ec2.CustomData1 = "deny"
+
+	rc3 := rc1
+	ec3 := ec2
+	rc3.CustomData2 = "malware"
+
+	rc4 := rc3
+	ec4 := ec3
+	ec4.CustomData2 = "malware"
+
+	rc5 := rc4
+	ec5 := ec4
+	ec5.CustomData2 = "exploit"
+
+	rc6 := rc5
+	ec6 := ec5
+	rc6.CustomData3 = "7000"
+
+	rc7 := rc6
+	ec7 := ec6
+	ec7.CustomData3 = "7000"
+
+	rc8 := rc7
+	ec8 := ec7
+	ec8.CustomData2 = "malware"
+
 	// StickyDiff rules
 
 	rs1 := r1
@@ -185,6 +219,15 @@ func TestRule(t *testing.T) {
 		{12, e1, r12, s1, false}, {13, e1, r13, s1, false}, {14, e3, r14, s1, false},
 		{15, e1, r15, s1, false}, {16, e1, r16, s1, false}, {17, e1, r17, s1, false},
 
+		{51, ec1, rc1, s1, false},
+		{52, ec2, rc2, s1, true},
+		{53, ec3, rc3, s1, false},
+		{54, ec4, rc4, s1, true},
+		{55, ec5, rc5, s1, false},
+		{56, ec6, rc6, s1, false},
+		{57, ec7, rc7, s1, false},
+		{58, ec8, rc8, s1, true},
+
 		{101, e1, rs1, s1, true}, {102, e1, rs2, s2, false}, {103, e1, rs3, s2, false},
 		{104, e1, rs4, s2, false}, {105, e1, rs5, s1, true},
 		{106, e1, rs6, nil, true}, {107, e1, rs7, nil, true},
@@ -194,7 +237,25 @@ func TestRule(t *testing.T) {
 	for _, tt := range tbl {
 		actual := DoesEventMatch(tt.e, tt.r, tt.s, 0)
 		if actual != tt.expected {
-			t.Fatalf("Rule %d actual != expected", tt.n)
+			t.Fatalf("Rule %d actual != expected. Event: %v, Rule: %v, Sticky: %v",
+				tt.n, tt.e, tt.r, tt.s)
 		}
+	}
+}
+
+func TestAppendUniqCustomData(t *testing.T) {
+	cd := []CustomData{}
+	cd = AppendUniqCustomData(cd, "", "data1")
+	cd = AppendUniqCustomData(cd, "label1", "data1")
+	cd = AppendUniqCustomData(cd, "label1", "data1")
+	cd = AppendUniqCustomData(cd, "label2", "data2")
+	if len(cd) != 2 {
+		t.Fatal("customData length expected to be 2")
+	}
+	if cd[0].Label != "label1" || cd[0].Content != "data1" {
+		t.Fatal("customData expected to contain label1 = data1")
+	}
+	if cd[1].Label != "label2" || cd[1].Content != "data2" {
+		t.Fatal("customData expected to contain label2 = data2")
 	}
 }

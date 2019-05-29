@@ -62,6 +62,7 @@ type alarm struct {
 	DstIPs          []string             `json:"dst_ips"`
 	ThreatIntels    []intel.Result       `json:"intel_hits,omitempty"`
 	Vulnerabilities []vuln.Result        `json:"vulnerabilities,omitempty"`
+	CustomData      []rule.CustomData    `json:"custom_data,omitempty"`
 	Networks        []string             `json:"networks"`
 	Rules           []rule.DirectiveRule `json:"rules"`
 }
@@ -102,8 +103,8 @@ func Init(logFile string) error {
 // Upsert creates or update alarms
 // backlog struct is decomposed here to avoid circular dependency
 func Upsert(id, name, kingdom, category string,
-	srcIPs, dstIPs []string, lastSrcPort, lastDstPort, risk int, statusTime int64,
-	rules []rule.DirectiveRule, connID uint64, checkIntelVuln bool,
+	srcIPs, dstIPs []string, customData []rule.CustomData, lastSrcPort, lastDstPort, risk int,
+	statusTime int64, rules []rule.DirectiveRule, connID uint64, checkIntelVuln bool,
 	tx *apm.Transaction) {
 
 	if apm.Enabled() && tx != nil {
@@ -138,6 +139,7 @@ func Upsert(id, name, kingdom, category string,
 	}
 	a.SrcIPs = srcIPs
 	a.DstIPs = dstIPs
+	a.CustomData = customData
 
 	a.Unlock()
 	if xc.IntelEnabled && checkIntelVuln {

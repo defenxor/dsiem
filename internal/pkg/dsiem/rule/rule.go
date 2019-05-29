@@ -30,28 +30,34 @@ import (
 // DirectiveRule defines the struct for directive rules, this is read-only
 // struct.
 type DirectiveRule struct {
-	Name        string   `json:"name"`
-	Stage       int      `json:"stage"`
-	PluginID    int      `json:"plugin_id"`
-	PluginSID   []int    `json:"plugin_sid"`
-	Product     []string `json:"product,omitempty"`
-	Category    string   `json:"category,omitempty"`
-	SubCategory []string `json:"subcategory,omitempty"`
-	Occurrence  int      `json:"occurrence"`
-	From        string   `json:"from"`
-	To          string   `json:"to"`
-	Type        string   `json:"type"`
-	PortFrom    string   `json:"port_from"`
-	PortTo      string   `json:"port_to"`
-	Protocol    string   `json:"protocol,omitempty"`
-	Reliability int      `json:"reliability"`
-	Timeout     int64    `json:"timeout"`
-	StartTime   int64    `json:"start_time,omitempty"`
-	EndTime     int64    `json:"end_time,omitempty"`
-	RcvdTime    int64    `json:"rcvd_time,omitempty"`
-	Status      string   `json:"status,omitempty"`
-	Events      []string `json:"events,omitempty"`
-	StickyDiff  string   `json:"sticky_different,omitempty"`
+	Name         string   `json:"name"`
+	Stage        int      `json:"stage"`
+	PluginID     int      `json:"plugin_id"`
+	PluginSID    []int    `json:"plugin_sid"`
+	Product      []string `json:"product,omitempty"`
+	Category     string   `json:"category,omitempty"`
+	SubCategory  []string `json:"subcategory,omitempty"`
+	Occurrence   int      `json:"occurrence"`
+	From         string   `json:"from"`
+	To           string   `json:"to"`
+	Type         string   `json:"type"`
+	PortFrom     string   `json:"port_from"`
+	PortTo       string   `json:"port_to"`
+	Protocol     string   `json:"protocol,omitempty"`
+	Reliability  int      `json:"reliability"`
+	Timeout      int64    `json:"timeout"`
+	StartTime    int64    `json:"start_time,omitempty"`
+	EndTime      int64    `json:"end_time,omitempty"`
+	RcvdTime     int64    `json:"rcvd_time,omitempty"`
+	Status       string   `json:"status,omitempty"`
+	Events       []string `json:"events,omitempty"`
+	StickyDiff   string   `json:"sticky_different,omitempty"`
+	CustomData1  string   `json:"custom_data1,omitempty"`
+	CustomLabel1 string   `json:"custom_label1,omitempty"`
+	CustomData2  string   `json:"custom_data2,omitempty"`
+	CustomLabel2 string   `json:"custom_label2,omitempty"`
+	CustomData3  string   `json:"custom_data3,omitempty"`
+	CustomLabel3 string   `json:"custom_label3,omitempty"`
 }
 
 // StickyDiffData hold the previous data for stickydiff rule
@@ -60,6 +66,13 @@ type StickyDiffData struct {
 	sync.RWMutex
 	SDiffString []string
 	SDiffInt    []int
+}
+
+// CustomData combine all custom fields into a struct for easier use
+// by backlog and alarm
+type CustomData struct {
+	Label   string `json:"label"`
+	Content string `json:"content"`
 }
 
 // DoesEventMatch check event against rule
@@ -109,6 +122,23 @@ func taxonomyRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffDa
 	return
 }
 
+// this by definition only applies to pluginRule not taxonomyRule
+func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) (ret bool) {
+
+	var r1, r2, r3 = true, true, true
+	if r.CustomData1 != "" {
+		r1 = r.CustomData1 == e.CustomData1
+	}
+	if r.CustomData2 != "" {
+		r2 = r.CustomData2 == e.CustomData2
+	}
+	if r.CustomData3 != "" {
+		r3 = r.CustomData3 == e.CustomData3
+	}
+	ret = r1 && r2 && r3
+	return
+}
+
 func pluginRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) (ret bool) {
 	if e.PluginID != r.PluginID {
 		return
@@ -129,6 +159,9 @@ func pluginRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 		}
 	}
 	ret = ipPortCheck(e, r, s, connID)
+	if ret {
+		ret = customDataCheck(e, r, s, connID)
+	}
 	return
 }
 
@@ -259,4 +292,20 @@ func isIPinCIDR(ip string, netcidr string) (found bool) {
 		}
 	}
 	return
+}
+
+func AppendUniqCustomData(prev []CustomData, label string, content string) []CustomData {
+	if label == "" || content == "" {
+		return prev
+	}
+	for _, v := range prev {
+		if v.Label == label && v.Content == content {
+			return prev
+		}
+	}
+	cd := CustomData{
+		Label:   label,
+		Content: content,
+	}
+	return append(prev, cd)
 }

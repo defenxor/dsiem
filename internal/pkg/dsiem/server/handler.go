@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -200,6 +201,11 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		log.Warn(log.M{Msg: "l337 or epic fail attempt from " + clientAddr + " detected. Discarding.", CId: connID})
 		fmt.Fprintf(ctx, "Not a valid event\n")
 		ctx.SetStatusCode(fasthttp.StatusTeapot)
+		log.Debug(log.M{
+			Msg: "ts:" + evt.Timestamp + ",sensor:" + evt.Sensor + ",Id:" + evt.EventID +
+				",srcIP:" + evt.SrcIP + ",dstIP:" + evt.DstIP + ",plugID:" + strconv.Itoa(evt.PluginID) +
+				",SID:" + strconv.Itoa(evt.PluginSID) + ",product:" + evt.Product + ",category: " + evt.Category +
+				",subcat:" + evt.SubCategory})
 		return
 	}
 
