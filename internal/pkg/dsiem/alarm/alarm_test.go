@@ -113,21 +113,22 @@ func TestAlarm(t *testing.T) {
 	checkIntelVuln := true
 	tx := apm.StartTransaction("test", "test", nil)
 
+	cd := []rule.CustomData{}
 	fmt.Print("upserting low risk alarm ..")
 	verifyFuncOutput(t, func() {
-		Upsert(id, name, kingdom, category, srcIPs, dstIPs, lastSrcPort, lastDstPort, risk, statusTime, rules, connID, checkIntelVuln, tx)
+		Upsert(id, name, kingdom, category, srcIPs, dstIPs, cd, lastSrcPort, lastDstPort, risk, statusTime, rules, connID, checkIntelVuln, tx)
 	}, "alarm updating Elasticsearch", true)
 
 	fmt.Print("upserting medium risk alarm ..")
 	risk = 3
 	verifyFuncOutput(t, func() {
-		Upsert(id, name, kingdom, category, srcIPs, dstIPs, lastSrcPort, lastDstPort, risk, statusTime, rules, connID, checkIntelVuln, tx)
+		Upsert(id, name, kingdom, category, srcIPs, dstIPs, cd, lastSrcPort, lastDstPort, risk, statusTime, rules, connID, checkIntelVuln, tx)
 	}, "alarm updating Elasticsearch", true)
 
 	fmt.Print("upserting high risk alarm ..")
 	risk = 7
 	verifyFuncOutput(t, func() {
-		Upsert(id, name, kingdom, category, srcIPs, dstIPs, lastSrcPort, lastDstPort, risk, statusTime, rules, connID, checkIntelVuln, tx)
+		Upsert(id, name, kingdom, category, srcIPs, dstIPs, cd, lastSrcPort, lastDstPort, risk, statusTime, rules, connID, checkIntelVuln, tx)
 	}, "alarm updating Elasticsearch", true)
 
 	expected := 1

@@ -44,14 +44,15 @@ var (
 type backLog struct {
 	// deadlock.RWMutex
 	sync.RWMutex
-	ID               string    `json:"backlog_id"`
-	StatusTime       int64     `json:"status_time"`
-	Risk             int       `json:"risk"`
-	CurrentStage     int       `json:"current_stage"`
-	HighestStage     int       `json:"highest_stage"`
-	Directive        Directive `json:"directive"`
-	SrcIPs           []string  `json:"src_ips"`
-	DstIPs           []string  `json:"dst_ips"`
+	ID               string            `json:"backlog_id"`
+	StatusTime       int64             `json:"status_time"`
+	Risk             int               `json:"risk"`
+	CurrentStage     int               `json:"current_stage"`
+	HighestStage     int               `json:"highest_stage"`
+	Directive        Directive         `json:"directive"`
+	SrcIPs           []string          `json:"src_ips"`
+	DstIPs           []string          `json:"dst_ips"`
+	CustomData       []rule.CustomData `json:"custom_data"`
 	LastEvent        event.NormalizedEvent
 	chData           chan event.NormalizedEvent
 	chDone           chan struct{}
@@ -332,6 +333,8 @@ func (b *backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transa
 	vCat := b.Directive.Category
 	vSrc := b.SrcIPs
 	vDst := b.DstIPs
+	vCustomData := make([]rule.CustomData, len(b.CustomData))
+	copy(vCustomData, b.CustomData)
 	vSrcPort := b.LastEvent.SrcPort
 	vDstPort := b.LastEvent.DstPort
 	vRisk := b.Risk
@@ -341,7 +344,7 @@ func (b *backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transa
 
 	// running this under goroutine seem to make processMatchedEvent
 	// fails to record startTime
-	alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vSrcPort,
+	alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vCustomData, vSrcPort,
 		vDstPort, vRisk, vStatTime, tmp, connID, checkIntelVuln, tx)
 }
 
@@ -358,6 +361,10 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 	b.Directive.Rules[idx].Events = append(b.Directive.Rules[idx].Events, e.EventID)
 	b.SrcIPs = str.AppendUniq(b.SrcIPs, e.SrcIP)
 	b.DstIPs = str.AppendUniq(b.DstIPs, e.DstIP)
+	b.CustomData = rule.AppendUniqCustomData(b.CustomData, e.CustomLabel1, e.CustomData1)
+	b.CustomData = rule.AppendUniqCustomData(b.CustomData, e.CustomLabel2, e.CustomData2)
+	b.CustomData = rule.AppendUniqCustomData(b.CustomData, e.CustomLabel3, e.CustomData3)
+
 	b.Unlock()
 	b.setStatusTime()
 
