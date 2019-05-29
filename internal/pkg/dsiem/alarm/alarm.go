@@ -62,7 +62,7 @@ type alarm struct {
 	DstIPs          []string             `json:"dst_ips"`
 	ThreatIntels    []intel.Result       `json:"intel_hits,omitempty"`
 	Vulnerabilities []vuln.Result        `json:"vulnerabilities,omitempty"`
-	CustomData      []rule.CustomData    `json:"custom_data",omitempty`
+	CustomData      []rule.CustomData    `json:"custom_data,omitempty"`
 	Networks        []string             `json:"networks"`
 	Rules           []rule.DirectiveRule `json:"rules"`
 }
