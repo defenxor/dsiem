@@ -57,11 +57,14 @@ func asyncVulnCheck(aSource *alarm, srcPort, dstPort int, connID uint64, tx *apm
 	if apm.Enabled() && tx != nil {
 		defer tx.Recover()
 	}
-	// avoid locks by copying the alarm source
-	var a = &alarm{}
-	copyAlarm(a, aSource)
 
 	go func() {
+		// this lock is specifically for concurrent access to vuln result
+		aSource.VulnMu.Lock()
+		defer aSource.VulnMu.Unlock()
+		// avoid general lock by copying the alarm source
+		var a = &alarm{}
+		copyAlarm(a, aSource)
 		// record prev value
 		pVulnerabilities := a.Vulnerabilities
 
@@ -118,14 +121,20 @@ func asyncVulnCheck(aSource *alarm, srcPort, dstPort int, connID uint64, tx *apm
 	}()
 }
 
-func asyncIntelCheck(a *alarm, connID uint64, tx *apm.Transaction) {
+func asyncIntelCheck(aSource *alarm, connID uint64, tx *apm.Transaction) {
 	if apm.Enabled() && tx != nil {
 		defer tx.Recover()
 	}
 
 	go func() {
 
-		a.RLock()
+		// this lock is specifically for concurrent access to intel result
+		aSource.IntelMu.Lock()
+		defer aSource.IntelMu.Unlock()
+		// avoid general locks by copying the alarm source
+		var a = &alarm{}
+		copyAlarm(a, aSource)
+
 		IPIntel := a.ThreatIntels
 		p := append(a.SrcIPs, a.DstIPs...)
 		p = str.RemoveDuplicatesUnordered(p)
@@ -150,21 +159,18 @@ func asyncIntelCheck(a *alarm, connID uint64, tx *apm.Transaction) {
 				continue
 			}
 			if found, res := xc.CheckIntelIP(p[i], connID); found {
-				a.RUnlock()
-				a.Lock()
 				a.ThreatIntels = append(a.ThreatIntels, res...)
-				a.Unlock()
-				a.RLock()
+				aSource.Lock()
+				aSource.ThreatIntels = append(aSource.ThreatIntels, res...)
+				aSource.Unlock()
 				log.Info(log.M{Msg: "Found intel result for " + p[i], CId: connID, BId: a.ID})
 			}
 		}
 
 		// compare content of slice
 		if reflect.DeepEqual(IPIntel, a.ThreatIntels) {
-			a.RUnlock()
 			return
 		}
-		a.RUnlock()
 		updateElasticsearch(a, "AsyncIntelCheck", connID, tx)
 	}()
 }

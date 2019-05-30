@@ -47,6 +47,8 @@ var alarmRemovalChannel chan string
 
 type alarm struct {
 	sync.RWMutex `json:"-"`
+	IntelMu      sync.Mutex `json:"-"`
+	VulnMu       sync.Mutex `json:"-"`
 	//drwmutex.DRWMutex `json:"-"`
 	ID              string               `json:"alarm_id"`
 	Title           string               `json:"title"`
