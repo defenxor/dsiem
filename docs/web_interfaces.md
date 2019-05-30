@@ -14,11 +14,15 @@ You can click on an alarm to see its detail. Then from there you can interact wi
 
 The above statuses and tags can be customized by supplying the appropriate dsiem [startup parameter](./commands.md#dsiem-command-flags).
 
+Several cells on the detail alarm view also provide clickable link to quickly search their content on Kibana for further analysis.
+
 ## Kibana Dashboard
 
 Dsiem's example Kibana dashboard can be imported using the step provided [here](./installation.md#importing-kibana-dashboard). The result should be similar to this:
 
 ![Dsiem Web UI](./images/kbn-dashboard.png)
+
+The dashboard also provide a URL link (through Kibana scripted field) to open each alarm on Dsiem web UI.
 
 ## APM Integration
 
