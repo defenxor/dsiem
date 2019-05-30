@@ -247,6 +247,14 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	// concurrent write may make events count overflow, so dont append current stage unless needed
 	if !b.isStageReachMaxEvtCount(idx) {
 		b.appendandWriteEvent(e, idx, tx)
+
+		// recalc risk, updateAlarm if there's an increase
+		riskChanged := b.calcRisk(e.ConnID)
+		if riskChanged {
+			// this LastEvent is used to get ports by alarm
+			b.setLastEvent(e)
+			b.updateAlarm(e.ConnID, true, tx)
+		}
 		// exit early if the newly added event hasnt caused events_count == occurrence
 		// for the current stage
 		if !b.isStageReachMaxEvtCount(idx) {
@@ -270,14 +278,6 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	}
 
 	// reach max occurrence, but not in last stage.
-
-	// recalc risk, updateAlarm if there's an increase
-	riskChanged := b.calcRisk(e.ConnID)
-	if riskChanged {
-		// this LastEvent is used to get ports by alarm
-		b.setLastEvent(e)
-		b.updateAlarm(e.ConnID, true, tx)
-	}
 
 	// Increase stage.
 	b.increaseStage(e)
