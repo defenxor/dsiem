@@ -40,7 +40,7 @@ Then after you get a feel on how everything fits together, you can start integra
 * Everything should be up and ready for testing in a few minutes. Here's things to note about the environment created by `docker-compose`:
   
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
-    * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled, so you can easily trigger a test just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
+    * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled and `EXTERNAL_NET: "any"`, so you can easily trigger a test alarm just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
     * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
 
 #### Importing Kibana Dashboard
@@ -48,9 +48,10 @@ Then after you get a feel on how everything fits together, you can start integra
 * Once Kibana is up at http://localhost:5601, you can import Dsiem dashboard and its dependencies using the following command:
 
     ```shell
-    $ ./scripts/kbndashboard-import.sh localhost
+    $ ./scripts/kbndashboard-import.sh localhost ./deployments/kibana/dashboard-siem.json
     ```
-
+  Do notice that like any Kibana dashboard, Dsiem dashboard also expect the underlying indices (in this case `siem_alarms` and `siem_events-*`) to have been created before it can be accessed without error. This means you will need to trigger the test alarm described above before attempting to use the dashboard.
+  
 ### Using Existing ELK
 
 * First make sure you're already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.x, though it should work with any 6.x version with minor adjustment.
@@ -111,7 +112,7 @@ Then after you get a feel on how everything fits together, you can start integra
 * Import Kibana dashboard from `deployments/kibana/dashboard-siem.json`. This step will also install all Kibana index-patterns (`siem_alarms` and `siem_events`) that will be linked to from Dsiem web UI.
 
     ```shell
-    $ ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname}
+    $ ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname} ./deployments/kibana/dashboard-siem.json
     ```
 
 ## Uninstalling Dsiem
