@@ -3,7 +3,7 @@
 Dsiem comes with the following executable files:
 
 * **dsiem** : the main dsiem executable for running the correlation engine.
-* **dpluger** : for creating [Dsiem plugin](./dsiem_plugin.md) automatically by reading the fields of existing Elasticsearch index.
+* **dpluger** : for creating [Dsiem plugin](./dsiem_plugin.md) automatically by reading the fields of existing Elasticsearch index. It can also create a basic [Dsiem directive](./directive_and_alarm.md) that will trigger alarm when there's multiple occurrence of the same event.
 * **dtester** : for sending simulated events that match your directive rules in order to test them. Dtester can send directly to Dsiem (therefore emulating Logstash), or save the events to a log file to be harvested by Filebeat for testing end-to-end processing pipelines.
 * **nesd** : a [vulnerability lookup plugin](./ti_vuln_plugins.md) that serves Nessus CSV export files over the network to be queried by Dsiem.
 * **ossimcnv** : for converting OSSIM directive XML file (e.g. userdirectives.xml) to Dsiem's directive file format (JSON).
@@ -25,6 +25,7 @@ Usage:
 
 Available Commands:
   create      Creates an empty config template for dpluger
+  directive   Creates a DSIEM directive file from dpluger TSV
   help        Help about any command
   run         Creates logstash plugin for dsiem
   version     Print the version and build information
@@ -33,7 +34,7 @@ Flags:
   -c, --config string   config file to use (default "dpluger_config.json")
   -h, --help            help for dpluger
 
-Use "dpluger [command] --help" for more information about a command.
+Use "dpluger [command] --help" for more information about a command
 ```
 
 ```shell
@@ -80,8 +81,8 @@ Start dsiem server in a standalone or clustered deployment mode (either as front
 Frontends listen for normalized events from logstash and distribute them to backends through NATS message queue.
 Frontends also serve incoming request for configuration management from web UI.
 
-Backends receive events on the message queue channel, perform correlation based on configured directive rules,
-and then send results/alarms to elasticsearch through local Filebeat.
+Backends receive events on the message queue channel, perform correlation based on configured directive rules, 
+and then send results/alarms to elasticsearch through local filebeat.
 
 Standalone mode perform both frontend and backend functions in a single dsiem instance directly, without the need for
 external message queue.
@@ -90,26 +91,28 @@ Usage:
   dsiem serve [flags]
 
 Flags:
-  -a, --address string      IP address for the HTTP server to listen on (default "0.0.0.0")
-      --apm                 Enable elastic APM instrumentation
-  -c, --cacheDuration int   Cache expiration time in minutes for intel and vuln query results (default 10)
-      --frontend string     Frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).
-  -h, --help                help for serve
-  -n, --holdDuration int    Duration in seconds before resetting overload condition state (default 10)
-  -d, --maxDelay int        Max. processing delay in seconds before throttling incoming events (default 180)
-  -e, --maxEPS int          Max. number of incoming events/second (default 1000)
-      --medRiskMax int      Maximum alarm risk value to be classified as Medium risk. Higher value than this will be classified as High risk (default 6)
-      --medRiskMin int      Minimum alarm risk value to be classified as Medium risk. Lower value than this will be classified as Low risk (default 3)
-  -i, --minEPS int          Min. events/second rate allowed when throttling incoming events (default 100)
-  -m, --mode string         Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend (default "standalone")
-      --msq string          Nats address to use for frontend - backend communication. (default "nats://dsiem-nats:4222")
-      --node string         Unique node name to use when deployed in cluster mode.
-  -p, --port int            TCP port for the HTTP server to listen on (default 8080)
-      --pprof               Enable go pprof on the web interface
-  -s, --status strings      Alarm status to use, the first one will be assigned to new alarms (default [Open,In-Progress,Closed])
-  -t, --tags strings        Alarm tags to use, the first one will be assigned to new alarms (default [Identified Threat,False Positive,Valid Threat,Security Incident])
-      --trace               Generate 10 seconds trace file for debugging.
-      --writeableConfig     Whether to allow configuration file update through HTTP
+  -a, --address string         IP address for the HTTP server to listen on (default "0.0.0.0")
+      --apm                    Enable elastic APM instrumentation
+  -c, --cacheDuration int      Cache expiration time in minutes for intel and vuln query results (default 10)
+      --frontend string        Frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).
+  -h, --help                   help for serve
+  -n, --holdDuration int       Duration in seconds before resetting overload condition state (default 10)
+  -d, --maxDelay int           Max. processing delay in seconds before throttling incoming events (default 180)
+  -e, --maxEPS int             Max. number of incoming events/second (default 1000)
+      --medRiskMax int         Maximum alarm risk value to be classified as Medium risk. Higher value than this will be classified as High risk (default 6)
+      --medRiskMin int         Minimum alarm risk value to be classified as Medium risk. Lower value than this will be classified as Low risk (default 3)
+  -l, --minAlarmLifetime int   Min. alarm lifetime in minutes. Backlog won't expire sooner than this regardless rule timeouts. This is to support processing of delayed events
+  -i, --minEPS int             Min. events/second rate allowed when throttling incoming events (default 100)
+  -m, --mode string            Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend (default "standalone")
+      --msq string             Nats address to use for frontend - backend communication. (default "nats://dsiem-nats:4222")
+      --node string            Unique node name to use when deployed in cluster mode.
+  -p, --port int               TCP port for the HTTP server to listen on (default 8080)
+      --pprof                  Enable go pprof on the web interface
+  -s, --status strings         Alarm status to use, the first one will be assigned to new alarms (default [Open,In-Progress,Closed])
+  -t, --tags strings           Alarm tags to use, the first one will be assigned to new alarms (default [Identified Threat,False Positive,Valid Threat,Security Incident])
+      --trace                  Generate 10 seconds trace file for debugging.
+      --websocket              Enable websocket endpoint that streams events/second measurement data
+      --writeableConfig        Whether to allow configuration file update through HTTP
 
 Global Flags:
       --debug   Enable debug messages for tracing and troubleshooting
