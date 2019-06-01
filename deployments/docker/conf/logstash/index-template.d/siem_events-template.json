@@ -1,10 +1,10 @@
 {
-  "template" : "siem_events-*",
+  "index_patterns" : [ "siem_events-*" ],
   "version" : 1,
   "settings" : {
-    "number_of_replicas": 1,
-    "number_of_shards": 5,
-    "index.refresh_interval" : "5s"
+    "number_of_replicas": 0,
+    "number_of_shards": 2,
+    "index.refresh_interval" : "1s"
   },
   "mappings" : {
     "_default_" : {
