@@ -26,7 +26,7 @@ fi
 
 command -v hub >/dev/null 2>&1 || (echo cannot find hub command, please install it for your OS from https://github.com/github/hub/releases && exit 1)
 
-if ! [[ "$cmd" =~ ^(start|sync|commit|push|pull-request|cleanup)$ ]]; then 
+if ! [[ "$cmd" =~ ^(start|sync|commit|push|pull-request|cleanup|ci-status)$ ]]; then 
   echo need start, sync, commit, push, pull-request, or cleanup, as first argument && exit 1
 fi
 
@@ -63,7 +63,7 @@ if [ "$cmd" == "cleanup" ]; then
   [ "$open" != "" ] && echo cannot continue due to open pr: "$open" && exit 1
   git checkout master
   git branch -D $thisbranch && \
-  git push origin --delete $thisbranch
+  git push origin --delete $thisbranch 2>/dev/null || true
   exit $?
 fi
 
