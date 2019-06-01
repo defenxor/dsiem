@@ -15,7 +15,7 @@ exit 1
 [ "$?" != "0" ] && echo cannot export SIEM dashboard from $source && exit 1
 
 # fix the scripted field destination URL
-sed -i 's/https:\/\/dsiem[^\/]*\//http:\/\/localhost:5601\//g' $temp
+sed -i 's/https:\/\/dsiem[^\/]*\//http:\/\/localhost:8080\//g' $temp
 
 # make sure nested fields is enabled for KNQL version
 if ! grep -q "\"nested\": true" $temp; then 
