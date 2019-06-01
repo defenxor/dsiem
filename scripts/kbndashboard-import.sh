@@ -15,6 +15,6 @@ echo -n installing kibana dashboard to ${host}:5601 .. && \
 curl -fsS -o /dev/null -X POST "http://${host}:5601/api/kibana/dashboards/import?force=true" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$dashboard"  && \
 echo done. && \
 echo -n setting default index to siem_alarms .. && \
-curl -fsS -o /dev/null -XPOST -H "Content-Type: application/json" -H "kbn-xsrf: true" ${host}:5601/api/kibana/settings/defaultIndex -d '{"value": "siem_alarms*"}'  && \
+curl -fsS -o /dev/null -XPOST -H "Content-Type: application/json" -H "kbn-xsrf: true" ${host}:5601/api/kibana/settings/defaultIndex -d '{"value": "siem_alarms"}'  && \
 echo done && \
 echo dashboard installed successfully.
