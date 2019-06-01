@@ -1,10 +1,10 @@
 {
-  "index_patterns" : [ "siem_alarm_events-*" ],
+  "index_patterns" : [ "suricata-*" ],
   "version" : 1,
   "settings" : {
     "number_of_replicas": 0,
     "number_of_shards": 2,
-    "index.refresh_interval" : "1s"
+    "index.refresh_interval" : "5s"
   },
   "mappings" : {
     "_default_" : {
@@ -31,9 +31,22 @@
         }
       } ],
       "properties" : {
+        "@timestamp": { "type": "date"  },
         "@version": { "type": "keyword" },
-        "stage": { "type": "keyword" },
-        "event_id": { "type": "keyword" }
+        "dest_ip": {
+            "type": "ip",
+            "fields": {
+                "raw": {"index": "true", "type": "keyword"},
+                "keyword": {"index": "true", "type": "keyword"}
+             }
+        },
+        "src_ip": {
+            "type": "ip",
+            "fields": {
+                "raw": {"index": "true", "type": "keyword"},
+                "keyword": {"index": "true", "type": "keyword"}
+             }
+        }
       }
     }
   }

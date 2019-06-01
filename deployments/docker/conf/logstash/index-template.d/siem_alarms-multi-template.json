@@ -1,10 +1,13 @@
 {
-  "index_patterns" : [ "siem_alarm_events-*" ],
+  "index_patterns" : [ "siem_alarms-*" ],
   "version" : 1,
   "settings" : {
     "number_of_replicas": 0,
     "number_of_shards": 2,
     "index.refresh_interval" : "1s"
+  },
+  "aliases" : {
+    "siem_alarms" : {}
   },
   "mappings" : {
     "_default_" : {
@@ -29,11 +32,25 @@
             }
           }
         }
-      } ],
+      } ],      
       "properties" : {
+        "timestamp": { "type": "date"  },
         "@version": { "type": "keyword" },
-        "stage": { "type": "keyword" },
-        "event_id": { "type": "keyword" }
+        "updated_time": { "type": "date" },
+        "dst_ips": {
+          "type": "ip",
+          "fields": {
+            "raw": {"index": "true", "type": "keyword"},
+            "keyword": {"index": "true", "type": "keyword"}
+          }
+        },
+        "src_ips": {
+          "type": "ip",
+          "fields": {
+            "raw": {"index": "true", "type": "keyword"},
+            "keyword": {"index": "true", "type": "keyword"}
+          }
+        }
       }
     }
   }
