@@ -12,4 +12,5 @@ Available topics are:
 * [Directive and Alarm](./directive_and_alarm.md)
 * [Threat Intel and Vulnerability Lookup Plugins](./ti_vuln_plugins.md)
 * [Advanced Deployment](./adv_deployment.md)
+* [Dsiem Elasticsearch Indices](./es_indices.md)
 * [Notes on Security](./security.md)
