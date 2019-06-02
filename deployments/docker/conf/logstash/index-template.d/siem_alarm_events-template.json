@@ -3,38 +3,28 @@
   "version" : 1,
   "settings" : {
     "number_of_replicas": 0,
-    "number_of_shards": 2,
+    "number_of_shards": 1,
     "index.refresh_interval" : "1s"
   },
-  "mappings" : {
-    "_default_" : {
-      "dynamic_templates" : [ {
-        "message_field" : {
-          "path_match" : "message",
-          "match_mapping_type" : "string",
-          "mapping" : {
-            "type" : "text",
-            "norms" : false
-          }
-        }
-      }, {
-        "string_fields" : {
-          "match" : "*",
-          "match_mapping_type" : "string",
-          "mapping" : {
-            "type" : "text", "norms" : false,
-            "fields" : {
-              "keyword" : { "type": "keyword", "index": "true", "ignore_above": 256 },
-              "raw" : { "type": "keyword", "index": "true", "ignore_above": 256 }
+  "mappings": {
+    "doc": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "norms": false,
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
             }
           }
         }
-      } ],
-      "properties" : {
-        "@version": { "type": "keyword" },
-        "stage": { "type": "keyword" },
-        "event_id": { "type": "keyword" }
-      }
+      ]
     }
   }
 }
