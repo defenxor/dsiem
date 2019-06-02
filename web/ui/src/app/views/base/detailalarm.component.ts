@@ -144,8 +144,6 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   getEventsDetail(type, id, stage, from= 0, size= 0, allsize= 0) {
     const that = this;
-    that.evnts = [];
-    that.paginators = [];
     that.stage = stage;
     that.totalItems = allsize;
     // that.isShowEventDetails = false;
@@ -164,6 +162,8 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
           alev['hits']['hits'].forEach(element => {
             that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']).then(function(ev) {
               let jml = 0;
+              that.evnts = [];
+              that.paginators = [];
               ev['hits']['hits'].forEach(element2 => {
                 that.evnts.push(element2['_source']);
                 jml++;
