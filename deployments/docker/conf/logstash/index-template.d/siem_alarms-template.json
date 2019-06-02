@@ -1,53 +1,36 @@
 {
-  "index_patterns" : [ "siem_alarms" ],
+  "index_patterns" : [ "siem_alarms-*" ],
   "version" : 1,
   "settings" : {
     "number_of_replicas": 0,
-    "number_of_shards": 2,
+    "number_of_shards": 1,
     "index.refresh_interval" : "1s"
   },
-  "mappings" : {
-    "_default_" : {
-      "dynamic_templates" : [ {
-        "message_field" : {
-          "path_match" : "message",
-          "match_mapping_type" : "string",
-          "mapping" : {
-            "type" : "text",
-            "norms" : false
-          }
-        }
-      }, {
-        "string_fields" : {
-          "match" : "*",
-          "match_mapping_type" : "string",
-          "mapping" : {
-            "type" : "text", "norms" : false,
-            "fields" : {
-              "keyword" : { "type": "keyword", "index": "true", "ignore_above": 256 },
-              "raw" : { "type": "keyword", "index": "true", "ignore_above": 256 }
+  "aliases" : {
+    "siem_alarms" : {}
+  },
+  "mappings": {
+    "doc": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "norms": false,
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
             }
           }
         }
-      } ],      
-      "properties" : {
-        "timestamp": { "type": "date"  },
-        "@version": { "type": "keyword" },
-        "updated_time": { "type": "date" },
-        "dst_ips": {
-          "type": "ip",
-          "fields": {
-            "raw": {"index": "true", "type": "keyword"},
-            "keyword": {"index": "true", "type": "keyword"}
-          }
-        },
-        "src_ips": {
-          "type": "ip",
-          "fields": {
-            "raw": {"index": "true", "type": "keyword"},
-            "keyword": {"index": "true", "type": "keyword"}
-          }
-        }
+      ],
+      "properties": { 
+        "src_ips": { "type": "ip" },
+        "dst_ips": { "type": "ip" }
       }
     }
   }
