@@ -1,4 +1,4 @@
 {
-    "elasticsearch": "http://localhost:9200",
-    "kibana": "http://localhost:5601"
+    "elasticsearch": "https://elasticsearch.appl188.mss.defenxor.com:443",
+    "kibana": "https://kibana.appl188.mss.defenxor.com:443"
 }
