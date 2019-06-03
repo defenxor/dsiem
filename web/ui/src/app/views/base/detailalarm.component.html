@@ -250,6 +250,7 @@
             <table class="table table-striped">
               <thead>
                 <tr>
+                  <th>EventID</th>
                   <th>Timestamp</th>
                   <th>Title</th>
                   <th>Source</th>
@@ -264,6 +265,22 @@
               </thead>
               <tbody>
                 <tr *ngFor="let event of evnts; let i=index" [style.height]="wideEv[i] == true ? '230px' : 'auto'">
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('event-id-', event.event_id)"
+                      tooltip="Click to query eventID {{event.event_id}} at kibana">{{event.event_id}}</label>
+                      &nbsp;
+                    <div class="btn-group" id="event-id-{{event.event_id}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('event-id-', event.event_id, i)">
+                        query {{event.event_id}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibana('siem_events', 'event_id', event.event_id)" style="cursor: pointer">siem_event</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-event-id-{{event.event_id}}" style="display: none" (click)="closeDropdown('event-id-', event.event_id); wideEv[i]=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td>{{event.timestamp | amTimeAgo}}</td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('title-', event.event_id)"
