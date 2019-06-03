@@ -19,14 +19,14 @@ import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
 import { Http } from '@angular/http';
 import { map } from 'rxjs/operators';
-import { environment } from '../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ElasticsearchService {
   private client: Client;
-  private server: string;
+  server: string;
+  kibana: string;
 
   querylast5mins = {
     'size' : 50,
@@ -34,7 +34,7 @@ export class ElasticsearchService {
       'range' : {
         'timestamp' : {
           'gte' : 'now-5m',
-            'lt' :  'now'
+            'lt' : 'now'
            }
         }
      },
@@ -61,31 +61,25 @@ export class ElasticsearchService {
   }
 
   constructor(private http: Http) {
-    this.loadConfig().then(
-      res => {
-        this.server = res['elasticsearch'];
-        if (!this.client) {
-          this.connect();
-        }
-      },
-      err => console.log(`[ES] Unable to load config file, ${err}`)
-    );
-    // this.server = environment.elasticsearch
-    // if (!this.client) {
-    //   this.connect();
-    // }
+    this.loadConfig()
+    .then(res => {
+      this.server = res['elasticsearch'];
+      this.kibana = res['kibana'];
+      if (!this.client) {
+        this.connect();
+      }
+    }).catch(err => {
+      console.log(`[ES] Unable to load config file, ${err}`);
+    });
   }
 
   loadConfig() {
-    return new Promise( (resolve, reject) => {
-      this.http.get('./assets/config/esconfig.json').pipe(
-        map(res => res.json())
-      ).toPromise()
-      .then(
-        res => resolve(res),
-        err => reject(err)
-      );
-    });
+    return this.http.get('./assets/config/esconfig.json')
+      .pipe(map(res => res.json()))
+      .toPromise()
+      .catch( err => {
+        return Promise.reject(err);
+      });
   }
 
   buildQueryAlarmEvents(alarmId, stage) {
@@ -93,23 +87,8 @@ export class ElasticsearchService {
       'query': {
         'bool': {
           'must': [
-            {
-              'match_all': {}
-            },
-            {
-              'match_phrase': {
-                'stage': {
-                  'query': stage
-                }
-              }
-            },
-            {
-              'match_phrase': {
-                'alarm_id': {
-                  'query': alarmId
-                }
-              }
-            }
+            { 'term': { 'stage': stage }},
+            { 'term': { 'alarm_id.keyword': alarmId }}
           ]
         }
       }
@@ -124,43 +103,10 @@ export class ElasticsearchService {
         'bool': {
           'must': [
             {
-              'match_all': {}
+              'term': { 'stage': stage }
             },
             {
-              'match_phrase': {
-                'stage': {
-                  'query': stage
-                }
-              }
-            },
-            {
-              'match_phrase': {
-                'alarm_id': {
-                  'query': alarmId
-                }
-              }
-            }
-          ]
-        }
-      }
-    };
-  }
-
-  buildQueryAlarmEventsWithoutStage(alarmId) {
-    return {
-      'size': 10000,
-      'query': {
-        'bool': {
-          'must': [
-            {
-              'match_all': {}
-            },
-            {
-              'match_phrase': {
-                'alarm_id': {
-                  'query': alarmId
-                }
-              }
+              'term': { 'alarm_id.keyword': alarmId }
             }
           ]
         }
@@ -172,20 +118,7 @@ export class ElasticsearchService {
     return {
       'size': size,
       'query': {
-        'bool': {
-          'must': [
-            {
-              'match_all': {}
-            },
-            {
-              'match_phrase': {
-                'alarm_id': {
-                  'query': alarmId
-                }
-              }
-            }
-          ]
-        }
+        'term': { 'alarm_id.keyword': alarmId }
       }
     };
   }
@@ -193,20 +126,7 @@ export class ElasticsearchService {
   buildQueryEvents(eventId) {
     return {
       'query': {
-        'bool': {
-          'must': [
-            {
-              'match_all': {}
-            },
-            {
-              'match_phrase': {
-                'event_id': {
-                  'query': eventId
-                }
-              }
-            }
-          ]
-        }
+        'term': { 'event_id.keyword': eventId }
       }
     };
   }
@@ -214,30 +134,24 @@ export class ElasticsearchService {
   buildQueryAlarms(alarmId) {
     return {
       'query': {
-        'bool': {
-          'must': [
-            {
-              'match_all': {}
-            },
-            {
-              'match_phrase': {
-                '_id': {
-                  'query': alarmId
-                }
-              }
-            }
-          ]
-        }
+        'term': { '_id': alarmId }
+      }
+    };
+  }
+
+  buildQueryAlarmEventsWithoutStage(alarmId) {
+    return {
+      'size': 10000,
+      'query': {
+        'term': { 'alarm_id': alarmId }
       }
     };
   }
 
   connect() {
     this.client = new Client({
-      // host:  environment.elasticsearch,
       host:  this.server,
       log: 'info',
-      // apiVersion: '6.3'
     });
   }
 
@@ -281,23 +195,8 @@ export class ElasticsearchService {
       "query": {
         "bool": {
           "must": [
-            {
-              "match_all": {}
-            },
-            {
-              "match_phrase": {
-                "stage": {
-                  "query": ${stage}
-                }
-              }
-            },
-            {
-              "match_phrase": {
-                "alarm_id": {
-                  "query": "${alarmId}"
-                }
-              }
-            }
+            { "term": { "stage": "${stage}" }},
+            { "term": { "alarm_id.keyword": "${alarmId}" }}
           ]
         }
       }
@@ -352,8 +251,16 @@ export class ElasticsearchService {
     });
   }
 
-  async updateAlarmStatusById(_index, _type, _id, status) {
-    return await this.client.update({
+  getAlarm(_index, _type, alarmId): any {
+    return this.client.get({
+      id: alarmId,
+      index: _index,
+      type: _type
+    });
+  }
+
+  updateAlarmStatusById(_index, _type, _id, status) {
+    return this.client.update({
       index: _index,
       type: _type,
       id: _id,
@@ -365,8 +272,8 @@ export class ElasticsearchService {
     });
   }
 
-  async updateAlarmTagById(_index, _type, _id, tag) {
-    return await this.client.update({
+  updateAlarmTagById(_index, _type, _id, tag) {
+    return this.client.update({
       index: _index,
       type: _type,
       id: _id,

@@ -19,7 +19,6 @@ import { Component, OnInit, ViewChildren, QueryList, OnDestroy } from '@angular/
 import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { Http } from '@angular/http';
-import { map } from 'rxjs/operators';
 import { NgxSpinnerService } from 'ngx-spinner';
 
 @Component({
@@ -31,7 +30,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   sub: any;
   alarmID;
   stage;
-  alarm = [];
+  alarm;
   alarmRules = [];
   alarmVuln = [];
   alarmIntelHits = [];
@@ -69,23 +68,10 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       this.alarmID = params['alarmID'];
       this.getAlarmDetail(this.alarmID);
     });
-    this.loadConfig().then(res => {
-      this.kibanaUrl = res['kibana'];
-    });
+    this.kibanaUrl = this.es.kibana;
   }
 
-  loadConfig() {
-    const that = this;
-    return new Promise((resolve, reject) => {
-      that.http.get('./assets/config/esconfig.json').pipe(
-        map(res => res.json())
-      ).toPromise()
-      .then(
-        res => resolve(res),
-        err => reject(err)
-      );
-    });
-  }
+  sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   async getAlarmDetail(alarmID) {
     const that = this;
@@ -142,7 +128,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     }
   }
 
-  getEventsDetail(type, id, stage, from= 0, size= 0, allsize= 0) {
+  async getEventsDetail(type, id, stage, from= 0, size= 0, allsize= 0) {
     const that = this;
     that.stage = stage;
     that.totalItems = allsize;
@@ -154,46 +140,47 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       from = from - 1;
       size = size;
     }
+    let ev: any;
+    let alev: any;
 
-    this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size).then(function(alev) {
+    try {
+      alev = await this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size);
       console.log(alev['hits']['hits']);
-      const prom = function() {
-        return new Promise(function(resolve, reject) {
-          alev['hits']['hits'].forEach(element => {
-            that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']).then(function(ev) {
-              let jml = 0;
-              that.evnts = [];
-              that.paginators = [];
-              ev['hits']['hits'].forEach(element2 => {
-                that.evnts.push(element2['_source']);
-                jml++;
-                if (jml === ev['hits']['hits'].length) {
-                  return resolve(that.evnts);
-                }
-              });
-            });
-          });
-        });
-      };
+    } catch (err) {
+      throw new Error(('Error from getAlarmEventsPagination: ' + err));
+    }
+    for (const element of alev['hits']['hits']) {
+      try {
+        ev = await that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']);
+      } catch (err) {
+        throw new Error(('Error from getEvents: ' + err));
+      }
+      let jml = 0;
+      that.evnts = [];
+      that.paginators = [];
+      for (const element2 of ev['hits']['hits']) {
+        that.evnts.push(element2['_source']);
+        jml++;
+        if (jml !== ev['hits']['hits'].length) {
+          // should throw this but the test cases doesnt handle it yet
+          // throw new Error(('jml != ev length'));
+        }
+      }
+    }
 
-      prom().then(v => {
-        that.isShowEventDetails = true;
-        if (type === 'init') {
-          that.activePage = 1;
-        }
-        if (that.totalItems % that.itemsPerPage === 0) {
-          that.numberOfPaginators = Math.floor(that.totalItems / that.itemsPerPage);
-        } else {
-          that.numberOfPaginators = Math.floor(that.totalItems / that.itemsPerPage + 1);
-        }
+    that.isShowEventDetails = true;
+    if (type === 'init') {
+      that.activePage = 1;
+    }
+    if (that.totalItems % that.itemsPerPage === 0) {
+      that.numberOfPaginators = Math.floor(that.totalItems / that.itemsPerPage);
+    } else {
+      that.numberOfPaginators = Math.floor(that.totalItems / that.itemsPerPage + 1);
+    }
 
-        for (let i = 1; i <= that.numberOfPaginators; i++) {
-          that.paginators.push(i);
-        }
-      });
-    }).catch(err => {
-      console.log('ERROR: ', err);
-    });
+    for (let i = 1; i <= that.numberOfPaginators; i++) {
+      that.paginators.push(i);
+    }
   }
 
   async changePage(event: any) {
@@ -284,46 +271,54 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     }
   }
 
-  changeAlarmStatus(_id, status) {
-    this.spinner.show();
-    this.es.updateAlarmStatusById(this.esIndex, this.esType, _id, status).then((res) => {
-      console.log(res);
-      this.spinner.hide();
+  async changeAlarmStatus(_id, status) {
+    try {
+      if (this.alarm[0]._source.status === status) { return; }
+      this.spinner.show();
+      const res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, this.esType, _id, status);
+      if (res.result !== 'updated') {
+        throw new Error(('index not updated, result: ' + res.result));
+      }
       this.isProcessingUpdateStatus = true;
+      this.spinner.hide();
       this.closeDropdown('alrm-status-', this.alarmID);
       this.wide = false;
-      setTimeout(() => {
-        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp) => {
-          this.alarm = resp.hits.hits;
-          console.log(this.alarm);
-          this.isProcessingUpdateStatus = false;
-        });
-      }, 5000);
-    }).catch(err => {
-      console.log('ERROR: ', err);
+      await this.sleep (1000);
+      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id);
+      this.alarm[0] = resp;
+      // var resp = await this.es.getAlarms(this.alarm[0]._source.perm_index, this.esType, _id)
+      // this.alarm = resp.hits.hits
+      // console.log("alarm hits hits: ", this.alarm)
+    } catch (err) {
+      console.log('Error occur while changing alarm status: ' + err);
+    } finally {
+      this.isProcessingUpdateStatus = false;
       this.spinner.hide();
-    });
+    }
   }
 
-  changeAlarmTag(_id, tag) {
-    this.spinner.show();
-    this.es.updateAlarmTagById(this.esIndex, this.esType, _id, tag).then((res) => {
-      console.log(res);
-      this.spinner.hide();
+  async changeAlarmTag(_id, tag) {
+    try {
+      if (this.alarm[0]._source.tag === tag) { return; }
+      this.spinner.show();
+      const res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index,
+        this.esType, _id, tag);
+      if (res.result !== 'updated') {
+        throw new Error(('index not updated, result: ' + res.result));
+      }
       this.isProcessingUpdateTag = true;
+      this.spinner.hide();
       this.closeDropdown('alrm-tag-', this.alarmID);
       this.wide = false;
-      setTimeout(() => {
-        this.es.getAlarms(this.esIndex, this.esType, _id).then((resp) => {
-          this.alarm = resp.hits.hits;
-          console.log(this.alarm);
-          this.isProcessingUpdateTag = false;
-        });
-      }, 5000);
-    }).catch(err => {
-      console.log('ERROR: ', err);
+      await this.sleep (1000);
+      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id);
+      this.alarm[0] = resp;
+      this.isProcessingUpdateTag = false;
+    } catch (err) {
+      console.log('Error occur while changing alarm tag: ' + err);
+    } finally {
       this.spinner.hide();
-    });
+    }
   }
 
   openKibana(index, key, value) {
