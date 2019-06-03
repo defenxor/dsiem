@@ -148,6 +148,7 @@
             <table class="table table-striped">
               <thead>
                 <tr>
+                  <th>Action</th>
                   <th>Corr. Stage</th>
                   <th>Started</th>
                   <th>Ended</th>
@@ -162,9 +163,28 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let rule of alarmRules" tooltip="Click to see events" style="cursor:pointer"
-                (click)="getEventsDetail('init', alarmID, rule.stage, null, null, rule.events_count)">
-                  <td>{{rule.stage}}</td>
+                <tr *ngFor="let rule of alarmRules; let i = index" [style.height]="wideAlarmEv[i] == true ? '230px' : 'auto'">
+                  <td>
+                    <a tooltip="Click to see events" style="cursor:pointer" (click)="getEventsDetail('init', alarmID, rule.stage, null, null, rule.events_count)">
+                      <i class="fa fa-eye" ></i>
+                    </a>
+                  </td>
+                  <td>
+                    <label style="cursor: pointer" (click)="openDropdown('corr-stage-', rule.stage)"
+                      tooltip="Click to query rule stage {{rule.stage}} at kibana">{{rule.stage}}</label>
+                      &nbsp;
+                    <div class="btn-group" id="corr-stage-{{rule.stage}}" dropdown style="display: none">
+                      <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightAlarmEv('corr-stage-', rule.stage, i)">
+                        query {{rule.stage}}
+                      </button>
+                      <ul *dropdownMenu class="dropdown-menu" role="menu">
+                        <a class="dropdown-item" (click)="openKibanaCorrStage('siem_alarm-events', alarmID, rule.stage, i)" style="cursor: pointer">siem_alarm_events</a>
+                      </ul>
+                      <button type="button" class="close" aria-label="Close" id="close-corr-stage-{{rule.stage}}" style="display: none" (click)="closeDropdown('corr-stage-', rule.stage); wideAlarmEv[i]=false">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </td>
                   <td *ngIf="rule.start_time > 0; else empty">{{rule.start_time | amFromUnix| amTimeAgo}}</td>
                   <td *ngIf="rule.end_time > 0; else empty">{{rule.end_time | amFromUnix| amTimeAgo}}</td>
                   <td>{{setStatus(rule)}}</td>
