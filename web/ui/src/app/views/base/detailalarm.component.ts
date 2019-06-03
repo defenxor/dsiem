@@ -341,14 +341,15 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     window.open(url, '_blank');
   }
 
-  openKibanaCorrStage(index, alarmID, stage, indexArray){
+  openKibanaCorrStage(index, alarmID, stage, indexArray) {
     let url;
     url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
     url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
     url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:alarm_id,negate:!f,params:(query:' + alarmID + ',type:phrase)';
     url += ',type:phrase,value:' + alarmID + '),query:(match:(alarm_id:(query:' + alarmID + ',type:phrase))))';
-    url += ',(\'$state\':(store:appState),meta:(alias:!n,disabled:!f,index:' + index + ',key:stage,negate:!f,params:(query:' + stage + ',type:phrase)';
-    url += ',type:phrase,value:\'' + stage + '\'),query:(match:(stage:(query:' + stage + ',type:phrase))))),index:' + index + ',interval:auto';
+    url += ',(\'$state\':(store:appState),meta:(alias:!n,disabled:!f,index:' + index + ',key:stage,negate:!f';
+    url += ',params:(query:' + stage + ',type:phrase),type:phrase,value:\'' + stage + '\')';
+    url += ',query:(match:(stage:(query:' + stage + ',type:phrase))))),index:' + index + ',interval:auto';
     url += ',query:(language:lucene,parsed:(match_all:()),query:\'*\',suggestions:!()),sort:!(\'@timestamp\',desc))';
     this.wideAlarmEv[indexArray] = false;
     window.open(url, '_blank');
@@ -364,10 +365,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     }
   }
 
-  resetHeightAlarmEv(key, stage, index){
-    let a = document.getElementById(key+stage).getAttribute('class');
-    // console.log(a);
-    if(a.indexOf('open') > -1){
+  resetHeightAlarmEv(key, stage, index) {
+    const a = document.getElementById(key + stage).getAttribute('class');
+    if (a.indexOf('open') > -1) {
       this.wideAlarmEv[index] = false;
     } else {
       this.wideAlarmEv[index] = true;
