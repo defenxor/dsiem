@@ -140,18 +140,20 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       from = from - 1;
       size = size;
     }
+    let ev: any;
+    let alev: any;
 
     try {
-      var alev = await this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size)
-      console.log(alev['hits']['hits'])
+      alev = await this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size);
+      console.log(alev['hits']['hits']);
     } catch (err) {
-      throw('Error from getAlarmEventsPagination: ' + err)
+      throw new Error(('Error from getAlarmEventsPagination: ' + err));
     }
     for (const element of alev['hits']['hits']) {
       try {
-        var ev = await that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id'])
+        ev = await that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']);
       } catch (err) {
-        throw('Error from getEvents: ' + err)
+        throw new Error(('Error from getEvents: ' + err));
       }
       let jml = 0;
       that.evnts = [];
@@ -160,7 +162,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
         that.evnts.push(element2['_source']);
         jml++;
         if (jml !== ev['hits']['hits'].length) {
-          throw("jml != ev length")
+          throw new Error(('jml != ev length'));
         }
       }
     }
@@ -270,24 +272,24 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   async changeAlarmStatus(_id, status) {
     try {
-      if (this.alarm[0]._source.status == status) return
+      if (this.alarm[0]._source.status === status) { return; }
       this.spinner.show();
-      var res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, this.esType, _id, status)
-      if (res.result != "updated") {
-        throw ("index not updated, result: " + res.result)
+      const res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, this.esType, _id, status);
+      if (res.result !== 'updated') {
+        throw new Error(('index not updated, result: ' + res.result));
       }
       this.isProcessingUpdateStatus = true;
       this.spinner.hide();
       this.closeDropdown('alrm-status-', this.alarmID);
       this.wide = false;
-      await this.sleep (1000)
-      var resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id)
-      this.alarm[0] = resp
-      //var resp = await this.es.getAlarms(this.alarm[0]._source.perm_index, this.esType, _id)
-      //this.alarm = resp.hits.hits
+      await this.sleep (1000);
+      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id);
+      this.alarm[0] = resp;
+      // var resp = await this.es.getAlarms(this.alarm[0]._source.perm_index, this.esType, _id)
+      // this.alarm = resp.hits.hits
       // console.log("alarm hits hits: ", this.alarm)
     } catch (err) {
-      console.log('Error occur while changing alarm status: ' + err)
+      console.log('Error occur while changing alarm status: ' + err);
     } finally {
       this.isProcessingUpdateStatus = false;
       this.spinner.hide();
@@ -296,25 +298,25 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   async changeAlarmTag(_id, tag) {
     try {
-      if (this.alarm[0]._source.tag == tag) return
+      if (this.alarm[0]._source.tag === tag) { return; }
       this.spinner.show();
-      var res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index, 
-        this.esType, _id, tag)
-      if (res.result != "updated") {
-        throw ("index not updated, result: " + res.result)
+      const res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index,
+        this.esType, _id, tag);
+      if (res.result !== 'updated') {
+        throw new Error(('index not updated, result: ' + res.result));
       }
       this.isProcessingUpdateTag = true;
       this.spinner.hide();
       this.closeDropdown('alrm-tag-', this.alarmID);
       this.wide = false;
-      await this.sleep (1000)
-      var resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id)
-      this.alarm[0] = resp
+      await this.sleep (1000);
+      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id);
+      this.alarm[0] = resp;
       this.isProcessingUpdateTag = false;
     } catch (err) {
-      console.log('Error occur while changing alarm tag: ' + err)
+      console.log('Error occur while changing alarm tag: ' + err);
     } finally {
-      this.spinner.hide()
+      this.spinner.hide();
     }
   }
 

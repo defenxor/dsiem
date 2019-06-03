@@ -62,24 +62,24 @@ export class ElasticsearchService {
 
   constructor(private http: Http) {
     this.loadConfig()
-    .then(res=> {
+    .then(res => {
       this.server = res['elasticsearch'];
-      this.kibana = res['kibana']
+      this.kibana = res['kibana'];
       if (!this.client) {
         this.connect();
       }
     }).catch(err => {
-      console.log(`[ES] Unable to load config file, ${err}`)
-    })
+      console.log(`[ES] Unable to load config file, ${err}`);
+    });
   }
 
   loadConfig() {
     return this.http.get('./assets/config/esconfig.json')
       .pipe(map(res => res.json()))
       .toPromise()
-      .catch( err =>{
-        return Promise.reject(err)        
-      })
+      .catch( err => {
+        return Promise.reject(err);
+      });
   }
 
   buildQueryAlarmEvents(alarmId, stage) {
@@ -92,7 +92,7 @@ export class ElasticsearchService {
           ]
         }
       }
-    }
+    };
   }
 
   buildQueryAlarmEventsPagination(alarmId, stage, from, size) {
@@ -102,16 +102,16 @@ export class ElasticsearchService {
       'query': {
         'bool': {
           'must': [
-            { 
+            {
               'term': { 'stage': stage }
             },
-            { 
+            {
               'term': { 'alarm_id.keyword': alarmId }
             }
           ]
         }
       }
-    }
+    };
   }
 
   buildQueryAllAlarmEvents(alarmId, size) {
@@ -120,7 +120,7 @@ export class ElasticsearchService {
       'query': {
         'term': { 'alarm_id.keyword': alarmId }
       }
-    }
+    };
   }
 
   buildQueryEvents(eventId) {
@@ -128,7 +128,7 @@ export class ElasticsearchService {
       'query': {
         'term': { 'event_id.keyword': eventId }
       }
-    }
+    };
   }
 
   buildQueryAlarms(alarmId) {
@@ -136,7 +136,7 @@ export class ElasticsearchService {
       'query': {
         'term': { '_id': alarmId }
       }
-    }
+    };
   }
 
   buildQueryAlarmEventsWithoutStage(alarmId) {
@@ -200,7 +200,7 @@ export class ElasticsearchService {
           ]
         }
       }
-    }`
+    }`;
     return this.client.count({
       index: _index,
       body: b
@@ -251,12 +251,12 @@ export class ElasticsearchService {
     });
   }
 
-  getAlarm(_index, _type, alarmId):any {
+  getAlarm(_index, _type, alarmId): any {
     return this.client.get({
       id: alarmId,
       index: _index,
       type: _type
-    })
+    });
   }
 
   updateAlarmStatusById(_index, _type, _id, status) {
