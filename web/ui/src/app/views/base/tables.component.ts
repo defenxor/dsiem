@@ -33,7 +33,7 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
   esIndex = 'siem_alarms';
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndexEvent = 'siem_events-*';
-  esType = 'doc';
+  esType = '';
   elasticsearch: string;
   tempAlarms: AlarmSource[];
   tableData: object[] = [];
