@@ -18,7 +18,7 @@ RUN wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_li
 # RUN wget https://github.com/defenxor/dsiem/releases/download/$DSIEM_VER/dsiem-server-linux-amd64.zip -O /tmp/dsiem.zip && \
 #    unzip /tmp/dsiem.zip -d /dsiem && rm -rf /tmp/dsiem.zip
 
-# configs-dist will be used to prepolulate /dsiem/configs if it's mounted off a new empty volume
+# configs-dist will be used to prepopulate /dsiem/configs if it's mounted off a new empty volume
 RUN cp -r /dsiem/configs /dsiem/configs-dist && rm -rf /dsiem/configs/*
 
 # s6-overlay
