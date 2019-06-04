@@ -39,7 +39,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   esIndex = 'siem_alarms';
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndexEvent = 'siem_events-*';
-  esType = 'doc';
+  esType = '';
   totalItems;
   itemsPerPage = 5;
   numberOfVisiblePaginators = 10;

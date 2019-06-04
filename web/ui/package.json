@@ -1,6 +1,6 @@
 {
   "name": "dsiem-ui",
-  "version": "0.0.1",
+  "version": "0.19.0-1-g5740399",
   "description": "Angular 2+ SIEM User Interface",
   "author": {
     "name": "Defenxor",
@@ -12,6 +12,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "syncver": "npm version --allow-same-version $(git describe --tags)",
     "test": "ng test --code-coverage",
     "lint": "ng lint",
     "e2e": "ng e2e",
@@ -35,8 +36,8 @@
     "bootstrap": "^4.1.3",
     "chart.js": "^2.7.3",
     "core-js": "^2.5.7",
-    "elasticsearch": "15.1.1",
-    "elasticsearch-browser": "15.1.1",
+    "elasticsearch": "16.1.1",
+    "elasticsearch-browser": "16.1.1",
     "flag-icon-css": "^3.2.1",
     "font-awesome": "^4.7.0",
     "license-check-and-add": "^2.3.6",
@@ -57,7 +58,7 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "^0.7.5",
     "@angular/cli": "^6.2.6",
-    "@angular/compiler-cli": "^6.1.10",
+    "@angular/compiler-cli": "^8.0.0",
     "@angular/language-service": "^6.1.10",
     "@types/jasmine": "^2.8.9",
     "@types/jasminewd2": "^2.0.5",
@@ -65,7 +66,7 @@
     "codelyzer": "^4.5.0",
     "jasmine-core": "^3.2.1",
     "jasmine-spec-reporter": "^4.2.1",
-    "karma": "^3.0.0",
+    "karma": "^4.1.0",
     "karma-chrome-launcher": "^2.2.0",
     "karma-coverage": "^1.1.2",
     "karma-coverage-istanbul-reporter": "^2.0.4",
@@ -75,7 +76,7 @@
     "protractor": "^5.4.1",
     "ts-node": "^7.0.1",
     "tslint": "^5.11.0",
-    "typescript": "^2.9.2"
+    "typescript": "~3.4.5"
   },
   "engines": {
     "node": ">= 8.9.4",

@@ -424,12 +424,12 @@ describe('Detail Alarm Component', () => {
     }, 100);
   });
 
-  it('elasticsearch type should be doc', (done) => {
+  it('elasticsearch type should be empty', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();
     setTimeout(() => {
       fixture.detectChanges();
-      expect(app.esType).toContain('doc');
+      expect(app.esType).toBe('');
       done();
     }, 100);
   });
