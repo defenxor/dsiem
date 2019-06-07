@@ -33,7 +33,7 @@ services:
       - siemnet
     volumes:
       - ./conf/logstash/conf.d:/etc/logstash/conf.d
-      - ./conf/logstash/index-template.d:/etc/logstash/index-template.d
+      - ./conf/logstash/index-template.d/es7:/etc/logstash/index-template.d
 
   kibana:
     container_name: kibana

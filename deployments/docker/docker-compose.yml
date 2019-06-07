@@ -33,7 +33,7 @@ services:
       - siemnet
     volumes:
       - ./conf/logstash/conf.d:/etc/logstash/conf.d
-      - ./conf/logstash/index-template.d/es7:/etc/logstash/index-template.dg
+      - ./conf/logstash/index-template.d/es7:/etc/logstash/index-template.d
 
   kibana:
     container_name: kibana
@@ -41,7 +41,7 @@ services:
     environment:
       - XPACK_MONITORING_ENABLED=false
     ports:
-      - 5601:5601      
+      - 5601:5601
     networks:
       - siemnet
 

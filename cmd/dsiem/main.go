@@ -252,7 +252,7 @@ external message queue.`,
 		var sendBpChan chan<- bool
 
 		log.Setup(viper.GetBool("debug"))
-		log.Info(log.M{Msg: "Starting " + progName + " " + versionCmd.Version +
+		log.Info(log.M{Msg: "Starting " + progName + " " + version +
 			" in " + mode + " mode."})
 
 		if mode == "cluster-backend" {
