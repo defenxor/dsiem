@@ -45,15 +45,15 @@ func (es *es5Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRe
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
 		// Query(query).
-		Aggregation("uniqterm", terms).
+		Aggregation("uniqTerm", terms).
 		Pretty(true).
 		Do(ctx)
 	if err != nil {
 		return
 	}
-	agg, found := searchResult.Aggregations.Terms("uniqterm")
+	agg, found := searchResult.Aggregations.Terms("uniqTerm")
 	if !found {
-		err = errors.New("cannot find aggregation uniqterm in ES query result")
+		err = errors.New("cannot find aggregation uniqTerm in ES query result")
 		return
 	}
 	count := len(agg.Buckets)
@@ -82,7 +82,7 @@ func (es *es5Client) ValidateIndex(index string) (err error) {
 	var exists bool
 	exists, err = es.client.IndexExists(index).Do(context.Background())
 	if err == nil && !exists {
-		err = errors.New("Index " + index + " doesnt exist")
+		err = errors.New("Index " + index + " does not exist")
 	}
 	return
 }

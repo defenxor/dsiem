@@ -44,6 +44,10 @@ func newESCollector(esURL string) (collector esCollector, err error) {
 		return
 	}
 	log.Info(log.M{Msg: "Found ES version " + ver})
+	if strings.HasPrefix(ver, "7") {
+		esVersion = 7
+		collector = &es7Client{}
+	}
 	if strings.HasPrefix(ver, "6") {
 		esVersion = 6
 		collector = &es6Client{}
@@ -53,7 +57,7 @@ func newESCollector(esURL string) (collector esCollector, err error) {
 		collector = &es5Client{}
 	}
 	if esVersion == 0 {
-		err = errors.New("Unsupported ES version (" + ver + "), currently only ver 5.x and 6.x are supported.")
+		err = errors.New("Unsupported ES version (" + ver + "), currently only ver 5.x, 6.x, 7.x are supported.")
 		return
 	}
 	err = collector.Init(esURL)
