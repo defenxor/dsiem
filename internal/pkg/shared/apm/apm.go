@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/apm-agent-go"
+	"go.elastic.co/apm"
 )
 
 var enabled bool
@@ -43,47 +43,43 @@ func Enable(e bool) {
 	mu.Unlock()
 }
 
-// Transaction wraps transaction from elasticapm Default tracer and make it concurrency safe
+// Transaction wraps transaction from apm Default tracer and make it concurrency safe
 type Transaction struct {
 	sync.Mutex
-	Tx    *elasticapm.Transaction
+	Tx    *apm.Transaction
 	ended bool
 }
 
-// StartTransaction returns a mutex protected elasticapm.Transaction, with optional starting time
-func StartTransaction(name, transactionType string, startTime *time.Time) *Transaction {
+// StartTransaction returns a mutex protected apm.Transaction with optional starting time.
+func StartTransaction(name, transactionType string, startTime *time.Time) (tx *Transaction) {
 	txObj := Transaction{}
+	opts := apm.TransactionOptions{}
 	if startTime != nil {
-		opts := elasticapm.TransactionOptions{TraceContext: elasticapm.TraceContext{}, Start: *startTime}
-		txObj.Tx = elasticapm.DefaultTracer.StartTransactionOptions(name, transactionType, opts)
-	} else {
-		txObj.Tx = elasticapm.DefaultTracer.StartTransaction(name, transactionType)
+		opts.Start = *startTime
 	}
-	return &txObj
+	txObj.Tx = apm.DefaultTracer.StartTransactionOptions(name, transactionType, opts)
+	tx = &txObj
+	return
 }
 
-// Recover returns an elasticapm.DefaultTracer.Recover function to be deferred
+// Recover returns an apm.DefaultTracer.Recover function to be deferred
 func (t *Transaction) Recover() {
-	// this is copied from elasticapm.DefaultTracer.Recover(t.Tx)
+	// this is copied from apm.DefaultTracer.Recover(t.Tx)
 	v := recover()
 	if v == nil {
 		return
 	}
-	elasticapm.DefaultTracer.Recovered(v, t.Tx).Send()
+	e := apm.DefaultTracer.Recovered(v)
+	e.SetTransaction(t.Tx)
+	e.Send()
 }
 
 // SetCustom set custom value for the transaction
-func (t *Transaction) SetCustom(key string, value interface{}) {
-	/*
-		if either of the following still occur:
-		- index out of range error in Tx.Context.SetCustom
-		- concurrent map write in Tx.Context.SetTag
-		then this func should be set to no op
-	*/
+func (t *Transaction) SetCustom(key string, value string) {
 	t.Lock()
 	defer t.Unlock()
 	defer t.Recover()
-	t.Tx.Context.SetCustom(key, value)
+	t.Tx.Context.SetTag(key, value)
 }
 
 // Result set the result for the transaction
@@ -96,12 +92,10 @@ func (t *Transaction) Result(value string) {
 	t.Tx.Result = value
 }
 
-// SetError set and send error fom the transaction
+// SetError set and send error
 func (t *Transaction) SetError(err error) {
-	t.Lock()
-	defer t.Unlock()
-	e := elasticapm.DefaultTracer.NewError(err)
-	e.Transaction = t.Tx
+	e := apm.DefaultTracer.NewError(err)
+	e.SetTransaction(t.Tx)
 	e.Send()
 }
 
