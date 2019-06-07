@@ -228,10 +228,6 @@ describe('Alarm List Component', () => {
     expect(app.esIndexEvent).toContain('siem_events-*');
   });
 
-  it('elasticsearch type should be empty', () => {
-    expect(app.esType).toBe('');
-  });
-
   it('shoud have alarm list title', () => {
     fixture.detectChanges();
     const title = fixture.nativeElement.querySelector('.card-header').textContent;
