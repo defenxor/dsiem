@@ -26,7 +26,7 @@ The dashboard also provide a URL link (through Kibana scripted field) to open ea
 
 ## APM Integration
 
-***Note:** Dsiem currently uses a pre-release version of APM Go client library (v0.5.2). The release version (v1.0.0+) requires ELK stack v6.5 that we don't have plan to adopt yet.*
+***Note:** APM support requires ELK stack v6.5 or later.*
 
 Dsiem comes integrated with Elastic APM for tracing purpose. Currently there are 5 custom transaction types created by Dsiem:
 
@@ -48,3 +48,9 @@ $ ./dsiem serve
 Example screenshot of Dsiem's APM dashboard:
 
 ![APM Dashboard for Dsiem](./images/apm.png)
+
+**Caveats on current APM support:**
+- Dsiem currently doesn't support distributed tracing due to difficulty in passing APM trace context from
+  frontend to backend. We can use spans and pass APM `trace ID` or (whatever identifier required) 
+  along with dsiem normalized event object, but it is not clear how to instantiate APM transactions (or spans)
+  on the backend node that will correlate with the one recorded on the frontend.
