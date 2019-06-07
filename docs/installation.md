@@ -54,7 +54,7 @@ Then after you get a feel on how everything fits together, you can start integra
   
 ### Using Existing ELK
 
-* First make sure you're already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.x, though it should work with any 6.x version with minor adjustment.
+* First make sure you're already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.2 and 6.8.0, though it should work with any 6.x version (or likely 7.x as well) with minor adjustment.
 
 * Download Dsiem binary from the release page, unzip it, and run it on the target system, e.g. for Linux (please use dsiem latest version accordingly for the download URL):
 
