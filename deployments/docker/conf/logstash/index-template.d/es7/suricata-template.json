@@ -1,0 +1,32 @@
+{
+  "index_patterns" : [ "suricata-*" ],
+  "version" : 1,
+  "settings" : {
+    "number_of_replicas": 0,
+    "number_of_shards": 1,
+    "index.refresh_interval" : "5s"
+  },
+  "mappings": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "norms": false,
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "src_ip": { "type": "ip" },
+        "dest_ip": { "type": "ip" }
+      }
+  }
+}
