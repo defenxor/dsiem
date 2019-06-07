@@ -28,6 +28,7 @@ import (
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/internal/pkg/shared/proc"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/limiter"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice/nats"
@@ -173,6 +174,14 @@ func Start(cfg Config) (err error) {
 	cmu.Unlock()
 
 	go func() {
+		// ListenAndServe may panic due to already in use port,
+		// but its ok to quit ASAP in that case
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(log.M{Msg: "Unable to listen and serve, perhaps the port is already-in-use?"})
+				proc.StopProcess(proc.GetProcID())
+			}
+		}()
 		if runtime.GOOS == "windows" {
 			err = fServer.ListenAndServe(cfg.Addr + ":" + p)
 		} else {
