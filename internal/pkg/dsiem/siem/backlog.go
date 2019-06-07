@@ -234,8 +234,8 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 		b.RLock()
 		tx.SetCustom("backlog_id", b.ID)
-		tx.SetCustom("directive_id", b.Directive.ID)
-		tx.SetCustom("backlog_stage", b.CurrentStage)
+		tx.SetCustom("directive_id", strconv.Itoa(b.Directive.ID))
+		tx.SetCustom("backlog_stage", strconv.Itoa(b.CurrentStage))
 
 		b.RUnlock()
 
@@ -291,7 +291,7 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 	// b.setStatus("active", e.ConnID, tx)
 	if apm.Enabled() {
 		b.Lock()
-		tx.SetCustom("backlog_stage", b.CurrentStage)
+		tx.SetCustom("backlog_stage", strconv.Itoa(b.CurrentStage))
 		tx.Result("Stage increased")
 		b.Unlock()
 	}

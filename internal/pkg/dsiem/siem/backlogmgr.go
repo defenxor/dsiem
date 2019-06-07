@@ -121,7 +121,7 @@ mainLoop:
 			tStart := time.Unix(evt.RcvdTime, 0)
 			tx = apm.StartTransaction("Frontend to Backend", "SIEM", &tStart)
 			tx.SetCustom("event_id", evt.EventID)
-			tx.SetCustom("directive_id", d.ID)
+			tx.SetCustom("directive_id", strconv.Itoa(d.ID))
 		}
 
 		found := false

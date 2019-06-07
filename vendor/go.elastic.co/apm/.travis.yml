@@ -1,0 +1,51 @@
+language: go
+go:
+  - stable
+  - master
+  - "1.x"
+  - "1.8.x"
+  - "1.9.x"
+  - "1.10.x"
+  - "1.11.x"
+  - "1.12.x"
+
+go_import_path: go.elastic.co/apm
+
+dist: xenial
+matrix:
+  fast_finish: true
+  allow_failures:
+    - os: osx
+    - go: "1.x"
+    - go: master
+
+before_install:
+  - |
+      if (go run scripts/mingoversion.go 1.10 &>/dev/null); then
+        go get -v golang.org/x/lint/golint;
+        go get -v golang.org/x/tools/cmd/goimports;
+        go get -v github.com/elastic/go-licenser;
+      fi
+
+script:
+  - make install check
+
+jobs:
+  include:
+    - os: osx     
+
+    - name: "W3C Distributed Tracing Validation"
+      sudo: required
+      services:
+        - docker
+      script:
+        - scripts/docker-compose-testing run -T --rm trace-context-harness
+
+    - stage: coverage
+      sudo: required
+      services:
+        - docker
+      script:
+        - scripts/docker-compose-testing up -d --build
+        - scripts/docker-compose-testing run -T --rm go-agent-tests make coverage > coverage.txt
+        - bash <(curl -s https://codecov.io/bash)

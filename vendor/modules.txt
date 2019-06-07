@@ -1,25 +1,13 @@
 # github.com/allegro/bigcache v0.0.0-20181009050124-70fdb6c1fbb8
 github.com/allegro/bigcache
 github.com/allegro/bigcache/queue
+# github.com/armon/go-radix v1.0.0
+github.com/armon/go-radix
 # github.com/buaazp/fasthttprouter v0.1.1
 github.com/buaazp/fasthttprouter
 # github.com/dogenzaka/tsv v0.0.0-20150215104501-8e02e611b1fb
 github.com/dogenzaka/tsv
-# github.com/elastic/apm-agent-go v0.5.2
-github.com/elastic/apm-agent-go
-github.com/elastic/apm-agent-go/internal/apmconfig
-github.com/elastic/apm-agent-go/internal/apmhttputil
-github.com/elastic/apm-agent-go/internal/apmschema
-github.com/elastic/apm-agent-go/internal/apmstrings
-github.com/elastic/apm-agent-go/internal/fastjson
-github.com/elastic/apm-agent-go/model
-github.com/elastic/apm-agent-go/stacktrace
-github.com/elastic/apm-agent-go/transport
-github.com/elastic/apm-agent-go/internal/radix
-github.com/elastic/apm-agent-go/internal/apmdebug
-github.com/elastic/apm-agent-go/internal/pretty
-github.com/elastic/apm-agent-go/internal/krtext
-# github.com/elastic/go-sysinfo v0.0.0-20180911173716-7b021494a956
+# github.com/elastic/go-sysinfo v0.0.0-20190103140604-e68552284485
 github.com/elastic/go-sysinfo
 github.com/elastic/go-sysinfo/types
 github.com/elastic/go-sysinfo/internal/registry
@@ -102,7 +90,7 @@ github.com/prometheus/procfs/xfs
 github.com/prometheus/procfs/internal/util
 # github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
 github.com/remeh/sizedwaitgroup
-# github.com/santhosh-tekuri/jsonschema v1.2.2
+# github.com/santhosh-tekuri/jsonschema v1.2.3
 github.com/santhosh-tekuri/jsonschema
 github.com/santhosh-tekuri/jsonschema/decoders
 github.com/santhosh-tekuri/jsonschema/formats
@@ -142,6 +130,24 @@ github.com/valyala/tcplisten
 # github.com/yl2chen/cidranger v0.0.0-20180214081945-928b519e5268
 github.com/yl2chen/cidranger
 github.com/yl2chen/cidranger/net
+# go.elastic.co/apm v1.3.0
+go.elastic.co/apm
+go.elastic.co/apm/internal/apmconfig
+go.elastic.co/apm/internal/apmcontext
+go.elastic.co/apm/internal/apmhostutil
+go.elastic.co/apm/internal/apmhttputil
+go.elastic.co/apm/internal/apmlog
+go.elastic.co/apm/internal/apmschema
+go.elastic.co/apm/internal/apmstrings
+go.elastic.co/apm/internal/iochan
+go.elastic.co/apm/internal/pkgerrorsutil
+go.elastic.co/apm/internal/ringbuffer
+go.elastic.co/apm/internal/wildcard
+go.elastic.co/apm/model
+go.elastic.co/apm/stacktrace
+go.elastic.co/apm/transport
+# go.elastic.co/fastjson v1.0.0
+go.elastic.co/fastjson
 # go.uber.org/atomic v1.3.2
 go.uber.org/atomic
 # go.uber.org/multierr v1.1.0
@@ -158,7 +164,7 @@ golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 # golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519
 golang.org/x/net/context
-# golang.org/x/sys v0.0.0-20181023152157-44b849a8bc13
+# golang.org/x/sys v0.0.0-20190102155601-82a175fd1598
 golang.org/x/sys/unix
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/debug
@@ -177,5 +183,5 @@ gopkg.in/olivere/elastic.v5/config
 gopkg.in/olivere/elastic.v5/uritemplates
 # gopkg.in/yaml.v2 v2.2.1
 gopkg.in/yaml.v2
-# howett.net/plist v0.0.0-20180609054337-500bd5b9081b
+# howett.net/plist v0.0.0-20181124034731-591f970eefbb
 howett.net/plist
