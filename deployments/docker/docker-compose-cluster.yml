@@ -3,7 +3,7 @@ services:
 
   elasticsearch:
     container_name: elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.1.1
     environment:
       - discovery.type=single-node
       - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
@@ -24,7 +24,7 @@ services:
 
   logstash:
     container_name: logstash
-    image: defenxor/docker-logstash:6.4.2
+    image: defenxor/docker-logstash:7.1.1
     command:
       - -f/etc/logstash/conf.d
     environment:
@@ -37,7 +37,7 @@ services:
 
   kibana:
     container_name: kibana
-    image: docker.elastic.co/kibana/kibana:6.4.2
+    image: docker.elastic.co/kibana/kibana:7.1.1
     environment:
       - xpack.monitoring.ui.container.elasticsearch.enabled=false
     ports:
@@ -83,7 +83,7 @@ services:
 
   filebeat:
     container_name: filebeat
-    image: docker.elastic.co/beats/filebeat:6.4.2
+    image: docker.elastic.co/beats/filebeat:7.1.1
     user: root
     networks:
       - siemnet
