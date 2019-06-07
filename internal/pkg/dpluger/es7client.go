@@ -22,24 +22,22 @@ import (
 	"fmt"
 	"strconv"
 
-	elastic5 "gopkg.in/olivere/elastic.v5"
+	elastic7 "github.com/olivere/elastic/v7"
 )
 
-type es5Client struct {
-	client *elastic5.Client
+type es7Client struct {
+	client *elastic7.Client
 }
 
-func (es *es5Client) Init(esURL string) (err error) {
-	es.client, err = elastic5.NewSimpleClient(elastic5.SetURL(esURL))
+func (es *es7Client) Init(esURL string) (err error) {
+	es.client, err = elastic7.NewSimpleClient(elastic7.SetURL(esURL))
 	return
 }
-func (es *es5Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRef, err error) {
+func (es *es7Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRef, err error) {
+
 	size := 1000
 	c.init(plugin.Name, confFile)
-	terms := elastic5.NewTermsAggregation().Field(sidSource).Size(size)
-
-	//	query := elastic5.NewBoolQuery()
-	//	query = query.Must(elastic5.NewMatchAllQuery())
+	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)
 
 	ctx := context.Background()
 	searchResult, err := es.client.Search().
@@ -78,7 +76,7 @@ func (es *es5Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRe
 	return
 }
 
-func (es *es5Client) ValidateIndex(index string) (err error) {
+func (es *es7Client) ValidateIndex(index string) (err error) {
 	var exists bool
 	exists, err = es.client.IndexExists(index).Do(context.Background())
 	if err == nil && !exists {
@@ -87,15 +85,14 @@ func (es *es5Client) ValidateIndex(index string) (err error) {
 	return
 }
 
-func (es *es5Client) IsESFieldExist(index string, field string) (exist bool, err error) {
+func (es *es7Client) IsESFieldExist(index string, field string) (exist bool, err error) {
 	var countResult int64
-	existQuery := elastic5.NewExistsQuery(field)
-	countService := elastic5.NewCountService(es.client)
+	existQuery := elastic7.NewExistsQuery(field)
+	countService := elastic7.NewCountService(es.client)
 	countResult, err = countService.Index(index).
 		Query(existQuery).
 		Pretty(true).
 		Do(context.Background())
-
 	if countResult > 0 {
 		exist = true
 	}
