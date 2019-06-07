@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/procfs"
@@ -202,6 +203,37 @@ func (p *process) Capabilities() (*types.CapabilityInfo, error) {
 	}
 
 	return readCapabilities(content)
+}
+
+func (p *process) User() (types.UserInfo, error) {
+	content, err := ioutil.ReadFile(p.path("status"))
+	if err != nil {
+		return types.UserInfo{}, err
+	}
+
+	var user types.UserInfo
+	err = parseKeyValue(content, ":", func(key, value []byte) error {
+		// See proc(5) for the format of /proc/[pid]/status
+		switch string(key) {
+		case "Uid":
+			ids := strings.Split(string(value), "\t")
+			if len(ids) >= 3 {
+				user.UID = ids[0]
+				user.EUID = ids[1]
+				user.SUID = ids[2]
+			}
+		case "Gid":
+			ids := strings.Split(string(value), "\t")
+			if len(ids) >= 3 {
+				user.GID = ids[0]
+				user.EGID = ids[1]
+				user.SGID = ids[2]
+			}
+		}
+		return nil
+	})
+
+	return user, nil
 }
 
 func ticksToDuration(ticks uint64) time.Duration {
