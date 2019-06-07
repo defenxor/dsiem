@@ -39,7 +39,6 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   esIndex = 'siem_alarms';
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndexEvent = 'siem_events-*';
-  esType = '';
   totalItems;
   itemsPerPage = 5;
   numberOfVisiblePaginators = 10;
@@ -77,7 +76,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   async getAlarmDetail(alarmID) {
     const that = this;
     that.spinner.show();
-    const resp = await this.es.getAlarms(this.esIndex, this.esType, alarmID);
+    const resp = await this.es.getAlarms(this.esIndex, alarmID);
     const tempAlarms = resp.hits.hits;
     await Promise.all(tempAlarms.map(async (e) => {
       await Promise.all(e['_source']['rules'].map(async (r) => {
@@ -93,7 +92,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     this.alarm = tempAlarms;
     tempAlarms.forEach(element => {
       this.alarmRules = element._source.rules;
-      this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage)
+      this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage)
       .then(function(alev) {
         console.log(alev);
         if (alev['hits'] !== undefined) {
@@ -145,14 +144,14 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     let alev: any;
 
     try {
-      alev = await this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.esType, id, stage, from, size);
+      alev = await this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, id, stage, from, size);
       console.log(alev['hits']['hits']);
     } catch (err) {
       throw new Error(('Error from getAlarmEventsPagination: ' + err));
     }
     for (const element of alev['hits']['hits']) {
       try {
-        ev = await that.es.getEvents(that.esIndexEvent, that.esType, element['_source']['event_id']);
+        ev = await that.es.getEvents(that.esIndexEvent, element['_source']['event_id']);
       } catch (err) {
         throw new Error(('Error from getEvents: ' + err));
       }
@@ -276,7 +275,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     try {
       if (this.alarm[0]._source.status === status) { return; }
       this.spinner.show();
-      const res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, this.esType, _id, status);
+      const res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, _id, status);
       if (res.result !== 'updated') {
         throw new Error(('index not updated, result: ' + res.result));
       }
@@ -285,9 +284,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       this.closeDropdown('alrm-status-', this.alarmID);
       this.wide = false;
       await this.sleep (1000);
-      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id);
+      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, _id);
       this.alarm[0] = resp;
-      // var resp = await this.es.getAlarms(this.alarm[0]._source.perm_index, this.esType, _id)
+      // var resp = await this.es.getAlarms(this.alarm[0]._source.perm_index, _id)
       // this.alarm = resp.hits.hits
       // console.log("alarm hits hits: ", this.alarm)
     } catch (err) {
@@ -302,8 +301,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     try {
       if (this.alarm[0]._source.tag === tag) { return; }
       this.spinner.show();
-      const res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index,
-        this.esType, _id, tag);
+      const res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index, _id, tag);
       if (res.result !== 'updated') {
         throw new Error(('index not updated, result: ' + res.result));
       }
@@ -312,7 +310,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       this.closeDropdown('alrm-tag-', this.alarmID);
       this.wide = false;
       await this.sleep (1000);
-      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, this.esType, _id);
+      const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, _id);
       this.alarm[0] = resp;
       this.isProcessingUpdateTag = false;
     } catch (err) {
