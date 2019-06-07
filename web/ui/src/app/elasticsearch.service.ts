@@ -27,6 +27,8 @@ export class ElasticsearchService {
   private client: Client;
   server: string;
   kibana: string;
+  esVersion: string;
+  useType: boolean;
 
   querylast5mins = {
     'size' : 50,
@@ -66,20 +68,39 @@ export class ElasticsearchService {
       this.server = res['elasticsearch'];
       this.kibana = res['kibana'];
       if (!this.client) {
-        this.connect();
+        this.client = new Client({
+          host:  this.server,
+          log: 'info',
+        });
       }
+      return this.getESVersion();
     }).catch(err => {
-      console.log(`[ES] Unable to load config file, ${err}`);
+      console.log(`[ES] error in constructor, ${err}`);
     });
   }
 
   loadConfig() {
     return this.http.get('./assets/config/esconfig.json')
       .pipe(map(res => res.json()))
-      .toPromise()
-      .catch( err => {
-        return Promise.reject(err);
-      });
+      .toPromise();
+  }
+
+  async getESVersion() {
+    try {
+      const res = await this.http.get(this.server)
+        .pipe(map(out => out.json()))
+        .toPromise();
+      const fullVer = res['version']['number'];
+      this.esVersion = fullVer;
+      // disable type if es major version >= 7
+      const re = new RegExp(/^\d+/);
+      const reVer = re.exec(fullVer);
+      if (parseInt(reVer[0], 10) >= 7) {
+        this.useType = false;
+      } else {
+          this.useType = true;
+      }
+    } catch (err) {}
   }
 
   buildQueryAlarmEvents(alarmId, stage) {
@@ -148,13 +169,6 @@ export class ElasticsearchService {
     };
   }
 
-  connect() {
-    this.client = new Client({
-      host:  this.server,
-      log: 'info',
-    });
-  }
-
   getServer() {
     return this.server;
   }
@@ -170,22 +184,34 @@ export class ElasticsearchService {
     });
   }
 
+  getType() {
+    if (this.esVersion === '') {
+      // esGetVersion in constructor failed, just default to use type
+      this.useType = true;
+    }
+    if (this.useType) {
+      return 'doc';
+    } else {
+      return '';
+    }
+  }
+
   addToIndex(value): any {
     return this.client.create(value);
   }
 
-  getAllDocuments(_index, _type): any {
+  getAllDocuments(_index): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.queryalldocs,
     });
   }
 
-  getLast5Minutes(_index, _type): any {
+  getLast5Minutes(_index): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.querylast5mins
     });
   }
@@ -207,62 +233,62 @@ export class ElasticsearchService {
     });
   }
 
-  getAlarmEvents(_index, _type, alarmId, stage): any {
+  getAlarmEvents(_index, alarmId, stage): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.buildQueryAlarmEvents(alarmId, stage),
       filterPath: ['hits.hits._source']
     });
   }
 
-  getAlarmEventsPagination(_index, _type, alarmId, stage, from, size): any {
+  getAlarmEventsPagination(_index, alarmId, stage, from, size): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.buildQueryAlarmEventsPagination(alarmId, stage, from, size),
       filterPath: ['hits.hits._source']
     });
   }
 
-  getEvents(_index, _type, eventId): any {
+  getEvents(_index, eventId): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.buildQueryEvents(eventId),
       filterPath: ['hits.hits._source']
     });
   }
 
-  getAllDocumentsPaging(_index, _type, from, size): any {
+  getAllDocumentsPaging(_index, from, size): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.queryalldocspaging(from, size),
     });
   }
 
-  getAlarms(_index, _type, alarmId): any {
+  getAlarms(_index, alarmId): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.buildQueryAlarms(alarmId),
       filterPath: ['hits.hits._source']
     });
   }
 
-  getAlarm(_index, _type, alarmId): any {
+  getAlarm(_index, alarmId): any {
     return this.client.get({
       id: alarmId,
       index: _index,
-      type: _type
+      type: this.getType()
     });
   }
 
-  updateAlarmStatusById(_index, _type, _id, status) {
+  updateAlarmStatusById(_index, _id, status) {
     return this.client.update({
       index: _index,
-      type: _type,
+      type: this.getType(),
       id: _id,
       body: {
         doc: {
@@ -272,10 +298,10 @@ export class ElasticsearchService {
     });
   }
 
-  updateAlarmTagById(_index, _type, _id, tag) {
+  updateAlarmTagById(_index, _id, tag) {
     return this.client.update({
       index: _index,
-      type: _type,
+      type: this.getType(),
       id: _id,
       body: {
         doc: {
@@ -285,25 +311,25 @@ export class ElasticsearchService {
     });
   }
 
-  getAlarmEventsWithoutStage(_index, _type, alarmId): any {
+  getAlarmEventsWithoutStage(_index, alarmId): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.buildQueryAlarmEventsWithoutStage(alarmId),
       filterPath: ['hits.hits']
     });
   }
 
-  getAllAlarmEvents(_index, _type, alarmId, size): any {
+  getAllAlarmEvents(_index, alarmId, size): any {
     return this.client.search({
       index: _index,
-      type: _type,
+      type: this.getType(),
       body: this.buildQueryAllAlarmEvents(alarmId, size),
       filterPath: ['hits.hits']
     });
   }
 
-  async removeEventById(_index, _type, _id) {
+  async removeEventById(_index, _id) {
     return await this.client.deleteByQuery({
       index: _index,
       body: {
@@ -327,7 +353,7 @@ export class ElasticsearchService {
     });
   }
 
-  async removeAlarmById(_index, _type, _id) {
+  async removeAlarmById(_index, _id) {
     return await this.client.deleteByQuery({
       index: _index,
       body: {
@@ -351,7 +377,7 @@ export class ElasticsearchService {
     });
   }
 
-  async removeAlarmEventById(_index, _type, _id) {
+  async removeAlarmEventById(_index, _id) {
     return await this.client.deleteByQuery({
       index: _index,
       body: {
