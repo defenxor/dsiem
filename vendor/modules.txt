@@ -52,7 +52,7 @@ github.com/klauspost/compress/zlib
 github.com/klauspost/cpuid
 # github.com/magiconair/properties v1.8.0
 github.com/magiconair/properties
-# github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329
+# github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe
 github.com/mailru/easyjson
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
@@ -75,15 +75,19 @@ github.com/nats-io/nuid
 github.com/olivere/elastic
 github.com/olivere/elastic/config
 github.com/olivere/elastic/uritemplates
+# github.com/olivere/elastic/v7 v7.0.1
+github.com/olivere/elastic/v7
+github.com/olivere/elastic/v7/config
+github.com/olivere/elastic/v7/uritemplates
 # github.com/paulbellamy/ratecounter v0.2.0
 github.com/paulbellamy/ratecounter
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
-# github.com/pkg/errors v0.8.0
+# github.com/pkg/errors v0.8.1
 github.com/pkg/errors
 # github.com/pkg/profile v1.2.1
 github.com/pkg/profile
-# github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d
+# github.com/prometheus/procfs v0.0.0-20190117184657-bf6a532e95b1
 github.com/prometheus/procfs
 github.com/prometheus/procfs/nfs
 github.com/prometheus/procfs/xfs
@@ -159,12 +163,12 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
-# golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16
+# golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-# golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519
+# golang.org/x/net v0.0.0-20190311183353-d8887717615a
 golang.org/x/net/context
-# golang.org/x/sys v0.0.0-20190102155601-82a175fd1598
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
 golang.org/x/sys/unix
 golang.org/x/sys/windows/svc
 golang.org/x/sys/windows/svc/debug
@@ -181,7 +185,7 @@ golang.org/x/time/rate
 gopkg.in/olivere/elastic.v5
 gopkg.in/olivere/elastic.v5/config
 gopkg.in/olivere/elastic.v5/uritemplates
-# gopkg.in/yaml.v2 v2.2.1
+# gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2
 # howett.net/plist v0.0.0-20181124034731-591f970eefbb
 howett.net/plist
