@@ -424,16 +424,6 @@ describe('Detail Alarm Component', () => {
     }, 100);
   });
 
-  it('elasticsearch type should be empty', (done) => {
-    app.alarmID = alarmID;
-    fixture.detectChanges();
-    setTimeout(() => {
-      fixture.detectChanges();
-      expect(app.esType).toBe('');
-      done();
-    }, 100);
-  });
-
   it('should have initial 5 data displayed per page', (done) => {
     app.alarmID = alarmID;
     fixture.detectChanges();

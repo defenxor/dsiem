@@ -33,7 +33,6 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
   esIndex = 'siem_alarms';
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndexEvent = 'siem_events-*';
-  esType = '';
   elasticsearch: string;
   tempAlarms: AlarmSource[];
   tableData: object[] = [];
@@ -94,9 +93,9 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
       }, 1000);
       let resp;
       if (type === 'init') {
-        resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, 0, this.itemsPerPage);
+        resp = await this.es.getAllDocumentsPaging(this.esIndex, 0, this.itemsPerPage);
       } else if (type === 'pagination') {
-        resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from - 1, size);
+        resp = await this.es.getAllDocumentsPaging(this.esIndex, from - 1, size);
       }
       this.tempAlarms = resp.hits.hits;
       await Promise.all(this.tempAlarms.map(async (e) => {
@@ -158,7 +157,7 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
 
   async reload(from, size) {
     try {
-      const resp = await this.es.getAllDocumentsPaging(this.esIndex, this.esType, from - 1, size);
+      const resp = await this.es.getAllDocumentsPaging(this.esIndex, from - 1, size);
       this.tempAlarms = resp.hits.hits;
       await Promise.all(this.tempAlarms.map(async (e) => {
         // e['_source'].timestamp = e['_source']['@timestamp']
@@ -306,7 +305,7 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
 
     const promRemoveAE = function() {
       return new Promise((resolveAE) => {
-        that.es.getAlarmEventsWithoutStage(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove).then(res => {
+        that.es.getAlarmEventsWithoutStage(that.esIndexAlarmEvent, that.alarmIdToRemove).then(res => {
 
           if (res.hits.hits) {
 
@@ -364,7 +363,7 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
 
       const removeAlarm = function() {
         return new Promise(function(resolve, reject) {
-          that.es.removeAlarmById(that.esIndex, that.esType, that.alarmIdToRemove).then(resAlarm => {
+          that.es.removeAlarmById(that.esIndex, that.alarmIdToRemove).then(resAlarm => {
             if (resAlarm.deleted === 1) {
               resolve('Deleting alarm ' + that.alarmIdToRemove + ' done');
             }
@@ -407,7 +406,7 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
 
     const prom = function() {
       return new Promise(function(resolve, reject) {
-        that.es.getAllAlarmEvents(that.esIndexAlarmEvent, that.esType, that.alarmIdToRemove, size).then(res => {
+        that.es.getAllAlarmEvents(that.esIndexAlarmEvent, that.alarmIdToRemove, size).then(res => {
           const tempAlarmEvent = res.hits.hits;
 
           // delete alarm event
@@ -431,7 +430,6 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
               {
                 delete: {
                   _index: 'siem_events-' + arridx,
-                  _type: that.esType,
                   _id: tempAlarmEvent[i]['_source']['event_id']
                 }
               }
@@ -451,19 +449,21 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
 
   }
 
-  checkES() {
-    this.es.isAvailable().then(() => {
+  async checkES() {
+    try {
+      await this.es.isAvailable();
       console.log('Connected to ES ' + this.elasticsearch);
       this.statusConnected = 'Connected to ES ' + this.elasticsearch;
       this.statusDisconnected = null;
-    }, error => {
+    } catch (err) {
       console.log('Disconnected from ES ' + this.elasticsearch);
       this.statusDisconnected = 'Disconnected from ES ' + this.elasticsearch;
       this.statusConnected = null;
-      console.error('Elasticsearch is down', error);
-    }).then(() => {
+      console.error('Elasticsearch is down:', err);
+    } finally {
       this.timerSubscriptionStatus = timer(5000).subscribe(() => this.checkES());
-    });
+    }
+
   }
 
 }
