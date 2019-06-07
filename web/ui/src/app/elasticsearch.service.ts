@@ -192,7 +192,7 @@ export class ElasticsearchService {
     if (this.logstashType) {
       return 'doc';
     } else {
-      return "_doc";
+      return '_doc';
     }
   }
 

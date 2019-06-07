@@ -111,7 +111,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       });
     } catch (err) {
       // TODO: Replace this with a better popup
-      alert('Cannot load alarm ' + this.alarmID + ": " + err)
+      alert('Cannot load alarm ' + this.alarmID + ': ' + err);
     } finally {
       that.spinner.hide();
     }
