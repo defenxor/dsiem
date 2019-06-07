@@ -28,7 +28,7 @@ export class ElasticsearchService {
   server: string;
   kibana: string;
   esVersion: string;
-  useType: boolean;
+  logstashType: boolean;
 
   querylast5mins = {
     'size' : 50,
@@ -96,9 +96,9 @@ export class ElasticsearchService {
       const re = new RegExp(/^\d+/);
       const reVer = re.exec(fullVer);
       if (parseInt(reVer[0], 10) >= 7) {
-        this.useType = false;
+        this.logstashType = false;
       } else {
-          this.useType = true;
+          this.logstashType = true;
       }
     } catch (err) {}
   }
@@ -184,15 +184,15 @@ export class ElasticsearchService {
     });
   }
 
-  getType() {
+  getType(): string {
     if (this.esVersion === '') {
-      // esGetVersion in constructor failed, just default to use type
-      this.useType = true;
+      // esGetVersion in constructor failed, just default to use es 6.x
+      this.logstashType = true;
     }
-    if (this.useType) {
+    if (this.logstashType) {
       return 'doc';
     } else {
-      return '';
+      return '_doc';
     }
   }
 

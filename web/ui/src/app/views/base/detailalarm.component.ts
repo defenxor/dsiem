@@ -76,39 +76,45 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   async getAlarmDetail(alarmID) {
     const that = this;
     that.spinner.show();
-    const resp = await this.es.getAlarms(this.esIndex, alarmID);
-    const tempAlarms = resp.hits.hits;
-    await Promise.all(tempAlarms.map(async (e) => {
-      await Promise.all(e['_source']['rules'].map(async (r) => {
-        if (r['status'] === 'finished') {
-          r['events_count'] = r['occurrence'];
-          Promise.resolve();
-        } else {
-          const response = await this.es.countEvents('siem_alarm_events-*', alarmID, r['stage']);
-          r['events_count'] = response.count;
-        }
+    try {
+      const resp = await this.es.getAlarms(this.esIndex, alarmID);
+      const tempAlarms = resp.hits.hits;
+      await Promise.all(tempAlarms.map(async (e) => {
+        await Promise.all(e['_source']['rules'].map(async (r) => {
+          if (r['status'] === 'finished') {
+            r['events_count'] = r['occurrence'];
+            Promise.resolve();
+          } else {
+            const response = await this.es.countEvents('siem_alarm_events-*', alarmID, r['stage']);
+            r['events_count'] = response.count;
+          }
+        }));
       }));
-    }));
-    this.alarm = tempAlarms;
-    tempAlarms.forEach(element => {
-      this.alarmRules = element._source.rules;
-      this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage)
-      .then(function(alev) {
-        console.log(alev);
-        if (alev['hits'] !== undefined) {
-          that.getEventsDetail('init', that.alarmID, that.alarmRules[0].stage, null, null, that.alarmRules[0].events_count);
-        } else {
-          that.getEventsDetail('init', that.alarmID, that.alarmRules[1].stage, null, null, that.alarmRules[1].events_count);
+      this.alarm = tempAlarms;
+      tempAlarms.forEach(element => {
+        this.alarmRules = element._source.rules;
+        this.es.getAlarmEventsPagination(this.esIndexAlarmEvent, this.alarmID, this.alarmRules[0].stage, 0, this.itemsPerPage)
+        .then(function(alev) {
+          console.log(alev);
+          if (alev['hits'] !== undefined) {
+            that.getEventsDetail('init', that.alarmID, that.alarmRules[0].stage, null, null, that.alarmRules[0].events_count);
+          } else {
+            that.getEventsDetail('init', that.alarmID, that.alarmRules[1].stage, null, null, that.alarmRules[1].events_count);
+          }
+        });
+        if (element._source.vulnerabilities) {
+          this.alarmVuln = element._source.vulnerabilities;
+        }
+        if (element._source.intel_hits) {
+          this.alarmIntelHits = element._source.intel_hits;
         }
       });
-      if (element._source.vulnerabilities) {
-        this.alarmVuln = element._source.vulnerabilities;
-      }
-      if (element._source.intel_hits) {
-        this.alarmIntelHits = element._source.intel_hits;
-      }
-    });
-    that.spinner.hide();
+    } catch (err) {
+      // TODO: Replace this with a better popup
+      alert('Cannot load alarm ' + this.alarmID + ': ' + err);
+    } finally {
+      that.spinner.hide();
+    }
   }
 
   setStatus(rule) {
