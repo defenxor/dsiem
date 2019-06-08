@@ -31,9 +31,9 @@ export class ElasticsearchService {
   kibana: string;
   esVersion: string;
   logstashType: boolean;
-  esIndexAlarmEvent: string = 'siem_alarm_events-*';
-  esIndex: string = 'siem_alarms';
-  esIndexEvent: string = 'siem_events-*';
+  esIndexAlarmEvent = 'siem_alarm_events-*';
+  esIndex = 'siem_alarms';
+  esIndexEvent = 'siem_events-*';
   readonly MAX_DOCS_RETURNED = 200;
 
   queryAllDocsPaging(from, size) {
@@ -138,7 +138,7 @@ export class ElasticsearchService {
   }
 
   buildQueryMultipleEvents(keywords: string[]) {
-    let k = keywords.join(',')
+    const k = keywords.join(',');
     return {
       'query': {
         'terms': { 'event_id.keyword': keywords }
@@ -232,7 +232,7 @@ export class ElasticsearchService {
   }
 
   getEventsMulti(_index, eventIds: string[]): any {
-    let len = eventIds.length > this.MAX_DOCS_RETURNED? this.MAX_DOCS_RETURNED: eventIds.length
+    const len = eventIds.length > this.MAX_DOCS_RETURNED ? this.MAX_DOCS_RETURNED : eventIds.length;
     return this.client.search({
       index: _index,
       size: len,
@@ -384,26 +384,26 @@ export class ElasticsearchService {
   }
 
   async deleteAlarm(targetID: string) {
-    let res = await this.getAlarmEventsWithoutStage(this.esIndexAlarmEvent, targetID)
-    if (typeof res.hits.hits === 'undefined') throw "getAlarmEventsWithoutStage return undefined hits"
+    const res = await this.getAlarmEventsWithoutStage(this.esIndexAlarmEvent, targetID);
+    if (typeof res.hits.hits === 'undefined') { throw new Error('getAlarmEventsWithoutStage return undefined hits'); }
 
     const tempAlarmEvent = res.hits.hits;
     const numOfAlarmEvent = tempAlarmEvent.length;
 
-    let loopTimes = Math.floor(numOfAlarmEvent / 4500) + 1
+    const loopTimes = Math.floor(numOfAlarmEvent / 4500) + 1;
     for (let i = 1; i <= loopTimes; i++) {
-      await this.deleteAllAlarmEvents(targetID)
+      await this.deleteAllAlarmEvents(targetID);
     }
-    let resAlarm = await this.removeAlarmById(this.esIndex, targetID)
+    const resAlarm = await this.removeAlarmById(this.esIndex, targetID);
     if (resAlarm.deleted === 1) {
         console.log('Deleting alarm ' + targetID + ' done');
     }
   }
 
   async deleteAllAlarmEvents(alarmID: string) {
-    let arrDelete = [], size = 4500;
-    let res = await this.getAllAlarmEvents(this.esIndexAlarmEvent, alarmID, size)
-    if (typeof res.hits.hits === 'undefined') throw "getAllAlarmEvents return undefined hits"
+    const arrDelete = [], size = 4500;
+    const res = await this.getAllAlarmEvents(this.esIndexAlarmEvent, alarmID, size);
+    if (typeof res.hits.hits === 'undefined') { throw new Error('getAllAlarmEvents return undefined hits'); }
 
     const tempAlarmEvent = res.hits.hits;
 
@@ -417,7 +417,7 @@ export class ElasticsearchService {
        }
       });
     }
-    return await this.bulk(arrDelete)
+    return await this.bulk(arrDelete);
   }
 
   async bulk(params) {

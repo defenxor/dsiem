@@ -29,7 +29,7 @@ import { CountdownComponent } from 'ngx-countdown';
 export class TablesComponent {
 
   @ViewChildren('pages') pages: QueryList<any>;
-  
+
   @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
 
   @ViewChild('counter') counter: CountdownComponent;
@@ -37,10 +37,10 @@ export class TablesComponent {
   elasticsearch: string;
   tempAlarms: AlarmSource[];
   tableData: object[] = [];
-  counterPreText = "Turn-off auto-refresh (Refreshing in "
-  counterPostText = " seconds)"
-  counterPaused = false
-  animateProgress = false
+  counterPreText = 'Turn-off auto-refresh (Refreshing in ';
+  counterPostText = ' seconds)';
+  counterPaused = false;
+  animateProgress = false;
   totalItems = 20;
   alarmIdToRemove: string;
   alarmIndexToRemove: string;
@@ -65,38 +65,38 @@ export class TablesComponent {
 
   async counterFinished() {
     await this.syncES();
-    await sleep(100).then(()=> this.counter.restart());
+    await sleep(100).then(() => this.counter.restart());
   }
 
   toggleCounter(pause: boolean) {
-    this.counterPaused = pause
+    this.counterPaused = pause;
     if (this.counterPaused) {
       this.counter.pause();
-      this.counterPreText = "Turn-on auto-refresh (Continue refreshing in ";
+      this.counterPreText = 'Turn-on auto-refresh (Continue refreshing in ';
     } else {
-      this.counterPreText = "Turn-off auto-refresh (Refreshing in ";
+      this.counterPreText = 'Turn-off auto-refresh (Refreshing in ';
       this.counter.resume();
     }
   }
 
   async syncES() {
-    this.disabledBtn = true
+    this.disabledBtn = true;
     this.counter.pause();
     this.animateProgress = true;
     this.cd.detectChanges();
-    let esAlive = await this.checkES();
+    const esAlive = await this.checkES();
     try {
       if (esAlive) {
-        await this.getData();  
-        if (this.tableData.length == 0) {
+        await this.getData();
+        if (this.tableData.length === 0) {
           // if esAlive but tableData is empty, then ES service needs to be restarted.
           // this always happen when the app started without an initial network connection to ES server.
           // use window.location.reload() for now until we find a cleaner way to do this
-          window.location.reload()
+          window.location.reload();
         }
       }
-    } catch(err) {
-      console.log("Error occur in syncing ES: ", err)
+    } catch (err) {
+      console.log('Error occur in syncing ES: ', err);
     } finally {
       this.disabledBtn = false;
       this.animateProgress = false;
@@ -109,18 +109,18 @@ export class TablesComponent {
       await this.es.isAvailable();
       this.statusConnected = 'Connected to ES ' + this.elasticsearch;
       this.statusDisconnected = null;
-      return true
+      return true;
     } catch (err) {
       this.statusDisconnected = 'Disconnected from ES ' + this.elasticsearch;
       this.statusConnected = null;
       console.error('Elasticsearch is down:', err);
     }
-    return false
+    return false;
   }
 
   async getData() {
     try {
-      let resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
+      const resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
       this.tempAlarms = resp.hits.hits;
       this.tableData = [];
       this.tempAlarms.forEach((a) => {
@@ -141,7 +141,7 @@ export class TablesComponent {
       });
     } catch (err) {
       this.tableData = [];
-      throw err
+      throw err;
     }
   }
 
@@ -152,19 +152,19 @@ export class TablesComponent {
   }
 
   async deleteAlarm() {
-    let targetID = this.alarmIdToRemove
+    const targetID = this.alarmIdToRemove;
     this.spinner.show();
     this.confirmModalRemove.hide();
-    let savedCounterState = this.counterPaused
+    const savedCounterState = this.counterPaused;
     try {
-      await this.es.deleteAlarm(targetID)
-      this.isRemoved = true
-      removeItemFromObjectArray(this.tableData, "id", targetID)    
+      await this.es.deleteAlarm(targetID);
+      this.isRemoved = true;
+      removeItemFromObjectArray(this.tableData, 'id', targetID);
       setTimeout(() => {
         this.isRemoved = false;
       }, 5000);
     } catch (err) {
-      console.log("Error in deleteAlarm: ", err)
+      console.log('Error in deleteAlarm: ', err);
       this.isNotRemoved = true;
       this.errMsg = err;
       setTimeout(() => {
@@ -172,8 +172,8 @@ export class TablesComponent {
       }, 5000);
     } finally {
       this.disabledBtn = false;
-      this.spinner.hide()
-      this.toggleCounter(savedCounterState)
+      this.spinner.hide();
+      this.toggleCounter(savedCounterState);
     }
   }
 }

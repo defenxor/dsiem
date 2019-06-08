@@ -21,18 +21,20 @@ export function sleep (ms) {
 }
 
 export function removeItemFromObjectArray(array: object[], field: string, id: string) {
-  var removeIndex = array
+  const removeIndex = array
     .map(item => item[field])
     .indexOf(id);
-    ~removeIndex && array.splice(removeIndex, 1);
+  if (removeIndex !== -1) {
+    array.splice(removeIndex, 1);
+  }
 }
 
-export async function parallelPromiseAllFlow(IDs: any[], func): Promise<any[]>{
-  let promises = IDs.map(id => func(id));
-  let results = await Promise.all(promises)
-  let finalResult = []
+export async function parallelPromiseAllFlow(IDs: any[], func): Promise<any[]> {
+  const promises = IDs.map(id => func(id));
+  const results = await Promise.all(promises);
+  const finalResult = [];
   for (const result of results) {
     finalResult.push(await result);
   }
-  return finalResult
+  return finalResult;
 }

@@ -56,14 +56,14 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     this.sub = this.route.params.subscribe(async params => {
       this.alarmID = params['alarmID'];
       try {
-        await this.es.isAvailable()
+        await this.es.isAvailable();
       } catch (err) {
         // TODO: replace this with a better popup
-        alert('Cannot access ES server ' + this.es.server + ': ' + err)
-        return
+        alert('Cannot access ES server ' + this.es.server + ': ' + err);
+        return;
       }
-      return this.getAlarmDetail(this.alarmID)
-    })
+      return this.getAlarmDetail(this.alarmID);
+    });
   }
 
   async getAlarmDetail(alarmID) {
@@ -99,11 +99,11 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       if (element._source.intel_hits) {
         this.alarmIntelHits = element._source.intel_hits;
       }
-    };
+    }
   }
 
   isEmptyOrUndefined(v): boolean {
-    if (v === '' || v === 0 || v === undefined) return true
+    if (v === '' || v === 0 || v === undefined) { return true; }
   }
 
   setStatus(rule) {
@@ -124,7 +124,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   }
 
   async getEventsDetail(id, stage, from= 0, size= 0, allSize= 0) {
-    this.progressLoading = true
+    this.progressLoading = true;
     from = 0;
     size = allSize;
     let ev: any;
@@ -133,18 +133,18 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     try {
       alev = await this.es.getAlarmEventsPagination(this.es.esIndexAlarmEvent, id, stage, from, size);
       this.events = [];
-      let elArray = [];
+      const elArray = [];
       for (const el of alev['hits']['hits']) {
-        elArray.push(el['_source']['event_id'])
+        elArray.push(el['_source']['event_id']);
       }
-      ev = await this.es.getEventsMulti(this.es.esIndexEvent, elArray)
+      ev = await this.es.getEventsMulti(this.es.esIndexEvent, elArray);
     } catch (err) {
-      throw 'error from getEventsMulti: ' + err      
+      throw new Error('error from getEventsMulti: ' + err);
     } finally {
-      this.progressLoading = false
+      this.progressLoading = false;
     }
     for (const el of ev['hits']['hits']) {
-      this.events.push(el['_source'])
+      this.events.push(el['_source']);
     }
   }
 
@@ -170,7 +170,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   async changeAlarmStatus(_id, status) {
     try {
       if (this.alarm[0]._source.status === status) { return; }
-      this.progressLoading = true
+      this.progressLoading = true;
       const res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, _id, status);
       if (res.result !== 'updated') {
         throw new Error(('index not updated, result: ' + res.result));
@@ -186,14 +186,14 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       console.log('Error occur while changing alarm status: ' + err);
     } finally {
       this.isProcessingUpdateStatus = false;
-      this.progressLoading = false
+      this.progressLoading = false;
     }
   }
 
   async changeAlarmTag(_id, tag) {
     try {
       if (this.alarm[0]._source.tag === tag) { return; }
-      this.progressLoading = true
+      this.progressLoading = true;
       const res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index, _id, tag);
       if (res.result !== 'updated') {
         throw new Error(('index not updated, result: ' + res.result));
@@ -209,7 +209,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       // TODO: should alert here too
       console.log('Error occur while changing alarm tag: ' + err);
     } finally {
-      this.progressLoading = false
+      this.progressLoading = false;
     }
   }
 
