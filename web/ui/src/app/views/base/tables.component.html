@@ -12,15 +12,26 @@
         <div class="card-header">
           <i class="fa fa-align-justify"></i> Alarm List
         </div>
-        <div class="card-body">
-          <button type="button" class="btn btn-primary text-right" (click)="startStopTimer('off')" 
-            *ngIf="timer_status == 'on'" tooltip="Click to turn-off auto refresh" placement="top">
-            Turn-Off Auto Refresh (refreshing in {{refreshSec}} seconds)
-          </button>
-          <button type="button" [disabled]="disabledBtn" class="btn btn-dark text-right" (click)="startStopTimer('on')" 
-            *ngIf="timer_status == 'off'" tooltip="Click to turn-on auto refresh" placement="top">
-            Turn On Auto Refresh
-          </button>
+        <div class="progress" style="height: 8px;">
+          <div class="progress-bar progress-bar-striped"
+            [ngClass]="{ 'progress-bar-animated bg-info': animateProgress, 'bg-secondary': counterPaused }"
+            role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+          </div>
+        </div>
+      <div class="card-body">
+        <button type="button" [disabled]="disabledBtn" class="btn btn-primary text-right"
+          [ngClass]="{ 'bg-dark': counterPaused }"
+          (click)="counterClick()" placement="top">{{counterPreText}}
+          <countdown #counter [config]="{leftTime: 10, template: '$!s!'}" (start)="counterStart()" (finished)="counterFinished()"></countdown>
+        {{counterPostText}}
+        </button>
+        <div class="btn-group float-right" data-toggle="buttons">
+          <label class="btn">Query this many latest records at once:</label>
+          <label class="btn active"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="20"> 20</label>
+          <label class="btn"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="50"> 50</label>
+          <label class="btn"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="100"> 100</label>
+          <label class="btn"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="200"> 200</label>
+        </div>
           <br/><br/>
           <div bsModal #confirmModalRemove="bs-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myBasicModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
@@ -37,8 +48,8 @@
                   Do you want to continue?
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" aria-label="Close" (click)="confirmModalRemove.hide()">No</button>
-                  <button type="button" class="btn btn-primary" aria-label="Close" (click)="removeAlarm()">Yes</button>
+                  <button type="button" class="btn btn-secondary" aria-label="Close" (click)="deleteAlarm()">Yes</button>
+                  <button type="button" class="btn btn-primary" aria-label="Close" (click)="confirmModalRemove.hide()">No</button>
                 </div>
               </div>
             </div>
@@ -53,7 +64,7 @@
             <thead>
               <tr>
                 <th>Action</th>
-                <th>AlarmID</th>
+                <th>Alarm ID</th>
                 <th>Title</th>
                 <th>Created</th>
                 <th>Updated</th>
@@ -91,29 +102,6 @@
               </tr>
             </tbody>
           </table>
-          <ul class="pagination">
-            <li class="page-item clearfix d-none d-md-block" (click)="firstPage()" [ngClass]="{disabled: activePage == 1}">
-              <a class="page-link">First</a>
-            </li>
-            <li class="page-item" (click)="previousPage($event)" [ngClass]="{disabled: activePage == 1}">
-              <a class="page-link" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
-                <span class="sr-only">Previous</span>
-              </a>
-            </li>
-            <li #pages *ngFor="let page of paginators | slice:firstVisiblePaginator:lastVisiblePaginator; let i = index" class="page-item" [ngClass]="{active: i + firstVisiblePaginator + 1 == activePage}">
-              <a class="page-link waves-light" (click)="changePage($event)" mdbWavesEffect>{{page}}</a>
-            </li>
-            <li class="page-item" (click)="nextPage($event)" [ngClass]="{disabled: activePage == numberOfPaginators}">
-              <a class="page-link" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
-                <span class="sr-only">Next</span>
-              </a>
-            </li>
-            <li class="page-item clearfix d-none d-md-block" (click)="lastPage()" [ngClass]="{disabled: activePage == numberOfPaginators}">
-              <a class="page-link">Last</a>
-            </li>
-          </ul>
         </div>
       </div>
     </div>

@@ -33,6 +33,8 @@ import { BsDropdownModule} from 'ngx-bootstrap/dropdown';
 import { ModalModule } from 'ngx-bootstrap/modal';
 import { AlertModule } from 'ngx-bootstrap/alert';
 import { NgxSpinnerModule } from 'ngx-spinner';
+import { CountdownModule } from 'ngx-countdown';
+
 
 @NgModule({
   imports: [
@@ -44,11 +46,12 @@ import { NgxSpinnerModule } from 'ngx-spinner';
     BsDropdownModule.forRoot(),
     ModalModule.forRoot(),
     AlertModule.forRoot(),
-    NgxSpinnerModule
+    NgxSpinnerModule,
+    CountdownModule
   ],
   declarations: [
     TablesComponent,
     DetailalarmComponent
-  ]
+  ],
 })
 export class BaseModule { }

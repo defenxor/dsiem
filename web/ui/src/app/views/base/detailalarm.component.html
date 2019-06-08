@@ -8,7 +8,14 @@
               {{row._source.title}}
             </div>
           </div>
+          <div class="progress" style="height: 8px;">
+              <div class="progress-bar progress-bar-striped"
+                [ngClass]="{ 'progress-bar-animated bg-info': progressLoading, 'bg-secondary': !progressLoading }"
+                role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+              </div>
+          </div>
           <div class="card-body">
+        
             <table class="table table-striped">
               <thead>
                 <tr>
@@ -165,7 +172,7 @@
               <tbody>
                 <tr *ngFor="let rule of alarmRules; let i = index" [style.height]="wideAlarmEv[i] == true ? '230px' : 'auto'">
                   <td>
-                    <a tooltip="Click to see events" style="cursor:pointer" (click)="getEventsDetail('init', alarmID, rule.stage, null, null, rule.events_count)">
+                    <a  *ngIf="rule.events_count > 0" tooltip="Click to see events" style="cursor:pointer" (click)="getEventsDetail(alarmID, rule.stage, null, null, rule.events_count)">
                       <i class="fa fa-eye" ></i>
                     </a>
                   </td>
@@ -235,7 +242,7 @@
       <div class="col-lg-12">
         <div class="card">
           <div class="card-header">
-            Threat Intel
+            Threat Intelligence
           </div>
           <div class="card-body">
             <table class="table table-striped">
@@ -259,7 +266,7 @@
       </div>
     </div>
 
-    <div class="row">
+    <div class="row" *ngIf="events.length > 0" >
       <div class="col-lg-12">
         <div class="card">
           <div class="card-header">
@@ -270,7 +277,7 @@
             <table class="table table-striped">
               <thead>
                 <tr>
-                  <th>EventID</th>
+                  <th>Event ID</th>
                   <th>Timestamp</th>
                   <th>Title</th>
                   <th>Source</th>
@@ -284,7 +291,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let event of evnts; let i=index" [style.height]="wideEv[i] == true ? '230px' : 'auto'">
+                <tr *ngFor="let event of events; let i=index" [style.height]="wideEv[i] == true ? '230px' : 'auto'">
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('event-id-', event.event_id)"
                       tooltip="Click to query eventID {{event.event_id}} at kibana">{{event.event_id}}</label>
@@ -362,29 +369,6 @@
                 </tr>
               </tbody>
             </table>
-            <ul class="pagination">
-                <li class="page-item clearfix d-none d-md-block" (click)="firstPage()" [ngClass]="{disabled: activePage == 1}">
-                  <a class="page-link">First</a>
-                </li>
-                <li class="page-item" (click)="previousPage($event)" [ngClass]="{disabled: activePage == 1}">
-                  <a class="page-link" aria-label="Previous">
-                    <span aria-hidden="true">&laquo;</span>
-                    <span class="sr-only">Previous</span>
-                  </a>
-                </li>
-                <li #pages *ngFor="let page of paginators | slice:firstVisiblePaginator:lastVisiblePaginator; let i = index" class="page-item" [ngClass]="{active: i + firstVisiblePaginator + 1 == activePage}">
-                  <a class="page-link waves-light" (click)="changePage($event)" mdbWavesEffect>{{page}}</a>
-                </li>
-                <li class="page-item" (click)="nextPage($event)" [ngClass]="{disabled: activePage == numberOfPaginators}">
-                  <a class="page-link" aria-label="Next">
-                    <span aria-hidden="true">&raquo;</span>
-                    <span class="sr-only">Next</span>
-                  </a>
-                </li>
-                <li class="page-item clearfix d-none d-md-block" (click)="lastPage()" [ngClass]="{disabled: activePage == numberOfPaginators}">
-                  <a class="page-link">Last</a>
-                </li>
-              </ul>
           </div>
         </div>
       </div>
