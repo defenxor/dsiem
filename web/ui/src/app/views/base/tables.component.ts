@@ -15,166 +15,116 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
-import { Component, AfterViewInit, ViewChildren, QueryList, ViewChild, OnDestroy } from '@angular/core';
+import { Component, ViewChildren, QueryList, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { ElasticsearchService } from '../../elasticsearch.service';
+import { sleep, removeItemFromObjectArray } from '../../utilities';
 import { AlarmSource } from './alarm.interface';
-import { timer } from 'rxjs';
 import { ModalDirective } from 'ngx-bootstrap';
 import { NgxSpinnerService } from 'ngx-spinner';
-
+import { CountdownComponent } from 'ngx-countdown';
 
 @Component({
   templateUrl: 'tables.component.html'
 })
-export class TablesComponent implements AfterViewInit, OnDestroy {
+export class TablesComponent {
 
   @ViewChildren('pages') pages: QueryList<any>;
+  
   @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
-  esIndex = 'siem_alarms';
-  esIndexAlarmEvent = 'siem_alarm_events-*';
-  esIndexEvent = 'siem_events-*';
+
+  @ViewChild('counter') counter: CountdownComponent;
+
   elasticsearch: string;
   tempAlarms: AlarmSource[];
   tableData: object[] = [];
-  timerSubscription: any;
+  counterPreText = "Turn-off auto-refresh (Refreshing in "
+  counterPostText = " seconds)"
+  counterPaused = false
+  animateProgress = false
   totalItems = 20;
-  itemsPerPage = 10;
-  numberOfVisiblePaginators = 10;
-  numberOfPaginators: number;
-  paginators: Array<any> = [];
-  activePage = 1;
-  firstVisibleIndex = 1;
-  lastVisibleIndex: number = this.itemsPerPage;
-  firstVisiblePaginator = 0;
-  lastVisiblePaginator = this.numberOfVisiblePaginators;
-  timer_status = 'on';
-  refreshSec;
-  intrvl;
-  alarmIdToRemove;
-  alarmIndexToRemove;
-  isRemoved;
-  isNotRemoved;
-  errMsg;
-  disabledBtn;
-  statusDisconnected = '';
-  statusConnected = '';
-  timerSubscriptionStatus: any;
+  alarmIdToRemove: string;
+  alarmIndexToRemove: string;
+  isRemoved: boolean;
+  isNotRemoved: boolean;
+  errMsg: string;
+  disabledBtn: boolean;
+  statusDisconnected: string;
+  statusConnected: string;
 
-  constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService) {
+  constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService, private cd: ChangeDetectorRef) {
     this.elasticsearch = this.es.getServer();
-    this.checkES();
   }
 
-  ngAfterViewInit() {
-    setTimeout(() => {
-      this.getData('init');
-    }, 100);
+  async counterStart() {
+    await this.syncES();
   }
 
-  ngOnDestroy() {
-    if (this.timerSubscription) {
-      this.timerSubscription.unsubscribe();
+  counterClick() {
+    this.toggleCounter(!this.counterPaused);
+  }
+
+  async counterFinished() {
+    await this.syncES();
+    await sleep(100).then(()=> this.counter.restart());
+  }
+
+  toggleCounter(pause: boolean) {
+    this.counterPaused = pause
+    if (this.counterPaused) {
+      this.counter.pause();
+      this.counterPreText = "Turn-on auto-refresh (Continue refreshing in ";
+    } else {
+      this.counterPreText = "Turn-off auto-refresh (Refreshing in ";
+      this.counter.resume();
     }
-    if (this.timerSubscriptionStatus) {
-      this.timerSubscriptionStatus.unsubscribe();
-    }
   }
 
-  async getData(type, from= 0, size= 0) {
-    const that = this;
-    that.spinner.show();
-    clearInterval(this.intrvl);
+  async syncES() {
+    this.disabledBtn = true
+    this.counter.pause();
+    this.animateProgress = true;
+    this.cd.detectChanges();
+    let esAlive = await this.checkES();
     try {
-      this.refreshSec = 10;
-      this.intrvl = setInterval(function() {
-        if (that.refreshSec > 0) {
-          that.refreshSec--;
+      if (esAlive) {
+        await this.getData();  
+        if (this.tableData.length == 0) {
+          // if esAlive but tableData is empty, then ES service needs to be restarted.
+          // this always happen when the app started without an initial network connection to ES server.
+          // use window.location.reload() for now until we find a cleaner way to do this
+          window.location.reload()
         }
-      }, 1000);
-      let resp;
-      if (type === 'init') {
-        resp = await this.es.getAllDocumentsPaging(this.esIndex, 0, this.itemsPerPage);
-      } else if (type === 'pagination') {
-        resp = await this.es.getAllDocumentsPaging(this.esIndex, from - 1, size);
       }
-      this.tempAlarms = resp.hits.hits;
-      await Promise.all(this.tempAlarms.map(async (e) => {
-        // e['_source'].timestamp = e['_source']['@timestamp']
-        e['_source'].id = e['_id'];
-        await Promise.all(e['_source']['rules'].map(async (r) => {
-          if (r['status'] === 'finished') {
-            r['events_count'] = r['occurrence'];
-            Promise.resolve();
-          } else {
-            const response = await this.es.countEvents('siem_alarm_events-*', e['_id'], r['stage']);
-            r['events_count'] = response.count;
-          }
-        }));
-      }));
-      this.tableData = [];
-      this.paginators = [];
-      if (type === 'init') {
-        this.activePage = 1;
-      }
-      this.tempAlarms.forEach((a) => {
-        const tempArr = {
-          id: a['_source']['id'],
-          title: a['_source']['title'],
-          timestamp: a['_source']['timestamp'],
-          updated_time: a['_source']['updated_time'],
-          status: a['_source']['status'],
-          risk_class: a['_source']['risk_class'],
-          tag: a['_source']['tag'],
-          src_ips: a['_source']['src_ips'],
-          dst_ips: a['_source']['dst_ips'],
-          actions: '<i class=\'fa fa-eye\' title=\'click here to see details\' style=\'cursor:pointer; color:#ff9800\'></i>'
-        };
-        this.tableData.push(tempArr);
-      });
-      // console.log(this.tableData);
-      // console.log('Show Alarms Completed!');
-      if (this.totalItems % this.itemsPerPage === 0) {
-        this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage);
-      } else {
-        this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage + 1);
-      }
-
-      for (let i = 1; i <= this.numberOfPaginators; i++) {
-        this.paginators.push(i);
-      }
-      that.spinner.hide();
-    } catch (err) {
-      console.error('Error: ' + err);
-      this.tableData = [];
-      this.paginators = [];
-      this.spinner.hide();
+    } catch(err) {
+      console.log("Error occur in syncing ES: ", err)
     } finally {
-      if (type === 'init') {
-        this.timerSubscription = timer(9000).subscribe(() => this.getData('init'));
-      }
+      this.disabledBtn = false;
+      this.animateProgress = false;
+      this.counter.resume();
     }
   }
 
-  async reload(from, size) {
+  async checkES(): Promise<boolean> {
     try {
-      const resp = await this.es.getAllDocumentsPaging(this.esIndex, from - 1, size);
+      await this.es.isAvailable();
+      this.statusConnected = 'Connected to ES ' + this.elasticsearch;
+      this.statusDisconnected = null;
+      return true
+    } catch (err) {
+      this.statusDisconnected = 'Disconnected from ES ' + this.elasticsearch;
+      this.statusConnected = null;
+      console.error('Elasticsearch is down:', err);
+    }
+    return false
+  }
+
+  async getData() {
+    try {
+      let resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
       this.tempAlarms = resp.hits.hits;
-      await Promise.all(this.tempAlarms.map(async (e) => {
-        // e['_source'].timestamp = e['_source']['@timestamp']
-        e['_source'].id = e['_id'];
-        await Promise.all(e['_source']['rules'].map(async (r) => {
-          if (r['status'] === 'finished') {
-            r['events_count'] = r['occurrence'];
-            Promise.resolve();
-          } else {
-            const response = await this.es.countEvents('siem_alarm_events-*', e['_id'], r['stage']);
-            r['events_count'] = response.count;
-          }
-        }));
-      }));
       this.tableData = [];
-      this.paginators = [];
       this.tempAlarms.forEach((a) => {
+        a['_source'].id = a['_id'];
         const tempArr = {
           id: a['_source']['id'],
           title: a['_source']['title'],
@@ -189,103 +139,9 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
         };
         this.tableData.push(tempArr);
       });
-      // console.log(this.tableData);
-      // console.log('Show Alarms Completed!');
-      if (this.totalItems % this.itemsPerPage === 0) {
-        this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage);
-      } else {
-        this.numberOfPaginators = Math.floor(this.totalItems / this.itemsPerPage + 1);
-      }
-
-      for (let i = 1; i <= this.numberOfPaginators; i++) {
-        this.paginators.push(i);
-      }
     } catch (err) {
-      console.error('Error: ' + err);
       this.tableData = [];
-      this.paginators = [];
-    } finally {
-    }
-  }
-
-  async changePage(event: any) {
-    if (event.target.text >= 1 && event.target.text <= this.numberOfPaginators) {
-      this.activePage = +event.target.text;
-      this.firstVisibleIndex = this.activePage * this.itemsPerPage - this.itemsPerPage + 1;
-      this.lastVisibleIndex = this.activePage * this.itemsPerPage;
-      console.log(this.firstVisibleIndex + ' - ' + this.lastVisibleIndex);
-      this.reload(this.firstVisibleIndex, this.itemsPerPage);
-    }
-  }
-
-  nextPage(event: any) {
-    if (this.pages.last.nativeElement.classList.contains('active')) {
-      if ((this.numberOfPaginators - this.numberOfVisiblePaginators) >= this.lastVisiblePaginator) {
-        this.firstVisiblePaginator += this.numberOfVisiblePaginators;
-      this.lastVisiblePaginator += this.numberOfVisiblePaginators;
-      } else {
-        this.firstVisiblePaginator += this.numberOfVisiblePaginators;
-      this.lastVisiblePaginator = this.numberOfPaginators;
-      }
-    }
-
-    this.activePage += 1;
-    this.firstVisibleIndex = this.activePage * this.itemsPerPage - this.itemsPerPage + 1;
-    this.lastVisibleIndex = this.activePage * this.itemsPerPage;
-    this.reload(this.firstVisibleIndex, this.itemsPerPage);
-  }
-
-  previousPage(event: any) {
-    if (this.pages.first.nativeElement.classList.contains('active')) {
-      if ((this.lastVisiblePaginator - this.firstVisiblePaginator) === this.numberOfVisiblePaginators)  {
-        this.firstVisiblePaginator -= this.numberOfVisiblePaginators;
-        this.lastVisiblePaginator -= this.numberOfVisiblePaginators;
-      } else {
-        this.firstVisiblePaginator -= this.numberOfVisiblePaginators;
-        this.lastVisiblePaginator -= (this.numberOfPaginators % this.numberOfVisiblePaginators);
-      }
-    }
-
-    this.activePage -= 1;
-    this.firstVisibleIndex = this.activePage * this.itemsPerPage - this.itemsPerPage + 1;
-    this.lastVisibleIndex = this.activePage * this.itemsPerPage;
-    this.reload(this.firstVisibleIndex, this.itemsPerPage);
-  }
-
-  firstPage() {
-    this.activePage = 1;
-    this.firstVisibleIndex = this.activePage * this.itemsPerPage - this.itemsPerPage + 1;
-    this.lastVisibleIndex = this.activePage * this.itemsPerPage;
-    this.firstVisiblePaginator = 0;
-    this.lastVisiblePaginator = this.numberOfVisiblePaginators;
-    this.reload(this.firstVisibleIndex, this.itemsPerPage);
-  }
-
-  lastPage() {
-    this.activePage = this.numberOfPaginators;
-    this.firstVisibleIndex = this.activePage * this.itemsPerPage - this.itemsPerPage + 1;
-    this.lastVisibleIndex = this.activePage * this.itemsPerPage;
-
-    if (this.numberOfPaginators % this.numberOfVisiblePaginators === 0) {
-      this.firstVisiblePaginator = this.numberOfPaginators - this.numberOfVisiblePaginators;
-      this.lastVisiblePaginator = this.numberOfPaginators;
-    } else {
-      this.lastVisiblePaginator = this.numberOfPaginators;
-      this.firstVisiblePaginator = this.lastVisiblePaginator - (this.numberOfPaginators % this.numberOfVisiblePaginators);
-    }
-    this.reload(this.firstVisibleIndex, this.itemsPerPage);
-  }
-
-  startStopTimer(status) {
-    if (status === 'off') {
-      if (this.timerSubscription) {
-        this.timerSubscription.unsubscribe();
-        this.timer_status = 'off';
-        clearInterval(this.intrvl);
-      }
-    } else {
-      this.getData('init');
-      this.timer_status = 'on';
+      throw err
     }
   }
 
@@ -295,175 +151,29 @@ export class TablesComponent implements AfterViewInit, OnDestroy {
     this.confirmModalRemove.show();
   }
 
-  async removeAlarm() {
-    const that = this;
-    that.spinner.show();
-    that.startStopTimer('off');
-    that.disabledBtn = true;
-    console.log('id to remove: ', that.alarmIdToRemove);
-    that.confirmModalRemove.hide();
-
-    const promRemoveAE = function() {
-      return new Promise((resolveAE) => {
-        that.es.getAlarmEventsWithoutStage(that.esIndexAlarmEvent, that.alarmIdToRemove).then(res => {
-
-          if (res.hits.hits) {
-
-            const tempAlarmEvent = res.hits.hits;
-            const numOfAlarmEvent = tempAlarmEvent.length;
-            let removeAlarmEvent;
-
-            if (numOfAlarmEvent < 4500) {
-              removeAlarmEvent = function() {
-                return new Promise((resolveRemove, reject) => {
-                  that.removeAllAlarmEvent().then((r) => {
-                    // console.log(r);
-                    return resolveRemove('remove alarm event done');
-                  });
-                });
-              };
-
-            } else {
-
-              removeAlarmEvent = function() {
-                return new Promise((resolveRemove, reject) => {
-                  for (let i = 1; i <= Math.floor(numOfAlarmEvent / 4500) + 1; i++) {
-                    return new Promise((resolveFor) => {
-                      that.removeAllAlarmEvent().then((r) => {
-                        // console.log(i + ': ', r);
-                        resolveFor('done');
-                        if (i === Math.floor(numOfAlarmEvent / 9000) + 1) {
-                          return resolveRemove('remove all alarm event done');
-                        }
-                      });
-                    });
-                  }
-                });
-              };
-
-            }
-
-            removeAlarmEvent().then(() => {
-              // console.log(res);
-              resolveAE('done');
-            });
-
-          }
-
-        },
-        (error) => {
-          console.log(error);
-        });
-      });
-    };
-
-    promRemoveAE();
-    setTimeout(() => {
-      promRemoveAE();
-
-      const removeAlarm = function() {
-        return new Promise(function(resolve, reject) {
-          that.es.removeAlarmById(that.esIndex, that.alarmIdToRemove).then(resAlarm => {
-            if (resAlarm.deleted === 1) {
-              resolve('Deleting alarm ' + that.alarmIdToRemove + ' done');
-            }
-          }, (error) => {
-            reject(error);
-          });
-        });
-      };
-
-      removeAlarm().then((c) => {
-        console.log(c);
-        that.spinner.hide();
-        that.isRemoved = true;
-        that.tableData.splice(that.alarmIndexToRemove, 1);
-        setTimeout(() => {
-          that.isRemoved = false;
-          that.disabledBtn = false;
-          that.startStopTimer('on');
-        }, 5000);
-      },
-      (error) => {
-        console.log(error);
-        that.spinner.hide();
-        that.isNotRemoved = true;
-        that.errMsg = error;
-        that.tableData.splice(that.alarmIndexToRemove, 1);
-        setTimeout(() => {
-          that.isNotRemoved = false;
-          that.disabledBtn = false;
-          that.startStopTimer('on');
-        }, 5000);
-      });
-
-    }, 3000);
-
-  }
-
-  async removeAllAlarmEvent() {
-    const that = this, arrDelete = [], size = 4500;
-
-    const prom = function() {
-      return new Promise(function(resolve, reject) {
-        that.es.getAllAlarmEvents(that.esIndexAlarmEvent, that.alarmIdToRemove, size).then(res => {
-          const tempAlarmEvent = res.hits.hits;
-
-          // delete alarm event
-          for (let i = 0; i <= tempAlarmEvent.length - 1; i++) {
-            const idx = tempAlarmEvent[i]['_index'];
-            arrDelete.push(
-              {
-                delete: {
-                  _index: idx,
-                  _type: tempAlarmEvent[i]['_type'],
-                  _id: tempAlarmEvent[i]['_id']
-                }
-              }
-            );
-          }
-
-          // delete event
-          for (let i = 0; i <= tempAlarmEvent.length - 1; i++) {
-            const arridx = tempAlarmEvent[i]['_index'].split('-')[1];
-            arrDelete.push(
-              {
-                delete: {
-                  _index: 'siem_events-' + arridx,
-                  _id: tempAlarmEvent[i]['_source']['event_id']
-                }
-              }
-            );
-            if (i === tempAlarmEvent.length - 1) {
-              resolve('done');
-            }
-          }
-        });
-      });
-    };
-
-    return prom().then(() => {
-      this.es.removeAlarmEvent(arrDelete).then((r) => {
-      });
-    });
-
-  }
-
-  async checkES() {
+  async deleteAlarm() {
+    let targetID = this.alarmIdToRemove
+    this.spinner.show();
+    this.confirmModalRemove.hide();
+    let savedCounterState = this.counterPaused
     try {
-      await this.es.isAvailable();
-      console.log('Connected to ES ' + this.elasticsearch);
-      this.statusConnected = 'Connected to ES ' + this.elasticsearch;
-      this.statusDisconnected = null;
+      await this.es.deleteAlarm(targetID)
+      this.isRemoved = true
+      removeItemFromObjectArray(this.tableData, "id", targetID)    
+      setTimeout(() => {
+        this.isRemoved = false;
+      }, 5000);
     } catch (err) {
-      console.log('Disconnected from ES ' + this.elasticsearch);
-      this.statusDisconnected = 'Disconnected from ES ' + this.elasticsearch;
-      this.statusConnected = null;
-      console.error('Elasticsearch is down:', err);
+      console.log("Error in deleteAlarm: ", err)
+      this.isNotRemoved = true;
+      this.errMsg = err;
+      setTimeout(() => {
+        this.isNotRemoved = false;
+      }, 5000);
     } finally {
-      this.timerSubscriptionStatus = timer(5000).subscribe(() => this.checkES());
+      this.disabledBtn = false;
+      this.spinner.hide()
+      this.toggleCounter(savedCounterState)
     }
-
   }
-
 }
