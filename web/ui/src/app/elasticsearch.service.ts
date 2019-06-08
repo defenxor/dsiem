@@ -19,46 +19,31 @@ import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
 import { Http } from '@angular/http';
 import { map } from 'rxjs/operators';
+import { MAX_LENGTH_VALIDATOR } from '@angular/forms/src/directives/validators';
 
 @Injectable({
   providedIn: 'root'
 })
+
 export class ElasticsearchService {
   private client: Client;
   server: string;
   kibana: string;
   esVersion: string;
   logstashType: boolean;
+  esIndexAlarmEvent: string = 'siem_alarm_events-*';
+  esIndex: string = 'siem_alarms';
+  esIndexEvent: string = 'siem_events-*';
+  readonly MAX_DOCS_RETURNED = 200;
 
-  querylast5mins = {
-    'size' : 50,
-    'query': {
-      'range' : {
-        'timestamp' : {
-          'gte' : 'now-5m',
-            'lt' : 'now'
-           }
-        }
-     },
-     'sort': { '@timestamp' : 'desc' }
-  };
-
-  queryalldocs = {
-    'size': 20,
-    'query': {
-      'match_all': {}
-    },
-    'sort': { '@timestamp' : 'desc' }
-  };
-
-  queryalldocspaging(from, size) {
+  queryAllDocsPaging(from, size) {
     return {
       'from': from,
       'size': size,
       'query': {
         'match_all': {}
       },
-      'sort': { '@timestamp' : 'desc' }
+      'sort': { 'timestamp' : 'desc' }
     };
   }
 
@@ -152,6 +137,16 @@ export class ElasticsearchService {
     };
   }
 
+  buildQueryMultipleEvents(keywords: string[]) {
+    let k = keywords.join(',')
+    return {
+      'query': {
+        'terms': { 'event_id.keyword': keywords }
+      },
+      'sort': { 'timestamp' : 'desc' }
+    };
+  }
+
   buildQueryAlarms(alarmId) {
     return {
       'query': {
@@ -173,10 +168,6 @@ export class ElasticsearchService {
     return this.server;
   }
 
-  createIndex(name): any {
-    return this.client.indices.create(name);
-  }
-
   isAvailable(): any {
     return this.client.ping({
       requestTimeout: Infinity,
@@ -194,26 +185,6 @@ export class ElasticsearchService {
     } else {
       return '_doc';
     }
-  }
-
-  addToIndex(value): any {
-    return this.client.create(value);
-  }
-
-  getAllDocuments(_index): any {
-    return this.client.search({
-      index: _index,
-      type: this.getType(),
-      body: this.queryalldocs,
-    });
-  }
-
-  getLast5Minutes(_index): any {
-    return this.client.search({
-      index: _index,
-      type: this.getType(),
-      body: this.querylast5mins
-    });
   }
 
   countEvents(_index, alarmId, stage): any {
@@ -260,11 +231,22 @@ export class ElasticsearchService {
     });
   }
 
+  getEventsMulti(_index, eventIds: string[]): any {
+    let len = eventIds.length > this.MAX_DOCS_RETURNED? this.MAX_DOCS_RETURNED: eventIds.length
+    return this.client.search({
+      index: _index,
+      size: len,
+      type: this.getType(),
+      body: this.buildQueryMultipleEvents(eventIds),
+      filterPath: ['hits.hits._source']
+    });
+  }
+
   getAllDocumentsPaging(_index, from, size): any {
     return this.client.search({
       index: _index,
       type: this.getType(),
-      body: this.queryalldocspaging(from, size),
+      body: this.queryAllDocsPaging(from, size),
     });
   }
 
@@ -401,11 +383,48 @@ export class ElasticsearchService {
     });
   }
 
-  async removeAlarmEvent(params) {
+  async deleteAlarm(targetID: string) {
+    let res = await this.getAlarmEventsWithoutStage(this.esIndexAlarmEvent, targetID)
+    if (typeof res.hits.hits === 'undefined') throw "getAlarmEventsWithoutStage return undefined hits"
+
+    const tempAlarmEvent = res.hits.hits;
+    const numOfAlarmEvent = tempAlarmEvent.length;
+
+    let loopTimes = Math.floor(numOfAlarmEvent / 4500) + 1
+    for (let i = 1; i <= loopTimes; i++) {
+      await this.deleteAllAlarmEvents(targetID)
+    }
+    let resAlarm = await this.removeAlarmById(this.esIndex, targetID)
+    if (resAlarm.deleted === 1) {
+        console.log('Deleting alarm ' + targetID + ' done');
+    }
+  }
+
+  async deleteAllAlarmEvents(alarmID: string) {
+    let arrDelete = [], size = 4500;
+    let res = await this.getAllAlarmEvents(this.esIndexAlarmEvent, alarmID, size)
+    if (typeof res.hits.hits === 'undefined') throw "getAllAlarmEvents return undefined hits"
+
+    const tempAlarmEvent = res.hits.hits;
+
+    for (let i = 0; i <= tempAlarmEvent.length - 1; i++) {
+      const idx = tempAlarmEvent[i]['_index'];
+      arrDelete.push({
+        delete: {
+        _index: idx,
+        _type: tempAlarmEvent[i]['_type'],
+        _id: tempAlarmEvent[i]['_id']
+       }
+      });
+    }
+    return await this.bulk(arrDelete)
+  }
+
+  async bulk(params) {
     return await this.client.bulk({
       body: params
-    }, function (err, resp) {
     });
   }
+
 }
 
