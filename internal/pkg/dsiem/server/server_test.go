@@ -20,10 +20,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/signal"
 	"path"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -101,7 +104,7 @@ func initServer(cfg Config, t *testing.T, expectError bool) {
 func stopServer(t *testing.T) {
 	err := Stop()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("cannot stop server, receive err: ", err)
 	}
 	fmt.Println("server stopped.")
 }
@@ -147,6 +150,26 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	initServer(cfg, t, false)
 	stopServer(t)
 	defer stopNats(t)
+
+	// test port already in use handling
+	fakeServer := fasthttp.Server{}
+	go func() {
+		fakeServer.ListenAndServe(cfg.Addr + ":" + strconv.Itoa(cfg.Port))
+	}()
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT)
+	go func() {
+		<-signalChan
+		signalChan <- syscall.SIGINT
+		signal.Stop(signalChan)
+	}()
+	initServer(cfg, t, false)
+	if len(signalChan) == 0 {
+		t.Error("Expected to receive an interrupt signal due to port already in use")
+	}
+	stopServer(t)
+	fakeServer.Shutdown()
+	time.Sleep(time.Second)
 
 	// now start the server for real
 	initServer(cfg, t, false)
@@ -222,7 +245,7 @@ func httpTest(t *testing.T, url, method, data string, expectedStatusCode int) {
 		t.Fatal("Received", code, "from", url, "expected", expectedStatusCode)
 	}
 	if code != expectedStatusCode && expectedStatusCode == 500 {
-		fmt.Println("Flaky server test result detected, for", url, "retrying for 3 times every 2 sec ..")
+		fmt.Println("Flaky server test result detected, for", url, "retrying for 10 times every 2 sec ..")
 		for i := 0; i < 10; i++ {
 			fmt.Println("attempt ", i+1, "..")
 			_, code, err := httpClient(url, method, data)
