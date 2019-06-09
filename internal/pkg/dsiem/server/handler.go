@@ -133,7 +133,7 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 
 	byteValue, err := ioutil.ReadAll(file)
 	if err != nil {
-		fmt.Fprintf(ctx, "cannot open "+filename)
+		fmt.Fprintf(ctx, "cannot read "+filename)
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		return
 	}
