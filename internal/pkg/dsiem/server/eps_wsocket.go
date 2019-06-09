@@ -52,7 +52,7 @@ func newWSServer() *wsServer {
 	}
 }
 
-func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
+func (s *wsServer) add(ws *websocket.Conn) (id string) {
 	id = "static"
 	id, _ = idgen.GenerateID()
 	log.Debug(log.M{Msg: "adding WS client " + id})
@@ -65,7 +65,7 @@ func (s *wsServer) add(ws *websocket.Conn) (id string, err error) {
 	case s.cConnectedCh <- true:
 	default:
 	}
-	return c.id, nil
+	return c.id
 }
 
 func (s *wsServer) del(cID string) {
@@ -82,10 +82,8 @@ func (s *wsServer) onClientConnected(ws *websocket.Conn) {
 	defer func() {
 		_ = ws.Close()
 	}()
-	id, err := s.add(ws)
-	if err != nil {
-		return
-	}
+	id := s.add(ws)
+
 	for msg := range s.sendAllCh {
 		/*
 			_, err := json.Marshal(msg)
