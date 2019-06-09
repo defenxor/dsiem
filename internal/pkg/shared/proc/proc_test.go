@@ -14,7 +14,6 @@ func TestProc(t *testing.T) {
 
 	go func() {
 		<-signalChan
-		t.Log("Interrupt signal received.")
 	}()
 
 	myPID := os.Getpid()
