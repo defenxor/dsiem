@@ -38,6 +38,8 @@ var TestMode bool
 
 // Setup initialize logger
 func Setup(dbg bool) (err error) {
+	zLock.Lock()
+	defer zLock.Unlock()
 	enableDebugMessage = dbg
 	if enableDebugMessage {
 		cfg := zap.NewDevelopmentConfig()
