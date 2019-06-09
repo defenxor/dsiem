@@ -17,6 +17,7 @@
 package worker
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -95,10 +96,10 @@ func initFrontend(d string, t *testing.T) {
 	c.MinEPS = 100
 	c.NodeName = "frontend"
 	c.Addr = "127.0.0.1"
-	c.Port = 8080
+	c.Port = 8090
 
 	if err := server.Start(c); err != nil {
-		t.Fatal(err)
+		t.Fatal("Cannot start frontend server:", err)
 	}
 	time.Sleep(time.Second)
 }
@@ -112,11 +113,11 @@ func cleanUp(t *testing.T) {
 		natsServer.Shutdown()
 		//fmt.Println("Done shutting down NATS server")
 	}
-	//fmt.Println("Stopping server")
+	fmt.Println("Stopping server")
 	if err := server.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	//fmt.Println("Server stopped")
+	fmt.Println("Server stopped")
 	return
 }
 
@@ -127,7 +128,6 @@ func TestWorker(t *testing.T) {
 	}
 
 	ch = make(chan event.NormalizedEvent)
-	errChan = make(chan error)
 
 	msq = "nats://127.0.0.1:4223"
 	msqPrefix = "dsiem"
@@ -147,10 +147,19 @@ func TestWorker(t *testing.T) {
 
 	frontend := "foo"
 	if err := Start(ch, msq, msqPrefix, nodeName, wd, frontend); err == nil {
-		t.Fatal("expect an error due to wrong frontend address:", frontend)
+		t.Fatal("expect an error due to failure to download from a wrong frontend address:", frontend)
 	}
 
-	frontend = "http://127.0.0.1:8080"
+	// trigger err first
+	transport = nats.New()
+	transport.SimulateError(errors.New("error during NATS initialization"))
+	if errOccurred := initMsgQueue(msq, msqPrefix, nodeName); !errOccurred {
+		t.Fatal("expect error to occur during NATS initialization")
+	}
+	transport = nil
+
+	// use different port from the server_test
+	frontend = "http://127.0.0.1:8090"
 	// flaky test when run together with server test, so retry it 3x
 	for i := 0; i < 10; i++ {
 		err = Start(ch, msq, msqPrefix, nodeName, wd, frontend)
@@ -180,7 +189,7 @@ func TestWorker(t *testing.T) {
 
 	// start testing for errors
 
-	err = downloadFile(`/\/\/\/`, "http://127.0.0.1:8080/config/assets_testing.json")
+	err = downloadFile(`/\/\/\/`, "http://127.0.0.1:8090/config/assets_testing.json")
 	if err == nil {
 		t.Error("expected error due to wrong filepath")
 	}
@@ -188,6 +197,10 @@ func TestWorker(t *testing.T) {
 	if err == nil {
 		t.Error("expected error due to wrong URL")
 	}
+
+	go func() {
+		transport.SimulateError(errors.New("test"))
+	}()
 
 	start := time.Now()
 	handleMsqError(err)

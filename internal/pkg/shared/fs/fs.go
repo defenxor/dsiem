@@ -17,9 +17,8 @@
 package fs
 
 import (
-	"errors"
 	"os"
-	"path"
+	"strings"
 
 	"github.com/kardianos/osext"
 )
@@ -34,11 +33,11 @@ func FileExist(path string) bool {
 func GetDir(devEnv bool) (string, error) {
 	dir, err := osext.ExecutableFolder()
 	if devEnv {
-		g := os.Getenv("GOPATH")
-		if g == "" {
-			return "", errors.New("cannot find $GOPATH env variable")
+		keyword := "dsiem"
+		wd, _ := os.Getwd()
+		if i := strings.Index(wd, keyword); i > -1 {
+			dir = wd[:i+len(keyword)]
 		}
-		dir = path.Join(g, "src", "github.com", "defenxor", "dsiem")
 	}
 	return dir, err
 }

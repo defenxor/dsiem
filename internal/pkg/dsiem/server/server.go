@@ -95,7 +95,9 @@ func init() {
 func Stop() (err error) {
 	time.Sleep(time.Second)
 	cmu.Lock()
-	close(c.StopChan)
+	if c.StopChan != nil {
+		close(c.StopChan)
+	}
 	cmu.Unlock()
 	err = fServer.Shutdown()
 	return
@@ -183,14 +185,14 @@ func Start(cfg Config) (err error) {
 			}
 		}()
 		if runtime.GOOS == "windows" {
-			err = fServer.ListenAndServe(cfg.Addr + ":" + p)
+			_ = fServer.ListenAndServe(cfg.Addr + ":" + p)
 		} else {
-			ln, err := reuseport.Listen("tcp4", cfg.Addr+":"+p)
-			err = fServer.Serve(ln)
-			if err != nil {
-				log.Error(log.M{Msg: "Unable to start server:" + err.Error()})
-			}
+			ln, _ := reuseport.Listen("tcp4", cfg.Addr+":"+p)
+			_ = fServer.Serve(ln)
 		}
+		// for some reason, using err.Error() here causes fasthttp.server Shutdown in Stop() to exit
+		// during test
+		log.Info(log.M{Msg: "Server process exited."})
 	}()
 	time.Sleep(time.Second)
 	return

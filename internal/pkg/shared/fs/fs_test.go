@@ -27,12 +27,9 @@ func TestFS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = os.Setenv("GOPATH", ""); err != nil {
-		t.Fatal(err)
-	}
-	_, err = GetDir(true)
-	if err == nil {
-		t.Fatal("expected error due to missing GOPATH")
+	dir, err := GetDir(true)
+	if err != nil || dir == "" {
+		t.Fatal("expected to obtain program root directory")
 	}
 
 	tmpDir := path.Join(os.TempDir(), "dsiem")

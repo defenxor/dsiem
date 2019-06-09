@@ -53,11 +53,11 @@ func (t *Transport) makeSubscriber(name string) (chan event.NormalizedEvent, err
 	sub, err = s.QueueSubscribe(name, t.NatsQueueGroup, func(e *event.NormalizedEvent) {
 		ch <- *e
 	})
-	if err != nil {
-		return nil, err
+
+	if err == nil {
+		t.subscriptions = append(t.subscriptions, sub)
 	}
-	t.subscriptions = append(t.subscriptions, sub)
-	return ch, nil
+	return ch, err
 }
 
 // Send gets a channel on which messages with the
@@ -105,9 +105,8 @@ func (t *Transport) makePublisher(name string) (chan event.NormalizedEvent, erro
 				}
 				return
 			case msg := <-ch:
-				if err := c.Publish(name, msg); err != nil {
-					t.handlePublishError(name, err)
-				}
+				err := c.Publish(name, msg)
+				t.handlePublishError(name, err)
 			}
 		}
 	}()

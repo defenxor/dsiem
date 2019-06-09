@@ -54,11 +54,11 @@ func (t *Transport) makeSubscriberBool(name string) (chan bool, error) {
 	sub, err = s.QueueSubscribe(name, t.NatsQueueGroup, func(b *bool) {
 		ch <- *b
 	})
-	if err != nil {
-		return nil, err
+
+	if err == nil {
+		t.subscriptions = append(t.subscriptions, sub)
 	}
-	t.subscriptions = append(t.subscriptions, sub)
-	return ch, nil
+	return ch, err
 }
 
 // SendBool gets a channel on which messages with the
@@ -106,9 +106,8 @@ func (t *Transport) makePublisherBool(name string) (chan bool, error) {
 				}
 				return
 			case msg := <-ch:
-				if err := c.Publish(name, msg); err != nil {
-					t.handlePublishError(name, err)
-				}
+				err := c.Publish(name, msg)
+				t.handlePublishError(name, err)
 			}
 		}
 	}()
@@ -117,6 +116,9 @@ func (t *Transport) makePublisherBool(name string) (chan bool, error) {
 }
 
 func (t *Transport) handlePublishError(name string, err error) {
+	if err == nil {
+		return
+	}
 	t.errChan <- vice.Err{Name: name, Err: err}
 	time.Sleep(1 * time.Second)
 }

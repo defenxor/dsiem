@@ -19,17 +19,21 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/fasthttp-contrib/websocket"
 	uuid "github.com/satori/go.uuid"
+	"github.com/valyala/fasthttp"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 )
 
@@ -37,6 +41,11 @@ func TestServerHandlers(t *testing.T) {
 	d, err := test.DirEnv(true)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if !log.TestMode {
+		t.Logf("Enabling log test mode")
+		log.EnableTestingMode()
 	}
 
 	apm.Enable(true)
@@ -60,6 +69,10 @@ func TestServerHandlers(t *testing.T) {
 	initServer(cfg, t, false)
 
 	url := "http://" + cfg.Addr + ":" + strconv.Itoa(cfg.Port)
+
+	verifyFuncOutput(t, func() {
+		wsHandler(&fasthttp.RequestCtx{})
+	}, "error returned from websocket", true)
 
 	if err = testWs(); err != nil {
 		t.Error("websocket client error:", err)
@@ -135,4 +148,14 @@ func testWs() (err error) {
 	var e message
 	err = json.Unmarshal(msg, &e)
 	return
+}
+
+func verifyFuncOutput(t *testing.T, f func(), expected string, expectMatch bool) {
+	out := log.CaptureZapOutput(f)
+	t.Log("out: ", out)
+	if !strings.Contains(out, expected) == expectMatch {
+		t.Fatalf("Cannot find '%s' in output: %s", expected, out)
+	} else {
+		fmt.Println("OK")
+	}
 }
