@@ -109,6 +109,11 @@ func (t *Transport) ErrChan() <-chan error {
 	return t.errChan
 }
 
+// SimulateError simulate an error coming from NATS
+func (t *Transport) SimulateError(err error) {
+	t.errChan <- vice.Err{Name: "Simulator", Err: err}
+}
+
 // Stop stops the transport.
 // The channel returned from Done() will be closed
 // when the transport has stopped.

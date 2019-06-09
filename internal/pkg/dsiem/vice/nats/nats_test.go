@@ -177,6 +177,13 @@ func TestNATS(t *testing.T) {
 		t.Error("Expected error msg:", expectedErrMsg, ", actual:", e.Error())
 	}
 
+	r.SimulateError((errors.New("simulated")))
+	expectedErrMsg = "simulated: |Simulator|"
+	e = <-rErrChan
+	if e.Error() != expectedErrMsg {
+		t.Error("Expected error msg:", expectedErrMsg, ", actual:", e.Error())
+	}
+
 	rDone := r.Done()
 	r.Stop()
 	<-rDone

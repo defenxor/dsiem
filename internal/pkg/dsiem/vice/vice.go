@@ -40,10 +40,6 @@ type Transport interface {
 	// Send gets a channel on which messages with the
 	// specified name may be sent.
 	Send(name string) chan<- event.NormalizedEvent
-	// ErrChan gets a channel through which errors
-	// are sent.
-	// Receive gets a channel on which to receive messages
-	// with the specified name.
 	ReceiveBool(name string) <-chan bool
 	// Send gets a channel on which messages with the
 	// specified name may be sent.
