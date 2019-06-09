@@ -121,7 +121,7 @@ github.com/spf13/viper
 github.com/teris-io/shortid
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
-# github.com/valyala/fasthttp v1.0.1-0.20181115162433-65955d6208bf
+# github.com/valyala/fasthttp v1.3.0
 github.com/valyala/fasthttp
 github.com/valyala/fasthttp/expvarhandler
 github.com/valyala/fasthttp/pprofhandler

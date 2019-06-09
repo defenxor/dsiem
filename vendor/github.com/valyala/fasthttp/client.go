@@ -60,6 +60,11 @@ func Do(req *Request, resp *Response) error {
 //
 // It is recommended obtaining req and resp via AcquireRequest
 // and AcquireResponse in performance-critical code.
+//
+// Warning: DoTimeout does not terminate the request itself. The request will
+// continue in the background and the response will be discarded.
+// If requests take too long and the connection pool gets filled up please
+// try using a Client and setting a ReadTimeout.
 func DoTimeout(req *Request, resp *Response, timeout time.Duration) error {
 	return defaultClient.DoTimeout(req, resp, timeout)
 }
@@ -188,6 +193,11 @@ type Client struct {
 	// after DefaultMaxIdleConnDuration.
 	MaxIdleConnDuration time.Duration
 
+	// Maximum number of attempts for idempotent calls
+	//
+	// DefaultMaxIdemponentCallAttempts is used if not set.
+	MaxIdemponentCallAttempts int
+
 	// Per-connection buffer size for responses' reading.
 	// This also limits the maximum header size.
 	//
@@ -311,6 +321,11 @@ func (c *Client) Post(dst []byte, url string, postArgs *Args) (statusCode int, b
 //
 // It is recommended obtaining req and resp via AcquireRequest
 // and AcquireResponse in performance-critical code.
+//
+// Warning: DoTimeout does not terminate the request itself. The request will
+// continue in the background and the response will be discarded.
+// If requests take too long and the connection pool gets filled up please
+// try setting a ReadTimeout.
 func (c *Client) DoTimeout(req *Request, resp *Response, timeout time.Duration) error {
 	return clientDoTimeout(req, resp, timeout, c)
 }
@@ -400,6 +415,7 @@ func (c *Client) Do(req *Request, resp *Response) error {
 			TLSConfig:                     c.TLSConfig,
 			MaxConns:                      c.MaxConnsPerHost,
 			MaxIdleConnDuration:           c.MaxIdleConnDuration,
+			MaxIdemponentCallAttempts:     c.MaxIdemponentCallAttempts,
 			ReadBufferSize:                c.ReadBufferSize,
 			WriteBufferSize:               c.WriteBufferSize,
 			ReadTimeout:                   c.ReadTimeout,
@@ -528,6 +544,9 @@ type HostClient struct {
 	// Maximum number of connections which may be established to all hosts
 	// listed in Addr.
 	//
+	// You can change this value while the HostClient is being used
+	// using HostClient.SetMaxConns(value)
+	//
 	// DefaultMaxConnsPerHost is used if not set.
 	MaxConns int
 
@@ -621,9 +640,6 @@ type clientConn struct {
 
 	createdTime time.Time
 	lastUseTime time.Time
-
-	lastReadDeadlineTime  time.Time
-	lastWriteDeadlineTime time.Time
 }
 
 var startTimeUnix = time.Now().Unix()
@@ -737,7 +753,7 @@ func clientGetURLDeadline(dst []byte, url string, deadline time.Time, c clientDo
 		}
 	}()
 
-	tc := acquireTimer(timeout)
+	tc := AcquireTimer(timeout)
 	select {
 	case resp := <-ch:
 		ReleaseRequest(req)
@@ -749,7 +765,7 @@ func clientGetURLDeadline(dst []byte, url string, deadline time.Time, c clientDo
 		body = dst
 		err = ErrTimeout
 	}
-	releaseTimer(tc)
+	ReleaseTimer(tc)
 
 	return statusCode, body, err
 }
@@ -914,6 +930,11 @@ func ReleaseResponse(resp *Response) {
 //
 // It is recommended obtaining req and resp via AcquireRequest
 // and AcquireResponse in performance-critical code.
+//
+// Warning: DoTimeout does not terminate the request itself. The request will
+// continue in the background and the response will be discarded.
+// If requests take too long and the connection pool gets filled up please
+// try setting a ReadTimeout.
 func (c *HostClient) DoTimeout(req *Request, resp *Response, timeout time.Duration) error {
 	return clientDoTimeout(req, resp, timeout, c)
 }
@@ -964,6 +985,11 @@ func clientDoDeadline(req *Request, resp *Response, deadline time.Time, c client
 	req.copyToSkipBody(reqCopy)
 	swapRequestBody(req, reqCopy)
 	respCopy := AcquireResponse()
+	if resp != nil {
+		// Not calling resp.copyToSkipBody(respCopy) here to avoid
+		// unexpected messing with headers
+		respCopy.SkipBody = resp.SkipBody
+	}
 
 	// Note that the request continues execution on ErrTimeout until
 	// client-specific ReadTimeout exceeds. This helps limiting load
@@ -972,11 +998,20 @@ func clientDoDeadline(req *Request, resp *Response, deadline time.Time, c client
 	// Without this 'hack' the load on slow host could exceed MaxConns*
 	// concurrent requests, since timed out requests on client side
 	// usually continue execution on the host.
+
+	var cleanup int32
 	go func() {
-		ch <- c.Do(reqCopy, respCopy)
+		errDo := c.Do(reqCopy, respCopy)
+		if atomic.LoadInt32(&cleanup) == 1 {
+			ReleaseResponse(respCopy)
+			ReleaseRequest(reqCopy)
+			errorChPool.Put(chv)
+		} else {
+			ch <- errDo
+		}
 	}()
 
-	tc := acquireTimer(timeout)
+	tc := AcquireTimer(timeout)
 	var err error
 	select {
 	case err = <-ch:
@@ -989,9 +1024,10 @@ func clientDoDeadline(req *Request, resp *Response, deadline time.Time, c client
 		ReleaseRequest(reqCopy)
 		errorChPool.Put(chv)
 	case <-tc.C:
+		atomic.StoreInt32(&cleanup, 1)
 		err = ErrTimeout
 	}
-	releaseTimer(tc)
+	ReleaseTimer(tc)
 
 	return err
 }
@@ -1112,17 +1148,15 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 	}
 	conn := cc.c
 
+	resp.parseNetConn(conn)
+
 	if c.WriteTimeout > 0 {
-		// Optimization: update write deadline only if more than 25%
-		// of the last write deadline exceeded.
-		// See https://github.com/golang/go/issues/15133 for details.
+		// Set Deadline every time, since golang has fixed the performance issue
+		// See https://github.com/golang/go/issues/15133#issuecomment-271571395 for details
 		currentTime := time.Now()
-		if currentTime.Sub(cc.lastWriteDeadlineTime) > (c.WriteTimeout >> 2) {
-			if err = conn.SetWriteDeadline(currentTime.Add(c.WriteTimeout)); err != nil {
-				c.closeConn(cc)
-				return true, err
-			}
-			cc.lastWriteDeadlineTime = currentTime
+		if err = conn.SetWriteDeadline(currentTime.Add(c.WriteTimeout)); err != nil {
+			c.closeConn(cc)
+			return true, err
 		}
 	}
 
@@ -1154,16 +1188,12 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 	c.releaseWriter(bw)
 
 	if c.ReadTimeout > 0 {
-		// Optimization: update read deadline only if more than 25%
-		// of the last read deadline exceeded.
-		// See https://github.com/golang/go/issues/15133 for details.
+		// Set Deadline every time, since golang has fixed the performance issue
+		// See https://github.com/golang/go/issues/15133#issuecomment-271571395 for details
 		currentTime := time.Now()
-		if currentTime.Sub(cc.lastReadDeadlineTime) > (c.ReadTimeout >> 2) {
-			if err = conn.SetReadDeadline(currentTime.Add(c.ReadTimeout)); err != nil {
-				c.closeConn(cc)
-				return true, err
-			}
-			cc.lastReadDeadlineTime = currentTime
+		if err = conn.SetReadDeadline(currentTime.Add(c.ReadTimeout)); err != nil {
+			c.closeConn(cc)
+			return true, err
 		}
 	}
 
@@ -1214,6 +1244,12 @@ var (
 	ErrConnectionClosed = errors.New("the server closed connection before returning the first response byte. " +
 		"Make sure the server returns 'Connection: close' response header before closing the connection")
 )
+
+func (c *HostClient) SetMaxConns(newMaxConns int) {
+	c.connsLock.Lock()
+	c.MaxConns = newMaxConns
+	c.connsLock.Unlock()
+}
 
 func (c *HostClient) acquireConn() (*clientConn, error) {
 	var cc *clientConn
@@ -1714,6 +1750,11 @@ type pipelineWork struct {
 //
 // It is recommended obtaining req and resp via AcquireRequest
 // and AcquireResponse in performance-critical code.
+//
+// Warning: DoTimeout does not terminate the request itself. The request will
+// continue in the background and the response will be discarded.
+// If requests take too long and the connection pool gets filled up please
+// try setting a ReadTimeout.
 func (c *PipelineClient) DoTimeout(req *Request, resp *Response, timeout time.Duration) error {
 	return c.DoDeadline(req, resp, time.Now().Add(timeout))
 }
@@ -2019,8 +2060,6 @@ func (c *pipelineConnClient) writer(conn net.Conn, stopCh <-chan struct{}) error
 
 		w   *pipelineWork
 		err error
-
-		lastWriteDeadlineTime time.Time
 	)
 	close(instantTimerCh)
 	for {
@@ -2052,18 +2091,16 @@ func (c *pipelineConnClient) writer(conn net.Conn, stopCh <-chan struct{}) error
 			continue
 		}
 
+		w.resp.parseNetConn(conn)
+
 		if writeTimeout > 0 {
-			// Optimization: update write deadline only if more than 25%
-			// of the last write deadline exceeded.
-			// See https://github.com/golang/go/issues/15133 for details.
+			// Set Deadline every time, since golang has fixed the performance issue
+			// See https://github.com/golang/go/issues/15133#issuecomment-271571395 for details
 			currentTime := time.Now()
-			if currentTime.Sub(lastWriteDeadlineTime) > (writeTimeout >> 2) {
-				if err = conn.SetWriteDeadline(currentTime.Add(writeTimeout)); err != nil {
-					w.err = err
-					w.done <- struct{}{}
-					return err
-				}
-				lastWriteDeadlineTime = currentTime
+			if err = conn.SetWriteDeadline(currentTime.Add(writeTimeout)); err != nil {
+				w.err = err
+				w.done <- struct{}{}
+				return err
 			}
 		}
 		if err = w.req.Write(bw); err != nil {
@@ -2117,8 +2154,6 @@ func (c *pipelineConnClient) reader(conn net.Conn, stopCh <-chan struct{}) error
 	var (
 		w   *pipelineWork
 		err error
-
-		lastReadDeadlineTime time.Time
 	)
 	for {
 		select {
@@ -2134,17 +2169,13 @@ func (c *pipelineConnClient) reader(conn net.Conn, stopCh <-chan struct{}) error
 		}
 
 		if readTimeout > 0 {
-			// Optimization: update read deadline only if more than 25%
-			// of the last read deadline exceeded.
-			// See https://github.com/golang/go/issues/15133 for details.
+			// Set Deadline every time, since golang has fixed the performance issue
+			// See https://github.com/golang/go/issues/15133#issuecomment-271571395 for details
 			currentTime := time.Now()
-			if currentTime.Sub(lastReadDeadlineTime) > (readTimeout >> 2) {
-				if err = conn.SetReadDeadline(currentTime.Add(readTimeout)); err != nil {
-					w.err = err
-					w.done <- struct{}{}
-					return err
-				}
-				lastReadDeadlineTime = currentTime
+			if err = conn.SetReadDeadline(currentTime.Add(readTimeout)); err != nil {
+				w.err = err
+				w.done <- struct{}{}
+				return err
 			}
 		}
 		if err = w.resp.Read(br); err != nil {
