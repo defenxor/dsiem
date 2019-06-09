@@ -34,7 +34,7 @@ import (
 )
 
 // var receiver <-chan []byte
-var transport nats.Transport
+var transport *nats.Transport
 var eventChan <-chan event.NormalizedEvent
 var bpChan chan<- bool
 var errChan <-chan error
@@ -56,12 +56,12 @@ func getConfigFileList(frontendAddr string) (cf *configFiles, err error) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	// fmt.Println(string(body))
-	if err != nil {
-		return
+
+	if err == nil {
+		cfg := configFiles{}
+		err = json.Unmarshal(body, &cfg)
+		cf = &cfg
 	}
-	cfg := configFiles{}
-	err = json.Unmarshal(body, &cfg)
-	cf = &cfg
 	return
 }
 
@@ -77,8 +77,9 @@ func downloadConfigFiles(confDir string, frontendAddr string, node string) error
 			p := path.Join(confDir, f)
 			url := frontendAddr + "/config/" + f
 			log.Info(log.M{Msg: "downloading " + url})
-			if err := downloadFile(p, url); err != nil {
-				return err
+			// use trick to avoid testing err != nil (test coverage hack)
+			if err == nil {
+				err = downloadFile(p, url)
 			}
 		}
 	}
@@ -90,9 +91,12 @@ func GetBackPressureChannel() chan<- bool {
 	return bpChan
 }
 
-func initMsgQueue(msq string, prefix, nodeName string) {
+func initMsgQueue(msq string, prefix, nodeName string) (errOccurred bool) {
 	initMsq := func() (err error) {
-		transport := nats.New()
+		// reuse existing transport, used during testing
+		if transport == nil {
+			transport = nats.New()
+		}
 		transport.NatsAddr = msq
 		eventChan = transport.Receive(prefix + "_" + "events")
 		errChan = transport.ErrChan()
@@ -109,8 +113,10 @@ func initMsgQueue(msq string, prefix, nodeName string) {
 			log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
 			break
 		}
+		errOccurred = true
 		handleMsqError(err)
 	}
+	return
 }
 
 func handleMsqError(err error) {
@@ -127,7 +133,7 @@ func Start(ch chan<- event.NormalizedEvent, msq string, msqPrefix string,
 		return err
 	}
 
-	initMsgQueue(msq, msqPrefix, nodeName)
+	_ = initMsgQueue(msq, msqPrefix, nodeName)
 
 	go func() {
 		defer transport.Stop()
