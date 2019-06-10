@@ -44,7 +44,7 @@ Dsiem should run on any container orchestration engine, including Kubernetes. Th
 * For frontend nodes:
   - To centrally manage directive files, use a shared storage (e.g. NFS, CIFS) on frontend nodes to mount `configs` directory.
   - For high availability and load balancing, create a K8s service for frontends and have logstash instances send logs to that service.
-  - Frontends don't need permanent storage, so you can use [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) to manage schedule them.
+  - Frontends don't need permanent storage, so you can use [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) to schedule them.
 
 * For backend nodes:
   - Use [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) to have a stable/predictable pod names, and use the pod name to set `DSIEM_NODE` container environment variable. This allows you to distribute work among backends by naming the directive files (located in frontend nodes) based on the backend StatefulSet's pod name prefix and number of replicas.

@@ -8,7 +8,7 @@ The diagram shows how logstash plays a central role in the event flow. It is the
 
   * Logstash processing pipeline progresses from input ⟶ filter ⟶ output. More detail on this can be found on the Logstash documentation on <a href="https://www.elastic.co/guide/en/logstash/current/pipeline.html">how it works</a>.
 
-  * Logstash <a href="https://discuss.elastic.co/t/logstash-priority-order-when-using-multiple-config-files/80507">reads configuration files in alphabetical order</a>. Dsiem <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/logstash/conf.d">example configuration files</a> use this fact to contruct the appropriate pipeline.
+  * Logstash <a href="https://discuss.elastic.co/t/logstash-priority-order-when-using-multiple-config-files/80507">reads configuration files in alphabetical order</a>. Dsiem <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/logstash/conf.d">example configuration files</a> use this fact to constructs the appropriate pipeline.
 
 With that in mind, let's break down how event flows throughout the system.
 
