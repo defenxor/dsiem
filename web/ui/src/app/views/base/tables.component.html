@@ -38,7 +38,7 @@
                 [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="200">
               200</label>
           </div>
-          <app-search-box (ready)="onSearchboxReady($event)" (empty)="onSearchboxEmpty()"></app-search-box>
+          <app-search-box (ready)="onSearchboxReady()" (empty)="onSearchboxEmpty()"></app-search-box>
           <div>
             <alert type="success" id="alert-success" *ngIf="isRemoved">
               Alarm <strong>{{alarmIdToRemove}}</strong> successfully removed!

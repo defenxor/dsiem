@@ -25,13 +25,14 @@ import { Component, Output, EventEmitter } from '@angular/core';
 export class SearchboxComponent {
   @Output() ready = new EventEmitter<string[]>();
   @Output() empty = new EventEmitter<boolean>();
-  private validInput = true;
-  private isEmpty = false;
-  private alarmIDMinLength = 9;
   resultIDs: string[];
+  /** @internal */
+  validInput = true;
+  isEmpty = false;
+  alarmIDMinLength = 9;
 
   // emits signal when user stop typing and the search term is valid
-  private termReady($event: Event) {
+  termReady($event: Event) {
     const s = ($event.target as HTMLInputElement).value;
     this.validInput = this.validateTerm(s);
     if (this.validInput) {
@@ -40,7 +41,7 @@ export class SearchboxComponent {
   }
 
   // this emits signal when the searchbox is empty
-  private termEmpty() {
+  termEmpty() {
     this.isEmpty = true;
     this.empty.emit(true);
   }
