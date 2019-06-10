@@ -1,0 +1,7 @@
+<div 
+  role="alert" 
+  class="alert alert-{{alertType}}" 
+  [ngStyle]="{'visibility': alertVisible ? 'visible' : 'hidden'}">
+  <i class="fa {{alertIcon}}"></i>
+  {{alertMsg}}
+</div>
