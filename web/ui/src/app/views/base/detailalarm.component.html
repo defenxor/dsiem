@@ -1,4 +1,5 @@
 <ngx-spinner bdColor="rgba(0,0,0,0.5)" size="large" color="#fff" type="ball-clip-rotate-pulse"></ngx-spinner>
+<app-alert-box></app-alert-box>
 <div class="animated fadeIn">
     <div class="row">
       <div class="col-lg-12">
@@ -19,7 +20,7 @@
             <table class="table table-striped">
               <thead>
                 <tr>
-                  <th>AlarmID</th>
+                  <th>Alarm ID</th>
                   <th>Created</th>
                   <th>Updated</th>
                   <th>Status</th>
@@ -33,11 +34,11 @@
                 <tr *ngFor="let row of alarm" [style.height]="wide == true ? '260px' : 'auto'">
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('alrm-id-', alarmID)"
-                    tooltip="Click to query {{alarmID}} at kibana">{{alarmID}}</label>
+                    tooltip="Click to search {{alarmID}} in Kibana">{{alarmID}}</label>
                     &nbsp;
                     <div class="btn-group" id="alrm-id-{{alarmID}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-id-', alarmID)">
-                        query {{alarmID}}
+                        search {{alarmID}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_alarms', '_id', alarmID)" style="cursor: pointer">siem_alarms</a>
@@ -69,11 +70,11 @@
                   </td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('alrm-risk-', alarmID)"
-                    tooltip="Click to query {{row._source.risk_class}} at kibana">{{row._source.risk_class}}</label>
+                    tooltip="Click to search {{row._source.risk_class}} in Kibana">{{row._source.risk_class}}</label>
                     &nbsp;
                     <div class="btn-group" id="alrm-risk-{{alarmID}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-risk-', alarmID)">
-                        query {{row._source.risk_class}}
+                        search {{row._source.risk_class}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_alarms', 'risk_class', row._source.risk_class)" style="cursor: pointer">siem_alarms</a>
@@ -104,11 +105,11 @@
                   </td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('alrm-src-ip-', alarmID)"
-                    tooltip="Click to query {{row._source.src_ips}} at kibana">{{row._source.src_ips}}</label>
+                    tooltip="Click to search {{row._source.src_ips}} in Kibana">{{row._source.src_ips}}</label>
                     &nbsp;
                     <div class="btn-group" id="alrm-src-ip-{{alarmID}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-src-ip-', alarmID)">
-                        query {{row._source.src_ips}}
+                        search {{row._source.src_ips}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_alarms', 'src_ips', row._source.src_ips)" style="cursor: pointer">siem_alarms</a>
@@ -121,11 +122,11 @@
                   <td>
                     <div *ngFor="let d of row._source.dst_ips; let i=index">
                       <label style="cursor: pointer" (click)="openDropdown('alrm-dst-ip-', i+'-'+alarmID)"
-                      tooltip="Click to query {{d}} at kibana">{{d}}</label>
+                      tooltip="Click to search {{d}} in Kibana">{{d}}</label>
                       &nbsp;
                       <div class="btn-group" id="alrm-dst-ip-{{i}}-{{alarmID}}" dropdown style="display: none">
                         <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-dst-ip-', i+'-'+alarmID)">
-                          query {{d}}
+                          search {{d}}
                         </button>
                         <ul *dropdownMenu class="dropdown-menu" role="menu">
                           <a class="dropdown-item" (click)="openKibana('siem_alarms', 'dst_ips', d)" style="cursor: pointer">siem_alarms</a>
@@ -178,11 +179,11 @@
                   </td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('corr-stage-', rule.stage)"
-                      tooltip="Click to query rule stage {{rule.stage}} at kibana">{{rule.stage}}</label>
+                      tooltip="Click to search rule stage {{rule.stage}} in Kibana">{{rule.stage}}</label>
                       &nbsp;
                     <div class="btn-group" id="corr-stage-{{rule.stage}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightAlarmEv('corr-stage-', rule.stage, i)">
-                        query {{rule.stage}}
+                        search {{rule.stage}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibanaCorrStage('siem_alarm-events', alarmID, rule.stage, i)" style="cursor: pointer">siem_alarm_events</a>
@@ -294,11 +295,11 @@
                 <tr *ngFor="let event of events; let i=index" [style.height]="wideEv[i] == true ? '230px' : 'auto'">
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('event-id-', event.event_id)"
-                      tooltip="Click to query eventID {{event.event_id}} at kibana">{{event.event_id}}</label>
+                      tooltip="Click to search eventID {{event.event_id}} in Kibana">{{event.event_id}}</label>
                       &nbsp;
                     <div class="btn-group" id="event-id-{{event.event_id}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('event-id-', event.event_id, i)">
-                        query {{event.event_id}}
+                        search {{event.event_id}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'event_id', event.event_id)" style="cursor: pointer">siem_event</a>
@@ -311,11 +312,11 @@
                   <td>{{event.timestamp | amTimeAgo}}</td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('title-', event.event_id)"
-                    tooltip="Click to query {{event.title}} at kibana">{{event.title}}</label>
+                    tooltip="Click to search {{event.title}} in Kibana">{{event.title}}</label>
                     &nbsp;
                     <div class="btn-group" id="title-{{event.event_id}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('title-', event.event_id, i)">
-                        query {{event.title}}
+                        search {{event.title}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'title', event.title)" style="cursor: pointer">siem_event</a>
@@ -328,11 +329,11 @@
                   </td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('src-ip-', event.event_id)"
-                    tooltip="Click to query {{event.src_ip}} at kibana">{{event.src_ip}}</label>
+                    tooltip="Click to search {{event.src_ip}} in Kibana">{{event.src_ip}}</label>
                     &nbsp;
                     <div class="btn-group" id="src-ip-{{event.event_id}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('src-ip-', event.event_id, i)">
-                        query {{event.src_ip}}
+                        search {{event.src_ip}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'src_ip', event.src_ip)" style="cursor: pointer">siem_event</a>
@@ -345,11 +346,11 @@
                   </td>
                   <td>
                     <label style="cursor: pointer" (click)="openDropdown('dst-ip-', event.event_id)"
-                    tooltip="Click to query {{event.dst_ip}} at kibana">{{event.dst_ip}}</label>
+                    tooltip="Click to search {{event.dst_ip}} in Kibana">{{event.dst_ip}}</label>
                     &nbsp;
                     <div class="btn-group" id="dst-ip-{{event.event_id}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeightEv('dst-ip-', event.event_id, i)">
-                        query {{event.dst_ip}}
+                        search {{event.dst_ip}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'dst_ip', event.dst_ip)" style="cursor: pointer">siem_event</a>

@@ -1,10 +1,5 @@
 <ngx-spinner bdColor="rgba(0,0,0,0.5)" size="large" color="#fff" type="ball-clip-rotate-pulse"></ngx-spinner>
-<div role="alert" class="alert alert-success" *ngIf="statusConnected">
-  <i class="fa fa-check-circle"></i> {{statusConnected}}
-</div>
-<div role="alert" class="alert alert-danger" *ngIf="statusDisconnected">
-  <i class="fa fa-exclamation-triangle"></i> {{statusDisconnected}}
-</div>
+<app-alert-box></app-alert-box>
 <div class="animated fadeIn">
   <div class="row">
     <div class="col-lg-12">
@@ -39,14 +34,6 @@
               200</label>
           </div>
           <app-search-box (ready)="onSearchboxReady()" (empty)="onSearchboxEmpty()"></app-search-box>
-          <div>
-            <alert type="success" id="alert-success" *ngIf="isRemoved">
-              Alarm <strong>{{alarmIdToRemove}}</strong> successfully removed!
-            </alert>
-            <alert type="danger" id="alert-failed" *ngIf="isNotRemoved">
-              <strong>Error!</strong> {{errMsg}}
-            </alert>
-          </div>
           <div bsModal #confirmModalRemove="bs-modal" class="modal fade" tabindex="-1" role="dialog"
             aria-labelledby="myBasicModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
@@ -115,6 +102,7 @@
               </tr>
             </tbody>
           </table>
+          <label *ngIf="tableData.length==0">No records found.</label>
         </div>
       </div>
     </div>
