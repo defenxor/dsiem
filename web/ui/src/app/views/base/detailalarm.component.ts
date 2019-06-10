@@ -94,8 +94,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
         }));
       }));
     } catch (err) {
-      // TODO: Replace this with a better popup
-      this.alertBox.showAlert('Cannot load alarm ' + this.alarmID + ': ' + err, 'danger', false);
+      let msg = 'Error occurred while loading alarm ' + this.alarmID + ': ' + err;
+      console.log(msg);
+      this.alertBox.showAlert(msg, "danger", false)
     } finally {
       // this.spinner.hide();
     }
@@ -193,8 +194,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, _id);
       this.alarm[0] = resp;
     } catch (err) {
-      // TODO: should alert here too
-      console.log('Error occur while changing alarm status: ' + err);
+      let msg = 'Error occurred while changing alarm status: ' + err;
+      console.log(msg);
+      this.alertBox.showAlert(msg, "danger", false)
     } finally {
       this.isProcessingUpdateStatus = false;
       this.progressLoading = false;
@@ -217,8 +219,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       this.alarm[0] = resp;
       this.isProcessingUpdateTag = false;
     } catch (err) {
-      // TODO: should alert here too
-      console.log('Error occur while changing alarm tag: ' + err);
+      let msg = 'Error occurred while changing alarm tag: ' + err;
+      console.log(msg);
+      this.alertBox.showAlert(msg, "danger", false)
     } finally {
       this.progressLoading = false;
     }
