@@ -1,6 +1,6 @@
 <ngx-spinner bdColor="rgba(0,0,0,0.5)" size="large" color="#fff" type="ball-clip-rotate-pulse"></ngx-spinner>
 <div role="alert" class="alert alert-success" *ngIf="statusConnected">
-    <i class="fa fa-check-circle"></i> {{statusConnected}}
+  <i class="fa fa-check-circle"></i> {{statusConnected}}
 </div>
 <div role="alert" class="alert alert-danger" *ngIf="statusDisconnected">
   <i class="fa fa-exclamation-triangle"></i> {{statusDisconnected}}
@@ -14,26 +14,41 @@
         </div>
         <div class="progress" style="height: 8px;">
           <div class="progress-bar progress-bar-striped"
-            [ngClass]="{ 'progress-bar-animated bg-info': animateProgress, 'bg-secondary': counterPaused }"
+            [ngClass]="{ 'progress-bar-animated bg-info': animateProgress, 'bg-secondary': !animateProgress }"
             role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
           </div>
         </div>
-      <div class="card-body">
-        <button type="button" [disabled]="disabledBtn" class="btn btn-primary text-right"
-          [ngClass]="{ 'bg-dark': counterPaused }"
-          (click)="counterClick()" placement="top">{{counterPreText}}
-          <countdown #counter [config]="{leftTime: 10, template: '$!s!'}" (start)="counterStart()" (finished)="counterFinished()"></countdown>
-        {{counterPostText}}
-        </button>
-        <div class="btn-group float-right" data-toggle="buttons">
-          <label class="btn">Query this many latest records at once:</label>
-          <label class="btn active"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="20"> 20</label>
-          <label class="btn"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="50"> 50</label>
-          <label class="btn"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="100"> 100</label>
-          <label class="btn"><input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="200"> 200</label>
-        </div>
-          <br/><br/>
-          <div bsModal #confirmModalRemove="bs-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myBasicModalLabel" aria-hidden="true">
+        <div class="card-body">
+          <button type="button" [disabled]="disabledBtn" class="btn btn-primary text-right"
+            [ngClass]="{ 'bg-dark': counterPaused }" (click)="counterClick()" placement="top">{{counterPreText}}
+            <countdown #counter [config]="{leftTime: 10, template: '$!s!'}" (start)="counterStart()"
+              (finished)="counterFinished()"></countdown>
+            {{counterPostText}}
+          </button>
+          <div class="btn-group float-right" data-toggle="buttons">
+            <label class="btn active" tooltip="Auto-refresh returns this many documents at once">
+              <input type="radio" [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="20"> 20</label>
+            <label class="btn" tooltip="Auto-refresh returns this many documents at once"><input type="radio"
+                [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="50">
+              50</label>
+            <label class="btn" tooltip="Auto-refresh returns this many documents at once"><input type="radio"
+                [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="100">
+              100</label>
+            <label class="btn" tooltip="Auto-refresh returns this many documents at once"><input type="radio"
+                [disabled]="disabledBtn" [(ngModel)]="totalItems" [value]="200">
+              200</label>
+          </div>
+          <app-search-box (ready)="onSearchboxReady()" (empty)="onSearchboxEmpty()"></app-search-box>
+          <div>
+            <alert type="success" id="alert-success" *ngIf="isRemoved">
+              Alarm <strong>{{alarmIdToRemove}}</strong> successfully removed!
+            </alert>
+            <alert type="danger" id="alert-failed" *ngIf="isNotRemoved">
+              <strong>Error!</strong> {{errMsg}}
+            </alert>
+          </div>
+          <div bsModal #confirmModalRemove="bs-modal" class="modal fade" tabindex="-1" role="dialog"
+            aria-labelledby="myBasicModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
               <div class="modal-content">
                 <div class="modal-header">
@@ -48,18 +63,14 @@
                   Do you want to continue?
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" aria-label="Close" (click)="deleteAlarm()">Yes</button>
-                  <button type="button" class="btn btn-primary" aria-label="Close" (click)="confirmModalRemove.hide()">No</button>
+                  <button type="button" class="btn btn-secondary" aria-label="Close"
+                    (click)="deleteAlarm()">Yes</button>
+                  <button type="button" class="btn btn-primary" aria-label="Close"
+                    (click)="confirmModalRemove.hide()">No</button>
                 </div>
               </div>
             </div>
           </div>
-          <alert type="success" id="alert-success" *ngIf="isRemoved">
-            Alarm <strong>{{alarmIdToRemove}}</strong> successfully removed!
-          </alert>
-          <alert type="danger" id="alert-failed" *ngIf="isNotRemoved">
-            <strong>Error!</strong> {{errMsg}}
-          </alert>
           <table class="table table-striped">
             <thead>
               <tr>
@@ -78,12 +89,14 @@
             <tbody>
               <tr *ngFor="let alarm of tableData; let i=index">
                 <td>
-                  <a tooltip="Click to see alarm details" placement="bottom" style="cursor:pointer; color: #000000" [routerLink]="['/data/alarm-detail', alarm.id]">
-                    <i class="fa fa-eye" ></i>
+                  <a tooltip="Click to see alarm details" placement="bottom" style="cursor:pointer; color: #000000"
+                    [routerLink]="['/data/alarm-detail', alarm.id]">
+                    <i class="fa fa-eye"></i>
                   </a>
                   &nbsp;
-                  <a tooltip="Click to remove this row" placement="bottom" style="cursor:pointer; color: red" (click)="confirmBeforeRemove(alarm.id, i)">
-                    <i class="fa fa-trash" ></i>
+                  <a tooltip="Click to remove this row" placement="bottom" style="cursor:pointer; color: red"
+                    (click)="confirmBeforeRemove(alarm.id, i)">
+                    <i class="fa fa-trash"></i>
                   </a>
                 </td>
                 <td>{{alarm.id}}</td>
@@ -107,4 +120,3 @@
     </div>
   </div>
 </div>
-

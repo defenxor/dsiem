@@ -23,6 +23,7 @@ import { NgModule } from '@angular/core';
 // Tabel Component
 import { TablesComponent } from './tables.component';
 import { DetailalarmComponent } from './detailalarm.component';
+import { SearchboxComponent } from './searchbox.component';
 
 // Components Routing
 import { BaseRoutingModule } from './base-routing.module';
@@ -34,8 +35,7 @@ import { ModalModule } from 'ngx-bootstrap/modal';
 import { AlertModule } from 'ngx-bootstrap/alert';
 import { NgxSpinnerModule } from 'ngx-spinner';
 import { CountdownModule } from 'ngx-countdown';
-
-
+import { InputSearchModule } from 'ngx-input-search';
 @NgModule({
   imports: [
     CommonModule,
@@ -47,11 +47,13 @@ import { CountdownModule } from 'ngx-countdown';
     ModalModule.forRoot(),
     AlertModule.forRoot(),
     NgxSpinnerModule,
-    CountdownModule
+    CountdownModule,
+    InputSearchModule
   ],
   declarations: [
     TablesComponent,
-    DetailalarmComponent
+    DetailalarmComponent,
+    SearchboxComponent
   ],
 })
 export class BaseModule { }

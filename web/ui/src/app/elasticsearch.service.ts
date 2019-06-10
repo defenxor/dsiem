@@ -147,6 +147,16 @@ export class ElasticsearchService {
     };
   }
 
+  buildQueryMultipleAlarms(keywords: string[]) {
+    const k = keywords.join(',');
+    return {
+      'query': {
+        'terms': { '_id': keywords }
+      },
+      'sort': { 'timestamp' : 'desc' }
+    };
+  }
+
   buildQueryAlarms(alarmId) {
     return {
       'query': {
@@ -264,6 +274,17 @@ export class ElasticsearchService {
       id: alarmId,
       index: _index,
       type: this.getType()
+    });
+  }
+
+  getAlarmsMulti(_index, alarmIds: string[]): any {
+    const len = alarmIds.length > this.MAX_DOCS_RETURNED ? this.MAX_DOCS_RETURNED : alarmIds.length;
+    return this.client.search({
+      index: _index,
+      size: len,
+      type: this.getType(),
+      body: this.buildQueryMultipleAlarms(alarmIds),
+      filterPath: ['hits.hits']
     });
   }
 
@@ -427,4 +448,3 @@ export class ElasticsearchService {
   }
 
 }
-

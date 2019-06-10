@@ -22,6 +22,7 @@ import { AlarmSource } from './alarm.interface';
 import { ModalDirective } from 'ngx-bootstrap';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { CountdownComponent } from 'ngx-countdown';
+import { SearchboxComponent } from './searchbox.component';
 
 @Component({
   templateUrl: 'tables.component.html'
@@ -33,6 +34,8 @@ export class TablesComponent {
   @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
 
   @ViewChild('counter') counter: CountdownComponent;
+
+  @ViewChild(SearchboxComponent) private searchBox: SearchboxComponent;
 
   elasticsearch: string;
   tempAlarms: AlarmSource[];
@@ -53,6 +56,26 @@ export class TablesComponent {
 
   constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService, private cd: ChangeDetectorRef) {
     this.elasticsearch = this.es.getServer();
+  }
+
+  async onSearchboxReady() {
+    this.toggleCounter(true);
+    // disabling button cause too many color changes at once
+    // this.disabledBtn = true
+    this.animateProgress = true;
+    try {
+      await this.getData(this.searchBox.resultIDs);
+    } catch (err) {
+      console.log('error in doSearch():', err);
+    } finally {
+      await sleep(500);
+      this.animateProgress = false;
+      // this.disabledBtn = false
+    }
+  }
+
+  async onSearchboxEmpty() {
+    this.toggleCounter(false);
   }
 
   async counterStart() {
@@ -118,15 +141,19 @@ export class TablesComponent {
     return false;
   }
 
-  async getData() {
+  async getData(alarmIds: string[] = []) {
     try {
-      const resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
+      let resp;
+      if (alarmIds.length > 0) {
+        resp = await this.es.getAlarmsMulti(this.es.esIndex, alarmIds);
+      } else {
+        resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
+      }
       this.tempAlarms = resp.hits.hits;
       this.tableData = [];
       this.tempAlarms.forEach((a) => {
-        a['_source'].id = a['_id'];
         const tempArr = {
-          id: a['_source']['id'],
+          id: a['_id'],
           title: a['_source']['title'],
           timestamp: a['_source']['timestamp'],
           updated_time: a['_source']['updated_time'],
