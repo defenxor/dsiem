@@ -60,10 +60,11 @@ export class TablesComponent {
 
   async onSearchboxReady() {
     this.toggleCounter(true);
+    // disabling button cause too many color changes at once
     // this.disabledBtn = true
     this.animateProgress = true;
     try {
-      await this.searchAlarm(this.searchBox.resultIDs);
+      await this.getData(this.searchBox.resultIDs);
     } catch (err) {
       console.log('error in doSearch():', err);
     } finally {
@@ -140,42 +141,19 @@ export class TablesComponent {
     return false;
   }
 
-  async searchAlarm(alarmIds: string[]) {
+  async getData(alarmIds: string[] = []) {
     try {
-      const resp = await this.es.getAlarmsMulti(this.es.esIndex, alarmIds);
-      console.log('resp:', resp);
-      const tempAlarms = resp.hits.hits;
-      this.tableData = [];
-      tempAlarms.forEach((a) => {
-        const tempArr = {
-          id: a['_id'],
-          title: a['_source']['title'],
-          timestamp: a['_source']['timestamp'],
-          updated_time: a['_source']['updated_time'],
-          status: a['_source']['status'],
-          risk_class: a['_source']['risk_class'],
-          tag: a['_source']['tag'],
-          src_ips: a['_source']['src_ips'],
-          dst_ips: a['_source']['dst_ips'],
-          actions: '<i class=\'fa fa-eye\' title=\'click here to see details\' style=\'cursor:pointer; color:#ff9800\'></i>'
-        };
-        this.tableData.push(tempArr);
-      });
-    } catch (err) {
-      this.tableData = [];
-      throw err;
-    }
-  }
-
-  async getData() {
-    try {
-      const resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
+      let resp;
+      if (alarmIds.length > 0) {
+        resp = await this.es.getAlarmsMulti(this.es.esIndex, alarmIds);
+      } else {
+        resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
+      }
       this.tempAlarms = resp.hits.hits;
       this.tableData = [];
       this.tempAlarms.forEach((a) => {
-        a['_source'].id = a['_id'];
         const tempArr = {
-          id: a['_source']['id'],
+          id: a['_id'],
           title: a['_source']['title'],
           timestamp: a['_source']['timestamp'],
           updated_time: a['_source']['updated_time'],
