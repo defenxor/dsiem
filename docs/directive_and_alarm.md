@@ -81,7 +81,7 @@ By using [Dsiem startup parameter](commands.md#dsiem-command-flags), you can the
 
 ### Example Directive ⟶ Alarm Processing
 
-Let's say Dsiem is configured with the above `Ping Flood from SRC_IP` directive, and an `assets_*.json` that defines an asset value of 2 for `10.0.0.0/8` network.
+Let's say Dsiem is configured with the above `Ping Flood from SRC_IP` directive, and an `assets_*.json` that defines an asset value of 3 for `10.0.0.0/8` network.
 
 When Dsiem receives the following series of events:
 1. plugin_id: 1001, plugin_sid: 2100384, protocol: ICMP, src_ip: 10.0.0.1, dst_ip: 10.0.0.2
@@ -97,21 +97,22 @@ The following processing will take place:
     * they have the same value for`plugin_id`, `plugin_sid`, and `protocol`.
     * the event `src_ip` (10.0.0.1) matches the directive `from` condition of `HOME_NET`. This is because `HOME_NET` refers to any addresses defined in `assets_*.json` file.
     * the event `dst_ip` (10.0.0.2) matches the directive `to` condition of `ANY`. This is because `ANY` will match all possible value.
-  * backlog #1 is created to track this potential alarm. Its initial risk value will be `risk = (reliability * priority * asset value)/25 = (1 * 3 * 2)/25 = 0.24`, so no alarm will be created yet.
-  * backlog #1 starts monitoring for incoming events that would trigger the 2nd stage rule condition.
+  * backlog #1 is created to track this potential alarm. Its initial risk value will be `risk = (reliability * priority * asset value)/25 = (1 * 3 * 3)/25 = 0.36`, so no alarm will be created yet.
+  * backlog #1 enters 2nd correlation stage, and starts monitoring for incoming events that would match that 2nd stage rule condition.
 * On 2nd event:  
-  * the event matches backlog #1 2nd rule condition because:
-    * the event `src_ip` matches the directive `from` value of `:1`. That `:1` denotes a reference to the `from` value matched in the first rule, which in this case is `10.0.0.1`.
-    * backlog #1 enters 2nd stage with an initial risk value of `risk = (6 * 3 * 2)/25 = 1.44`. **This will generate a Low risk alarm**.
+  * the event matches backlog #1 2nd rule condition because the event `src_ip` matches the directive `from` value of `:1`. That `:1` denotes a reference to the `from` value matched in the first rule, which in this case is `10.0.0.1`.
+  * upon receiving this first event match for 2nd stage, backlog #1 recalculate its risk value to be `risk = (6 * 3 * 3)/25 = 2.16`. **This generates a Low risk alarm**.
+  * backlog #1 keeps monitoring for more events that will match its 2nd stage rule condition.
 * On 3rd event:
   * the event doesn't match backlog #1 2nd rule condition because of the mismatch in `from` condition and the event's `src_ip`.
   * since this event does match the directive 1st rule, a new backlog #2 will be created to track it separately from backlog #1.
 * On 4th event:
-  * the event match backlog #1 2nd rule condition. This will raise its event count from 0 to 1 for the 2nd stage, and reset its internal timeout timer.
-  * the event doesnt match backlog #2 2nd rule condition.
+  * the event match backlog #1 2nd rule condition. This will raise its event count from 1 to 2 for the 2nd stage, and reset its internal timeout timer.
+  * the event doesn't match backlog #2 2nd rule condition.
 * On 5th to 15th event:
-  * 5th to 7th events match backlog #1 2nd rule condition, and this causes the event count to reach the rule `occurrence` limit. Backlog #1 will then be moved to the 3rd stage with an initial risk value of `risk = (8 * 3 * 2)/25 = 1.92`. This is rounded up to 2, and results in an update of the associated alarm's risk label from Low to **Medium**.
-  * the 8th to 15th events match backlog #1 3rd rule condition, and each will  increase the backlog's event count and reset its internal timeout timer.
+  * 5th to 7th events match backlog #1 2nd rule condition, and this causes the event count to reach the rule `occurrence` limit (of 5 events). This causes backlog #1 to move to the 3rd correlation stage.
+  * 8th event match backlog #1 3rd rule condition, and this causes a risk recalculation of `risk = (8 * 3 * 3)/25 = 2.88`. This is rounded up to 3, and results in an update of the associated alarm's risk label from Low to **Medium**.
+  * the 9th to 15th events match backlog #1 3rd rule condition, and each will increase the backlog's event count and reset its internal timeout timer.
   * None of these events match backlog #2 2nd rule condition.
 
 Then if no more matching event is found, backlog #2 will expires and be removed after 10 minutes (600s), while backlog #1 will expires in 1 hour (3600s).
@@ -264,4 +265,4 @@ The generated directives above have the following characteristics:
   - stage 1: match a single event that has similar `PluginID` and `PluginSID` combination as specified by each row of the TSV file.
   - stage 2: has similar condition with stage 1, with an added requirement for the events to also match stage 1 source and destination IP addresses. This stage is set to match up to 10 events within 3,600 seconds (1 hour).
   - stage 3: has similar condition with stage 2, but is setup to match up to 10,000 events within 6 hour.
-- The directive priority value (1) and the correlation rules reliability value (for each consecutive stages: 1, 5, 10) are set so that the directive will trigger an alarm when stage 2 receives its first event. This is true if the events source or destination IP address include an asset whose value are at least 2 (the default asset value).
+- The directive priority value (3) and the correlation rules reliability value (for each consecutive stages: 1, 5, 10) are set so that the directive will trigger an alarm when stage 2 receives its first event. This is true if the events source or destination IP address include an asset whose value are at least 2 (the default asset value), since `Risk = priority * reliability * asset value = 3 * 5 * 2 / 25 = 1.2` will generate a low risk alarm by default.
