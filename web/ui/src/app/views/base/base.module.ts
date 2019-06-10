@@ -24,6 +24,7 @@ import { NgModule } from '@angular/core';
 import { TablesComponent } from './tables.component';
 import { DetailalarmComponent } from './detailalarm.component';
 import { SearchboxComponent } from './searchbox.component';
+import { AlertboxComponent } from './alertbox.component';
 
 // Components Routing
 import { BaseRoutingModule } from './base-routing.module';
@@ -53,7 +54,8 @@ import { InputSearchModule } from 'ngx-input-search';
   declarations: [
     TablesComponent,
     DetailalarmComponent,
-    SearchboxComponent
+    SearchboxComponent,
+    AlertboxComponent
   ],
 })
 export class BaseModule { }

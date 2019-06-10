@@ -15,12 +15,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
-import { Component, OnInit, ViewChildren, QueryList, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewChildren, ViewChild, QueryList, OnDestroy } from '@angular/core';
 import { sleep } from '../../utilities';
 import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { Http } from '@angular/http';
 import { NgxSpinnerService } from 'ngx-spinner';
+import { AlertboxComponent } from './alertbox.component';
 
 @Component({
   templateUrl: './detailalarm.component.html',
@@ -28,6 +29,8 @@ import { NgxSpinnerService } from 'ngx-spinner';
 export class DetailalarmComponent implements OnInit, OnDestroy {
 
   @ViewChildren('pages') pages: QueryList<any>;
+  @ViewChild(AlertboxComponent) private alertBox: AlertboxComponent;
+
   sub: any;
   alarmID: string;
   stage: number;
@@ -43,6 +46,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   isProcessingUpdateTag = false;
   progressLoading: boolean;
   kibanaUrl: string;
+  elasticsearch: string;
 
   constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http,
     private spinner: NgxSpinnerService) { }
@@ -53,22 +57,28 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.kibanaUrl = this.es.kibana;
+    this.elasticsearch = this.es.server;
     this.sub = this.route.params.subscribe(async params => {
       this.alarmID = params['alarmID'];
-      try {
-        await this.es.isAvailable();
-      } catch (err) {
-        // TODO: replace this with a better popup
-        alert('Cannot access ES server ' + this.es.server + ': ' + err);
-        return;
-      }
-      return this.getAlarmDetail(this.alarmID);
+      this.checkES().then(() => this.getAlarmDetail(this.alarmID));
     });
+  }
+
+  async checkES(): Promise<boolean> {
+    try {
+      await this.es.isAvailable();
+      this.alertBox.showAlert('Connected to ES ' + this.elasticsearch, 'success', true);
+      return true;
+    } catch (err) {
+      this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch, 'danger', true);
+      console.error('Elasticsearch is down:', err);
+    }
+    return false;
   }
 
   async getAlarmDetail(alarmID) {
     const that = this;
-    that.spinner.show();
+    // this.spinner.show();
     let tempAlarms;
     try {
       const resp = await this.es.getAlarms(this.es.esIndex, alarmID);
@@ -85,10 +95,11 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       }));
     } catch (err) {
       // TODO: Replace this with a better popup
-      alert('Cannot load alarm ' + this.alarmID + ': ' + err);
+      this.alertBox.showAlert('Cannot load alarm ' + this.alarmID + ': ' + err, 'danger', false);
     } finally {
-      that.spinner.hide();
+      // this.spinner.hide();
     }
+    if (typeof tempAlarms === 'undefined') { return; }
     this.alarm = tempAlarms;
     for (const element of tempAlarms) {
       this.alarmRules = element._source.rules;

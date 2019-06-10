@@ -23,6 +23,7 @@ import { ModalDirective } from 'ngx-bootstrap';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { CountdownComponent } from 'ngx-countdown';
 import { SearchboxComponent } from './searchbox.component';
+import { AlertboxComponent } from './alertbox.component';
 
 @Component({
   templateUrl: 'tables.component.html'
@@ -37,8 +38,9 @@ export class TablesComponent {
 
   @ViewChild(SearchboxComponent) private searchBox: SearchboxComponent;
 
+  @ViewChild(AlertboxComponent) private alertBox: AlertboxComponent;
+
   elasticsearch: string;
-  tempAlarms: AlarmSource[];
   tableData: object[] = [];
   counterPreText = 'Turn-off auto-refresh (Refreshing in ';
   counterPostText = ' seconds)';
@@ -47,12 +49,11 @@ export class TablesComponent {
   totalItems = 20;
   alarmIdToRemove: string;
   alarmIndexToRemove: string;
-  isRemoved: boolean;
-  isNotRemoved: boolean;
-  errMsg: string;
   disabledBtn: boolean;
-  statusDisconnected: string;
-  statusConnected: string;
+  alertType: string;
+  alertMsg: string;
+  alertVisible: boolean;
+  alertIcon: string;
 
   constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService, private cd: ChangeDetectorRef) {
     this.elasticsearch = this.es.getServer();
@@ -130,12 +131,10 @@ export class TablesComponent {
   async checkES(): Promise<boolean> {
     try {
       await this.es.isAvailable();
-      this.statusConnected = 'Connected to ES ' + this.elasticsearch;
-      this.statusDisconnected = null;
+      this.alertBox.showAlert('Connected to ES ' + this.elasticsearch, 'success', true);
       return true;
     } catch (err) {
-      this.statusDisconnected = 'Disconnected from ES ' + this.elasticsearch;
-      this.statusConnected = null;
+      this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch, 'danger', true);
       console.error('Elasticsearch is down:', err);
     }
     return false;
@@ -149,9 +148,10 @@ export class TablesComponent {
       } else {
         resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
       }
-      this.tempAlarms = resp.hits.hits;
+      let tempAlarms: AlarmSource[];
+      tempAlarms = resp.hits.hits;
       this.tableData = [];
-      this.tempAlarms.forEach((a) => {
+      tempAlarms.forEach((a) => {
         const tempArr = {
           id: a['_id'],
           title: a['_source']['title'],
@@ -185,18 +185,11 @@ export class TablesComponent {
     const savedCounterState = this.counterPaused;
     try {
       await this.es.deleteAlarm(targetID);
-      this.isRemoved = true;
+      this.alertBox.showAlert('alarm ' + targetID + ' removed successfully', 'success', false );
       removeItemFromObjectArray(this.tableData, 'id', targetID);
-      setTimeout(() => {
-        this.isRemoved = false;
-      }, 5000);
     } catch (err) {
       console.log('Error in deleteAlarm: ', err);
-      this.isNotRemoved = true;
-      this.errMsg = err;
-      setTimeout(() => {
-        this.isNotRemoved = false;
-      }, 5000);
+      this.alertBox.showAlert('Error occurred while removing alarm ' + targetID + ': ' + err, 'danger', false);
     } finally {
       this.disabledBtn = false;
       this.spinner.hide();
