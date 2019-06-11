@@ -185,7 +185,7 @@
                         search {{rule.stage}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
-                        <a class="dropdown-item" (click)="openKibanaCorrStage('siem_alarm-events', alarmID, rule.stage, i)" style="cursor: pointer">siem_alarm_events</a>
+                        <a class="dropdown-item" (click)="openKibanaCorrStage('siem_alarm_events', alarmID, rule.stage, i)" style="cursor: pointer">siem_alarm_events</a>
                       </ul>
                       <button type="button" class="close" aria-label="Close" id="close-corr-stage-{{rule.stage}}" style="display: none" (click)="closeDropdown('corr-stage-', rule.stage); wideAlarmEv[i]=false">
                         <span aria-hidden="true">×</span>
