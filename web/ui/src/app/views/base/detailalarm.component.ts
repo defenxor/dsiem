@@ -85,12 +85,10 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     // try to load from both /config and /assets/config, the later being used for testing ng serve
     let out;
     try {
-      console.log('trying first url');
       out = await this.http.get('./config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
     } catch (err) {}
     if (typeof out === 'undefined') {
       try {
-        console.log('trying second url');
         out = await this.http.get('./assets/config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
       } catch (err) {
         const msg = 'Cannot load dsiem_config.json from server, status and tag changes will be disabled';
@@ -111,7 +109,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       const resp = await this.es.getAlarms(this.es.esIndex, alarmID);
       tempAlarms = resp.hits.hits;
       await Promise.all(tempAlarms.map(async (e) => {
-      await Promise.all(e['_source']['rules'].map(async (r) => {
+        await Promise.all(e['_source']['rules'].map(async (r) => {
           if (r['status'] === 'finished') {
             r['events_count'] = r['occurrence'];
           } else {
@@ -255,20 +253,12 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   openKibana(index, key, value) {
     let url;
-    if (index === 'suricata') {
-      url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
-      url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
-      url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:' + key + ',negate:!f,params:(query:\'' + value + '\',type:phrase)';
-      url += ',type:phrase,value:\'' + value + '\'),query:(match:(' + key + ':(query:\'' + value + '\',type:phrase))))),index:\'';
-      url += index + '-*\',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';
-    } else {
-      url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
-      url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
-      url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:' + key + ',negate:!f,params:(query:\'' + value + '\',type:phrase)';
-      url += ',type:phrase,value:\'' + value + '\'),query:(match:(' + key + ':(query:\'' + value + '\',type:phrase))))),index:';
-      url += index + ',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';
-    }
-
+    index = '\'' + index + '\'';
+    url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
+    url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
+    url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:' + key + ',negate:!f,params:(query:\'' + value + '\',type:phrase)';
+    url += ',type:phrase,value:\'' + value + '\'),query:(match:(' + key + ':(query:\'' + value + '\',type:phrase))))),index:';
+    url += index + ',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';
     window.open(url, '_blank');
   }
 
