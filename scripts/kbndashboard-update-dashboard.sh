@@ -12,7 +12,7 @@ exit 1
 [ -z "$source" ] && echo need source kibana address as 1st argument && exit 1
 
 ./scripts/kbndashboard-export.sh $source $temp
-[ "$?" != "0" ] && echo cannot export SIEM dashboard from $source && exit 1
+[ "$?" != "0" ] && echo cannot export SIEM dashboard from $source && rm -rf $temp && exit 1
 
 # fix the scripted field destination URL
 sed -i 's/https:\/\/dsiem[^\/]*\//http:\/\/localhost:8080\//g' $temp
@@ -32,4 +32,4 @@ sed -i ':begin;$!N;s/,\n *\"nested\": true//;tbegin;P;D' $temp
 # remove kibana version
 sed -i '0,/version/{/version/d;}' $temp
 cp -r $temp $target && rm -rf $temp && echo $target downloaded and patched successfully.
-
+rm -rf $temp
