@@ -19,7 +19,6 @@ import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
 import { Http } from '@angular/http';
 import { map } from 'rxjs/operators';
-import { MAX_LENGTH_VALIDATOR } from '@angular/forms/src/directives/validators';
 
 @Injectable({
   providedIn: 'root'

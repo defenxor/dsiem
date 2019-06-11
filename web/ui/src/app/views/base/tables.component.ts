@@ -18,7 +18,6 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 import { Component, ViewChildren, QueryList, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { sleep, removeItemFromObjectArray } from '../../utilities';
-import { AlarmSource } from './alarm.interface';
 import { ModalDirective } from 'ngx-bootstrap';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { CountdownComponent } from 'ngx-countdown';
@@ -50,10 +49,6 @@ export class TablesComponent {
   alarmIdToRemove: string;
   alarmIndexToRemove: string;
   disabledBtn: boolean;
-  alertType: string;
-  alertMsg: string;
-  alertVisible: boolean;
-  alertIcon: string;
 
   constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService, private cd: ChangeDetectorRef) {
     this.elasticsearch = this.es.getServer();
@@ -148,7 +143,7 @@ export class TablesComponent {
       } else {
         resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
       }
-      let tempAlarms: AlarmSource[];
+      let tempAlarms;
       tempAlarms = resp.hits.hits;
       this.tableData = [];
       tempAlarms.forEach((a) => {

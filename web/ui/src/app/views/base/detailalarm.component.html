@@ -33,12 +33,12 @@
               <tbody>
                 <tr *ngFor="let row of alarm" [style.height]="wide == true ? '260px' : 'auto'">
                   <td>
-                    <label style="cursor: pointer" (click)="openDropdown('alrm-id-', alarmID)"
-                    tooltip="Click to search {{alarmID}} in Kibana">{{alarmID}}</label>
+                    <label style="cursor: pointer" (click)="openDropdown('alrm-id-', row._source.id)"
+                    tooltip="Click to search {{alarmID}} in Kibana">{{row.id}}</label>
                     &nbsp;
                     <div class="btn-group" id="alrm-id-{{alarmID}}" dropdown style="display: none">
                       <button dropdownToggle type="button" class="btn btn-primary dropdown-toggle" (click)="resetHeight('alrm-id-', alarmID)">
-                        search {{alarmID}}
+                        search {{row.id}}
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_alarms', '_id', alarmID)" style="cursor: pointer">siem_alarms</a>
@@ -59,9 +59,9 @@
                         change
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
-                        <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, 'Open')" style="cursor: pointer">Open</a>
-                        <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, 'In-Progress')" style="cursor: pointer">In-Progress</a>
-                        <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, 'Closed')" style="cursor: pointer">Closed</a>
+                        <ng-container *ngFor="let v of dsiemStatuses">
+                          <a class="dropdown-item" (click)="changeAlarmStatus(alarmID, v)" style="cursor: pointer">{{v}}</a>
+                        </ng-container>
                       </ul>
                       <button type="button" class="close" aria-label="Close" id="close-alrm-status-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-status-', alarmID); wide=false">
                         <span aria-hidden="true">×</span>
@@ -93,10 +93,9 @@
                         change
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
-                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'Identified Threat')" style="cursor: pointer">Identified Threat</a>
-                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'False Positive')" style="cursor: pointer">False Positive</a>
-                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'Valid Threat')" style="cursor: pointer">Valid Threat</a>
-                        <a class="dropdown-item" (click)="changeAlarmTag(alarmID, 'Security Incident')" style="cursor: pointer">Security Incident</a>
+                        <ng-container *ngFor="let v of dsiemTags">
+                          <a class="dropdown-item" (click)="changeAlarmTag(alarmID, v)" style="cursor: pointer">{{v}}</a>
+                        </ng-container>
                       </ul>
                       <button type="button" class="close" aria-label="Close" id="close-alrm-tag-{{alarmID}}" style="display: none" (click)="closeDropdown('alrm-tag-', alarmID); wide=false">
                         <span aria-hidden="true">×</span>

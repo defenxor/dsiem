@@ -38,3 +38,7 @@ export async function parallelPromiseAllFlow(IDs: any[], func): Promise<any[]> {
   }
   return finalResult;
 }
+
+export function isEmptyOrUndefined(v): boolean {
+  if (v === '' || v === 0 || v === undefined) { return true; }
+}
