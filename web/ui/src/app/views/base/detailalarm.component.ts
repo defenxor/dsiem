@@ -85,7 +85,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     // try to load from both /config and /assets/config, the later being used for testing ng serve
     let out;
     try {
-      out = await this.http.get('./config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
+      out = await this.http.get('/config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
     } catch (err) {}
     if (typeof out === 'undefined') {
       try {
