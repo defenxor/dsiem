@@ -16,10 +16,11 @@ You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { Component, OnInit, ViewChildren, ViewChild, QueryList, OnDestroy } from '@angular/core';
-import { sleep } from '../../utilities';
+import { sleep, isEmptyOrUndefined } from '../../utilities';
 import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
 import { Http } from '@angular/http';
+import { map } from 'rxjs/operators';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { AlertboxComponent } from './alertbox.component';
 
@@ -34,12 +35,12 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   sub: any;
   alarmID: string;
   stage: number;
-  alarm;
-  alarmRules = [];
-  alarmVuln = [];
-  alarmIntelHits = [];
+  alarm; // type should have been Alarm
+  alarmRules = []; // this should be a member of Alarm
+  alarmVuln = []; // this should be a member of Alarm
+  alarmIntelHits = []; // this should be a member of Alarm
   events = [];
-  wide;
+  wide: boolean;
   wideEv = [];
   wideAlarmEv = [];
   isProcessingUpdateStatus = false;
@@ -47,6 +48,8 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   progressLoading: boolean;
   kibanaUrl: string;
   elasticsearch: string;
+  dsiemStatuses: string[] = [];
+  dsiemTags: string[] = [];
 
   constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http,
     private spinner: NgxSpinnerService) { }
@@ -60,7 +63,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     this.elasticsearch = this.es.server;
     this.sub = this.route.params.subscribe(async params => {
       this.alarmID = params['alarmID'];
-      this.checkES().then(() => this.getAlarmDetail(this.alarmID));
+      this.checkES()
+      .then(() => this.getAlarmDetail(this.alarmID))
+      .then(() => this.loadDsiemConfig());
     });
   }
 
@@ -76,6 +81,28 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     return false;
   }
 
+  async loadDsiemConfig() {
+    // try to load from both /config and /assets/config, the later being used for testing ng serve
+    let out;
+    try {
+      console.log('trying first url');
+      out = await this.http.get('./config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
+    } catch (err) {}
+    if (typeof out === 'undefined') {
+      try {
+        console.log('trying second url');
+        out = await this.http.get('./assets/config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
+      } catch (err) {
+        const msg = 'Cannot load dsiem_config.json from server, status and tag changes will be disabled';
+        this.alertBox.showAlert(msg, 'danger', false);
+      }
+    }
+    if (typeof out !== 'undefined') {
+      this.dsiemTags = out['tags'];
+      this.dsiemStatuses = out['status'];
+    }
+  }
+
   async getAlarmDetail(alarmID) {
     const that = this;
     // this.spinner.show();
@@ -84,7 +111,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       const resp = await this.es.getAlarms(this.es.esIndex, alarmID);
       tempAlarms = resp.hits.hits;
       await Promise.all(tempAlarms.map(async (e) => {
-        await Promise.all(e['_source']['rules'].map(async (r) => {
+      await Promise.all(e['_source']['rules'].map(async (r) => {
           if (r['status'] === 'finished') {
             r['events_count'] = r['occurrence'];
           } else {
@@ -102,6 +129,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     }
     if (typeof tempAlarms === 'undefined') { return; }
     this.alarm = tempAlarms;
+    this.alarm[0].id = this.alarmID;
     for (const element of tempAlarms) {
       this.alarmRules = element._source.rules;
       await that.getEventsDetail(that.alarmID, that.alarmRules[0].stage, null, null, that.alarmRules[0].events_count);
@@ -114,18 +142,14 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     }
   }
 
-  isEmptyOrUndefined(v): boolean {
-    if (v === '' || v === 0 || v === undefined) { return true; }
-  }
-
   setStatus(rule) {
-    if (!this.isEmptyOrUndefined(rule['status'])) {
+    if (!isEmptyOrUndefined(rule['status'])) {
       return rule['status'];
     }
-    if (this.isEmptyOrUndefined(rule['status']) && this.isEmptyOrUndefined(rule['start_time'])) {
+    if (isEmptyOrUndefined(rule['status']) && isEmptyOrUndefined(rule['start_time'])) {
       return 'inactive';
     }
-    if (this.isEmptyOrUndefined(rule['status']) && rule['start_time'] > 0) {
+    if (isEmptyOrUndefined(rule['status']) && rule['start_time'] > 0) {
       return 'active';
     }
     const deadline = rule['start_time'] + rule['timeout'];
@@ -161,6 +185,8 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   }
 
   openDropdown(key, param) {
+    if (key === 'alrm-tag-' && this.dsiemTags.length === 0) { return; }
+    if (key === 'alrm-status-' && this.dsiemStatuses.length === 0) { return; }
     document.getElementById(key + param).style.display = 'block';
     document.getElementById('close-' + key + param).style.display = 'block';
   }
