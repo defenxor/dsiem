@@ -239,12 +239,12 @@ external message queue.`,
 
 		apm.Enable(esapm)
 
-		// saving the config for UI to read
-		if writeableConfig {
-			err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))
-			if err != nil {
-				exit("Error writing config file", err)
-			}
+		// saving the config for UI to read. /config dir maybe read-only though, so
+		// just put out warning on failure
+		err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))
+		if err != nil {
+			log.Warn(log.M{Msg: "Cannot write startup info file to " + confDir +
+				". Web UI will not be able to use that info: " + err.Error()})
 		}
 
 		eventChan = make(chan event.NormalizedEvent)
