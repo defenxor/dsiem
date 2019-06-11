@@ -257,15 +257,15 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     index = '\'' + index + '\'';
     let url = this.kibanaUrl + '/app/kibana#/discover?_g=(refreshInterval:(display:Off,pause:!f,value:0)';
     url += '';
-    if (key != '') {
+    if (key !== '') {
       url += ',time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(_source),filters:!((\'$state\':(store:appState)';
       url += ',meta:(alias:!n,disabled:!f,index:' + index + ',key:' + key + ',negate:!f,params:(query:\'' + value + '\',type:phrase)';
       url += ',type:phrase,value:\'' + value + '\'),query:(match:(' + key + ':(query:\'' + value + '\',type:phrase))))),index:';
-      url += index + ',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';  
+      url += index + ',interval:auto,query:(language:lucene,query:\'\'),sort:!(\'@timestamp\',desc))';
     } else {
       // for non dsiem indices, use 1h and don't restrict field
-      url += ',time:(from:now-1h,mode:quick,to:now))&_a=(columns:!(_source)'
-      url += ',index:' + index + ',interval:auto,query:(language:lucene,query:\'"' + value + '"\'),sort:!(\'@timestamp\',desc))';  
+      url += ',time:(from:now-1h,mode:quick,to:now))&_a=(columns:!(_source)';
+      url += ',index:' + index + ',interval:auto,query:(language:lucene,query:\'"' + value + '"\'),sort:!(\'@timestamp\',desc))';
     }
     window.open(url, '_blank');
   }
