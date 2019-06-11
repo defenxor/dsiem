@@ -18,3 +18,13 @@ echo -n setting default index to siem_alarms .. && \
 curl -fsS -o /dev/null -XPOST -H "Content-Type: application/json" -H "kbn-xsrf: true" ${host}:5601/api/kibana/settings/defaultIndex -d '{"value": "siem_alarms"}'  && \
 echo done && \
 echo dashboard installed successfully.
+
+# now for the extra siem_alarm_events idx pattern
+
+patternfile="$(dirname $2)/idxpattern-siem_alarm_events.json"
+[ ! -e "$patternfile" ] && echo "skip installing siem_alarm_events index pattern, $patternfile doesnt exist" && exit 0
+
+echo -n "Installing index pattern siem-alarm_events from $patternfile .. "
+idxpattern=$(cat $patternfile)
+curl -fsS -o /dev/null -X POST "http://${host}:5601/api/saved_objects/index-pattern/siem_alarm_events" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$idxpattern" && \
+echo done || echo "failed to install, perhaps object already exist?"
