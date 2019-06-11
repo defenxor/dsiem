@@ -319,7 +319,7 @@
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'title', event.title)" style="cursor: pointer">siem_event</a>
-                        <a class="dropdown-item" (click)="openKibana(event.src_index_pattern, 'alert.signature', event.title)" style="cursor: pointer">{{event.src_index_pattern}}</a>
+                        <a class="dropdown-item" (click)="openKibana(event.src_index_pattern, '', event.title)" style="cursor: pointer">{{event.src_index_pattern}}</a>
                       </ul>
                       <button type="button" class="close" aria-label="Close" id="close-title-{{event.event_id}}" style="display: none" (click)="closeDropdown('title-', event.event_id); wideEv[i]=false">
                         <span aria-hidden="true">×</span>
@@ -336,7 +336,7 @@
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'src_ip', event.src_ip)" style="cursor: pointer">siem_event</a>
-                        <a class="dropdown-item" (click)="openKibana(event.src_index_pattern, 'src_ip', event.src_ip)" style="cursor: pointer">{{event.src_index_pattern}}</a>
+                        <a class="dropdown-item" (click)="openKibana(event.src_index_pattern, '', event.src_ip)" style="cursor: pointer">{{event.src_index_pattern}}</a>
                       </ul>
                       <button type="button" class="close" aria-label="Close" id="close-src-ip-{{event.event_id}}" style="display: none" (click)="closeDropdown('src-ip-', event.event_id); wideEv[i]=false">
                         <span aria-hidden="true">×</span>
@@ -353,7 +353,7 @@
                       </button>
                       <ul *dropdownMenu class="dropdown-menu" role="menu">
                         <a class="dropdown-item" (click)="openKibana('siem_events', 'dst_ip', event.dst_ip)" style="cursor: pointer">siem_event</a>
-                        <a class="dropdown-item" (click)="openKibana(event.src_index_pattern, 'dest_ip', event.dst_ip)" style="cursor: pointer">{{event.src_index_pattern}}</a>
+                        <a class="dropdown-item" (click)="openKibana(event.src_index_pattern, '', event.dst_ip)" style="cursor: pointer">{{event.src_index_pattern}}</a>
                       </ul>
                       <button type="button" class="close" aria-label="Close" id="close-dst-ip-{{event.event_id}}" style="display: none" (click)="closeDropdown('dst-ip-', event.event_id); wideEv[i]=false">
                         <span aria-hidden="true">×</span>
