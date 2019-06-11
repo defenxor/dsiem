@@ -177,15 +177,15 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       }
       ev = await this.es.getEventsMulti(this.es.esIndexEvent, elArray);
     } catch (err) {
-      let msg = 'failed to get events for alarm ' + id + ' stage ' + stage + ': ' + err;
-      this.alertBox.showAlert(msg, 'danger', false)
+      const msg = 'failed to get events for alarm ' + id + ' stage ' + stage + ': ' + err;
+      this.alertBox.showAlert(msg, 'danger', false);
     } finally {
       this.progressLoading = false;
     }
     if (typeof ev !== 'undefined') {
       for (const el of ev['hits']['hits']) {
         this.events.push(el['_source']);
-      }  
+      }
     }
   }
 
