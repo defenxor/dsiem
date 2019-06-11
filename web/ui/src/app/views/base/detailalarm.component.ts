@@ -39,6 +39,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   alarmRules = []; // this should be a member of Alarm
   alarmVuln = []; // this should be a member of Alarm
   alarmIntelHits = []; // this should be a member of Alarm
+  alarmCustomData = []; // this should be a member of Alarm
   events = [];
   wide: boolean;
   wideEv = [];
@@ -136,6 +137,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       }
       if (element._source.intel_hits) {
         this.alarmIntelHits = element._source.intel_hits;
+      }
+      if (element._source.custom_data) {
+        this.alarmCustomData = element._source.custom_data;
       }
     }
   }

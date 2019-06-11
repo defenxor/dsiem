@@ -266,6 +266,32 @@
       </div>
     </div>
 
+    <div class="row" *ngIf="alarmCustomData.length > 0">
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-header">
+              Custom Data
+            </div>
+            <div class="card-body">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Label</th>  
+                    <th>Content</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let i of alarmCustomData">
+                    <td>{{i.label}}</td>
+                    <td>{{i.content}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>    
+
     <div class="row" *ngIf="events.length > 0" >
       <div class="col-lg-12">
         <div class="card">
