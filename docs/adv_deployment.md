@@ -42,11 +42,11 @@ Therefore to distribute loads between backend nodes, you will need to:
 Dsiem should run on any container orchestration engine, including Kubernetes. The following lists our recommendation for running dsiem on K8s:
 
 * For frontend nodes:
-  - To centrally manage directive files, use a shared storage (e.g. NFS, CIFS) on frontend nodes to mount `configs` directory.
+  - To centrally manage directive files, use a shared storage (e.g. NFS, CIFS) on frontend nodes to mount `configs` directory. This is only read once during startup so I/O performance here shouldn't be an issue.
   - For high availability and load balancing, create a K8s service for frontends and have logstash instances send logs to that service.
-  - Frontends don't need permanent storage, so you can use [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) to manage schedule them.
+  - Frontends don't need permanent storage, so you can use [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) to schedule and manage them.
 
 * For backend nodes:
   - Use [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) to have a stable/predictable pod names, and use the pod name to set `DSIEM_NODE` container environment variable. This allows you to distribute work among backends by naming the directive files (located in frontend nodes) based on the backend StatefulSet's pod name prefix and number of replicas.
 
-  - Mount a persistent storage for backend `logs` directory, and have a filebeat container in the same pod to harvest those logs. Have a look at how this is done in docker compose examples as a starting point.
+  - Mount a persistent storage for backend `logs` directory, and have a filebeat container in the same pod to harvest those logs. Have a look at how this is done in the docker compose examples as a starting point.
