@@ -217,6 +217,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       await sleep (1000);
       const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, _id);
       this.alarm[0] = resp;
+      this.alarm[0].id = _id;
     } catch (err) {
       const msg = 'Error occurred while changing alarm status: ' + err;
       console.log(msg);
@@ -241,6 +242,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       await sleep (1000);
       const resp = await this.es.getAlarm(this.alarm[0]._source.perm_index, _id);
       this.alarm[0] = resp;
+      this.alarm[0].id = _id;
       this.isProcessingUpdateTag = false;
     } catch (err) {
       const msg = 'Error occurred while changing alarm tag: ' + err;
