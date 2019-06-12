@@ -8,25 +8,25 @@ Then after you get a feel on how everything fits together, you can start integra
 
 ### Using Docker Compose
 
-* Install [Git](https://git-scm.com/downloads), [Docker](https://www.docker.com/get-started), and [Docker Compose](https://docs.docker.com/compose/install/).
+* Install [Docker](https://www.docker.com/get-started), and [Docker Compose](https://docs.docker.com/compose/install/).
 
-* Clone this repository:
+* Copy this repository from [here](https://github.com/defenxor/dsiem/archive/master.zip), unzip it, then open the result in terminal.
 
     ```shell
-    $ git clone https://github.com/defenxor/dsiem
+    $ unzip dsiem-master.zip && cd dsiem-master
     ```
 
-* Suricata needs to know which network interface to monitor traffic on. Tell it to use one of the active network interface on the host system like this (for `bash` shell):
+* Suricata needs to know which network interface to monitor traffic on. Tell it to use the network interface that has a working Internet connection on your system like this (for `bash` shell):
 
     ```shell
     $ export PROMISC_INTERFACE=eth0
     ```
   
-    Replace `eth0` above with the actual interface name. For testing purpose, it's not necessary to configure the interface to really operate in promiscuous mode.
+    Replace `eth0` above with the actual interface name given by `ifconfig` or similar commands. For testing purpose, it's not necessary to configure the interface to really operate in promiscuous mode.
 
 * Set the owner of filebeat config file to root ([here's why](https://www.elastic.co/guide/en/beats/libbeat/6.4/config-file-permissions.html)):
     ```shell
-    $ cd dsiem/deployments/docker && \
+    $ cd deployments/docker && \
     sudo chown root conf/filebeat/filebeat.yml
     ```
 
