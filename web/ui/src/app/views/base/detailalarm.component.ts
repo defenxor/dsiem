@@ -162,6 +162,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   }
 
   async getEventsDetail(id, stage, from= 0, size= 0, allSize= 0) {
+    if (this.progressLoading === true) {
+      return this.alertBox.showAlert('Still processing previous search, try again later', 'success', false);
+    }
     this.progressLoading = true;
     from = 0;
     size = allSize;

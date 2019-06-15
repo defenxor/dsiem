@@ -33,20 +33,22 @@ export class AlertboxComponent {
   prevIcon: string;
 
   async showAlert(msg: string, type: string, persistent: boolean = true) {
-    const prevMsg = this.alertMsg;
-    const prevIcon = this.alertIcon;
-    const prevType = this.alertType;
     this.alertMsg = msg;
     this.alertType = type;
     this.alertIcon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
-    this.alertVisible = true;
-    if (!persistent) {
+    if (persistent) {
+      this.prevMsg = this.alertMsg;
+      this.prevIcon = this.alertIcon;
+      this.prevType = this.alertType;
+    } else {
       setTimeout(() => {
-        this.alertMsg = prevMsg;
-        this.alertIcon = prevIcon;
-        this.alertType = prevType;
+        this.alertMsg = this.prevMsg;
+        this.alertIcon = this.prevIcon;
+        this.alertType = this.prevType;
       }, 5000);
     }
+    this.alertVisible = true;
+
   }
 
 }
