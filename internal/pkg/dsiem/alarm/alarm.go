@@ -164,10 +164,9 @@ func Upsert(id, name, kingdom, category string,
 	a.Networks = str.RemoveDuplicatesUnordered(a.Networks)
 	a.Rules = []rule.DirectiveRule{}
 	for _, v := range rules {
-		// rule := alarmRule{v, len(v.Events)}
 		r := v
 		r.Events = []string{} // so it will be omitted during json marshaling
-		r.StickyDiff = ""
+		// r.StickyDiff = ""
 		a.Rules = append(a.Rules, r)
 	}
 	a.Unlock()
