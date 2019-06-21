@@ -184,6 +184,8 @@ func TestRule(t *testing.T) {
 	ec8.CustomData2 = "malware"
 
 	// StickyDiff rules
+	// TODO: add the appropriate test that test the length of stickyDiffData 
+	// before and after
 
 	rs1 := r1
 	rs1.StickyDiff = "PLUGIN_SID"
@@ -228,10 +230,10 @@ func TestRule(t *testing.T) {
 		{57, ec7, rc7, s1, false},
 		{58, ec8, rc8, s1, true},
 
-		{101, e1, rs1, s1, true}, {102, e1, rs2, s2, false}, {103, e1, rs3, s2, false},
-		{104, e1, rs4, s2, false}, {105, e1, rs5, s1, true},
+		{101, e1, rs1, s1, true}, {102, e1, rs2, s2, true}, {103, e1, rs3, s2, true},
+		{104, e1, rs4, s2, true}, {105, e1, rs5, s1, true},
 		{106, e1, rs6, nil, true}, {107, e1, rs7, nil, true},
-		{108, e1, rs8, s3, false}, {109, e1, rs9, s3, false},
+		{108, e1, rs8, s3, true}, {109, e1, rs9, s3, true},
 	}
 
 	for _, tt := range tbl {

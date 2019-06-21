@@ -154,9 +154,7 @@ func pluginRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 		return
 	}
 	if r.StickyDiff == "PLUGIN_SID" {
-		if !isIntStickyDiff(e.PluginSID, s) {
-			return
-		}
+		_ = isIntStickyDiff(e.PluginSID, s)
 	}
 	ret = ipPortCheck(e, r, s, connID)
 	if ret {
@@ -199,21 +197,13 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 
 	switch {
 	case r.StickyDiff == "SRC_IP":
-		if !isStringStickyDiff(e.SrcIP, s) {
-			return
-		}
+		_ = isStringStickyDiff(e.SrcIP, s)
 	case r.StickyDiff == "DST_IP":
-		if !isStringStickyDiff(e.DstIP, s) {
-			return
-		}
+		_ = isStringStickyDiff(e.DstIP, s)
 	case r.StickyDiff == "SRC_PORT":
-		if !isIntStickyDiff(e.SrcPort, s) {
-			return
-		}
+		_ = isIntStickyDiff(e.SrcPort, s)
 	case r.StickyDiff == "DST_PORT":
-		if !isIntStickyDiff(e.DstPort, s) {
-			return
-		}
+		_ = isIntStickyDiff(e.DstPort, s)
 	default:
 	}
 	// SrcIP, DstIP, SrcPort, DstPort all match
@@ -294,6 +284,7 @@ func isIPinCIDR(ip string, netcidr string) (found bool) {
 	return
 }
 
+// AppendUniqCustomData returns unique custom data slice
 func AppendUniqCustomData(prev []CustomData, label string, content string) []CustomData {
 	if label == "" || content == "" {
 		return prev
