@@ -102,28 +102,35 @@ func (b *backLog) newEventProcessor() {
 		b.RLock()
 		currRule := b.Directive.Rules[idx]
 		currSDiff := &b.Directive.StickyDiffs[idx]
+		lenSDiffString := len(b.Directive.StickyDiffs[idx].SDiffString)
+		lenSDiffInt := len(b.Directive.StickyDiffs[idx].SDiffInt)
 		b.RUnlock()
 		if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
 			b.debug("backlog doeseventmatch false", evt.ConnID)
 			b.chFound <- false
-			// b.RUnlock()
 			continue
 		}
 		b.chFound <- true // answer quickly
+
+		// if stickydiff is set, there must be added member to sDiffString
+		// or sDiffInt, otherwise skip further processing
+		if currRule.StickyDiff != "" {
+			nString := len(b.Directive.StickyDiffs[idx].SDiffString)
+			nInt := len(b.Directive.StickyDiffs[idx].SDiffInt)
+			if nString == lenSDiffString && nInt == lenSDiffInt {
+				continue
+			}
+		}
 
 		// validate date conversion
 		ts, err := str.TimeStampToUnix(evt.Timestamp)
 		if err != nil {
 			b.warn("cannot parse event timestamp, discarding it", evt.ConnID)
-			//b.RUnlock()
 			continue
 		}
 		// discard out of order event
 		if !b.isTimeInOrder(idx, ts) {
 			b.warn("event timestamp out of order, discarding it", evt.ConnID)
-
-			// b.RUnlock()
-
 			continue
 		}
 
@@ -140,17 +147,8 @@ func (b *backLog) newEventProcessor() {
 		// b.RUnlock()
 
 		// this should be under go routine, but chFound need sync access (for first match, backlog creation)
-
-		/* this never happen, since stage 1 is handled by start()
-			if cs == 1 {
-		 		b.processMatchedEvent(evt, idx)
-			} else {
-		*/
 		runtime.Gosched() // let the main go routine work
-
 		go b.processMatchedEvent(evt, idx)
-		// }
-		// b.info("setting found to true", evt.ConnID)
 	}
 }
 
