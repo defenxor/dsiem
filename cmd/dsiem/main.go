@@ -239,6 +239,9 @@ external message queue.`,
 
 		apm.Enable(esapm)
 
+		// make sure status and tags from env var is recognized as slices
+		viper.Set("status", viper.GetStringSlice("status"))
+		viper.Set("tags", viper.GetStringSlice("tags"))
 		// saving the config for UI to read. /config dir maybe read-only though, so
 		// just put out warning on failure
 		err = viper.WriteConfigAs(path.Join(confDir, progName+"_config.json"))
