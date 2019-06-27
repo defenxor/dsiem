@@ -1,7 +1,7 @@
-<app-header
+<app-header 
   [fixed]="true"
-  [navbarBrandFull]="{src: 'assets/img/brand/dsiem.png', width: 89, height: 25, alt: 'SIEM UI Logo'}"
-  [navbarBrandMinimized]="{src: 'assets/dsiem-icon.ico', width: 30, height: 30, alt: 'SIEM UI Logo'}"
+  [navbarBrandFull]="{src: 'assets/img/brand/dsiem.png', width: 89, height: 25, alt: 'Dsiem UI Logo'}"
+  [navbarBrandMinimized]="{src: 'assets/dsiem-icon.ico', width: 30, height: 30, alt: 'Dsiem UI Logo'}"
   [sidebarToggler]="'lg'"
   [asideMenuToggler]="false"
   [mobileAsideMenuToggler]="false">
@@ -22,5 +22,4 @@
     </div>
   </main>
 </div>
-<app-footer>
-</app-footer>
+<app-footer [fixed]="false" class="font-italic">Dsiem {{version.raw}}</app-footer>
