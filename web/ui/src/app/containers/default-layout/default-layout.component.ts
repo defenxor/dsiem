@@ -17,6 +17,7 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { Component, Input } from '@angular/core';
 import { navItems } from './../../_nav';
+import { VERSION } from '../../../environments/version';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,6 +28,7 @@ export class DefaultLayoutComponent {
   public sidebarMinimized = true;
   private changes: MutationObserver;
   public element: HTMLElement = document.body;
+  public version = VERSION;
   constructor() {
 
     this.changes = new MutationObserver((mutations) => {
