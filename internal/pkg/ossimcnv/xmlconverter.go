@@ -89,7 +89,7 @@ func insertDirectivesXML(filename string) error {
 }
 
 // CreateSIEMDirective create directive.json in resFile, based on patched OSSIM xml in tempXMLFile
-func CreateSIEMDirective(tempXMLFile string, resFile string) (err error) {
+func CreateSIEMDirective(tempXMLFile string, resFile string, nSplit int) (err error) {
 	xmlFile, err := os.Open(tempXMLFile)
 	if err != nil {
 		return err
@@ -221,11 +221,40 @@ func CreateSIEMDirective(tempXMLFile string, resFile string) (err error) {
 			}
 		}
 	}
-	b, err := json.MarshalIndent(d, "", "  ")
-	// fmt.Println(string(b))
 
-	err = fs.OverwriteFile(string(b), resFile)
-	return err
+	return saveDirectiveFiles(d, resFile, nSplit)
+}
+
+func saveDirectiveFiles(src directives, resFile string, nSplit int) (err error) {
+
+	n := nSplit
+	ttl := len(src.Directives)
+	minSize := ttl / n
+	remain := ttl % n
+	for i := 0; i < n; i++ {
+		start := i * minSize
+		end := start + minSize
+		if i+1 == n {
+			end += remain
+		}
+		d := directives{}
+		d.Directives = src.Directives[start:end]
+		b, e := json.MarshalIndent(d, "", "  ")
+		if e != nil {
+			return e
+		}
+		// fmt.Println(string(b))
+		fName := resFile
+		if n != 1 {
+			fName = strings.ReplaceAll(fName, ".json", "")
+			fName = fName + "_" + strconv.Itoa(i+1) + ".json"
+		}
+		err = fs.OverwriteFile(string(b), fName)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func flattenRule(node []rule, target []rule) (merged []rule) {
