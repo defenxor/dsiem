@@ -17,11 +17,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
 	"github.com/defenxor/dsiem/internal/pkg/ossimcnv"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -31,42 +32,77 @@ var (
 	nSplit      int
 )
 
+const (
+	progName = "ossimcnv"
+)
+
+var version string
+var buildTime string
+
 func init() {
-	s := flag.String("in", "", "source OSSIM directive XML file to convert, e.g. point to user.xml path")
-	d := flag.String("out", "./directives_ossim.json", "destination directive .json to produce")
-	o := flag.String("refdir", "./ossimref", "location of TSV files produced by running dumptable.sh in OSSIM server")
-	n := flag.Int("split", 1, "split the directive .json content to this number of files")
-	flag.Parse()
-	srcFile = *s
-	dstFile = *d
-	ossimRefDir = *o
-	nSplit = *n
-	if srcFile == "" {
-		flag.Usage()
-		os.Exit(1)
+	cobra.OnInitialize(initConfig)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.PersistentFlags().StringP("in", "i", "./user.xml", "source OSSIM directive XML file to convert, e.g. point to user.xml path")
+	rootCmd.PersistentFlags().StringP("out", "o", "./directives_ossim.json", "source OSSIM directive XML file to convert, e.g. point to user.xml path")
+	rootCmd.PersistentFlags().StringP("refdir", "r", "./ossimref", "location of TSV files produced by running dumptable.sh in OSSIM server")
+	rootCmd.PersistentFlags().IntP("split", "n", 1, "split the directive .json content to this number of files")
+
+	viper.BindPFlag("in", rootCmd.PersistentFlags().Lookup("in"))
+	viper.BindPFlag("out", rootCmd.PersistentFlags().Lookup("out"))
+	viper.BindPFlag("refdir", rootCmd.PersistentFlags().Lookup("refdir"))
+	viper.BindPFlag("split", rootCmd.PersistentFlags().Lookup("split"))
+}
+
+func initConfig() {
+	viper.SetEnvPrefix(progName)
+	viper.AutomaticEnv()
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		exit("Error returned from command", err)
 	}
 }
 
 func exit(msg string, err error) {
-	fmt.Println("Exiting:", msg)
-	panic(err)
+	fmt.Println("Exiting: " + msg + ": " + err.Error())
+	os.Exit(1)
 }
 
-func main() {
-	filename, err := ossimcnv.CreateTempOSSIMFile(srcFile)
-	if err != nil {
-		exit("Cannot create temporary XML file", err)
-		return
-	}
-	err = ossimcnv.ParseOSSIMTSVs(ossimRefDir)
-	if err != nil {
-		exit("Cannot parse ossim reference TSV from "+ossimRefDir, err)
-		return
-	}
-	err = ossimcnv.CreateSIEMDirective(filename, dstFile, nSplit)
-	if err != nil {
-		exit("Cannot create SIEM json directive", err)
-		return
-	}
-	fmt.Println("Done.")
+var rootCmd = &cobra.Command{
+	Use:   "ossimcnv",
+	Short: "OSSIM directive converter",
+	Long:  `Ossimcnv converts OSSIM directives to Dsiem directives format`,
+	Run: func(cmd *cobra.Command, args []string) {
+		in := viper.GetString("in")
+		out := viper.GetString("out")
+		refdir := viper.GetString("refdir")
+		split := viper.GetInt("split")
+
+		filename, err := ossimcnv.CreateTempOSSIMFile(in)
+		if err != nil {
+			exit("Cannot create temporary XML file", err)
+			return
+		}
+		err = ossimcnv.ParseOSSIMTSVs(refdir)
+		if err != nil {
+			exit("Cannot parse ossim reference TSV from "+refdir, err)
+			return
+		}
+		err = ossimcnv.CreateSIEMDirective(filename, out, split)
+		if err != nil {
+			exit("Cannot create Dsiem json directive", err)
+			return
+		}
+		fmt.Println("Done.")
+	},
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version and build information",
+	Long:  `Print the version and build date information`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(version, buildTime)
+	},
 }
