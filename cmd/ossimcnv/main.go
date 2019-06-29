@@ -28,16 +28,19 @@ var (
 	srcFile     string
 	dstFile     string
 	ossimRefDir string
+	nSplit      int
 )
 
 func init() {
 	s := flag.String("in", "", "source OSSIM directive XML file to convert, e.g. point to user.xml path")
 	d := flag.String("out", "./directives_ossim.json", "destination directive .json to produce")
 	o := flag.String("refdir", "./ossimref", "location of TSV files produced by running dumptable.sh in OSSIM server")
+	n := flag.Int("split", 1, "split the directive .json content to this number of files")
 	flag.Parse()
 	srcFile = *s
 	dstFile = *d
 	ossimRefDir = *o
+	nSplit = *n
 	if srcFile == "" {
 		flag.Usage()
 		os.Exit(1)
@@ -60,10 +63,10 @@ func main() {
 		exit("Cannot parse ossim reference TSV from "+ossimRefDir, err)
 		return
 	}
-	err = ossimcnv.CreateSIEMDirective(filename, dstFile)
+	err = ossimcnv.CreateSIEMDirective(filename, dstFile, nSplit)
 	if err != nil {
 		exit("Cannot create SIEM json directive", err)
 		return
 	}
-	fmt.Println("Done. Results in", dstFile)
+	fmt.Println("Done.")
 }

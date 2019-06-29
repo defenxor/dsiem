@@ -24,6 +24,8 @@ docs/wiki
 web/ui-internal
 web/dist
 web/ui/dist
+web/ui/src/environments/version.ts
+
 
 temp/
 test/
