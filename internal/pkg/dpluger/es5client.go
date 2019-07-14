@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	elastic5 "gopkg.in/olivere/elastic.v5"
 )
@@ -37,14 +38,22 @@ func (es *es5Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 	size := 1000
 	c.init(plugin.Name, confFile)
 	terms := elastic5.NewTermsAggregation().Field(sidSource).Size(size)
-
-	//	query := elastic5.NewBoolQuery()
-	//	query = query.Must(elastic5.NewMatchAllQuery())
+	var query elastic5.Query
+	if esFilter != "" {
+		s := strings.Split(esFilter, "=")
+		if len(s) != 2 {
+			err = errors.New("Cannot split the ES filter term")
+			return
+		}
+		query = elastic5.NewTermsQuery(s[0], s[1])
+	} else {
+		query = elastic5.NewMatchAllQuery()
+	}
 
 	ctx := context.Background()
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
-		// Query(query).
+		Query(query).
 		Aggregation("uniqTerm", terms).
 		Pretty(true).
 		Do(ctx)

@@ -35,15 +35,16 @@ import (
 
 // Plugin defines field mapping
 type Plugin struct {
-	Name             string       `json:"name"`
-	Type             string       `json:"type"` // SID || Taxonomy
-	Output           string       `json:"output_file"`
-	Index            string       `json:"index_pattern"`
-	ES               string       `json:"elasticsearch_address"`
-	IdentifierField  string       `json:"identifier_field"`
-	IdentifierValue  string       `json:"identifier_value"`
-	IdentifierFilter string       `json:"identifier_filter"`
-	Fields           FieldMapping `json:"field_mapping"`
+	Name               string       `json:"name"`
+	Type               string       `json:"type"` // SID || Taxonomy
+	Output             string       `json:"output_file"`
+	Index              string       `json:"index_pattern"`
+	ES                 string       `json:"elasticsearch_address"`
+	IdentifierField    string       `json:"identifier_field"`
+	IdentifierValue    string       `json:"identifier_value"`
+	IdentifierFilter   string       `json:"identifier_filter"`
+	ESCollectionFilter string       `json:"es_collect_filter"`
+	Fields             FieldMapping `json:"field_mapping"`
 }
 
 // FieldMapping defines field mapping
@@ -109,7 +110,8 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.Type = typ
 	plugin.IdentifierField = getStaticText("LOGSTASH_IDENTIFYING_FIELD") + " (example: [application] or [fields][log_type] etc)"
 	plugin.IdentifierValue = getStaticText("IDENTIFYING_FIELD_VALUE") + " (example: suricata)"
-	plugin.IdentifierFilter = getStaticText("ADDITIONAL_FILTER_HERE") + " (example: and [alert])"
+	plugin.IdentifierFilter = getStaticText("ADDITIONAL_FILTER") + " (example: and [alert])"
+	plugin.ESCollectionFilter = getStaticText("ES_TERM_FILTER") + " (example: type=http will only collect SIDs from documents whose type field is http)"
 	plugin.Fields.Timestamp = defMappingText
 	plugin.Fields.TimestampFormat = getStaticText("TIMESTAMP_FORMAT") + " (example: ISO8601)"
 	plugin.Fields.Title = defMappingText
@@ -145,7 +147,7 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 }
 
 // CreatePlugin starts plugin creation
-func CreatePlugin(plugin Plugin, confFile, creator, esFilter string, validate bool) (err error) {
+func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err error) {
 	fmt.Print("Creating plugin (logstash config) for ", plugin.Name,
 		", using ES: ", plugin.ES, " and index pattern: ", plugin.Index, "\n")
 
@@ -162,7 +164,7 @@ func CreatePlugin(plugin Plugin, confFile, creator, esFilter string, validate bo
 		}
 	}
 	if getType(plugin.Fields.PluginSID) == ftCollect {
-		return createPluginCollect(plugin, confFile, creator, esFilter, validate)
+		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate)
 	}
 	return createPluginNonCollect(plugin, confFile, creator)
 }

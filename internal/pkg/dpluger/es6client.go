@@ -41,7 +41,7 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 	terms := elastic6.NewTermsAggregation().Field(sidSource).Size(size)
 	var query elastic6.Query
 	if esFilter != "" {
-		s := strings.Split(esFilter, ":")
+		s := strings.Split(esFilter, "=")
 		if len(s) != 2 {
 			err = errors.New("Cannot split the ES filter term")
 			return

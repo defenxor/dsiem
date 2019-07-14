@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	elastic7 "github.com/olivere/elastic/v7"
 )
@@ -38,11 +39,22 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 	size := 1000
 	c.init(plugin.Name, confFile)
 	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)
+	var query elastic7.Query
+	if esFilter != "" {
+		s := strings.Split(esFilter, "=")
+		if len(s) != 2 {
+			err = errors.New("Cannot split the ES filter term")
+			return
+		}
+		query = elastic7.NewTermsQuery(s[0], s[1])
+	} else {
+		query = elastic7.NewMatchAllQuery()
+	}
 
 	ctx := context.Background()
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
-		// Query(query).
+		Query(query).
 		Aggregation("uniqTerm", terms).
 		Pretty(true).
 		Do(ctx)
