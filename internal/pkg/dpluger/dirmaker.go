@@ -18,6 +18,7 @@ package dpluger
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
@@ -54,15 +55,17 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		if err != nil {
 			return err
 		}
-		t.records = append(t.records, rec)
 		if eof {
 			break
 		}
+		t.records = append(t.records, rec)
 	}
 
 	dirs := siem.Directives{}
 
 	for _, v := range t.records {
+
+		fmt.Println("DEBUG:", v.Plugin, v.Title, v.ID, v.SID)
 
 		r1 := rule.DirectiveRule{}
 		r1.Name = v.Title
