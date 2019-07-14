@@ -35,15 +35,16 @@ import (
 
 // Plugin defines field mapping
 type Plugin struct {
-	Name             string       `json:"name"`
-	Type             string       `json:"type"` // SID || Taxonomy
-	Output           string       `json:"output_file"`
-	Index            string       `json:"index_pattern"`
-	ES               string       `json:"elasticsearch_address"`
-	IdentifierField  string       `json:"identifier_field"`
-	IdentifierValue  string       `json:"identifier_value"`
-	IdentifierFilter string       `json:"identifier_filter"`
-	Fields           FieldMapping `json:"field_mapping"`
+	Name               string       `json:"name"`
+	Type               string       `json:"type"` // SID || Taxonomy
+	Output             string       `json:"output_file"`
+	Index              string       `json:"index_pattern"`
+	ES                 string       `json:"elasticsearch_address"`
+	IdentifierField    string       `json:"identifier_field"`
+	IdentifierValue    string       `json:"identifier_value"`
+	IdentifierFilter   string       `json:"identifier_filter"`
+	ESCollectionFilter string       `json:"es_collect_filter"`
+	Fields             FieldMapping `json:"field_mapping"`
 }
 
 // FieldMapping defines field mapping
@@ -109,7 +110,8 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.Type = typ
 	plugin.IdentifierField = getStaticText("LOGSTASH_IDENTIFYING_FIELD") + " (example: [application] or [fields][log_type] etc)"
 	plugin.IdentifierValue = getStaticText("IDENTIFYING_FIELD_VALUE") + " (example: suricata)"
-	plugin.IdentifierFilter = getStaticText("ADDITIONAL_FILTER_HERE") + " (example: and [alert])"
+	plugin.IdentifierFilter = getStaticText("ADDITIONAL_FILTER") + " (example: and [alert])"
+	plugin.ESCollectionFilter = getStaticText("ES_TERM_FILTER") + " (example: type=http will only collect SIDs from documents whose type field is http)"
 	plugin.Fields.Timestamp = defMappingText
 	plugin.Fields.TimestampFormat = getStaticText("TIMESTAMP_FORMAT") + " (example: ISO8601)"
 	plugin.Fields.Title = defMappingText
@@ -120,6 +122,8 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.Fields.Protocol = defMappingText + " or " + getStaticText("PROTOCOL_NAME")
 	plugin.Fields.Sensor = defMappingText
 	plugin.Fields.Product = getStaticText("PRODUCT_NAME")
+	plugin.Fields.CustomLabel1 = "INSERT CUSTOM FIELD NAME FOR CUSTOMDATA1 HERE. Remove this and CustomData1 if not used."
+	plugin.Fields.CustomData1 = defMappingText
 	switch {
 	case plugin.Type == "SID":
 		plugin.Fields.PluginID = getStaticText("PLUGIN_NUMBER")
@@ -160,7 +164,7 @@ func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err e
 		}
 	}
 	if getType(plugin.Fields.PluginSID) == ftCollect {
-		return createPluginCollect(plugin, confFile, creator, validate)
+		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate)
 	}
 	return createPluginNonCollect(plugin, confFile, creator)
 }
@@ -204,7 +208,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string) (err error)
 	return nil
 }
 
-func createPluginCollect(plugin Plugin, confFile, creator string, validate bool) (err error) {
+func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate bool) (err error) {
 
 	// Taxnomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
@@ -214,7 +218,7 @@ func createPluginCollect(plugin Plugin, confFile, creator string, validate bool)
 	}
 
 	// first get the refs
-	ref, err := collectSID(plugin, confFile, validate)
+	ref, err := collectSID(plugin, confFile, esFilter, validate)
 	if err != nil {
 		return err
 	}
@@ -338,7 +342,7 @@ func setField(f *FieldMapping, field string, value string) {
 	}
 }
 
-func collectSID(plugin Plugin, confFile string, validate bool) (c tsvRef, err error) {
+func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
 
 	if validate {
@@ -355,7 +359,10 @@ func collectSID(plugin Plugin, confFile string, validate bool) (c tsvRef, err er
 		fmt.Println("OK")
 	}
 	fmt.Println("Collecting unique entries from " + sidSource + " on index " + plugin.Index + " to create Plugin SIDs ...")
-	return collector.Collect(plugin, confFile, sidSource)
+	if esFilter != "" {
+		fmt.Println("Limiting collection with term " + esFilter)
+	}
+	return collector.Collect(plugin, confFile, sidSource, esFilter)
 }
 
 func validateESField(plugin Plugin) (err error) {

@@ -28,12 +28,13 @@ import (
 // esCollector is the interface for querying elasticsearch summaries
 type esCollector interface {
 	Init(esURL string) (err error)
-	Collect(plugin Plugin, confFile, sidSource string) (c tsvRef, err error)
+	Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error)
 	ValidateIndex(index string) (err error)
 	IsESFieldExist(index string, field string) (exist bool, err error)
 }
 
 func newESCollector(esURL string) (collector esCollector, err error) {
+
 	esVersion := 0
 	c, err := elastic.NewSimpleClient(elastic.SetURL(esURL))
 	if err != nil {
