@@ -120,6 +120,8 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.Fields.Protocol = defMappingText + " or " + getStaticText("PROTOCOL_NAME")
 	plugin.Fields.Sensor = defMappingText
 	plugin.Fields.Product = getStaticText("PRODUCT_NAME")
+	plugin.Fields.CustomLabel1 = "INSERT CUSTOM FIELD NAME FOR CUSTOMDATA1 HERE. Remove this and CustomData1 if not used."
+	plugin.Fields.CustomData1 = defMappingText
 	switch {
 	case plugin.Type == "SID":
 		plugin.Fields.PluginID = getStaticText("PLUGIN_NUMBER")
