@@ -145,7 +145,7 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 }
 
 // CreatePlugin starts plugin creation
-func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err error) {
+func CreatePlugin(plugin Plugin, confFile, creator, esFilter string, validate bool) (err error) {
 	fmt.Print("Creating plugin (logstash config) for ", plugin.Name,
 		", using ES: ", plugin.ES, " and index pattern: ", plugin.Index, "\n")
 
@@ -162,7 +162,7 @@ func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err e
 		}
 	}
 	if getType(plugin.Fields.PluginSID) == ftCollect {
-		return createPluginCollect(plugin, confFile, creator, validate)
+		return createPluginCollect(plugin, confFile, creator, esFilter, validate)
 	}
 	return createPluginNonCollect(plugin, confFile, creator)
 }
@@ -206,7 +206,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string) (err error)
 	return nil
 }
 
-func createPluginCollect(plugin Plugin, confFile, creator string, validate bool) (err error) {
+func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate bool) (err error) {
 
 	// Taxnomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
@@ -216,7 +216,7 @@ func createPluginCollect(plugin Plugin, confFile, creator string, validate bool)
 	}
 
 	// first get the refs
-	ref, err := collectSID(plugin, confFile, validate)
+	ref, err := collectSID(plugin, confFile, esFilter, validate)
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func setField(f *FieldMapping, field string, value string) {
 	}
 }
 
-func collectSID(plugin Plugin, confFile string, validate bool) (c tsvRef, err error) {
+func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
 
 	if validate {
@@ -357,7 +357,10 @@ func collectSID(plugin Plugin, confFile string, validate bool) (c tsvRef, err er
 		fmt.Println("OK")
 	}
 	fmt.Println("Collecting unique entries from " + sidSource + " on index " + plugin.Index + " to create Plugin SIDs ...")
-	return collector.Collect(plugin, confFile, sidSource)
+	if esFilter != "" {
+		fmt.Println("Limiting collection with term " + esFilter)
+	}
+	return collector.Collect(plugin, confFile, sidSource, esFilter)
 }
 
 func validateESField(plugin Plugin) (err error) {

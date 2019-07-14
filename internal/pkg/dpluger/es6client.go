@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	elastic6 "github.com/olivere/elastic"
 )
@@ -33,19 +34,27 @@ func (es *es6Client) Init(esURL string) (err error) {
 	es.client, err = elastic6.NewSimpleClient(elastic6.SetURL(esURL))
 	return
 }
-func (es *es6Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRef, err error) {
+func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
 
 	size := 1000
 	c.init(plugin.Name, confFile)
 	terms := elastic6.NewTermsAggregation().Field(sidSource).Size(size)
-
-	//	query := elastic6.NewBoolQuery()
-	//	query = query.Must(elastic6.NewMatchAllQuery())
+	var query elastic6.Query
+	if esFilter != "" {
+		s := strings.Split(esFilter, ":")
+		if len(s) != 2 {
+			err = errors.New("Cannot split the ES filter term")
+			return
+		}
+		query = elastic6.NewTermsQuery(s[0], s[1])
+	} else {
+		query = elastic6.NewMatchAllQuery()
+	}
 
 	ctx := context.Background()
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
-		// Query(query).
+		Query(query).
 		Aggregation("uniqTerm", terms).
 		Pretty(true).
 		Do(ctx)

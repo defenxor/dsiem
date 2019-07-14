@@ -33,7 +33,7 @@ func (es *es7Client) Init(esURL string) (err error) {
 	es.client, err = elastic7.NewSimpleClient(elastic7.SetURL(esURL))
 	return
 }
-func (es *es7Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRef, err error) {
+func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
 
 	size := 1000
 	c.init(plugin.Name, confFile)

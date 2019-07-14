@@ -17,8 +17,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -48,7 +50,10 @@ func init() {
 	createCmd.Flags().StringP("indexPattern", "i", "suricata-*", "index pattern to read fields from")
 	createCmd.Flags().StringP("name", "n", "suricata", "the name of the generated plugin")
 	createCmd.Flags().StringP("type", "t", "SID", "the type of the generated plugin, can be SID or Taxonomy")
+	runCmd.Flags().BoolP("skipTLSVerify", "s", false, "whether to skip ES server certificate verification (when using HTTPS)")
 	runCmd.Flags().BoolP("validate", "v", true, "Check whether each referred ES field exists on the target index")
+	runCmd.Flags().StringP("ESCollectionFilter", "f", "", "Limit SID collection with this term filter. "+
+		"For example, \"type:http\" will only collect SIDs from documents whose type field is http.")
 	directiveCmd.Flags().StringP("tsvFile", "f", "", "dpluger TSV file to use")
 	directiveCmd.Flags().StringP("outFile", "o", "directives_dsiem.json", "directive file to create")
 	directiveCmd.Flags().StringP("priority", "p", "3", "default priority to use (1 - 5)")
@@ -63,6 +68,8 @@ func init() {
 	viper.BindPFlag("name", createCmd.Flags().Lookup("name"))
 	viper.BindPFlag("type", createCmd.Flags().Lookup("type"))
 	viper.BindPFlag("validate", runCmd.Flags().Lookup("validate"))
+	viper.BindPFlag("skipTLSVerify", runCmd.Flags().Lookup("skipTLSVerify"))
+	viper.BindPFlag("ESCollectionFilter", runCmd.Flags().Lookup("ESCollectionFilter"))
 	viper.BindPFlag("tsvFile", directiveCmd.Flags().Lookup("tsvFile"))
 	viper.BindPFlag("outFile", directiveCmd.Flags().Lookup("outFile"))
 	viper.BindPFlag("priority", directiveCmd.Flags().Lookup("priority"))
@@ -113,6 +120,12 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config := viper.GetString("config")
 		validate := viper.GetBool("validate")
+		skipTLSVerify := viper.GetBool("skipTLSVerify")
+		ESCollectionFilter := viper.GetString("ESCollectionFilter")
+
+		if skipTLSVerify {
+			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		}
 
 		if !fs.FileExist(config) {
 			exit("Cannot read from config file", errors.New(config+" doesnt exist"))
@@ -124,7 +137,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			exit("Cannot parse config file", err)
 		}
-		if err := dpluger.CreatePlugin(plugin, config, progName, validate); err != nil {
+		if err := dpluger.CreatePlugin(plugin, config, progName, ESCollectionFilter, validate); err != nil {
 			exit("Error encountered while running config file", err)
 		}
 		fmt.Println("Logstash conf file created.")

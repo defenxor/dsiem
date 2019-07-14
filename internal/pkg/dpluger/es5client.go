@@ -33,7 +33,7 @@ func (es *es5Client) Init(esURL string) (err error) {
 	es.client, err = elastic5.NewSimpleClient(elastic5.SetURL(esURL))
 	return
 }
-func (es *es5Client) Collect(plugin Plugin, confFile, sidSource string) (c tsvRef, err error) {
+func (es *es5Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
 	terms := elastic5.NewTermsAggregation().Field(sidSource).Size(size)
