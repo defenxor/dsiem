@@ -106,7 +106,7 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.ES = address
 	plugin.Index = index
 	plugin.Name = name
-	plugin.Output = "70_siem-plugin-" + name + ".conf"
+	plugin.Output = "70_dsiem-plugin_" + name + ".conf"
 	plugin.Type = typ
 	plugin.IdentifierField = getStaticText("LOGSTASH_IDENTIFYING_FIELD") + " (example: [application] or [fields][log_type] etc)"
 	plugin.IdentifierValue = getStaticText("IDENTIFYING_FIELD_VALUE") + " (example: suricata)"
