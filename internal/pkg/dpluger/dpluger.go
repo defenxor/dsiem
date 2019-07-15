@@ -166,10 +166,10 @@ func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err e
 	if getType(plugin.Fields.PluginSID) == ftCollect {
 		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate)
 	}
-	return createPluginNonCollect(plugin, confFile, creator)
+	return createPluginNonCollect(plugin, confFile, creator, validate)
 }
 
-func createPluginNonCollect(plugin Plugin, confFile, creator string) (err error) {
+func createPluginNonCollect(plugin Plugin, confFile, creator string, validate bool) (err error) {
 
 	// Prepare the struct to be used with the template
 	pt := pluginTemplate{}
@@ -205,12 +205,26 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string) (err error)
 	if err != nil {
 		return err
 	}
+
+	if plugin.Type != "SID" {
+		return nil
+	}
+
+	fmt.Println("Done creating plugin, now creating TSV for directive auto generation ..")
+	// first get the refs
+	ref, err := collectPair(plugin, confFile, validate)
+	if err != nil {
+		return err
+	}
+	if err := ref.save(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate bool) (err error) {
 
-	// Taxnomy type plugin doesnt need to collect title since it is relying on
+	// Taxonomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
 	// that requires a unique SID for each title
 	if plugin.Type != "SID" {
@@ -340,6 +354,36 @@ func setField(f *FieldMapping, field string, value string) {
 	if v.IsValid() {
 		v.SetString(value)
 	}
+}
+
+func collectPair(plugin Plugin, confFile string, validate bool) (c tsvRef, err error) {
+	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
+	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
+
+	if validate {
+		fmt.Print("Checking the existence of field ", sidSource, "... ")
+		var exist bool
+		exist, err = collector.IsESFieldExist(plugin.Index, sidSource)
+		if err != nil {
+			return
+		}
+		if !exist {
+			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
+			return
+		}
+		fmt.Print("Checking the existence of field ", titleSource, "... ")
+		exist, err = collector.IsESFieldExist(plugin.Index, titleSource)
+		if err != nil {
+			return
+		}
+		if !exist {
+			err = errors.New("Plugin SID collection requires field " + titleSource + " to exist on index " + plugin.Index)
+			return
+		}
+		fmt.Println("OK")
+	}
+	fmt.Println("Collecting unique entries for " + titleSource + " and " + sidSource + " on index " + plugin.Index + " ...")
+	return collector.CollectPair(plugin, confFile, sidSource, titleSource)
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
