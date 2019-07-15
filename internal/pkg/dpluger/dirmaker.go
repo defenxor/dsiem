@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
@@ -61,12 +62,24 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		t.records = append(t.records, rec)
 	}
 
-	dirs := siem.Directives{}
+	// load existing directives first if any
+	locDir := filepath.Dir(outFile)
+	locFile := filepath.Base(outFile)
+	dirs, _, _ := siem.LoadDirectivesFromFile(locDir, locFile)
+
+	addedCount := 0
 
 	for _, v := range t.records {
 
-		fmt.Println("DEBUG:", v.Plugin, v.Title, v.ID, v.SID)
+		// first check if the directive title already exist
+		d := siem.Directive{}
+		d.Name = v.Title + " (SRC_IP to DST_IP)"
+		if isDirectiveNameExist(dirs, d) {
+			fmt.Println("Skipping an existing directive " + d.Name)
+			continue
+		}
 
+		// fmt.Println("DEBUG:", v.Plugin, v.Title, v.ID, v.SID)
 		r1 := rule.DirectiveRule{}
 		r1.Name = v.Title
 		r1.Type = "PluginRule"
@@ -112,16 +125,19 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		r3.Reliability = 10
 		r3.Timeout = 21600
 
-		d := siem.Directive{}
-		d.ID = dirNumber
 		d.Priority = priority
-		d.Name = v.Title + " (SRC_IP to DST_IP)"
 		d.Kingdom = kingdom
 		d.Category = category
 		d.Rules = append(d.Rules, r1, r2, r3)
 
-		dirs.Dirs = append(dirs.Dirs, d)
+		d.ID = dirNumber
+		for isDirectiveNumberExist(dirs, d) {
+			d.ID++
+			dirNumber = d.ID
+		}
 
+		dirs.Dirs = append(dirs.Dirs, d)
+		addedCount++
 		dirNumber = dirNumber + 1
 	}
 
@@ -130,6 +146,26 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		return
 	}
 
+	fmt.Printf("Found %v new directives\n", addedCount)
+
 	err = fs.OverwriteFile(string(b), outFile)
 	return
+}
+
+func isDirectiveNameExist(ref siem.Directives, dir siem.Directive) bool {
+	for _, v := range ref.Dirs {
+		if v.Name == dir.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func isDirectiveNumberExist(ref siem.Directives, dir siem.Directive) bool {
+	for _, v := range ref.Dirs {
+		if v.ID == dir.ID {
+			return true
+		}
+	}
+	return false
 }
