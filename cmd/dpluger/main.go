@@ -58,7 +58,7 @@ func init() {
 	directiveCmd.Flags().StringP("reliability", "r", "1", "reliability to use (0 - 10) for stage 1")
 	directiveCmd.Flags().StringP("kingdom", "k", "Environmental Awareness", "default kingdom to use")
 	directiveCmd.Flags().StringP("category", "t", "Misc Activity", "default category to use")
-	directiveCmd.Flags().IntP("dirNumber", "i", 50001, "Starting directive number")
+	directiveCmd.Flags().IntP("dirNumber", "i", 100000, "Starting directive number")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
@@ -188,7 +188,7 @@ var directiveCmd = &cobra.Command{
 		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, category, priority, reliability, dirNumber); err != nil {
 			exit("Cannot create directive file", err)
 		}
-		fmt.Println("Directive created in " + outFile + "\n" +
+		fmt.Println("Directives file written in " + outFile + "\n" +
 			"Now you should edit the generated file and deploy it to dsiem frontend configs directory")
 	},
 }
