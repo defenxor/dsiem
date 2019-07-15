@@ -111,7 +111,7 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.IdentifierField = getStaticText("LOGSTASH_IDENTIFYING_FIELD") + " (example: [application] or [fields][log_type] etc)"
 	plugin.IdentifierValue = getStaticText("IDENTIFYING_FIELD_VALUE") + " (example: suricata)"
 	plugin.IdentifierFilter = getStaticText("ADDITIONAL_FILTER") + " (example: and [alert])"
-	plugin.ESCollectionFilter = getStaticText("ES_TERM_FILTER") + " (example: type=http will only collect SIDs from documents whose type field is http)"
+	plugin.ESCollectionFilter = getStaticText("ES_TERM_FILTER") + " (example: type=http will only collect SIDs from documents whose type field is http). Separate multiple term with ; character"
 	plugin.Fields.Timestamp = defMappingText
 	plugin.Fields.TimestampFormat = getStaticText("TIMESTAMP_FORMAT") + " (example: ISO8601)"
 	plugin.Fields.Title = defMappingText
