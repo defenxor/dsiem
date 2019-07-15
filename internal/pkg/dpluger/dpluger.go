@@ -206,6 +206,10 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string, validate bo
 		return err
 	}
 
+	if plugin.Type != "SID" {
+		return nil
+	}
+
 	fmt.Println("Done creating plugin, now creating TSV for directive auto generation ..")
 	// first get the refs
 	ref, err := collectPair(plugin, confFile, validate)
