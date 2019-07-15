@@ -124,7 +124,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if !fs.FileExist(config) {
-			exit("Cannot read from config file", errors.New(config+" doesnt exist"))
+			exit("Cannot read from config file", errors.New(config+" doesn't exist"))
 		}
 		if err := log.Setup(true); err != nil {
 			exit("Cannot setup logger", err)

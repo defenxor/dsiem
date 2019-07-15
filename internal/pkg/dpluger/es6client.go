@@ -34,6 +34,54 @@ func (es *es6Client) Init(esURL string) (err error) {
 	es.client, err = elastic6.NewSimpleClient(elastic6.SetURL(esURL))
 	return
 }
+
+func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource string) (c tsvRef, err error) {
+	size := 1000
+	c.init(plugin.Name, confFile)
+	rootTerm := elastic6.NewTermsAggregation().Field(titleSource).Size(size)
+	subTerm := elastic6.NewTermsAggregation().Field(sidSource)
+	finalAgg := rootTerm.SubAggregation("subterm", subTerm)
+
+	ctx := context.Background()
+	searchResult, err := es.client.Search().
+		Index(plugin.Index).
+		Aggregation("finalAgg", finalAgg).
+		Pretty(true).
+		Do(ctx)
+	if err != nil {
+		return
+	}
+	agg, found := searchResult.Aggregations.Terms("finalAgg")
+	if !found {
+		err = errors.New("cannot find aggregation finalAgg in ES query result")
+		return
+	}
+	count := len(agg.Buckets)
+	if count == 0 {
+		err = errors.New("cannot find matching entry in field " + sidSource + " on index " + plugin.Index)
+		return
+	}
+	fmt.Println("Found", count, "uniq "+sidSource+".")
+	nID, err := strconv.Atoi(plugin.Fields.PluginID)
+	if err != nil {
+		return
+	}
+
+	for _, lvl1Bucket := range agg.Buckets {
+		subterm, found := lvl1Bucket.Terms("subterm")
+		if found {
+			for _, lvl2Bucket := range subterm.Buckets {
+				sKey := lvl1Bucket.Key.(string)
+				nKey := int(lvl2Bucket.Key.(float64))
+				// fmt.Println("item1:", sKey, "item2:", nKey)
+				_ = c.upsert(plugin.Name, nID, &nKey, sKey)
+				break
+			}
+		}
+	}
+	return
+}
+
 func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
 
 	size := 1000
