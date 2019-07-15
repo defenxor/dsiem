@@ -86,16 +86,19 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 	size := 1000
 	c.init(plugin.Name, confFile)
 	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)
-	var query elastic7.Query
+	query := elastic7.NewBoolQuery()
 	if esFilter != "" {
-		s := strings.Split(esFilter, "=")
-		if len(s) != 2 {
-			err = errors.New("Cannot split the ES filter term")
-			return
+		coll := strings.Split(esFilter, ";")
+		for _, v := range coll {
+			s := strings.Split(v, "=")
+			if len(s) != 2 {
+				err = errors.New("Cannot split the ES filter term")
+				return
+			}
+			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
 		}
-		query = elastic7.NewTermsQuery(s[0], s[1])
 	} else {
-		query = elastic7.NewMatchAllQuery()
+		query = query.Must(elastic7.NewMatchAllQuery())
 	}
 
 	ctx := context.Background()
