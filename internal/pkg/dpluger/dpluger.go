@@ -147,7 +147,7 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 }
 
 // CreatePlugin starts plugin creation
-func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err error) {
+func CreatePlugin(plugin Plugin, confFile, creator string, validate, usePipeline bool) (err error) {
 	fmt.Print("Creating plugin (logstash config) for ", plugin.Name,
 		", using ES: ", plugin.ES, " and index pattern: ", plugin.Index, "\n")
 
@@ -164,12 +164,12 @@ func CreatePlugin(plugin Plugin, confFile, creator string, validate bool) (err e
 		}
 	}
 	if getType(plugin.Fields.PluginSID) == ftCollect {
-		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate)
+		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
 	}
-	return createPluginNonCollect(plugin, confFile, creator, validate)
+	return createPluginNonCollect(plugin, confFile, creator, validate, usePipeline)
 }
 
-func createPluginNonCollect(plugin Plugin, confFile, creator string, validate bool) (err error) {
+func createPluginNonCollect(plugin Plugin, confFile, creator string, validate, usePipeline bool) (err error) {
 
 	// Prepare the struct to be used with the template
 	pt := pluginTemplate{}
@@ -180,7 +180,15 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string, validate bo
 	transformToLogstashField(&pt.P.Fields)
 
 	// Parse and execute the template
-	t, err := template.New(plugin.Name).Parse(templPluginNonCollect)
+	templateText := templHeader
+	if usePipeline {
+		templateText = templateText + templPipeline
+	} else {
+		templateText = templateText + templNonPipeline
+	}
+	templateText = templateText + templPluginNonCollect + templFooter
+
+	t, err := template.New(plugin.Name).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -222,7 +230,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string, validate bo
 	return nil
 }
 
-func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate bool) (err error) {
+func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
 
 	// Taxonomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
@@ -252,8 +260,17 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 	transformToLogstashField(&pt.P.Fields)
 
+	// Parse and execute the template
+	templateText := templHeader
+	if usePipeline {
+		templateText = templateText + templPipeline
+	} else {
+		templateText = templateText + templNonPipeline
+	}
+	templateText = templateText + templPluginCollect + templFooter
+
 	// Parse and execute the template, saving result to buff
-	t, err := template.New(plugin.Name).Funcs(template.FuncMap{"counter": counter}).Parse(templPluginCollect)
+	t, err := template.New(plugin.Name).Funcs(template.FuncMap{"counter": counter}).Parse(templateText)
 	if err != nil {
 		return err
 	}
