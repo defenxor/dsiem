@@ -51,6 +51,7 @@ func init() {
 	createCmd.Flags().StringP("name", "n", "suricata", "the name of the generated plugin")
 	createCmd.Flags().StringP("type", "t", "SID", "the type of the generated plugin, can be SID or Taxonomy")
 	runCmd.Flags().BoolP("skipTLSVerify", "s", false, "whether to skip ES server certificate verification (when using HTTPS)")
+	runCmd.Flags().BoolP("usePipeline", "p", false, "whether to generate plugin that is suitable for logstash pipeline to pipeline configuration")
 	runCmd.Flags().BoolP("validate", "v", true, "Check whether each referred ES field exists on the target index")
 	directiveCmd.Flags().StringP("tsvFile", "f", "", "dpluger TSV file to use")
 	directiveCmd.Flags().StringP("outFile", "o", "directives_dsiem.json", "directive file to create")
@@ -67,6 +68,7 @@ func init() {
 	viper.BindPFlag("type", createCmd.Flags().Lookup("type"))
 	viper.BindPFlag("validate", runCmd.Flags().Lookup("validate"))
 	viper.BindPFlag("skipTLSVerify", runCmd.Flags().Lookup("skipTLSVerify"))
+	viper.BindPFlag("usePipeline", runCmd.Flags().Lookup("usePipeline"))
 	viper.BindPFlag("tsvFile", directiveCmd.Flags().Lookup("tsvFile"))
 	viper.BindPFlag("outFile", directiveCmd.Flags().Lookup("outFile"))
 	viper.BindPFlag("priority", directiveCmd.Flags().Lookup("priority"))
@@ -118,6 +120,7 @@ var runCmd = &cobra.Command{
 		config := viper.GetString("config")
 		validate := viper.GetBool("validate")
 		skipTLSVerify := viper.GetBool("skipTLSVerify")
+		usePipeline := viper.GetBool("usePipeline")
 
 		if skipTLSVerify {
 			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -133,7 +136,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			exit("Cannot parse config file", err)
 		}
-		if err := dpluger.CreatePlugin(plugin, config, progName, validate); err != nil {
+		if err := dpluger.CreatePlugin(plugin, config, progName, validate, usePipeline); err != nil {
 			exit("Error encountered while running config file", err)
 		}
 		fmt.Println("Logstash conf file created.")
