@@ -58,7 +58,6 @@ func init() {
 	directiveCmd.Flags().StringP("priority", "p", "3", "default priority to use (1 - 5)")
 	directiveCmd.Flags().StringP("reliability", "r", "1", "reliability to use (0 - 10) for stage 1")
 	directiveCmd.Flags().StringP("kingdom", "k", "Environmental Awareness", "default kingdom to use")
-	directiveCmd.Flags().StringP("category", "t", "Misc Activity", "default category to use")
 	directiveCmd.Flags().IntP("dirNumber", "i", 100000, "Starting directive number")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
@@ -74,7 +73,6 @@ func init() {
 	viper.BindPFlag("priority", directiveCmd.Flags().Lookup("priority"))
 	viper.BindPFlag("reliability", directiveCmd.Flags().Lookup("reliability"))
 	viper.BindPFlag("kingdom", directiveCmd.Flags().Lookup("kingdom"))
-	viper.BindPFlag("category", directiveCmd.Flags().Lookup("category"))
 	viper.BindPFlag("dirNumber", directiveCmd.Flags().Lookup("dirNumber"))
 
 }
@@ -171,7 +169,6 @@ var directiveCmd = &cobra.Command{
 		priority := viper.GetInt("priority")
 		reliability := viper.GetInt("reliability")
 		kingdom := viper.GetString("kingdom")
-		category := viper.GetString("category")
 		dirNumber := viper.GetInt("dirNumber")
 
 		if priority < 1 || priority > 5 {
@@ -188,7 +185,7 @@ var directiveCmd = &cobra.Command{
 			exit(tsvFile+" doesn't exist", errors.New("wrong TSVFile parameter"))
 		}
 
-		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, category, priority, reliability, dirNumber); err != nil {
+		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, priority, reliability, dirNumber); err != nil {
 			exit("Cannot create directive file", err)
 		}
 		fmt.Println("Directives file written in " + outFile + "\n" +

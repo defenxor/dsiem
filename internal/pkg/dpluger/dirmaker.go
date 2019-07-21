@@ -28,19 +28,12 @@ import (
 	"github.com/dogenzaka/tsv"
 )
 
-type tsvEntry struct {
-	Plugin string `tsv:"plugin"`
-	ID     int    `tsv:"id"`
-	SID    int    `tsv:"sid"`
-	Title  string `tsv:"title"`
-}
-
 type tsvEntries struct {
-	records []tsvEntry
+	records []pluginSIDRef
 }
 
 // CreateDirective starts directive creation
-func CreateDirective(tsvFile, outFile, kingdom, category string, priority, reliability, dirNumber int) (err error) {
+func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, dirNumber int) (err error) {
 
 	f1, err := os.Open(tsvFile)
 	if err != nil {
@@ -49,7 +42,7 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 	defer f1.Close()
 
 	t := tsvEntries{}
-	rec := tsvEntry{}
+	rec := pluginSIDRef{}
 	parser, _ := tsv.NewParser(f1, &rec)
 	for {
 		eof, err := parser.Next()
@@ -73,7 +66,7 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 
 		// first check if the directive title already exist
 		d := siem.Directive{}
-		d.Name = v.Title + " (SRC_IP to DST_IP)"
+		d.Name = v.SIDTitle + " (SRC_IP to DST_IP)"
 		if isDirectiveNameExist(dirs, d) {
 			fmt.Println("Skipping an existing directive " + d.Name)
 			continue
@@ -81,7 +74,7 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 
 		// fmt.Println("DEBUG:", v.Plugin, v.Title, v.ID, v.SID)
 		r1 := rule.DirectiveRule{}
-		r1.Name = v.Title
+		r1.Name = v.SIDTitle
 		r1.Type = "PluginRule"
 		r1.Stage = 1
 		r1.PluginID = v.ID
@@ -91,12 +84,12 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		r1.To = "ANY"
 		r1.PortFrom = "ANY"
 		r1.PortTo = "ANY"
-		r1.Protocol = "TCP/IP"
+		r1.Protocol = "ANY"
 		r1.Reliability = 1
 		r1.Timeout = 0
 
 		r2 := rule.DirectiveRule{}
-		r2.Name = v.Title
+		r2.Name = v.SIDTitle
 		r2.Type = "PluginRule"
 		r2.Stage = 2
 		r2.PluginID = v.ID
@@ -106,12 +99,12 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		r2.To = ":1"
 		r2.PortFrom = "ANY"
 		r2.PortTo = "ANY"
-		r2.Protocol = "TCP/IP"
+		r2.Protocol = "ANY"
 		r2.Reliability = 5
 		r2.Timeout = 3600
 
 		r3 := rule.DirectiveRule{}
-		r3.Name = v.Title
+		r3.Name = v.SIDTitle
 		r3.Type = "PluginRule"
 		r3.Stage = 3
 		r3.PluginID = v.ID
@@ -121,13 +114,13 @@ func CreateDirective(tsvFile, outFile, kingdom, category string, priority, relia
 		r3.To = ":1"
 		r3.PortFrom = "ANY"
 		r3.PortTo = "ANY"
-		r3.Protocol = "TCP/IP"
+		r3.Protocol = "ANY"
 		r3.Reliability = 10
 		r3.Timeout = 21600
 
 		d.Priority = priority
 		d.Kingdom = kingdom
-		d.Category = category
+		d.Category = v.Category
 		d.Rules = append(d.Rules, r1, r2, r3)
 
 		d.ID = dirNumber

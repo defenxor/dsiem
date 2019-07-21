@@ -35,12 +35,17 @@ func (es *es6Client) Init(esURL string) (err error) {
 	return
 }
 
-func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource string) (c tsvRef, err error) {
+func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
+	var finalAgg, subSubTerm *elastic6.TermsAggregation
 	rootTerm := elastic6.NewTermsAggregation().Field(titleSource).Size(size)
 	subTerm := elastic6.NewTermsAggregation().Field(sidSource)
-	finalAgg := rootTerm.SubAggregation("subterm", subTerm)
+	finalAgg = rootTerm.SubAggregation("subterm", subTerm)
+	if shouldCollectCategory {
+		subSubTerm = elastic6.NewTermsAggregation().Field(categorySource)
+		finalAgg = finalAgg.SubAggregation("subSubTerm", subSubTerm)
+	}
 
 	ctx := context.Background()
 	searchResult, err := es.client.Search().
@@ -69,24 +74,43 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource
 
 	for _, lvl1Bucket := range agg.Buckets {
 		subterm, found := lvl1Bucket.Terms("subterm")
-		if found {
-			for _, lvl2Bucket := range subterm.Buckets {
-				sKey := lvl1Bucket.Key.(string)
-				nKey := int(lvl2Bucket.Key.(float64))
-				// fmt.Println("item1:", sKey, "item2:", nKey)
-				_ = c.upsert(plugin.Name, nID, &nKey, sKey)
-				break
+		if !found {
+			continue
+		}
+		for _, lvl2Bucket := range subterm.Buckets {
+			sKey := lvl1Bucket.Key.(string)
+			nKey := int(lvl2Bucket.Key.(float64))
+			// fmt.Println("item1:", sKey, "item2:", nKey)
+			if shouldCollectCategory {
+				subSubTerm, found2 := lvl2Bucket.Terms("subSubTerm")
+				if !found2 {
+					continue
+				}
+				for _, lvl3Bucket := range subSubTerm.Buckets {
+					sCat := lvl3Bucket.Key.(string)
+					_ = c.upsert(plugin.Name, nID, &nKey, sCat, sKey)
+					break
+				}
+			} else {
+				_ = c.upsert(plugin.Name, nID, &nKey, categorySource, sKey)
 			}
+			break
 		}
 	}
 	return
 }
 
-func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
+func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 
 	size := 1000
 	c.init(plugin.Name, confFile)
+	var subTerm *elastic6.TermsAggregation
 	terms := elastic6.NewTermsAggregation().Field(sidSource).Size(size)
+	if shouldCollectCategory {
+		subTerm = elastic6.NewTermsAggregation().Field(categorySource)
+		terms = terms.SubAggregation("subTerm", subTerm)
+	}
+
 	query := elastic6.NewBoolQuery()
 	if esFilter != "" {
 		coll := strings.Split(esFilter, ";")
@@ -130,10 +154,24 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 	}
 	for _, titleBucket := range agg.Buckets {
 		t := titleBucket.Key.(string)
-		// fmt.Println("found title:", t)
-		// increase SID counter only if the last entry
-		if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, t); shouldIncrease {
-			newSID++
+		if !shouldCollectCategory {
+			// increase SID counter only if the last entry
+			if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, categorySource, t); shouldIncrease {
+				newSID++
+			}
+		} else {
+			subterm, found := titleBucket.Terms("subTerm")
+			if !found {
+				continue
+			}
+			for _, lvl2Bucket := range subterm.Buckets {
+				sCat := lvl2Bucket.Key.(string)
+				// increase SID counter only if the last entry
+				if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, sCat, t); shouldIncrease {
+					newSID++
+				}
+				break
+			}
 		}
 	}
 	return
