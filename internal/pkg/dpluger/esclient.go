@@ -28,8 +28,8 @@ import (
 // esCollector is the interface for querying elasticsearch summaries
 type esCollector interface {
 	Init(esURL string) (err error)
-	Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error)
-	CollectPair(plugin Plugin, confFile, sidSource, titleSource string) (c tsvRef, err error)
+	Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error)
+	CollectPair(plugin Plugin, confFile, sidSource, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error)
 	ValidateIndex(index string) (err error)
 	IsESFieldExist(index string, field string) (exist bool, err error)
 }

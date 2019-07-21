@@ -35,7 +35,7 @@ func (es *es7Client) Init(esURL string) (err error) {
 	return
 }
 
-func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource string) (c tsvRef, err error) {
+func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
 	rootTerm := elastic7.NewTermsAggregation().Field(titleSource).Size(size)
@@ -74,14 +74,14 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource
 				sKey := lvl1Bucket.Key.(string)
 				nKey := int(lvl2Bucket.Key.(float64))
 				// fmt.Println("item1:", sKey, "item2:", nKey)
-				_ = c.upsert(plugin.Name, nID, &nKey, sKey)
+				_ = c.upsert(plugin.Name, nID, &nKey, "category", sKey)
 				break
 			}
 		}
 	}
 	return
 }
-func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
+func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 
 	size := 1000
 	c.init(plugin.Name, confFile)
@@ -131,7 +131,7 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 		t := titleBucket.Key.(string)
 		// fmt.Println("found title:", t)
 		// increase SID counter only if the last entry
-		if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, t); shouldIncrease {
+		if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, "category", t); shouldIncrease {
 			newSID++
 		}
 	}

@@ -124,12 +124,12 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	plugin.Fields.Product = getStaticText("PRODUCT_NAME")
 	plugin.Fields.CustomLabel1 = "INSERT CUSTOM FIELD NAME FOR CUSTOMDATA1 HERE. Remove this and CustomData1 if not used."
 	plugin.Fields.CustomData1 = defMappingText
+	plugin.Fields.Category = defMappingText + " or " + getStaticText("CATEGORY_NAME")
 	switch {
 	case plugin.Type == "SID":
 		plugin.Fields.PluginID = getStaticText("PLUGIN_NUMBER")
 		plugin.Fields.PluginSID = defMappingText + " or collect:INSERT_ES_FIELDNAME_HERE"
 	case plugin.Type == "Taxonomy":
-		plugin.Fields.Category = defMappingText
 		plugin.Fields.SubCategory = defMappingText
 	}
 	bConfig, err := json.MarshalIndent(plugin, "", "  ")
@@ -376,6 +376,12 @@ func setField(f *FieldMapping, field string, value string) {
 func collectPair(plugin Plugin, confFile string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
 	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
+	shouldCollectCategory := false
+	categorySource := plugin.Fields.Category
+	if strings.Contains(plugin.Fields.Category, "es:") {
+		shouldCollectCategory = true
+		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
+	}
 
 	if validate {
 		fmt.Print("Checking the existence of field ", sidSource, "... ")
@@ -397,14 +403,27 @@ func collectPair(plugin Plugin, confFile string, validate bool) (c tsvRef, err e
 			err = errors.New("Plugin SID collection requires field " + titleSource + " to exist on index " + plugin.Index)
 			return
 		}
+		if shouldCollectCategory {
+			fmt.Print("Checking the existence of field ", categorySource, "... ")
+			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
+			if err != nil {
+				return
+			}
+		}
 		fmt.Println("OK")
 	}
 	fmt.Println("Collecting unique entries for " + titleSource + " and " + sidSource + " on index " + plugin.Index + " ...")
-	return collector.CollectPair(plugin, confFile, sidSource, titleSource)
+	return collector.CollectPair(plugin, confFile, sidSource, titleSource, categorySource, shouldCollectCategory)
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
+	shouldCollectCategory := false
+	categorySource := plugin.Fields.Category
+	if strings.Contains(plugin.Fields.Category, "es:") {
+		shouldCollectCategory = true
+		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
+	}
 
 	if validate {
 		fmt.Print("Checking the existence of field ", sidSource, "... ")
@@ -417,13 +436,20 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
 			return
 		}
+		if shouldCollectCategory {
+			fmt.Print("Checking the existence of field ", categorySource, "... ")
+			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
+			if err != nil {
+				return
+			}
+		}
 		fmt.Println("OK")
 	}
 	fmt.Println("Collecting unique entries from " + sidSource + " on index " + plugin.Index + " to create Plugin SIDs ...")
 	if esFilter != "" {
 		fmt.Println("Limiting collection with term " + esFilter)
 	}
-	return collector.Collect(plugin, confFile, sidSource, esFilter)
+	return collector.Collect(plugin, confFile, sidSource, esFilter, categorySource, shouldCollectCategory)
 }
 
 func validateESField(plugin Plugin) (err error) {

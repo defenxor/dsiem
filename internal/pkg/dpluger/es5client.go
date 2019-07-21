@@ -34,7 +34,7 @@ func (es *es5Client) Init(esURL string) (err error) {
 	es.client, err = elastic5.NewSimpleClient(elastic5.SetURL(esURL))
 	return
 }
-func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource string) (c tsvRef, err error) {
+func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
 	rootTerm := elastic5.NewTermsAggregation().Field(titleSource).Size(size)
@@ -73,7 +73,7 @@ func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource
 				sKey := lvl1Bucket.Key.(string)
 				nKey := int(lvl2Bucket.Key.(float64))
 				// fmt.Println("item1:", sKey, "item2:", nKey)
-				_ = c.upsert(plugin.Name, nID, &nKey, sKey)
+				_ = c.upsert(plugin.Name, nID, &nKey, "category", sKey)
 				break
 			}
 		}
@@ -81,7 +81,7 @@ func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource
 	return
 }
 
-func (es *es5Client) Collect(plugin Plugin, confFile, sidSource, esFilter string) (c tsvRef, err error) {
+func (es *es5Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
 	terms := elastic5.NewTermsAggregation().Field(sidSource).Size(size)
@@ -130,7 +130,7 @@ func (es *es5Client) Collect(plugin Plugin, confFile, sidSource, esFilter string
 		t := titleBucket.Key.(string)
 		// fmt.Println("found title:", t)
 		// increase SID counter only if the last entry
-		if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, t); shouldIncrease {
+		if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, "category", t); shouldIncrease {
 			newSID++
 		}
 	}

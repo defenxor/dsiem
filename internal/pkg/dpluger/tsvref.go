@@ -21,6 +21,7 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/dogenzaka/tsv"
 )
@@ -30,6 +31,7 @@ type pluginSIDRef struct {
 	ID       int    `tsv:"id"`
 	SID      int    `tsv:"sid"`
 	SIDTitle string `tsv:"title"`
+	Category string `tsv:"category"`
 }
 
 type tsvRef struct {
@@ -52,6 +54,7 @@ func (c *tsvRef) init(pluginName string, confFile string) {
 	defer f.Close()
 	ref := pluginSIDRef{}
 	parser, _ := tsv.NewParser(f, &ref)
+	// parser.Reader.LazyQuotes = true
 	for {
 		eof, err := parser.Next()
 		if err != nil {
@@ -65,7 +68,11 @@ func (c *tsvRef) init(pluginName string, confFile string) {
 }
 
 func (c *tsvRef) upsert(pluginName string, pluginID int,
-	pluginSID *int, sidTitle string) (shouldIncreaseID bool) {
+	pluginSID *int, category, sidTitle string) (shouldIncreaseID bool) {
+
+	// replace " character in title and category, if any
+	sidTitle = strings.ReplaceAll(sidTitle, "\"", "'")
+	category = strings.ReplaceAll(category, "\"", "'")
 
 	// First check the title, exit if already exist
 	tKey := 0
@@ -94,6 +101,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 		SID:      *pluginSID,
 		ID:       pluginID,
 		SIDTitle: sidTitle,
+		Category: category,
 	}
 	c.Sids[*pluginSID] = r
 	return true
@@ -105,7 +113,7 @@ func (c tsvRef) save() error {
 		return err
 	}
 	defer f.Close()
-	if _, err := f.WriteString("plugin\tid\tsid\ttitle\n"); err != nil {
+	if _, err := f.WriteString("plugin\tid\tsid\ttitle\tcategory\n"); err != nil {
 		return err
 	}
 	// use slice to get a sorted keys, ikr
@@ -118,7 +126,7 @@ func (c tsvRef) save() error {
 		v := c.Sids[k]
 		if _, err := f.WriteString(v.Name + "\t" +
 			strconv.Itoa(v.ID) + "\t" + strconv.Itoa(v.SID) + "\t" +
-			v.SIDTitle + "\n"); err != nil {
+			v.SIDTitle + "\t" + v.Category + "\n"); err != nil {
 			return err
 		}
 	}
