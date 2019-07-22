@@ -82,7 +82,7 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource
 			nKey := int(lvl2Bucket.Key.(float64))
 			// fmt.Println("item1:", sKey, "item2:", nKey)
 			if shouldCollectCategory {
-				subSubTerm, found2 := lvl2Bucket.Terms("subSubTerm")
+				subSubTerm, found2 := lvl1Bucket.Terms("subSubTerm")
 				if !found2 {
 					continue
 				}
