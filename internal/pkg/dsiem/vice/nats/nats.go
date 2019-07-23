@@ -97,7 +97,13 @@ func (t *Transport) newEncodedConnection() (*nats.EncodedConn, error) {
 	if t.natsEncodedConn != nil {
 		return t.natsEncodedConn, err
 	}
-	t.natsConn, err = nats.Connect(t.NatsAddr)
+	t.natsConn, err = nats.Connect(t.NatsAddr,
+		//nats.DisconnectHandler(func(nc *nats.Conn) {
+		//  handle disconnect event, maybe need to enable this later
+		//  t.errChan <- vice.Err{Name: "Disconnect", Err: errors.New("NATS server is disconnected")}
+		//}),
+		nats.MaxReconnects(-1))
+
 	if err == nil {
 		t.natsEncodedConn, err = nats.NewEncodedConn(t.natsConn, nats.JSON_ENCODER)
 	}
