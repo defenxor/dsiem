@@ -21,6 +21,7 @@
 package nats
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
@@ -97,7 +98,14 @@ func (t *Transport) newEncodedConnection() (*nats.EncodedConn, error) {
 	if t.natsEncodedConn != nil {
 		return t.natsEncodedConn, err
 	}
-	t.natsConn, err = nats.Connect(t.NatsAddr)
+	t.natsConn, err = nats.Connect(t.NatsAddr,
+		nats.MaxReconnects(-1),
+		nats.DisconnectHandler(func(nc *nats.Conn) {
+			// handle disconnect event
+			t.errChan <- vice.Err{Name: "Disconnect", Err: errors.New("NATS server is disconnected")}
+		}),
+	)
+
 	if err == nil {
 		t.natsEncodedConn, err = nats.NewEncodedConn(t.natsConn, nats.JSON_ENCODER)
 	}
