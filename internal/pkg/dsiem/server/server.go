@@ -49,7 +49,7 @@ var connCounter uint64
 
 var wss *wsServer
 var upgrader websocket.Upgrader
-var transport nats.Transport
+var transport *nats.Transport
 var epsLimiter *limiter.Limiter
 
 var (
@@ -291,7 +291,7 @@ func rateLimit(rps int, wait time.Duration, h fasthttp.RequestHandler) fasthttp.
 func initMsgQueue(msq string, prefix, nodeName string) {
 	const reconnectSecond = 3
 	initMsq := func() (err error) {
-		transport := nats.New()
+		transport = nats.New()
 		transport.NatsAddr = msq
 		cmu.Lock()
 		c.EvtChan = transport.Send(prefix + "_" + "events")
