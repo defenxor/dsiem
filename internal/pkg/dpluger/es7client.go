@@ -35,7 +35,7 @@ func (es *es7Client) Init(esURL string) (err error) {
 	return
 }
 
-func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
+func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
 	var finalAgg, subSubTerm *elastic7.TermsAggregation
@@ -47,9 +47,25 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, titleSource
 		finalAgg = finalAgg.SubAggregation("subSubTerm", subSubTerm)
 	}
 
+	query := elastic7.NewBoolQuery()
+	if esFilter != "" {
+		coll := strings.Split(esFilter, ";")
+		for _, v := range coll {
+			s := strings.Split(v, "=")
+			if len(s) != 2 {
+				err = errors.New("Cannot split the ES filter term")
+				return
+			}
+			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
+		}
+	} else {
+		query = query.Must(elastic7.NewMatchAllQuery())
+	}
+
 	ctx := context.Background()
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
+		Query(query).
 		Aggregation("finalAgg", finalAgg).
 		Pretty(true).
 		Do(ctx)
