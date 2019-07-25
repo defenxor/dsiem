@@ -193,6 +193,22 @@
           "from": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
         }
       ]
-    }
+    },
+    {
+      "name": "Disabled directive",
+      "kingdom": "Reconnaissance & Probing",
+      "category": "Misc Activity",
+      "disabled": true,
+      "id": 2,
+      "priority": 5,
+      "rules" : [
+        { "name": "ICMP Ping", "type": "PluginRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
+          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "a", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+        },
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
+          "from": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        }
+      ]
+    }    
   ]
 }

@@ -163,7 +163,7 @@ var validateCmd = &cobra.Command{
 			exit("Cannot get current directory??", err)
 		}
 		confDir := path.Join(d, "configs")
-		_, _, err = siem.LoadDirectivesFromFile(confDir, pattern)
+		_, _, err = siem.LoadDirectivesFromFile(confDir, pattern, false)
 		if err != nil {
 			exit("Error occur", err)
 		}

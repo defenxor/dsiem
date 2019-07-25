@@ -71,16 +71,16 @@ func TestBacklogMgr(t *testing.T) {
 	initAlarm(t)
 	initAsset(t)
 
-	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive3"), directiveFileGlob)
+	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive3"), directiveFileGlob, false)
 	if err == nil {
 		t.Error("Badly formatted file, expected err to be non nil")
 	}
-	dirs, _, err = LoadDirectivesFromFile(path.Join(fDir, "directive3"), `\\?\C:\*`)
+	dirs, _, err = LoadDirectivesFromFile(path.Join(fDir, "directive3"), `\\?\C:\*`, false)
 	if err == nil {
 		t.Error("Bad glob supplied, expected err to be non nil")
 	}
 
-	dirs, _, err = LoadDirectivesFromFile(path.Join(fDir, "directive1"), directiveFileGlob)
+	dirs, _, err = LoadDirectivesFromFile(path.Join(fDir, "directive1"), directiveFileGlob, false)
 	if err != nil {
 		t.Fatal(err)
 	}
