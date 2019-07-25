@@ -33,7 +33,7 @@ type tsvEntries struct {
 }
 
 // CreateDirective starts directive creation
-func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, dirNumber int) (err error) {
+func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, dirNumber int, addIP bool) (err error) {
 
 	f1, err := os.Open(tsvFile)
 	if err != nil {
@@ -66,7 +66,10 @@ func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, di
 
 		// first check if the directive title already exist
 		d := siem.Directive{}
-		d.Name = v.SIDTitle + " (SRC_IP to DST_IP)"
+		d.Name = v.SIDTitle
+		if addIP {
+			d.Name = d.Name + " (SRC_IP to DST_IP)"
+		}
 		if isDirectiveNameExist(dirs, d) {
 			fmt.Println("Skipping an existing directive " + d.Name)
 			continue
