@@ -59,6 +59,7 @@ func init() {
 	directiveCmd.Flags().StringP("reliability", "r", "1", "reliability to use (0 - 10) for stage 1")
 	directiveCmd.Flags().StringP("kingdom", "k", "Environmental Awareness", "default kingdom to use")
 	directiveCmd.Flags().IntP("dirNumber", "i", 100000, "Starting directive number")
+	directiveCmd.Flags().BoolP("addIPtoTitle", "e", true, "Should (SRC_IP to DST_IP) be added automatically to directive title")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
@@ -74,7 +75,7 @@ func init() {
 	viper.BindPFlag("reliability", directiveCmd.Flags().Lookup("reliability"))
 	viper.BindPFlag("kingdom", directiveCmd.Flags().Lookup("kingdom"))
 	viper.BindPFlag("dirNumber", directiveCmd.Flags().Lookup("dirNumber"))
-
+	viper.BindPFlag("addIPtoTitle", directiveCmd.Flags().Lookup("addIPtoTitle"))
 }
 
 func initConfig() {
@@ -170,6 +171,7 @@ var directiveCmd = &cobra.Command{
 		reliability := viper.GetInt("reliability")
 		kingdom := viper.GetString("kingdom")
 		dirNumber := viper.GetInt("dirNumber")
+		addIP := viper.GetBool("addIPtoTitle")
 
 		if priority < 1 || priority > 5 {
 			exit("Priority must be between 1 and 5", errors.New("wrong priority"))
@@ -185,7 +187,7 @@ var directiveCmd = &cobra.Command{
 			exit(tsvFile+" doesn't exist", errors.New("wrong TSVFile parameter"))
 		}
 
-		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, priority, reliability, dirNumber); err != nil {
+		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, priority, reliability, dirNumber, addIP); err != nil {
 			exit("Cannot create directive file", err)
 		}
 		fmt.Println("Directives file written in " + outFile + "\n" +

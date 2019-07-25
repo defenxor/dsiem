@@ -166,10 +166,10 @@ func CreatePlugin(plugin Plugin, confFile, creator string, validate, usePipeline
 	if getType(plugin.Fields.PluginSID) == ftCollect {
 		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
 	}
-	return createPluginNonCollect(plugin, confFile, creator, validate, usePipeline)
+	return createPluginNonCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
 }
 
-func createPluginNonCollect(plugin Plugin, confFile, creator string, validate, usePipeline bool) (err error) {
+func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
 
 	// Prepare the struct to be used with the template
 	pt := pluginTemplate{}
@@ -220,7 +220,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator string, validate, u
 
 	fmt.Println("Done creating plugin, now creating TSV for directive auto generation ..")
 	// first get the refs
-	ref, err := collectPair(plugin, confFile, validate)
+	ref, err := collectPair(plugin, confFile, esFilter, validate)
 	if err != nil {
 		return err
 	}
@@ -373,7 +373,7 @@ func setField(f *FieldMapping, field string, value string) {
 	}
 }
 
-func collectPair(plugin Plugin, confFile string, validate bool) (c tsvRef, err error) {
+func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
 	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
 	shouldCollectCategory := false
@@ -413,7 +413,10 @@ func collectPair(plugin Plugin, confFile string, validate bool) (c tsvRef, err e
 		fmt.Println("OK")
 	}
 	fmt.Println("Collecting unique entries for " + titleSource + " and " + sidSource + " on index " + plugin.Index + " ...")
-	return collector.CollectPair(plugin, confFile, sidSource, titleSource, categorySource, shouldCollectCategory)
+	if esFilter != "" {
+		fmt.Println("Limiting collection with term " + esFilter)
+	}
+	return collector.CollectPair(plugin, confFile, sidSource, esFilter, titleSource, categorySource, shouldCollectCategory)
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
