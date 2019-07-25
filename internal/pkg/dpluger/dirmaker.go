@@ -58,7 +58,7 @@ func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, di
 	// load existing directives first if any
 	locDir := filepath.Dir(outFile)
 	locFile := filepath.Base(outFile)
-	dirs, _, _ := siem.LoadDirectivesFromFile(locDir, locFile)
+	dirs, _, _ := siem.LoadDirectivesFromFile(locDir, locFile, true)
 
 	addedCount := 0
 

@@ -81,7 +81,7 @@ func TestBackLog(t *testing.T) {
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 
 	// use directive that expires fast and has only 2 stages
-	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive4"), directiveFileGlob)
+	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive4"), directiveFileGlob, false)
 	if err != nil {
 		t.Fatal(err)
 	}

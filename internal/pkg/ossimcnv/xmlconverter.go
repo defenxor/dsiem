@@ -37,6 +37,7 @@ type directive struct {
 	ID       int    `xml:"id,attr" json:"id"`
 	Name     string `xml:"name,attr" json:"name"`
 	Priority int    `xml:"priority,attr" json:"priority"`
+	Disabled bool   `json:"disabled"`
 	Kingdom  string `json:"kingdom"`
 	Category string `json:"category"`
 	Rules    []rule `xml:"rule" json:"rules"`

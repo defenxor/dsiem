@@ -127,7 +127,7 @@ var dsiemCmd = &cobra.Command{
 		port := viper.GetInt("port")
 		file := viper.GetString("file")
 
-		dirs, _, err := siem.LoadDirectivesFromFile("", file)
+		dirs, _, err := siem.LoadDirectivesFromFile("", file, false)
 		if err != nil {
 			exit("Cannot initialize directives", err)
 		}
@@ -146,7 +146,7 @@ var fbeatCmd = &cobra.Command{
 		logfile := viper.GetString("logfile")
 		file := viper.GetString("file")
 
-		dirs, _, err := siem.LoadDirectivesFromFile("", file)
+		dirs, _, err := siem.LoadDirectivesFromFile("", file, false)
 		if err != nil {
 			exit("Cannot initialize directives", err)
 		}

@@ -46,6 +46,7 @@ type Directive struct {
 	ID          int                   `json:"id"`
 	Name        string                `json:"name"`
 	Priority    int                   `json:"priority"`
+	Disabled    bool                  `json:"disabled"`
 	Kingdom     string                `json:"kingdom"`
 	Category    string                `json:"category"`
 	Rules       []rule.DirectiveRule  `json:"rules"`
@@ -64,11 +65,12 @@ var uCases Directives
 func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLifetime int) error {
 
 	var dirchan []chan event.NormalizedEvent
-	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob)
+	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob, false)
 
 	if err != nil {
 		return err
 	}
+
 	total := len(uCases.Dirs)
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
@@ -119,7 +121,7 @@ func isWhitelisted(ip string) (ret bool) {
 }
 
 // LoadDirectivesFromFile load directive from namePattern (glob) files in confDir
-func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives, totalFromFile int, err error) {
+func LoadDirectivesFromFile(confDir string, namePattern string, includeDisabled bool) (res Directives, totalFromFile int, err error) {
 	p := path.Join(confDir, namePattern)
 	files, err := filepath.Glob(p)
 	if err != nil {
@@ -141,6 +143,11 @@ func LoadDirectivesFromFile(confDir string, namePattern string) (res Directives,
 		}
 		totalFromFile += len(d.Dirs)
 		for j := range d.Dirs {
+			if d.Dirs[j].Disabled && !includeDisabled {
+				log.Warn(log.M{Msg: "Skipping disabled directive ID " +
+					strconv.Itoa(d.Dirs[j].ID)})
+				continue
+			}
 			err = validateDirective(&d.Dirs[j], &res)
 			if err != nil {
 				log.Warn(log.M{Msg: "Skipping directive ID " +
