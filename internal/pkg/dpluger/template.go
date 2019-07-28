@@ -226,6 +226,7 @@ filter {
         {{if .IsFieldActive "CustomData3" }}"custom_data3" => "{{.P.Fields.CustomData3}}"{{end}}
       }
     }
+
     {{if .IsIntegerMutationRequired}}
     mutate {
       id => "integer fields {{.P.Fields.PluginID}}"
@@ -240,6 +241,10 @@ filter {
 `
 
 var templFooter = `
+
+    {{if .IsFieldActive "CustomData1" }}if [custom_data1] == "{{.P.Fields.CustomData1}}" { mutate { remove_field => [ "custom_label1", "custom_data1" ]}}{{end}}
+    {{if .IsFieldActive "CustomData2" }}if [custom_data2] == "{{.P.Fields.CustomData2}}" { mutate { remove_field => [ "custom_label2", "custom_data2" ]}}{{end}}
+    {{if .IsFieldActive "CustomData3" }}if [custom_data3] == "{{.P.Fields.CustomData3}}" { mutate { remove_field => [ "custom_label3", "custom_data3" ]}}{{end}}
 
     # delete fields except those included in the whitelist below
     prune {
