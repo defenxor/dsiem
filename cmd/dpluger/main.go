@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
@@ -58,8 +59,8 @@ func init() {
 	directiveCmd.Flags().StringP("priority", "p", "3", "default priority to use (1 - 5)")
 	directiveCmd.Flags().StringP("reliability", "r", "1", "reliability to use (0 - 10) for stage 1")
 	directiveCmd.Flags().StringP("kingdom", "k", "Environmental Awareness", "default kingdom to use")
+	directiveCmd.Flags().StringP("titleTemplate", "m", "EVENT_TITLE (SRC_IP to DST_IP)", "directive title template. EVENT_TITLE will be replaced with entries from TSV file, and SRC_IP and DST_IP will be replaced at runtime with the actual addresses.")
 	directiveCmd.Flags().IntP("dirNumber", "i", 100000, "Starting directive number")
-	directiveCmd.Flags().BoolP("addIPtoTitle", "e", true, "Should (SRC_IP to DST_IP) be added automatically to directive title")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
@@ -75,7 +76,7 @@ func init() {
 	viper.BindPFlag("reliability", directiveCmd.Flags().Lookup("reliability"))
 	viper.BindPFlag("kingdom", directiveCmd.Flags().Lookup("kingdom"))
 	viper.BindPFlag("dirNumber", directiveCmd.Flags().Lookup("dirNumber"))
-	viper.BindPFlag("addIPtoTitle", directiveCmd.Flags().Lookup("addIPtoTitle"))
+	viper.BindPFlag("titleTemplate", directiveCmd.Flags().Lookup("titleTemplate"))
 }
 
 func initConfig() {
@@ -171,7 +172,11 @@ var directiveCmd = &cobra.Command{
 		reliability := viper.GetInt("reliability")
 		kingdom := viper.GetString("kingdom")
 		dirNumber := viper.GetInt("dirNumber")
-		addIP := viper.GetBool("addIPtoTitle")
+		titleTemplate := viper.GetString("titleTemplate")
+
+		if !strings.Contains(titleTemplate, "EVENT_TITLE") {
+			exit("titleTemplate must contain EVENT_TITLE", errors.New("wrong titleTemplate"))
+		}
 
 		if priority < 1 || priority > 5 {
 			exit("Priority must be between 1 and 5", errors.New("wrong priority"))
@@ -187,7 +192,8 @@ var directiveCmd = &cobra.Command{
 			exit(tsvFile+" doesn't exist", errors.New("wrong TSVFile parameter"))
 		}
 
-		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, priority, reliability, dirNumber, addIP); err != nil {
+		if err := dpluger.CreateDirective(tsvFile, outFile, kingdom, titleTemplate,
+			priority, reliability, dirNumber); err != nil {
 			exit("Cannot create directive file", err)
 		}
 		fmt.Println("Directives file written in " + outFile + "\n" +

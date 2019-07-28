@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
@@ -33,7 +34,8 @@ type tsvEntries struct {
 }
 
 // CreateDirective starts directive creation
-func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, dirNumber int, addIP bool) (err error) {
+func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority,
+	reliability, dirNumber int) (err error) {
 
 	f1, err := os.Open(tsvFile)
 	if err != nil {
@@ -64,12 +66,14 @@ func CreateDirective(tsvFile, outFile, kingdom string, priority, reliability, di
 
 	for _, v := range t.records {
 
-		// first check if the directive title already exist
-		d := siem.Directive{}
-		d.Name = v.SIDTitle
-		if addIP {
-			d.Name = d.Name + " (SRC_IP to DST_IP)"
+		if v.SIDTitle == "" || v.SID == 0 {
+			fmt.Println("Skipping an empty title or SID in TSV file")
+			continue
 		}
+
+		d := siem.Directive{}
+		d.Name = strings.ReplaceAll(titleTemplate, "EVENT_TITLE", v.SIDTitle)
+
 		if isDirectiveNameExist(dirs, d) {
 			fmt.Println("Skipping an existing directive " + d.Name)
 			continue
