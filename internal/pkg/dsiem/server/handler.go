@@ -162,7 +162,7 @@ func handleConfFileUpload(ctx *fasthttp.RequestCtx) {
 	}
 
 	file := path.Join(c.Confd, filename)
-	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(file, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Fprintf(ctx, "Cannot open target file location\n")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
