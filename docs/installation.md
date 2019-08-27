@@ -43,7 +43,8 @@ Then after you get a feel on how everything fits together, you can start integra
     ```
   
     Replace `eth0` above with the actual interface name given by `ifconfig` or similar commands. For testing purpose, it's not necessary to configure the interface to really operate in promiscuous mode.
-    When you installing on Virtual Machine running on top of VMware Workstation please follow [This link](https://isc.sans.edu/forums/diary/Running+Snort+on+VMWare+ESXi/15899/), or [This link](https://kb.vmware.com/s/article/1004099) when you running on top of ESXI/Vsphere to enable `Promiscuous mode`
+    
+    When you installing on Virtual Machine running on top of VMware Workstation please follow [Here](https://isc.sans.edu/forums/diary/Running+Snort+on+VMWare+ESXi/15899/), or [Here](https://kb.vmware.com/s/article/1004099) when you running on top of ESXI/Vsphere to enable `Promiscuous mode`
 
 * Set the owner of filebeat config file to root ([here's why](https://www.elastic.co/guide/en/beats/libbeat/6.4/config-file-permissions.html)):
     ```shell
@@ -158,7 +159,7 @@ For non `docker-compose` procedure, you will have to undo all the changes made m
 
 
 
-## Troubleshooting Installation
+## Installation Troubleshooting
 
 * Strict permission checks detect config file `filebeat.yml` is writable by group
 ```
