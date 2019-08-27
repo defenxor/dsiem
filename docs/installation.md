@@ -67,9 +67,9 @@ Then after you get a feel on how everything fits together, you can start integra
     * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
 
     * Dsiem Docker version is design for running on localhost and acccess from localhost, however its still possible to access from VM/Server IP with some of modification
-    -- Dsiem web UI http://HostIPAddress:8080/ui
-    -- Elasticsearch from http://HostIPAddress:9200
-    -- Kibana from http://HostIPAddress:5601
+     - Dsiem web UI http://HostIPAddress:8080/ui
+     - Elasticsearch from http://HostIPAddress:9200
+     - Kibana from http://HostIPAddress:5601
 
 #### Importing Kibana Dashboard
 
