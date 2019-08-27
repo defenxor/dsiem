@@ -61,10 +61,15 @@ Then after you get a feel on how everything fits together, you can start integra
     ```
 
 * Everything should be up and ready for testing in a few minutes. Here's things to note about the environment created by `docker-compose`:
-  
+    
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
     * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled and `EXTERNAL_NET: "any"`, so you can easily trigger a test alarm just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
     * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
+
+    * Dsiem Docker version is design for running on localhost and acccess from localhost, however its still possible to access from VM/Server IP with some of modification
+    - Dsiem web UI http://HostIPAddress:8080/ui
+    - Elasticsearch from http://HostIPAddress:9200
+    - Kibana from http://HostIPAddress:5601
 
 #### Importing Kibana Dashboard
 
