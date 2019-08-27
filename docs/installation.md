@@ -50,7 +50,7 @@ Then after you get a feel on how everything fits together, you can start integra
     ```shell
     $ cd deployments/docker && \
     sudo chown root conf/filebeat/filebeat.yml
-    $ chmod go-w /usr/share/filebeat/filebeat.yml
+    $ sudo chmod go-w conf/filebeat/filebeat.yml
     ```
 
 * Run ELK, Suricata, and Dsiem in standalone mode:
