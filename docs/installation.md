@@ -68,22 +68,21 @@ Then after you get a feel on how everything fits together, you can start integra
 
     * Dsiem Docker version is design for running on localhost and acccess from localhost, however its still possible to access from VM/Server IP with some of modification
     ```
-    $ vi dsiem-master/deployments/docker/docker-compose.yml
-    ```
-    go to line 58,59
-    ```
-     environment:
-      - DSIEM_WEB_ESURL=http://localhost:9200
-      - DSIEM_WEB_KBNURL=http://localhost:5601
+     $ vi dsiem-master/deployments/docker/docker-compose.yml
      ```
-     Change to
+     go to line 58,59
      ```
-      - DSIEM_WEB_ESURL=http://HostIPAddress:9200
-      - DSIEM_WEB_KBNURL=http://HostIPAddress:5601
-     ```
-     and re-run docker compose
+      environment:
+       - DSIEM_WEB_ESURL=http://localhost:9200
+       - DSIEM_WEB_KBNURL=http://localhost:5601
+      ```
+      Change to
+      ```
+       - DSIEM_WEB_ESURL=http://HostIPAddress:9200
+       - DSIEM_WEB_KBNURL=http://HostIPAddress:5601
+      ```
+      and re-run docker compose
      
-      
      - Dsiem web UI http://HostIPAddress:8080/ui
      - Elasticsearch from http://HostIPAddress:9200
      - Kibana from http://HostIPAddress:5601
