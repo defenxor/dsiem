@@ -9,7 +9,7 @@ Then after you get a feel on how everything fits together, you can start integra
 ### Using Docker Compose
 
 * Install [Docker](https://www.docker.com/get-started), and [Docker Compose](https://docs.docker.com/compose/install/).
-Installing on Centos 7
+* Installing Docker and Docker Compose on Centos 7
     ``` 
     $ sudo yum -y update
     $ sudo reboot
