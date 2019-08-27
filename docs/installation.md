@@ -9,6 +9,25 @@ Then after you get a feel on how everything fits together, you can start integra
 ### Using Docker Compose
 
 * Install [Docker](https://www.docker.com/get-started), and [Docker Compose](https://docs.docker.com/compose/install/).
+Installing on Centos 7
+``` 
+$ sudo yum -y update
+$ sudo reboot
+$ sudo sed -i s/^SELINUX=.*$/SELINUX=permissive/ /etc/selinux/config
+$ sudo setenforce 0
+$ sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+$ sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+$ sudo yum install docker-ce
+$ sudo usermod -aG docker $(whoami)
+$ sudo systemctl enable docker.service
+$ sudo systemctl start docker.service
+$ sudo yum install epel-release
+$ sudo yum install -y python-pip
+$ sudo pip install docker-compose
+$ sudo pip install --upgrade pip
+$ docker-compose version
+```
+
 
 * Copy this repository from [here](https://github.com/defenxor/dsiem/archive/master.zip), unzip it, then open the result in terminal.
 
