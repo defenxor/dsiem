@@ -12,7 +12,6 @@ Then after you get a feel on how everything fits together, you can start integra
 * Installing Docker and Docker Compose on Centos 7
     ``` 
     $ sudo yum -y update
-    $ sudo reboot
     $ sudo sed -i s/^SELINUX=.*$/SELINUX=permissive/ /etc/selinux/config
     $ sudo setenforce 0
     $ sudo yum install -y yum-utils device-mapper-persistent-data lvm2 unzip wget curl git
@@ -26,6 +25,7 @@ Then after you get a feel on how everything fits together, you can start integra
     $ sudo pip install docker-compose
     $ sudo pip install --upgrade pip
     $ docker-compose version
+    $ sudo reboot
     ```
 
 
@@ -56,8 +56,8 @@ Then after you get a feel on how everything fits together, you can start integra
 * Run ELK, Suricata, and Dsiem in standalone mode:
   
     ```shell
-    $ sudo docker-compose pull
-    $ sudo docker-compose up
+    $ docker-compose pull
+    $ docker-compose up
     ```
 
 * Everything should be up and ready for testing in a few minutes. Here's things to note about the environment created by `docker-compose`:
