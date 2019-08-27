@@ -184,7 +184,7 @@ For non `docker-compose` procedure, you will have to undo all the changes made m
 
 
 
-## Installation Troubleshooting
+## Installation Troubleshooting 
 
 * Strict permission checks detect config file `filebeat.yml` is writable by group
 ```
