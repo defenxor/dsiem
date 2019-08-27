@@ -17,11 +17,11 @@ Then after you get a feel on how everything fits together, you can start integra
     $ sudo setenforce 0
     $ sudo yum install -y yum-utils device-mapper-persistent-data lvm2 unzip wget curl git
     $ sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-    $ sudo yum install docker-ce
+    $ sudo yum install docker-ce -y
     $ sudo usermod -aG docker $(whoami)
     $ sudo systemctl enable docker.service
     $ sudo systemctl start docker.service
-    $ sudo yum install epel-release
+    $ sudo yum install -y epel-release
     $ sudo yum install -y python-pip
     $ sudo pip install docker-compose
     $ sudo pip install --upgrade pip
