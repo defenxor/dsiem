@@ -37,7 +37,7 @@ Then after you get a feel on how everything fits together, you can start integra
     ```
 
 * Suricata needs to know which network interface to monitor traffic on. Tell it to use the network interface that has a working Internet connection on your system like this (for `bash` shell):
-* If you installing on VMware Workstation please follow [This link]https://isc.sans.edu/forums/diary/Running+Snort+on+VMWare+ESXi/15899/ , or [This link]https://kb.vmware.com/s/article/1004099 when you running  on ESXI/Vsphere to enable Promiscuous mode
+* If you installing on VMware Workstation please follow [This link](https://isc.sans.edu/forums/diary/Running+Snort+on+VMWare+ESXi/15899/) , or [This link](https://kb.vmware.com/s/article/1004099) when you running  on ESXI/Vsphere to enable Promiscuous mode
 
     ```shell
     $ export PROMISC_INTERFACE=eth0
