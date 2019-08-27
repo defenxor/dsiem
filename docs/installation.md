@@ -169,5 +169,5 @@ Exiting: error loading config file: config file ("filebeat.yml") can only be wri
 
 Solution:
 ```
-chmod go-w /usr/share/filebeat/filebeat.yml
+sudo chmod go-w dsiem-master/deployments/docker/conf/filebeat/filebeat.yml
 ```
