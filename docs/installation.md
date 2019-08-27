@@ -56,8 +56,8 @@ Then after you get a feel on how everything fits together, you can start integra
 * Run ELK, Suricata, and Dsiem in standalone mode:
   
     ```shell
-    $ docker-compose pull
-    $ docker-compose up
+    $ sudo docker-compose pull
+    $ sudo docker-compose up
     ```
 
 * Everything should be up and ready for testing in a few minutes. Here's things to note about the environment created by `docker-compose`:
