@@ -155,3 +155,17 @@ For non `docker-compose` procedure, you will have to undo all the changes made m
 * Remove the extra logstash plugins and configuration files.
 * Uninstall Filebeat.
 * Uninstall Dsiem by deleting its directory and systemd unit file, if any.
+
+
+
+## Troubleshooting Installation
+
+* Strict permission checks detect config file `filebeat.yml` is writable by group
+```
+Exiting: error loading config file: config file ("filebeat.yml") can only be writable by the owner but the permissions are "-rw-rw-r--" (to fix the permissions use: 'chmod go-w /usr/share/filebeat/filebeat.yml')
+```
+
+Solution:
+```
+chmod go-w /usr/share/filebeat/filebeat.yml
+```
