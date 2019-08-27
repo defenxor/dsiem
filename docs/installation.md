@@ -76,11 +76,14 @@ Then after you get a feel on how everything fits together, you can start integra
        - DSIEM_WEB_ESURL=http://localhost:9200
        - DSIEM_WEB_KBNURL=http://localhost:5601
       ```
+      
       Change to
+      
       ```
        - DSIEM_WEB_ESURL=http://HostIPAddress:9200
        - DSIEM_WEB_KBNURL=http://HostIPAddress:5601
       ```
+      
       and re-run docker compose
      
      - Dsiem web UI http://HostIPAddress:8080/ui
