@@ -15,7 +15,7 @@ Then after you get a feel on how everything fits together, you can start integra
     $ sudo reboot
     $ sudo sed -i s/^SELINUX=.*$/SELINUX=permissive/ /etc/selinux/config
     $ sudo setenforce 0
-    $ sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+    $ sudo yum install -y yum-utils device-mapper-persistent-data lvm2 unzip wget curl git
     $ sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     $ sudo yum install docker-ce
     $ sudo usermod -aG docker $(whoami)
@@ -32,7 +32,8 @@ Then after you get a feel on how everything fits together, you can start integra
 * Copy this repository from [here](https://github.com/defenxor/dsiem/archive/master.zip), unzip it, then open the result in terminal.
 
     ```shell
-    $ unzip dsiem-master.zip && cd dsiem-master
+    $ wget https://github.com/defenxor/dsiem/archive/master.zip
+    $ unzip master.zip && cd dsiem-master/
     ```
 
 * Suricata needs to know which network interface to monitor traffic on. Tell it to use the network interface that has a working Internet connection on your system like this (for `bash` shell):
