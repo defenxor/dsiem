@@ -47,3 +47,5 @@ require (
 	golang.org/x/tools v0.0.0-20190916034716-92af9d69eff2 // indirect
 	gopkg.in/olivere/elastic.v5 v5.0.76
 )
+
+replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
