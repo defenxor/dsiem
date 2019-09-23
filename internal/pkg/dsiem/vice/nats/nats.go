@@ -21,12 +21,15 @@
 package nats
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice"
 
-	"github.com/nats-io/go-nats"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/nats-io/nats.go"
 )
 
 // DefaultAddr is the NATS default TCP address.
@@ -98,10 +101,22 @@ func (t *Transport) newEncodedConnection() (*nats.EncodedConn, error) {
 		return t.natsEncodedConn, err
 	}
 	t.natsConn, err = nats.Connect(t.NatsAddr,
-		//nats.DisconnectHandler(func(nc *nats.Conn) {
-		//  handle disconnect event, maybe need to enable this later
-		//  t.errChan <- vice.Err{Name: "Disconnect", Err: errors.New("NATS server is disconnected")}
-		//}),
+		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+			msg := fmt.Sprintf("%q", err) // err maybe nil
+			log.Info(log.M{Msg: "Disconnected from NATS server. Reason: " + msg})
+		}),
+		nats.ReconnectHandler(func(nc *nats.Conn) {
+			log.Info(log.M{Msg: "Reconnected to NATS server"})
+		}),
+		nats.ErrorHandler(func(_ *nats.Conn, _ *nats.Subscription, err error) {
+			msg := fmt.Sprintf("%q", err)
+			log.Info(log.M{Msg: "NATS error occurred: " + msg})
+			t.errChan <- vice.Err{Name: "Error", Err: errors.New(msg)} // err maybe nil
+		}),
+		nats.ClosedHandler(func(nc *nats.Conn) {
+			msg := fmt.Sprintf("%q", nc.LastError()) // err maybe nil
+			log.Info(log.M{Msg: "NATS connection closed. Reason: " + msg})
+		}),
 		nats.MaxReconnects(-1))
 
 	if err == nil {

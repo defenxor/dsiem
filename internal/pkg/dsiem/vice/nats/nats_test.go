@@ -25,7 +25,10 @@ import (
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
-	gnatsd "github.com/nats-io/gnatsd/server"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	gnatsd "github.com/nats-io/nats-server/v2/server"
+
+	
 )
 
 // DefaultTestOptions are default options for the unit tests.
@@ -74,6 +77,8 @@ func stopNATS() {
 	}
 }
 func TestNATS(t *testing.T) {
+
+	log.Setup(true)
 
 	time.AfterFunc(time.Second*3, func() {
 		go RunDefaultServer()
