@@ -20,7 +20,6 @@ package apm
 import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -110,8 +109,7 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 		// it may open up the application to DoS by forced sampling.
 		// Even ignoring bad actors, a service that has many feeder
 		// applications may end up being sampled at a very high rate.
-		o := opts.TraceContext.Options.WithRecorded(true)
-		tx.traceContext.Options = o
+		tx.traceContext.Options = opts.TraceContext.Options
 	}
 	tx.timestamp = opts.Start
 	if tx.timestamp.IsZero() {
@@ -176,14 +174,12 @@ func (tx *Transaction) TraceContext() TraceContext {
 // after the backend service returns.
 func (tx *Transaction) EnsureParent() SpanID {
 	if tx == nil {
-		fmt.Println("tx nil")
 		return SpanID{}
 	}
 
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 	if tx.ended() {
-		fmt.Println("tx Ended")
 		return SpanID{}
 	}
 

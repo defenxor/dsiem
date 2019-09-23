@@ -13,9 +13,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/nats-io/gnatsd v1.3.0
-	github.com/nats-io/go-nats v1.6.0
-	github.com/nats-io/nuid v1.0.0 // indirect
+	github.com/nats-io/nats-server/v2 v2.1.0
+	github.com/nats-io/nats.go v1.8.1
 	github.com/olivere/elastic v6.2.11+incompatible
 	github.com/olivere/elastic/v7 v7.0.1
 	github.com/paulbellamy/ratecounter v0.2.0
@@ -40,11 +39,9 @@ require (
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7 // indirect
 	golang.org/x/net v0.0.0-20190912160710-24e19bdeb0f2 // indirect
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20190913121621-c3b328c6e5a7 // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
-	golang.org/x/tools v0.0.0-20190916034716-92af9d69eff2 // indirect
 	gopkg.in/olivere/elastic.v5 v5.0.76
 )
 
