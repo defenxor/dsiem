@@ -27,8 +27,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	gnatsd "github.com/nats-io/nats-server/v2/server"
-
-	
 )
 
 // DefaultTestOptions are default options for the unit tests.
