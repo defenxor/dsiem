@@ -21,7 +21,6 @@
 package nats
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
