@@ -111,7 +111,8 @@ func (t *Transport) newEncodedConnection() (*nats.EncodedConn, error) {
 		nats.ErrorHandler(func(_ *nats.Conn, _ *nats.Subscription, err error) {
 			msg := fmt.Sprintf("%q", err)
 			log.Info(log.M{Msg: "NATS error occurred: " + msg})
-			t.errChan <- vice.Err{Name: "Error", Err: errors.New(msg)} // err maybe nil
+			// this happen quite frequent (NATS slow consumer error) so disable it for now
+			// t.errChan <- vice.Err{Name: "Error", Err: errors.New(msg)} // err maybe nil
 		}),
 		nats.ClosedHandler(func(nc *nats.Conn) {
 			msg := fmt.Sprintf("%q", nc.LastError()) // err maybe nil
