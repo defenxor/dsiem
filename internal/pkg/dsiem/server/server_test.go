@@ -35,12 +35,11 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 	"github.com/valyala/fasthttp"
 
-	// gnatsd "github.com/nats-io/gnatsd/server"
-	"github.com/nats-io/nats-server/v2/server"
+	gnatsd "github.com/nats-io/nats-server/v2/server"
 )
 
 // DefaultTestOptions are default options for the unit tests.
-var DefaultTestOptions = server.Options{
+var DefaultTestOptions = gnatsd.Options{
 	Host:           "127.0.0.1",
 	Port:           4222,
 	NoLog:          true,
@@ -50,18 +49,18 @@ var DefaultTestOptions = server.Options{
 
 // https://github.com/nats-io/gnatsd/blob/master/test/test.go
 // RunDefaultServer starts a new Go routine based server using the default options
-func RunDefaultServer() *server.Server {
+func RunDefaultServer() *gnatsd.Server {
 	return RunServer(&DefaultTestOptions)
 }
 
 // RunServer starts a new Go routine based server
-func RunServer(opts *server.Options) *server.Server {
+func RunServer(opts *gnatsd.Options) *gnatsd.Server {
 	if opts == nil {
 		opts = &DefaultTestOptions
 	}
 	natsMu.Lock()
 	defer natsMu.Unlock()
-	natsServer = server.New(opts)
+	natsServer = gnatsd.New(opts)
 	if natsServer == nil {
 		panic("No NATS Server object returned.")
 	}
@@ -76,7 +75,7 @@ func RunServer(opts *server.Options) *server.Server {
 	return natsServer
 }
 
-var natsServer *server.Server
+var natsServer *gnatsd.Server
 var natsMu sync.Mutex
 
 var testErrChan chan error
