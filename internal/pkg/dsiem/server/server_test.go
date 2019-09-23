@@ -35,7 +35,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 	"github.com/valyala/fasthttp"
 
-	gnatsd "github.com/nats-io/gnatsd/server"
+	gnatsd "github.com/nats-io/nats-server/v2/server"
 )
 
 // DefaultTestOptions are default options for the unit tests.

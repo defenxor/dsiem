@@ -32,7 +32,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/vice/nats"
 	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
-	gnatsd "github.com/nats-io/gnatsd/server"
+	gnatsd "github.com/nats-io/nats-server/v2/server"
 )
 
 // DefaultTestOptions are default options for the unit tests.
@@ -44,8 +44,6 @@ var DefaultTestOptions = gnatsd.Options{
 	MaxControlLine: 256,
 }
 
-// https://github.com/nats-io/gnatsd/blob/master/test/test.go
-// RunDefaultServer starts a new Go routine based server using the default options
 func RunDefaultServer() *gnatsd.Server {
 	return RunServer(&DefaultTestOptions)
 }
