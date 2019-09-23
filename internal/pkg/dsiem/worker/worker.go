@@ -92,10 +92,6 @@ func GetBackPressureChannel() chan<- bool {
 }
 
 func initMsgQueue(msq string, prefix, nodeName string) (errOccurred bool) {
-	// TODO: maybe enable this if simply setting max retries doesn't work
-	// if transport != nil {
-	//	transport.Stop()
-	// }
 
 	initMsq := func() (err error) {
 		// reuse existing transport, used during testing
@@ -138,19 +134,16 @@ func Start(ch chan<- event.NormalizedEvent, msq string, msqPrefix string,
 		return err
 	}
 
-	_ = initMsgQueue(msq, msqPrefix, nodeName)
-
 	go func() {
+		_ = initMsgQueue(msq, msqPrefix, nodeName)
 		for {
-			evt := <-eventChan
-			ch <- evt
-		}
-	}()
-	go func() {
-		for err := range errChan {
-			log.Warn(log.M{Msg: "Error received from receive message queue: " + err.Error()})
-			// TODO: maybe enable this if simply setting max retries doesn't work
-			// _ = initMsgQueue(msq, msqPrefix, nodeName)
+			select {
+			case evt := <-eventChan:
+				ch <- evt
+			case err := <-errChan:
+				log.Warn(log.M{Msg: "Error received from receive message queue: " + err.Error()})
+				_ = initMsgQueue(msq, msqPrefix, nodeName)
+			}
 		}
 	}()
 
