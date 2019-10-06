@@ -106,9 +106,28 @@ func (b *backLog) newEventProcessor() {
 		lenSDiffInt := len(b.Directive.StickyDiffs[idx].SDiffInt)
 		b.RUnlock()
 		if !rule.DoesEventMatch(evt, currRule, currSDiff, evt.ConnID) {
-			b.debug("backlog doeseventmatch false", evt.ConnID)
-			b.chFound <- false
-			continue
+			// if flag is set, check if event match previous stage
+			if b.Directive.AllRulesAlwaysActive && idx != 0 {
+				prevFound := false
+				for i := 0; i < idx; i++ {
+					b.RLock()
+					prevRule := b.Directive.Rules[i]
+					prevSDiff := &b.Directive.StickyDiffs[i]
+					b.RUnlock()
+					if rule.DoesEventMatch(evt, prevRule, prevSDiff, evt.ConnID) {
+						b.debug("backlog "+b.ID+" previous rule "+strconv.Itoa(i)+" consumes matching event", evt.ConnID)
+						// just add the event to the stage, no need to process other steps in processMatchedEvent
+						b.appendandWriteEvent(evt, i, nil)
+						prevFound = true
+						break
+					}
+				}
+				b.chFound <- prevFound
+			} else {
+				b.debug("backlog doeseventmatch false", evt.ConnID)
+				b.chFound <- false
+			}
+			continue // main for loop
 		}
 		b.chFound <- true // answer quickly
 
@@ -369,16 +388,16 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 	// dont wait for I/O
 	// b.RLock()
 	// go func(b *backLog) {
-	err := b.updateElasticsearch(e)
+	err := b.updateElasticsearch(e, idx)
 	if err != nil {
 		b.warn("failed to update Elasticsearch! "+err.Error(), e.ConnID)
-		if apm.Enabled() {
+		if apm.Enabled() && tx != nil {
 			tx.SetError(err)
 			tx.Result("Failed to append and write event")
 			tx.End()
 		}
 	} else {
-		if apm.Enabled() {
+		if apm.Enabled() && tx != nil {
 			tx.Result("Event appended to backlog")
 			tx.End()
 		}
@@ -488,11 +507,12 @@ func (b *backLog) setStatusTime() {
 	b.Unlock()
 }
 
-func (b *backLog) updateElasticsearch(e event.NormalizedEvent) error {
+func (b *backLog) updateElasticsearch(e event.NormalizedEvent, idx int) error {
 	b.debug("backlog updating Elasticsearch", e.ConnID)
 	b.Lock()
 	b.StatusTime = time.Now().Unix()
-	v := siemAlarmEvents{b.ID, b.CurrentStage, e.EventID}
+	stage := idx + 1
+	v := siemAlarmEvents{b.ID, stage, e.EventID}
 	b.Unlock()
 	bLogFileMutex.Lock()
 	f, err := os.OpenFile(bLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
