@@ -80,7 +80,7 @@ func TestBackLog(t *testing.T) {
 
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 
-	// use directive that expires fast and has only 2 stages
+	// use directive that expires fast and has only 3 stages
 	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive4"), directiveFileGlob, false)
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestBackLog(t *testing.T) {
 	e.ConnID = 1
 	dctives := dirs.Dirs[0]
 	e.PluginID = dctives.Rules[0].PluginID
-	e.PluginSID = 2100384
+	e.PluginSID = dctives.Rules[0].PluginSID[0]
 
 	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
 
@@ -136,27 +136,38 @@ func TestBackLog(t *testing.T) {
 		}
 	}()
 
+	// will raise stage to 2nd
 	fmt.Println("first event (by start)")
-	go b.start(e,0)
+	fmt.Println("using backlog: ", b.Directive.Name)
+	fmt.Println("all_rules_always_active flag: ", b.Directive.AllRulesAlwaysActive)
 
-	// will also raise stage
+	go b.start(e, 0)
+
+	// will also raise stage to 3rd
 	fmt.Print("under pressure ..")
-	e.ConnID = 1
+	e.ConnID = 2
 	e.RcvdTime = time.Now().Add(-700 * time.Second).Unix()
+	e.PluginSID = b.Directive.Rules[1].PluginSID[0]
 	verifyEventOutput(t, e, b.chData, "backlog is under pressure")
 
+	fmt.Print("previous rule consuming event ..")
+	e.ConnID = 3
+	e.PluginSID = b.Directive.Rules[0].PluginSID[0]
+	verifyEventOutput(t, e, b.chData, "consumes matching event")
+
 	e.RcvdTime = time.Now().Add(-time.Second).Unix()
-	e.ConnID = 2
+	e.ConnID = 4
+	e.PluginSID = b.Directive.Rules[1].PluginSID[0]
 	fmt.Print("reached max stage ..")
 	verifyEventOutput(t, e, b.chData, "reached max stage and occurrence")
 
 	fmt.Print("out of order event ..")
-	e.ConnID = 4
+	e.ConnID = 5
 	e.Timestamp = time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339)
 	verifyEventOutput(t, e, b.chData, "event timestamp out of order")
 
 	fmt.Print("invalid timestamp ..")
-	e.ConnID = 5
+	e.ConnID = 6
 	e.Timestamp = "#"
 	verifyEventOutput(t, e, b.chData, "cannot parse event timestamp")
 
@@ -166,7 +177,6 @@ func TestBackLog(t *testing.T) {
 		t.Fatal("expected to not yet expire")
 	}
 	fmt.Println("OK")
-
 
 	fmt.Print("Check deletion ..")
 	verifyFuncOutput(t, func() {
