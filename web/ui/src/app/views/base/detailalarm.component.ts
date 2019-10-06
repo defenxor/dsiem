@@ -111,12 +111,12 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       tempAlarms = resp.hits.hits;
       await Promise.all(tempAlarms.map(async (e) => {
         await Promise.all(e['_source']['rules'].map(async (r) => {
-          if (r['status'] === 'finished') {
-            r['events_count'] = r['occurrence'];
-          } else {
+          // if (r['status'] === 'finished') {
+          //  r['events_count'] = r['occurrence'];
+          //} else {
             const response = await this.es.countEvents(this.es.esIndexAlarmEvent, alarmID, r['stage']);
             r['events_count'] = response.count;
-          }
+          // }
         }));
       }));
     } catch (err) {
