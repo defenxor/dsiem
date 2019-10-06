@@ -43,14 +43,15 @@ const (
 
 // Directive represents a SIEM use case that has several correlation rules
 type Directive struct {
-	ID          int                   `json:"id"`
-	Name        string                `json:"name"`
-	Priority    int                   `json:"priority"`
-	Disabled    bool                  `json:"disabled"`
-	Kingdom     string                `json:"kingdom"`
-	Category    string                `json:"category"`
-	Rules       []rule.DirectiveRule  `json:"rules"`
-	StickyDiffs []rule.StickyDiffData `json:"-"`
+	ID                   int                   `json:"id"`
+	Name                 string                `json:"name"`
+	Priority             int                   `json:"priority"`
+	Disabled             bool                  `json:"disabled"`
+	AllRulesAlwaysActive bool                  `json:"all_rules_always_active"`
+	Kingdom              string                `json:"kingdom"`
+	Category             string                `json:"category"`
+	Rules                []rule.DirectiveRule  `json:"rules"`
+	StickyDiffs          []rule.StickyDiffData `json:"-"`
 }
 
 // Directives group directive together
@@ -307,6 +308,7 @@ func copyDirective(dst *Directive, src Directive, e event.NormalizedEvent) {
 	dst.Priority = src.Priority
 	dst.Kingdom = src.Kingdom
 	dst.Category = src.Category
+	dst.AllRulesAlwaysActive = src.AllRulesAlwaysActive
 
 	// replace SRC_IP and DST_IP with the asset name or IP address
 	title := src.Name
