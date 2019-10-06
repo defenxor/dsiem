@@ -290,11 +290,24 @@ func createNewBackLog(d Directive, e event.NormalizedEvent) (bp *backLog, err er
 }
 
 func initBackLogRules(d *Directive, e event.NormalizedEvent) {
+
 	for i := range d.Rules {
-		// the first rule cannot use reference to other
 		if i == 0 {
+			// if flag is active, replace ANY and HOME_NET on the first rule with specific addresses from event
+			if d.AllRulesAlwaysActive {
+				ref := d.Rules[i].From
+				if ref == "ANY" || ref == "HOME_NET" || ref == "!HOME_NET" {
+					d.Rules[i].From = e.SrcIP
+				}
+				ref = d.Rules[i].To
+				if ref == "ANY" || ref == "HOME_NET" || ref == "!HOME_NET" {
+					d.Rules[i].To = e.DstIP
+				}
+			}
+			// the first rule cannot use reference to other
 			continue
 		}
+
 		// for the rest, refer to the referenced stage if its not ANY or HOME_NET or !HOME_NET
 		// if the reference is ANY || HOME_NET || !HOME_NET then refer to event if its in the format of
 		// :ref
