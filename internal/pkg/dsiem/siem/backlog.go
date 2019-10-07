@@ -382,6 +382,10 @@ func (b *backLog) appendandWriteEvent(e event.NormalizedEvent, idx int, tx *apm.
 	b.CustomData = rule.AppendUniqCustomData(b.CustomData, e.CustomLabel2, e.CustomData2)
 	b.CustomData = rule.AppendUniqCustomData(b.CustomData, e.CustomLabel3, e.CustomData3)
 
+	// remove 0.0.0.0 if any, but only when it's not the only entry
+	b.SrcIPs = str.RemoveElementUnlessEmpty(b.SrcIPs, "0.0.0.0")
+	b.DstIPs = str.RemoveElementUnlessEmpty(b.DstIPs, "0.0.0.0")
+
 	b.Unlock()
 	b.setStatusTime()
 

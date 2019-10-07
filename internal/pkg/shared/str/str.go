@@ -105,3 +105,17 @@ func UniqStringSlice(cslist string) (result []string) {
 	result = RemoveDuplicatesUnordered(s)
 	return
 }
+
+// RemoveElementUnlessEmpty remove string element from slice unless doing so
+// will result in an empty slice. This assumes entries in slice are uniq.
+func RemoveElementUnlessEmpty(slice []string, target string) []string {
+	if len(slice) == 1 {
+		return slice
+	}
+	for i, v := range slice {
+		if v == target {
+			return append(slice[:i], slice[i+1:]...)
+		}
+	}
+	return slice
+}
