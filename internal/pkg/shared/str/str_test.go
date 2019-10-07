@@ -198,6 +198,29 @@ func TestUniqStringSlice(t *testing.T) {
 	}
 }
 
+func TestRemoveElementUnlessEmpty(t *testing.T) {
+	type s1 struct {
+		elements []string
+		target   string
+		expected []string
+	}
+	tbl1 := []s1{
+		{[]string{"1"}, "1", []string{"1"}},
+		{[]string{"1", "2", "3"}, "1", []string{"2", "3"}},
+		{[]string{"1", "2", "3"}, "4", []string{"1", "2", "3"}},
+	}
+
+	for _, tt := range tbl1 {
+		actual := RemoveElementUnlessEmpty(tt.elements, tt.target)
+		if !sameStringSlice(actual, tt.expected) {
+			fmt.Println(actual)
+			fmt.Println(tt.expected)
+			t.Errorf("RemoveElementUnlessEmpty: elements %v,  target %v, expected %v, actual %v",
+				tt.elements, tt.target, tt.expected, actual)
+		}
+	}
+}
+
 // https://stackoverflow.com/questions/36000487/check-for-equality-on-slices-without-order
 func sameStringSlice(x, y []string) bool {
 	if len(x) != len(y) {
