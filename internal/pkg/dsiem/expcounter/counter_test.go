@@ -33,7 +33,7 @@ func TestInit(t *testing.T) {
 	viper.Set("tags", []string{"0"})
 	viper.Set("status", []string{"Open"})
 	// server.InitRcCounter()
-	alarm.Init("doesntmatter")
+	alarm.Init("doesntmatter", false)
 	Init("standalone")
 	startTicker("standalone", true)
 	time.Sleep(6 * time.Second)

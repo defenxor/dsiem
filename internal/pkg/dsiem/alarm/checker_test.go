@@ -106,7 +106,7 @@ func TestAsyncIntelCheck(t *testing.T) {
 
 	fmt.Print("checking alarm with no intel match ..")
 	verifyFuncOutput(t, func() {
-		asyncIntelCheck(&a, 0, tx)
+		asyncIntelCheck(&a, 0, false, tx)
 		time.Sleep(time.Second)
 	}, "Found intel result for "+a.DstIPs[0], false)
 
@@ -116,13 +116,13 @@ func TestAsyncIntelCheck(t *testing.T) {
 
 	fmt.Print("checking alarm with an intel match ..")
 	verifyFuncOutput(t, func() {
-		asyncIntelCheck(&a, 0, tx)
+		asyncIntelCheck(&a, 0, false, tx)
 		time.Sleep(time.Second)
 	}, "Found intel result for "+a.DstIPs[0], true)
 
 	fmt.Print("checking the same alarm (already exist) ..")
 	verifyFuncOutput(t, func() {
-		asyncIntelCheck(&a, 0, tx)
+		asyncIntelCheck(&a, 0, false, tx)
 		time.Sleep(time.Second)
 	}, "", true)
 
