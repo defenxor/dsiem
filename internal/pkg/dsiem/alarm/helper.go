@@ -101,6 +101,10 @@ func copyAlarm(dst *alarm, src *alarm) {
 }
 
 func updateElasticsearch(a *alarm, checker string, connID uint64, tx *apm.Transaction) {
+	if a.Risk == 0 {
+		log.Debug(log.M{Msg: "Risk is 0, alarm not updating ES", CId: connID})
+		return
+	}
 	err := logToES(a, connID)
 	if err == nil {
 		if apm.Enabled() && tx != nil {

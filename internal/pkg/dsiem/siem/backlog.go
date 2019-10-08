@@ -269,7 +269,10 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 		// recalc risk, updateAlarm if there's an increase
 		riskChanged := b.calcRisk(e.ConnID)
-		if riskChanged {
+		// update alarm if risk changes, or if this is the first event that creates
+		// the backlog. This is to ensure VA and intel checks are done
+		// against this first event, because the next rule may not refer to the same IP and port anymore
+		if riskChanged || idx == 0 {
 			// this LastEvent is used to get ports by alarm
 			b.setLastEvent(e)
 			b.updateAlarm(e.ConnID, true, tx)
@@ -341,9 +344,6 @@ func (b *backLog) setLastEvent(e event.NormalizedEvent) {
 }
 
 func (b *backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transaction) {
-	if b.Risk == 0 {
-		return
-	}
 	b.RLock()
 	tmp := make([]rule.DirectiveRule, len(b.Directive.Rules))
 	copy(tmp, b.Directive.Rules)
