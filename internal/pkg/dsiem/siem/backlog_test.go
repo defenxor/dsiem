@@ -45,7 +45,7 @@ func initAlarm(t *testing.T) {
 	viper.Set("medRiskMax", 6)
 	viper.Set("tags", []string{"Identified Threat", "Valid Threat"})
 	viper.Set("status", []string{"Open", "Closed"})
-	err := alarm.Init("")
+	err := alarm.Init("", false)
 	if err != nil {
 		t.Fatal(err)
 	}

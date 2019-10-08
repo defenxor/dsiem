@@ -121,7 +121,7 @@ func asyncVulnCheck(aSource *alarm, srcPort, dstPort int, connID uint64, tx *apm
 	}()
 }
 
-func asyncIntelCheck(aSource *alarm, connID uint64, tx *apm.Transaction) {
+func asyncIntelCheck(aSource *alarm, connID uint64, checkPrivateIP bool, tx *apm.Transaction) {
 	if apm.Enabled() && tx != nil {
 		defer tx.Recover()
 	}
@@ -141,10 +141,12 @@ func asyncIntelCheck(aSource *alarm, connID uint64, tx *apm.Transaction) {
 
 		// loop over srcips and dstips
 		for i := range p {
-			// skip private IP
-			priv, err := ip.IsPrivateIP(p[i])
-			if priv || err != nil {
-				continue
+			// skip private IP unless flag is set
+			if !checkPrivateIP {
+				priv, err := ip.IsPrivateIP(p[i])
+				if priv || err != nil {
+					continue
+				}
 			}
 
 			// skip existing entries

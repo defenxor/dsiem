@@ -44,6 +44,7 @@ var mediumRiskUpperBound int
 var defaultTag string
 var defaultStatus string
 var alarmRemovalChannel chan string
+var intelCheckPrivateIP bool
 
 type alarm struct {
 	sync.RWMutex `json:"-"`
@@ -76,10 +77,12 @@ var alarms struct {
 }
 
 // Init initialize alarm, storing result into logFile
-func Init(logFile string) error {
+func Init(logFile string, intelPrivIPFlag bool) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
 	}
+	intelCheckPrivateIP = intelPrivIPFlag
+
 	alarms.Lock()
 	alarms.al = make(map[string]*alarm)
 	alarmRemovalChannel = make(chan string)
@@ -146,7 +149,7 @@ func Upsert(id, name, kingdom, category string,
 	a.Unlock()
 	if xc.IntelEnabled && checkIntelVuln {
 		// do intel check in the background
-		asyncIntelCheck(a, connID, tx)
+		asyncIntelCheck(a, connID, intelCheckPrivateIP, tx)
 	}
 
 	if xc.VulnEnabled && checkIntelVuln {

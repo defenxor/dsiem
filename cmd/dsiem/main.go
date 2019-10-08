@@ -76,6 +76,7 @@ func init() {
 	serverCmd.Flags().Bool("pprof", false, "Enable go pprof on the web interface")
 	serverCmd.Flags().Bool("websocket", false, "Enable websocket endpoint that streams events/second measurement data")
 	serverCmd.Flags().Bool("trace", false, "Generate 10 seconds trace file for debugging.")
+	serverCmd.Flags().Bool("intelPrivateIP", false, "Whether to check private IP addresses against threat intel")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
 	serverCmd.Flags().IntP("cacheDuration", "c", 10, "Cache expiration time in minutes for intel and vuln query results")
 	serverCmd.Flags().String("msq", "nats://dsiem-nats:4222", "Nats address to use for frontend - backend communication.")
@@ -103,6 +104,7 @@ func init() {
 	viper.BindPFlag("apm", serverCmd.Flags().Lookup("apm"))
 	viper.BindPFlag("pprof", serverCmd.Flags().Lookup("pprof"))
 	viper.BindPFlag("trace", serverCmd.Flags().Lookup("trace"))
+	viper.BindPFlag("intelPrivateIP", serverCmd.Flags().Lookup("intelPrivateIP"))
 	viper.BindPFlag("mode", serverCmd.Flags().Lookup("mode"))
 	viper.BindPFlag("msq", serverCmd.Flags().Lookup("msq"))
 	viper.BindPFlag("node", serverCmd.Flags().Lookup("node"))
@@ -202,6 +204,7 @@ external message queue.`,
 		msq := viper.GetString("msq")
 		node := viper.GetString("node")
 		traceFlag := viper.GetBool("trace")
+		intelPrivIPFlag := viper.GetBool("intelPrivateIP")
 		frontend := viper.GetString("frontend")
 		maxEPS := viper.GetInt("maxEPS")
 		minEPS := viper.GetInt("minEPS")
@@ -285,7 +288,7 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}
-			err = alarm.Init(path.Join(logDir, alarmLogs))
+			err = alarm.Init(path.Join(logDir, alarmLogs), intelPrivIPFlag)
 			if err != nil {
 				exit("Cannot initialize alarm", err)
 			}

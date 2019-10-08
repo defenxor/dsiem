@@ -78,15 +78,15 @@ func TestAlarm(t *testing.T) {
 	viper.Set("tags", []string{"Identified Threat", "Valid Threat"})
 	viper.Set("status", []string{"Open", "Closed"})
 
-	if err := Init(`/\/\/\/`); err == nil {
+	if err := Init(`/\/\/\/`, false); err == nil {
 		t.Fatal("expected to fail due to wrong path for log file")
 	}
-	if err := Init(tmpLog); err == nil {
+	if err := Init(tmpLog, false); err == nil {
 		t.Fatal("expected to fail due to wrong medRiskMin")
 	}
 
 	viper.Set("medRiskMin", 3)
-	if err := Init(tmpLog); err != nil {
+	if err := Init(tmpLog, false); err != nil {
 		t.Fatal(err)
 	}
 
