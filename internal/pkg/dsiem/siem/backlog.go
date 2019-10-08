@@ -118,6 +118,8 @@ func (b *backLog) newEventProcessor() {
 						b.debug("backlog "+b.ID+" previous rule "+strconv.Itoa(i)+" consumes matching event", evt.ConnID)
 						// just add the event to the stage, no need to process other steps in processMatchedEvent
 						b.appendandWriteEvent(evt, i, nil)
+						// also update alarm to sync any changes to customData
+						b.updateAlarm(evt.ConnID, false, nil)
 						prevFound = true
 						break
 					}
