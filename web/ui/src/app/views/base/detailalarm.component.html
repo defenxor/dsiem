@@ -397,8 +397,8 @@
                       </div>
                     </td>
                     <td>{{event.protocol}}</td>
-                    <td *ngIf="event.port_from; else empty">{{event.port_from}}</td>
-                    <td *ngIf="event.port_to; else empty">{{event.port_to}}</td>
+                    <td *ngIf="event.src_port; else empty">{{event.src_port}}</td>
+                    <td *ngIf="event.dst_port; else empty">{{event.dst_port}}</td>
                     <td>{{event.sensor}}</td>
                     <td>{{event.plugin_id}}</td>
                     <td>{{event.plugin_sid}}</td>
