@@ -17,10 +17,6 @@
 package siem
 
 import (
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
-
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -30,6 +26,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/str"
@@ -65,7 +65,7 @@ var uCases Directives
 // backlog manager for each directive
 func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLifetime int) error {
 
-	var dirchan []chan event.NormalizedEvent
+	var dirchan []evtChan
 	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob, false)
 
 	if err != nil {
@@ -76,7 +76,10 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
 	for i := 0; i < total; i++ {
-		dirchan = append(dirchan, make(chan event.NormalizedEvent, 10)) // allow lagging behind up to 10 events
+		dirchan = append(dirchan, evtChan{
+			ch:    make(chan event.NormalizedEvent),
+			dirID: uCases.Dirs[i].ID,
+		})
 		blogs := backlogs{}
 		blogs.DRWMutex = drwmutex.New()
 		blogs.id = i
@@ -85,26 +88,27 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 		l := blogs.RLock()
 		allBacklogs = append(allBacklogs, blogs)
 		l.Unlock()
-		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i], minAlarmLifetime)
+		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i].ch, minAlarmLifetime)
 	}
 
-	// copy incoming events to all directive channels
+	// use queue here for faster return to NATS client in cluster mode
+	// let downstream deal with backpressure control instead
+	eq := eventQueue{}
+	eq.init(dirchan)
+
 	copier := func() {
 		for {
 			evt := <-ch
-
 			if isWhitelisted(evt.SrcIP) {
 				continue
 			}
-
-			// running under go routine easily bottleneck under heavy load
-			// this however will cause single dirchan to block the loop
-			for i := range dirchan {
-				dirchan[i] <- evt
-			}
+			eq.enqueue(evt)
 		}
 	}
+
+	go eq.dequeue()
 	go copier()
+	go eq.reporter()
 	return nil
 }
 

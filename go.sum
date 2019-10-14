@@ -27,6 +27,8 @@ github.com/elastic/go-sysinfo v0.0.0-20190103140604-e68552284485 h1:k9Ac5c19ZDF7
 github.com/elastic/go-sysinfo v0.0.0-20190103140604-e68552284485/go.mod h1:5kYRMF9nitZzZ4odJqSHV1DddYPTJ+QB4YsyWmNyJzA=
 github.com/elastic/go-windows v0.0.0-20180831131045-bb1581babc04 h1:6iBgytvH10GM0SRPYDAfFLV5Lx43a063hCi4GWil98I=
 github.com/elastic/go-windows v0.0.0-20180831131045-bb1581babc04/go.mod h1:jgPEIvw0E137UFC4zfkcjyM9T9shDL+JIfqFXQQhVwc=
+github.com/enriquebris/goconcurrentqueue v0.0.0-20190719205347-3e5689c24f05 h1:qiqZNItjRijX/MSnM+I+fW14fWL/h8TyrbetmRVmuHA=
+github.com/enriquebris/goconcurrentqueue v0.0.0-20190719205347-3e5689c24f05/go.mod h1:wGJhQNFI4wLNHleZLo5ehk1puj8M6OIl0tOjs3kwJus=
 github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072 h1:DddqAaWDpywytcG8w/qoQ5sAN8X12d3Z3koB0C3Rxsc=
 github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072/go.mod h1:duJ4Jxv5lDcvg4QuQr0oowTf7dz4/CR8NtyCooz9HL8=
 github.com/fortytw2/leaktest v1.2.0 h1:cj6GCiwJDH7l3tMHLjZDo0QqPtrXJiWSI9JgpeQKw+Q=
