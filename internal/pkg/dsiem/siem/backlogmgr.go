@@ -185,20 +185,22 @@ mainLoop:
 			continue mainLoop // back to chan loop
 		}
 
-		// compare the event against all backlogs starting event ID to prevent duplicates
+		// compare the event against all backlogs event ID to prevent duplicates
 		// due to concurrency
 		blogs.Lock()
 		for _, v := range blogs.bl {
-			for _, j := range v.Directive.Rules[0].Events {
-				if j == evt.EventID {
-					log.Info(log.M{Msg: "skipping backlog creation for event " + j +
-						", it's already used in backlog " + v.ID})
-					if apm.Enabled() && tx != nil {
-						tx.Result("Event already used in backlog" + v.ID)
-						tx.End()
+			for _, y := range v.Directive.Rules {
+				for _, j := range y.Events {
+					if j == evt.EventID {
+						log.Info(log.M{Msg: "skipping backlog creation for event " + j +
+							", it's already used in backlog " + v.ID})
+						if apm.Enabled() && tx != nil {
+							tx.Result("Event already used in backlog" + v.ID)
+							tx.End()
+						}
+						blogs.Unlock()
+						continue mainLoop // back to chan loop
 					}
-					blogs.Unlock()
-					continue mainLoop // back to chan loop
 				}
 			}
 		}

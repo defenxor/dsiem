@@ -145,6 +145,7 @@ func TestBacklogMgr(t *testing.T) {
 
 	fmt.Print("3rd event, will also fail updating ES ..")
 	e.ConnID = 3
+	e.EventID = "3"
 	bLogFileMutex.Lock()
 	bLogFile = ""
 	bLogFileMutex.Unlock()
@@ -155,12 +156,13 @@ func TestBacklogMgr(t *testing.T) {
 
 	fmt.Print("4th event ..")
 	e.ConnID = 4
+	e.EventID = "4"
 	verifyEventOutput(t, e, ch, "stage increased")
 
 	// this should create new backlog
 	fmt.Print("5th event ..")
 	e.ConnID = 5
-	e.EventID = "2"
+	e.EventID = "5"
 	e.SrcIP = "192.168.0.1"
 	e.DstIP = "192.168.0.3"
 	verifyEventOutput(t, e, ch, "Creating new backlog")
@@ -182,6 +184,7 @@ func TestBacklogMgr(t *testing.T) {
 	fmt.Print("7th event ..")
 	e.PluginSID = 31337
 	e.ConnID = 7
+	e.EventID = "7"
 	verifyEventOutput(t, e, ch, "backlog doeseventmatch false")
 
 	var blID string
