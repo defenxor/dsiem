@@ -4,6 +4,7 @@ require (
 	github.com/allegro/bigcache v0.0.0-20181009050124-70fdb6c1fbb8
 	github.com/buaazp/fasthttprouter v0.1.1
 	github.com/dogenzaka/tsv v0.0.0-20150215104501-8e02e611b1fb
+	github.com/enriquebris/goconcurrentqueue v0.0.0-20190719205347-3e5689c24f05
 	github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072
 	github.com/gocarina/gocsv/v2 v2.0.0-20181026075406-cde31a6ec2a8
 	github.com/hashicorp/hcl v1.0.0 // indirect
