@@ -111,7 +111,9 @@ export class TablesComponent {
           // if esAlive but tableData is empty, then ES service needs to be restarted.
           // this always happen when the app started without an initial network connection to ES server.
           // use window.location.reload() for now until we find a cleaner way to do this
-          window.location.reload();
+          //
+          // dont need to do the above, there's an auto refresh
+          // window.location.reload();
         }
       }
     } catch (err) {
