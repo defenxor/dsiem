@@ -1,13 +1,13 @@
 #!/bin/sh
 
-command -v go || {echo 'cannot find go command in $PATH'; exit 1;}
+command -v go >/dev/null || { echo 'cannot find go command in $PATH'; exit 1; }
 
 cmd=${1}
 
 # cgoflag should be 0 or 1
 cgoflag=${2}
 xtraflag=${3}
-[ "$cgoflag" == "" ] && cgoflag=0
+[ "$cgoflag" = "" ] && cgoflag=0
 
 [ -z $cmd ] && cmd=$(find ./cmd/ -maxdepth 1 ! -path ./cmd/ -type d)
 
