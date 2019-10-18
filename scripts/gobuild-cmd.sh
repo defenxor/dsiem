@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/sh
+
+command -v go || {echo 'cannot find go command in $PATH'; exit 1;}
 
 cmd=${1}
 
