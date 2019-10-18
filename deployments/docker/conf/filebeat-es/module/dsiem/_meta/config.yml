@@ -1,0 +1,3 @@
+- module: dsiem
+  alarm:
+    enabled: true

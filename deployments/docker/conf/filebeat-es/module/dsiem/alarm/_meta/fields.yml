@@ -1,0 +1,6 @@
+- name: alarm
+  description: dsiem alarm
+  type: group
+  fields:
+    - name: updated_time
+      type: date

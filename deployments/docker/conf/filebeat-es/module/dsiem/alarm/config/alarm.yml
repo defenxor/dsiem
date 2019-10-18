@@ -1,0 +1,72 @@
+type: log
+paths:
+{{ range $i, $path := .paths }}
+ - {{$path}}
+{{ end }}
+exclude_files: [".gz$"]
+
+processors:
+  - rename:
+      fields:
+        - {from: message, to: event.original}
+  - decode_json_fields:
+      fields: [event.original]
+      target: dsiem.alarm
+      process_array: true
+      max_depth: 2
+  - convert:
+      mode: copy
+      fields:
+        - {from: '@timestamp', to: event.created}
+  - timestamp:
+      field: dsiem.alarm.created_time
+      layouts: 
+        - UNIX
+      test:
+        - '1571045906'
+  - timestamp:
+      field: dsiem.alarm.update_time
+      target_field: dsiem.alarm.update_time
+      layouts:
+        - UNIX
+      test: 
+        - '1571045906'        
+  - add_fields:
+      target: event
+      fields:
+        kind: 'alarm'
+  - add_fields:
+      target: threat
+      fields:
+        framework: 'OSSIM Cyber Kill Chain'
+  - convert:
+      mode: rename
+      ignore_missing: true
+      fields: 
+        - {from: dsiem.alarm.src_ips, to: source.address}
+        - {from: dsiem.alarm.dst_ips, to: destination.address}
+        - {from: dsiem.alarm.proto, to: network.transport}
+        - {from: dsiem.alarm.risk, to: event.risk_score}
+        - {from: dsiem.alarm.title, to: message}
+        - {from: dsiem.alarm.kingdom, to: threat.tactic.name}
+        - {from: dsiem.alarm.category, to: threat.technique.name}
+        - {from: dsiem.alarm.update_time, to: dsiem.alarm.updated_time}
+  - convert:
+      mode: copy
+      fields:
+        - {from: dsiem.alarm.alarm_id, to: event.id}
+        - {from: source.address, to: source.ip}
+        - {from: destination.address, to: destination.ip}
+  - drop_fields:
+      fields:
+        - dsiem.alarm.created_time
+        - dsiem.alarm.status
+        - dsiem.alarm.tag
+        - dsiem.alarm.src_ips
+        - dsiem.alarm.dst_ips
+        - dsiem.alarm.proto
+        - dsiem.alarm.category
+        - dsiem.alarm.kingdom
+        - dsiem.alarm.rules
+        - dsiem.alarm.title
+      ignore_missing: true

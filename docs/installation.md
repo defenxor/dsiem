@@ -24,10 +24,10 @@ Then after you get a feel on how everything fits together, you can start integra
   
     Replace `eth0` above with the actual interface name given by `ifconfig` or similar commands. For testing purpose, it's not necessary to configure the interface to really operate in promiscuous mode.
 
-* Set the owner of filebeat config file to root ([here's why](https://www.elastic.co/guide/en/beats/libbeat/6.4/config-file-permissions.html)):
+* Set the owner of filebeat config files to root ([here's why](https://www.elastic.co/guide/en/beats/libbeat/6.4/config-file-permissions.html)):
     ```shell
     $ cd deployments/docker && \
-    sudo chown root conf/filebeat/filebeat.yml
+    sudo chown root $(find conf/filebeat/ conf/filebeat-es/ -name "*.yml") 
     ```
 
 * Run ELK, Suricata, and Dsiem in standalone mode:
@@ -41,7 +41,7 @@ Then after you get a feel on how everything fits together, you can start integra
   
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
     * Suricata comes with [Emerging Threats ICMP Info Ruleset](https://rules.emergingthreats.net/open/suricata/rules/emerging-icmp_info.rules) enabled and `EXTERNAL_NET: "any"`, so you can easily trigger a test alarm just by continuously pinging a host in the same subnet. Dsiem comes with an [example directive configuration](https://github.com/defenxor/dsiem/blob/master/configs/directives_dsiem-backend-0_testing1.json) that will intercept this "attack".
-    * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or the builtin SIEM web UI.
+    * Recorded events will be stored in Elasticsearch index pattern `siem_events-*`, and alarms will be in `siem_alarms`. You can view their content from Kibana or Dsiem web UI.
 
 #### Importing Kibana Dashboard
 

@@ -1,0 +1,14 @@
+filebeat.config.modules:
+  path: /usr/share/filebeat/modules.d/*.yml
+  reload.enabled: false
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+
+setup.template.overwrite: true
+setup.template.enabled: true
+setup.template.fields: /usr/share/filebeat/fields.yml
