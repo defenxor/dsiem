@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/sh
+command -v npm || { echo 'cannot find npm command in $PATH'; exit 1;}
+
 dir="ui"
 [ "$1" == "internal" ] && dir="${dir}-internal"
 cd web/$dir
