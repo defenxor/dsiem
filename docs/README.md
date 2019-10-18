@@ -14,3 +14,4 @@ Available topics are:
 * [Advanced Deployment](./adv_deployment.md)
 * [Dsiem Elasticsearch Indices](./es_indices.md)
 * [Notes on Security](./security.md)
+* [Elastic SIEM integration](./elastic_siem_integration.md)
