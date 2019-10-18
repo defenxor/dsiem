@@ -1,0 +1,13 @@
+module_version: 1.0
+
+var:
+  - name: paths
+    default:
+      - /tmp/siem_alarms.json
+    os.darwin:
+      - /var/log/dsiem/siem_alarms.json
+    os.windows:
+      - c:/programdata/dsiem/log/siem_alarms.json
+
+ingest_pipeline: ingest/pipeline.json
+input: config/alarm.yml

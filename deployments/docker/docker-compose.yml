@@ -3,7 +3,7 @@ services:
 
   elasticsearch:
     container_name: elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.1.1
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
     environment:
       - discovery.type=single-node
       - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
@@ -24,7 +24,7 @@ services:
 
   logstash:
     container_name: logstash
-    image: defenxor/docker-logstash:7.1.1
+    image: defenxor/docker-logstash:7.4.0
     command:
       - -f/etc/logstash/conf.d
     environment:
@@ -37,7 +37,7 @@ services:
 
   kibana:
     container_name: kibana
-    image: docker.elastic.co/kibana/kibana:7.1.1
+    image: docker.elastic.co/kibana/kibana:7.4.0
     environment:
       - XPACK_MONITORING_ENABLED=false
     ports:
@@ -60,7 +60,7 @@ services:
 
   filebeat:
     container_name: filebeat
-    image: docker.elastic.co/beats/filebeat:7.1.1
+    image: docker.elastic.co/beats/filebeat:7.4.0
     user: root
     networks:
       - siemnet
@@ -69,6 +69,20 @@ services:
       - ./conf/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
       - dsiem-log:/var/log/dsiem
       - suricata-log:/var/log/suricata
+
+  filebeat-es:
+    container_name: filebeat-es
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    user: root
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/filebeat-es/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./conf/filebeat-es/fields.yml:/usr/share/filebeat/fields.yml
+      - ./conf/filebeat-es/module:/usr/share/filebeat/module
+      - ./conf/filebeat-es/modules.d:/usr/share/filebeat/modules.d
+      - filebeat-es-data:/usr/share/filebeat/data
+      - dsiem-log:/var/log/dsiem
 
   suricata:
     container_name: suricata
@@ -83,6 +97,7 @@ services:
      - suricata-log:/var/log/suricata
 
 volumes:
+  filebeat-es-data:
   filebeat-data:
   es-data:
   dsiem-log:

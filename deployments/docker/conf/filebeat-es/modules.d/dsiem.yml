@@ -1,0 +1,5 @@
+- module: dsiem
+  alarm:
+    enabled: true
+    var.paths: 
+    - /var/log/dsiem/siem_alarms.json
