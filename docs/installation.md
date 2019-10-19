@@ -56,19 +56,27 @@ Then after you get a feel on how everything fits together, you can start integra
 
 * First make sure you're already familiar with how Dsiem architecture works by testing it using the Docker Compose method above. Also note that these steps are only tested against ELK version 6.4.2 and 6.8.0, though it should work with any 6.x version (or likely 7.x as well) with minor adjustment.
 
-* Download Dsiem binary from the release page, unzip it, and run it on the target system, e.g. for Linux (please use dsiem latest version accordingly for the download URL):
+* Download Dsiem latest binary release and unzip it to a dedicated directory. For instance, to install the Linux version into `/var/dsiem`:
 
     ```shell
 
-    $ [ "$EUID" -ne 0 ] && echo must be run as root! || (\
+    # [ "$EUID" -ne 0 ] && echo must be run as root! || (\
     export DSIEM_DIR=/var/dsiem && \
     mkdir -p $DSIEM_DIR && \
-    curl https://github.com/defenxor/dsiem/releases/download/v0.1.0/dsiem-server-linux-amd64.zip -O /tmp/ && \
-    unzip /tmp/dsiem-server-linux-amd64.zip -d $DSIEM_DIR && rm -rf /tmp/dsiem-server-linux-amd64.zip  && \
-    cd $DSIEM_DIR && \
-    ./dsiem serve)
+    wget https://github.com/defenxor/dsiem/releases/latest/download/dsiem-server_linux_amd64.zip -O /tmp/dsiem.zip && \
+    unzip /tmp/dsiem.zip -d $DSIEM_DIR && rm -rf /tmp/dsiem.zip  && \
+    cd $DSIEM_DIR
     
     ```
+* Let the web UI knows how to reach Elasticsearch and Kibana by entering their URLs into `/var/dsiem/web/dist/assets/config/esconfig.json`:
+
+  ```shell
+    $ cat esconfig.json
+    {
+      "elasticsearch": "http://elasticsearch:9200",
+      "kibana": "http://kibana:5601"
+    }
+  ```
 
 * Install the following plugin to your Logstash instance:
     * [logstash-filter-prune](https://www.elastic.co/guide/en/logstash/current/plugins-filters-prune.html)
@@ -87,7 +95,7 @@ Then after you get a feel on how everything fits together, you can start integra
   
     ```shell
 
-    $ [ "$EUID" -ne 0 ] && echo must be run as root! || ( \
+    # [ "$EUID" -ne 0 ] && echo must be run as root! || ( \
     cat <<EOF > /etc/systemd/system/dsiem.service 
     [Unit]
     Description=Dsiem
