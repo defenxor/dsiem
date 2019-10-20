@@ -2,7 +2,7 @@ version: 2
 jobs:
   build-cmd:
     docker:
-      - image: circleci/golang:1.12.5
+      - image: circleci/golang:1.13.1
         environment:
           GO111MODULE: "on"
           GOFLAGS: "-mod=vendor"
@@ -22,11 +22,8 @@ jobs:
           command: |
             go fmt ./...
             go vet ./...
-            # GOFLAGS=-mod= go get github.com/mattn/goveralls
             go test -v -cover -race -timeout=60s -coverprofile=./coverage.out $(go list ./...)
             bash <(curl -s https://codecov.io/bash)
-            # GOFLAGS=-mod= goveralls -coverprofile=./coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
-      # goveralls will ignore vendor dir and download stuff, so we cache its results here
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
@@ -37,7 +34,7 @@ jobs:
             - "/go/src"
   build-web:
     docker:
-      - image: circleci/node:8.12-browsers
+      - image: circleci/node:lts-browsers
     steps:
       - checkout
       - restore_cache:
@@ -46,7 +43,9 @@ jobs:
       - run:
           name: install deps
           command: | 
-            cd web/ui 
+            cd web/ui
+            rm -rf node_modules
+            npx npm-force-resolutions
             npm install
       - save_cache:
           key: node-mod-v1-{{ checksum "web/ui/package.json" }}
@@ -58,7 +57,6 @@ jobs:
           command: cd web/ui && npm run lint
       - run:
           name: Testing
-          # command: export COVERALLS_REPO_TOKEN=$COVERALLS_TOKEN && cd web/ui && npm run test
           command: cd web/ui && npm run test && bash <(curl -s https://codecov.io/bash)
       - run:
           name: build dist
@@ -72,7 +70,7 @@ jobs:
           paths: web/dist/*
   semantic-check:
     docker:
-      - image: circleci/node:8.12-browsers
+      - image: circleci/node:lts-browsers
     steps:
       - checkout
       - run:
@@ -89,7 +87,7 @@ jobs:
           paths: release_ver
   build-release:
     docker:
-      - image: circleci/golang:1.12.5
+      - image: circleci/golang:1.13.1
         environment:
           GO111MODULE: "on"
           GOFLAGS: "-mod=vendor"
@@ -127,7 +125,7 @@ jobs:
             - temp
   release-github:
     docker:
-      - image: circleci/node:8.12-browsers
+      - image: circleci/node:lts-browsers
     steps:
       - checkout
       - attach_workspace:
