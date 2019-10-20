@@ -156,7 +156,7 @@ var versionCmd = &cobra.Command{
 var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate directive files",
-	Long:  `Test loading and parsing directives from specified configuration files`,
+	Long:  `Test loading and parsing directives from configs directory`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Setup(viper.GetBool("debug"))
 		pattern := viper.GetString("filePattern")
@@ -165,9 +165,11 @@ var validateCmd = &cobra.Command{
 			exit("Cannot get current directory??", err)
 		}
 		confDir := path.Join(d, "configs")
-		_, _, err = siem.LoadDirectivesFromFile(confDir, pattern, false)
+		_, count, err := siem.LoadDirectivesFromFile(confDir, pattern, false)
 		if err != nil {
 			exit("Error occur", err)
+		} else {
+			fmt.Printf("found %d valid directive(s) in configs/%s\n", count, pattern)
 		}
 	},
 }
