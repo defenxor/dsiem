@@ -20,7 +20,6 @@ jobs:
       - run:
           name: run tests
           command: |
-            go fmt ./...
             go vet ./...
             go test -v -cover -race -timeout=60s -coverprofile=./coverage.out $(go list ./...)
             bash <(curl -s https://codecov.io/bash)
