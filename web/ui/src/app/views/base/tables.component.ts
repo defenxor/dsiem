@@ -126,12 +126,18 @@ export class TablesComponent {
   }
 
   async checkES(): Promise<boolean> {
+    const rgxp = this.url2obj(this.elasticsearch);
+    const protocol = rgxp.protocol;
+    const host = rgxp.host;
+    const username = rgxp.user ? ' as ' + rgxp.user : '';
+    const esurl = protocol+'://'+host;
+    
     try {
       await this.es.isAvailable();
-      this.alertBox.showAlert('Connected to ES ' + this.elasticsearch, 'success', true);
+      this.alertBox.showAlert('Connected to ES ' + esurl + username, 'success', true);
       return true;
     } catch (err) {
-      this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch, 'danger', true);
+      this.alertBox.showAlert('Disconnected from ES ' + esurl + username, 'danger', true);
       console.error('Elasticsearch is down:', err);
     }
     return false;
@@ -192,5 +198,19 @@ export class TablesComponent {
       this.spinner.hide();
       this.toggleCounter(savedCounterState);
     }
+  }
+
+  url2obj(url) {
+    var pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
+    var matches =  url.match(pattern);
+        
+    return {
+      protocol: matches[1],
+      user: matches[2] != undefined ? matches[2].split(':')[0] : undefined,
+      password: matches[2] != undefined ? matches[2].split(':')[1] : undefined,
+      host: matches[3],
+      hostname: matches[3] != undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
+      port: matches[3] != undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
+    };
   }
 }
