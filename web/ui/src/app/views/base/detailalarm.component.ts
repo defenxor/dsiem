@@ -82,7 +82,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       this.alertBox.showAlert('Connected to ES ' + esurl + username, 'success', true);
       return true;
     } catch (err) {
-      this.alertBox.showAlert('Disconnected from ES ' + esurl + username, 'danger', true);
+      this.alertBox.showAlert('Disconnected from ES ' + esurl, 'danger', true);
       console.error('Elasticsearch is down:', err);
     }
     return false;
