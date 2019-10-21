@@ -75,8 +75,8 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     const protocol = rgxp.protocol;
     const host = rgxp.host;
     const username = rgxp.user ? ' as ' + rgxp.user : '';
-    const esurl = protocol+'://'+host;
-    
+    const esurl = protocol + '://' + host;
+
     try {
       await this.es.isAvailable();
       this.alertBox.showAlert('Connected to ES ' + esurl + username, 'success', true);
@@ -319,16 +319,16 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   }
 
   url2obj(url) {
-    var pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
-    var matches =  url.match(pattern);
-        
+    const pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
+    const matches = url.match(pattern);
+
     return {
       protocol: matches[1],
-      user: matches[2] != undefined ? matches[2].split(':')[0] : undefined,
-      password: matches[2] != undefined ? matches[2].split(':')[1] : undefined,
+      user: matches[2] !== undefined ? matches[2].split(':')[0] : undefined,
+      password: matches[2] !== undefined ? matches[2].split(':')[1] : undefined,
       host: matches[3],
-      hostname: matches[3] != undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
-      port: matches[3] != undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
+      hostname: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
+      port: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
     };
   }
 
