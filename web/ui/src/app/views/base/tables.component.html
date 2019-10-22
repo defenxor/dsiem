@@ -58,50 +58,52 @@
               </div>
             </div>
           </div>
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>Alarm ID</th>
-                <th>Title</th>
-                <th>Created</th>
-                <th>Updated</th>
-                <th>Status</th>
-                <th>Risk</th>
-                <th>Tag</th>
-                <th>Sources</th>
-                <th>Destinations</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let alarm of tableData; let i=index">
-                <td>
-                  <a tooltip="Click to see alarm details" placement="bottom" style="cursor:pointer; color: #000000"
-                    [routerLink]="['/data/alarm-detail', alarm.id]">
-                    <i class="fa fa-eye"></i>
-                  </a>
-                  &nbsp;
-                  <a tooltip="Click to remove this row" placement="bottom" style="cursor:pointer; color: red"
-                    (click)="confirmBeforeRemove(alarm.id, i)">
-                    <i class="fa fa-trash"></i>
-                  </a>
-                </td>
-                <td>{{alarm.id}}</td>
-                <td>{{alarm.title}}</td>
-                <td>{{alarm.timestamp | amTimeAgo}}</td>
-                <td>{{alarm.updated_time | amTimeAgo}}</td>
-                <td>{{alarm.status}}</td>
-                <td>{{alarm.risk_class}}</td>
-                <td>{{alarm.tag}}</td>
-                <td>{{alarm.src_ips}}</td>
-                <td>
-                  <div *ngFor="let d of alarm.dst_ips">
-                    <span>{{d}}</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Alarm ID</th>
+                  <th>Title</th>
+                  <th>Created</th>
+                  <th>Updated</th>
+                  <th>Status</th>
+                  <th>Risk</th>
+                  <th>Tag</th>
+                  <th>Sources</th>
+                  <th>Destinations</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let alarm of tableData; let i=index">
+                  <td>
+                    <a tooltip="Click to see alarm details" placement="bottom" style="cursor:pointer; color: #000000"
+                      [routerLink]="['/data/alarm-detail', alarm.id]">
+                      <i class="fa fa-eye"></i>
+                    </a>
+                    &nbsp;
+                    <a tooltip="Click to remove this row" placement="bottom" style="cursor:pointer; color: red"
+                      (click)="confirmBeforeRemove(alarm.id, i)">
+                      <i class="fa fa-trash"></i>
+                    </a>
+                  </td>
+                  <td>{{alarm.id}}</td>
+                  <td>{{alarm.title}}</td>
+                  <td>{{alarm.timestamp | amTimeAgo}}</td>
+                  <td>{{alarm.updated_time | amTimeAgo}}</td>
+                  <td>{{alarm.status}}</td>
+                  <td>{{alarm.risk_class}}</td>
+                  <td>{{alarm.tag}}</td>
+                  <td>{{alarm.src_ips}}</td>
+                  <td>
+                    <div *ngFor="let d of alarm.dst_ips">
+                      <span>{{d}}</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <label *ngIf="tableData.length==0">No records found.</label>
         </div>
       </div>
