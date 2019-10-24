@@ -63,6 +63,8 @@ func TestBacklogMgr(t *testing.T) {
 	apm.Enable(true)
 
 	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
+	fWriter.Init(tmpLog, 10)
+
 	cleanUp := func() {
 		_ = os.Remove(tmpLog)
 	}
@@ -143,16 +145,18 @@ func TestBacklogMgr(t *testing.T) {
 	e.EventID = "2"
 	verifyEventOutput(t, e, ch, "backlog updating")
 
-	fmt.Print("3rd event, will also fail updating ES ..")
+	/*
+		fmt.Print("3rd event, will also fail updating ES ..")
+		e.ConnID = 3
+		e.EventID = "3"
+		// bLogFile = ""
+		verifyEventOutput(t, e, ch, "failed to update Elasticsearch")
+		// bLogFile = tmpLog
+	*/
+	fmt.Print("third event ..")
 	e.ConnID = 3
 	e.EventID = "3"
-	bLogFileMutex.Lock()
-	bLogFile = ""
-	bLogFileMutex.Unlock()
-	verifyEventOutput(t, e, ch, "failed to update Elasticsearch")
-	bLogFileMutex.Lock()
-	bLogFile = tmpLog
-	bLogFileMutex.Unlock()
+	verifyEventOutput(t, e, ch, "backlog updating")
 
 	fmt.Print("4th event ..")
 	e.ConnID = 4
@@ -181,11 +185,12 @@ func TestBacklogMgr(t *testing.T) {
 	verifyEventOutput(t, e, ch, "skipping backlog creation for event")
 
 	// will not match rule nor existing backlogs
+	/// no text will be shown as it is rejected by QuickCheckPluginRule
 	fmt.Print("7th event ..")
 	e.PluginSID = 31337
 	e.ConnID = 7
 	e.EventID = "7"
-	verifyEventOutput(t, e, ch, "backlog doeseventmatch false")
+	verifyEventOutput(t, e, ch, "")
 
 	var blID string
 	for k := range allBacklogs[0].bl {
