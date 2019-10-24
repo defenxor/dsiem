@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -31,6 +32,7 @@ import (
 var goRoutineCounter = expvar.NewInt("goroutine_counter")
 var epsCounter *expvar.Int
 var alarmCounter *expvar.Int
+var backlogCounter *expvar.Int
 
 // Init starts the counters
 func Init(mode string) {
@@ -43,6 +45,9 @@ func Init(mode string) {
 	if mode == "standalone" || mode == "cluster-backend" {
 		if alarmCounter == nil {
 			alarmCounter = expvar.NewInt("alarm_counter")
+		}
+		if backlogCounter == nil {
+			backlogCounter = expvar.NewInt("backlog_counter")
 		}
 	}
 	go startTicker(mode, false)
@@ -57,22 +62,27 @@ func startTicker(mode string, once bool) {
 		// start first counting 5 seconds later to avoid data race with server
 		time.Sleep(5 * time.Second)
 	}
+	countGoroutine() // not used in the loop for now
+	countAlarm()     // same as countGoroutine
 	for {
-		var a, e, m string
+		var e, b, m string
 		<-ticker.C
-		countGoroutine()
+		// g = countGoroutine()
 		switch {
 		case mode == "standalone":
-			a = countAlarm()
+			// a = countAlarm()
 			e = countEPS()
-			m = "# of alarms: " + a + " events/sec: " + e
+			b = countBacklogs()
+			m = "# of " + b + " events/sec: " + e
 		case mode == "cluster-frontend":
 			e = countEPS()
 			m = "events/sec: " + e
 		case mode == "cluster-backend":
-			a = countAlarm()
-			m = "# of alarms: " + a
+			// a = countAlarm()
+			b = countBacklogs()
+			m = "# of " + b
 		}
+		// m = m + " goroutines: " + g
 		log.Info(log.M{Msg: "Watchdog tick ended, " + m})
 		if once {
 			return
@@ -90,6 +100,14 @@ func countAlarm() string {
 	a := alarm.Count()
 	alarmCounter.Set(int64(a))
 	return strconv.Itoa(a)
+}
+
+func countBacklogs() string {
+	b, act, ttl := siem.CountBackLogs()
+	backlogCounter.Set(int64(b))
+	return "backlogs: " +
+		strconv.Itoa(b) + " directives (in-use/total): " + strconv.Itoa(act) + "/" +
+		strconv.Itoa(ttl)
 }
 
 func countEPS() (res string) {

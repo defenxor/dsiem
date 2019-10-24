@@ -192,6 +192,11 @@ func TestBacklogMgr(t *testing.T) {
 	e.EventID = "7"
 	verifyEventOutput(t, e, ch, "")
 
+	sum, act, ttl := CountBackLogs()
+	if sum != 2 || act != 1 || ttl != 1 {
+		t.Fatalf("sum|act|ttl is incorrect. Found: %d %d %d", sum, act, ttl)
+	}
+
 	var blID string
 	for k := range allBacklogs[0].bl {
 		blID = k

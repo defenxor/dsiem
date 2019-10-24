@@ -82,8 +82,10 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 			}
 		}
 	}()
+
 	// get a merged channel consisting of true signal from all
 	// backlogs
+
 	out := merge()
 	for range out {
 		// set the timer again
@@ -114,12 +116,27 @@ func merge() <-chan bool {
 	return out
 }
 
+// CountBackLogs returns the number of active backlogs
+func CountBackLogs() (sum int, activeDirectives int, ttlDirectives int) {
+	ttlDirectives = len(allBacklogs)
+	for i := range allBacklogs {
+		l := allBacklogs[i].RLock()
+		nBlogs := len(allBacklogs[i].bl)
+		sum += nBlogs
+		if nBlogs > 0 {
+			activeDirectives++
+		}
+		l.Unlock()
+	}
+	return
+}
+
 func (blogs *backlogs) manager(d Directive, ch <-chan event.NormalizedEvent, minAlarmLifetime int) {
 
 mainLoop:
 	for {
 		evt := <-ch
-
+		
 		var tx *apm.Transaction
 		if apm.Enabled() {
 			if evt.RcvdTime == 0 {
@@ -134,12 +151,10 @@ mainLoop:
 
 		found := false
 		l := blogs.RLock() // to prevent concurrent r/w with delete()
-		// TODO:
-		// maybe check event against all rules here, if non match then continue
-		// this will avoid checking against all backlogs which could be in 1000s compared to
-		// # of rules which in the 10s
+
 		wg := &sync.WaitGroup{}
 
+		// todo this should use channel and send to all at once concurrently
 		for k := range blogs.bl {
 			wg.Add(1)
 			go func(k string) {
