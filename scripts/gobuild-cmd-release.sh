@@ -22,18 +22,20 @@ for os in $goos; do
   for c in $cmd; do
     [ ! -d $c ] && echo $c directory doesnt exist, skipping. && continue
     n=$(basename $c)
+    [ "$os" != "linux" ] && [ "$n" == "dsiem" ] && continue
     [ "$os" == "windows" ] && n="${n}.exe"
     echo building $c ver=${ver} buildtime=${now} for $os: $n ..
     GOFLAGS="-mod=vendor" CGO_ENABLED=0 GOOS=$os GOARCH=amd64 \
     go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c || exit 1
   done
 
+  mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/ || exit 1
+  cp -r ./configs ./LICENSE ./README.md $bdir/
+  cd $bdir
+  
   # release only the linux version of the server, there's no testing environment for Win/OSX version for this
   # and we use drwmutex that only supports Linux
   if [ "$os" = "linux" ]; then
-    mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/ || exit 1
-    cp -r ./configs ./LICENSE ./README.md $bdir/
-    cd $bdir
     zname="$rdir/dsiem-server_${os}_amd64.zip"
     echo "creating $zname .."
     dsiembin="dsiem"
