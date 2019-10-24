@@ -6,8 +6,9 @@ image: Visual Studio 2015
 # Environment variables
 environment:
   GOPATH: c:\gopath
-  GVM_GO_VERSION: 1.9.3
-  GVM_DL: https://github.com/andrewkroh/gvm/releases/download/v0.0.5/gvm-windows-amd64.exe
+  GO111MODULE: on
+  GVM_GO_VERSION: 1.12.4
+  GVM_DL: https://github.com/andrewkroh/gvm/releases/download/v0.2.0/gvm-windows-amd64.exe
 
 # Custom clone folder (variables are not expanded here).
 clone_folder: c:\gopath\src\github.com\elastic\go-windows
@@ -31,10 +32,12 @@ install:
   - set PATH=%GOPATH%\bin;%PATH%
   - go version
   - go env
+  - cmd /C "set ""GO111MODULE=off"" && go get github.com/elastic/go-licenser"
   - python --version
 
 before_build:
-- go run .ci/scripts/check_copyright.go .
+- go mod verify
+- go-licenser -d
 - go run .ci/scripts/check_format.go
 - go run .ci/scripts/check_lint.go
 
@@ -42,7 +45,6 @@ build_script:
   # Compile
   - appveyor AddCompilationMessage "Starting Compile"
   - cd c:\gopath\src\github.com\elastic\go-windows
-  - go get -v -t -d ./...
   - go build
   - appveyor AddCompilationMessage "Compile Success"
 

@@ -104,5 +104,6 @@ func splitHost(in string) (host, port string) {
 
 func truncateString(s string) string {
 	// At the time of writing, all length limits are 1024.
-	return apmstrings.Truncate(s, 1024)
+	s, _ = apmstrings.Truncate(s, 1024)
+	return s
 }

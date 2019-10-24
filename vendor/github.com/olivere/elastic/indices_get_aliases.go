@@ -7,6 +7,7 @@ package elastic
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -15,12 +16,18 @@ import (
 
 // AliasesService returns the aliases associated with one or more indices, or the
 // indices associated with one or more aliases, or a combination of those filters.
-// See http://www.elastic.co/guide/en/elasticsearch/reference/6.2/indices-aliases.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.8/indices-aliases.html.
 type AliasesService struct {
 	client *Client
-	index  []string
-	alias  []string
-	pretty bool
+
+	pretty     *bool       // pretty format the returned JSON response
+	human      *bool       // return human readable values for statistics
+	errorTrace *bool       // include the stack trace of returned errors
+	filterPath []string    // list of filters used to reduce the response
+	headers    http.Header // custom request-level HTTP headers
+
+	index []string
+	alias []string
 }
 
 // NewAliasesService instantiates a new AliasesService.
@@ -31,9 +38,43 @@ func NewAliasesService(client *Client) *AliasesService {
 	return builder
 }
 
-// Pretty asks Elasticsearch to indent the returned JSON.
+// Pretty tells Elasticsearch whether to return a formatted JSON response.
 func (s *AliasesService) Pretty(pretty bool) *AliasesService {
-	s.pretty = pretty
+	s.pretty = &pretty
+	return s
+}
+
+// Human specifies whether human readable values should be returned in
+// the JSON response, e.g. "7.5mb".
+func (s *AliasesService) Human(human bool) *AliasesService {
+	s.human = &human
+	return s
+}
+
+// ErrorTrace specifies whether to include the stack trace of returned errors.
+func (s *AliasesService) ErrorTrace(errorTrace bool) *AliasesService {
+	s.errorTrace = &errorTrace
+	return s
+}
+
+// FilterPath specifies a list of filters used to reduce the response.
+func (s *AliasesService) FilterPath(filterPath ...string) *AliasesService {
+	s.filterPath = filterPath
+	return s
+}
+
+// Header adds a header to the request.
+func (s *AliasesService) Header(name string, value string) *AliasesService {
+	if s.headers == nil {
+		s.headers = http.Header{}
+	}
+	s.headers.Add(name, value)
+	return s
+}
+
+// Headers specifies the headers of the request.
+func (s *AliasesService) Headers(headers http.Header) *AliasesService {
+	s.headers = headers
 	return s
 }
 
@@ -71,8 +112,17 @@ func (s *AliasesService) buildURL() (string, url.Values, error) {
 
 	// Add query string parameters
 	params := url.Values{}
-	if s.pretty {
-		params.Set("pretty", fmt.Sprintf("%v", s.pretty))
+	if v := s.pretty; v != nil {
+		params.Set("pretty", fmt.Sprint(*v))
+	}
+	if v := s.human; v != nil {
+		params.Set("human", fmt.Sprint(*v))
+	}
+	if v := s.errorTrace; v != nil {
+		params.Set("error_trace", fmt.Sprint(*v))
+	}
+	if len(s.filterPath) > 0 {
+		params.Set("filter_path", strings.Join(s.filterPath, ","))
 	}
 	return path, params, nil
 }
@@ -85,9 +135,10 @@ func (s *AliasesService) Do(ctx context.Context) (*AliasesResult, error) {
 
 	// Get response
 	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
-		Method: "GET",
-		Path:   path,
-		Params: params,
+		Method:  "GET",
+		Path:    path,
+		Params:  params,
+		Headers: s.headers,
 	})
 	if err != nil {
 		return nil, err
@@ -104,7 +155,11 @@ func (s *AliasesService) Do(ctx context.Context) (*AliasesResult, error) {
 	//     ...
 	//   },
 	// }
-	indexMap := make(map[string]interface{})
+	indexMap := make(map[string]struct {
+		Aliases map[string]struct {
+			IsWriteIndex bool `json:"is_write_index"`
+		} `json:"aliases"`
+	})
 	if err := s.client.decoder.Decode(res.Body, &indexMap); err != nil {
 		return nil, err
 	}
@@ -114,21 +169,19 @@ func (s *AliasesService) Do(ctx context.Context) (*AliasesResult, error) {
 		Indices: make(map[string]indexResult),
 	}
 	for indexName, indexData := range indexMap {
+		if indexData.Aliases == nil {
+			continue
+		}
+
 		indexOut, found := ret.Indices[indexName]
 		if !found {
 			indexOut = indexResult{Aliases: make([]aliasResult, 0)}
 		}
 
 		// { "aliases" : { ... } }
-		indexDataMap, ok := indexData.(map[string]interface{})
-		if ok {
-			aliasesData, ok := indexDataMap["aliases"].(map[string]interface{})
-			if ok {
-				for aliasName, _ := range aliasesData {
-					aliasRes := aliasResult{AliasName: aliasName}
-					indexOut.Aliases = append(indexOut.Aliases, aliasRes)
-				}
-			}
+		for aliasName, aliasData := range indexData.Aliases {
+			aliasRes := aliasResult{AliasName: aliasName, IsWriteIndex: aliasData.IsWriteIndex}
+			indexOut.Aliases = append(indexOut.Aliases, aliasRes)
 		}
 
 		ret.Indices[indexName] = indexOut
@@ -139,6 +192,7 @@ func (s *AliasesService) Do(ctx context.Context) (*AliasesResult, error) {
 
 // -- Result of an alias request.
 
+// AliasesResult is the outcome of calling AliasesService.Do.
 type AliasesResult struct {
 	Indices map[string]indexResult
 }
@@ -148,9 +202,11 @@ type indexResult struct {
 }
 
 type aliasResult struct {
-	AliasName string
+	AliasName    string
+	IsWriteIndex bool
 }
 
+// IndicesByAlias returns all indices given a specific alias name.
 func (ar AliasesResult) IndicesByAlias(aliasName string) []string {
 	var indices []string
 	for indexName, indexInfo := range ar.Indices {
@@ -163,6 +219,7 @@ func (ar AliasesResult) IndicesByAlias(aliasName string) []string {
 	return indices
 }
 
+// HasAlias returns true if the index has a specific alias.
 func (ir indexResult) HasAlias(aliasName string) bool {
 	for _, alias := range ir.Aliases {
 		if alias.AliasName == aliasName {

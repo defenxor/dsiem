@@ -197,6 +197,7 @@ Here are a few tips on how to get used to Elastic:
 - Bucket Aggregations
   - [x] Adjacency Matrix
   - [x] Children
+  - [x] Auto-interval Date Histogram
   - [x] Date Histogram
   - [x] Date Range
   - [x] Diversified Sampler
@@ -264,16 +265,27 @@ Here are a few tips on how to get used to Elastic:
 - [x] Refresh
 - [x] Force Merge
 
+### Index Lifecycle Management APIs
+
+- [x] Create Policy
+- [x] Get Policy
+- [x] Delete Policy
+- [ ] Move to Step
+- [ ] Remove Policy
+- [ ] Retry Policy
+- [ ] Get Ilm Status
+- [ ] Explain Lifecycle
+- [ ] Start Ilm
+- [ ] Stop Ilm
+
 ### cat APIs
 
-The cat APIs are not implemented as of now. We think they are better suited for operating with Elasticsearch on the command line.
-
-- [ ] cat aliases
-- [ ] cat allocation
-- [ ] cat count
+- [X] cat aliases
+- [X] cat allocation
+- [X] cat count
 - [ ] cat fielddata
-- [ ] cat health
-- [ ] cat indices
+- [X] cat health
+- [X] cat indices
 - [ ] cat master
 - [ ] cat nodeattrs
 - [ ] cat nodes
@@ -344,8 +356,10 @@ The cat APIs are not implemented as of now. We think they are better suited for 
   - [x] Geo Distance Query
   - [x] Geo Polygon Query
 - Specialized queries
+  - [x] Distance Feature Query
   - [x] More Like This Query
   - [x] Script Query
+  - [x] Script Score Query
   - [x] Percolate Query
 - Span queries
   - [ ] Span Term Query

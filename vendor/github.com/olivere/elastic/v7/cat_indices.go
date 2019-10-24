@@ -7,6 +7,7 @@ package elastic
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -19,8 +20,13 @@ import (
 // See https://www.elastic.co/guide/en/elasticsearch/reference/7.0/cat-indices.html
 // for details.
 type CatIndicesService struct {
-	client        *Client
-	pretty        bool
+	client *Client
+
+	pretty     *bool    // pretty format the returned JSON response
+	human      *bool    // return human readable values for statistics
+	errorTrace *bool    // include the stack trace of returned errors
+	filterPath []string // list of filters used to reduce the response
+
 	index         string
 	bytes         string // b, k, m, or g
 	local         *bool
@@ -29,6 +35,7 @@ type CatIndicesService struct {
 	health        string   // green, yellow, or red
 	primaryOnly   *bool    // true for primary shards only
 	sort          []string // list of columns for sort order
+	headers       http.Header
 }
 
 // NewCatIndicesService creates a new CatIndicesService.
@@ -36,6 +43,46 @@ func NewCatIndicesService(client *Client) *CatIndicesService {
 	return &CatIndicesService{
 		client: client,
 	}
+}
+
+// Pretty tells Elasticsearch whether to return a formatted JSON response.
+func (s *CatIndicesService) Pretty(pretty bool) *CatIndicesService {
+	s.pretty = &pretty
+	return s
+}
+
+// Human specifies whether human readable values should be returned in
+// the JSON response, e.g. "7.5mb".
+func (s *CatIndicesService) Human(human bool) *CatIndicesService {
+	s.human = &human
+	return s
+}
+
+// ErrorTrace specifies whether to include the stack trace of returned errors.
+func (s *CatIndicesService) ErrorTrace(errorTrace bool) *CatIndicesService {
+	s.errorTrace = &errorTrace
+	return s
+}
+
+// FilterPath specifies a list of filters used to reduce the response.
+func (s *CatIndicesService) FilterPath(filterPath ...string) *CatIndicesService {
+	s.filterPath = filterPath
+	return s
+}
+
+// Header adds a header to the request.
+func (s *CatIndicesService) Header(name string, value string) *CatIndicesService {
+	if s.headers == nil {
+		s.headers = http.Header{}
+	}
+	s.headers.Add(name, value)
+	return s
+}
+
+// Headers specifies the headers of the request.
+func (s *CatIndicesService) Headers(headers http.Header) *CatIndicesService {
+	s.headers = headers
+	return s
 }
 
 // Index is the name of the index to list (by default all indices are returned).
@@ -97,12 +144,6 @@ func (s *CatIndicesService) Sort(fields ...string) *CatIndicesService {
 	return s
 }
 
-// Pretty indicates that the JSON response be indented and human readable.
-func (s *CatIndicesService) Pretty(pretty bool) *CatIndicesService {
-	s.pretty = pretty
-	return s
-}
-
 // buildURL builds the URL for the operation.
 func (s *CatIndicesService) buildURL() (string, url.Values, error) {
 	// Build URL
@@ -126,8 +167,17 @@ func (s *CatIndicesService) buildURL() (string, url.Values, error) {
 	params := url.Values{
 		"format": []string{"json"}, // always returns as JSON
 	}
-	if s.pretty {
-		params.Set("pretty", "true")
+	if v := s.pretty; v != nil {
+		params.Set("pretty", fmt.Sprint(*v))
+	}
+	if v := s.human; v != nil {
+		params.Set("human", fmt.Sprint(*v))
+	}
+	if v := s.errorTrace; v != nil {
+		params.Set("error_trace", fmt.Sprint(*v))
+	}
+	if len(s.filterPath) > 0 {
+		params.Set("filter_path", strings.Join(s.filterPath, ","))
 	}
 	if s.bytes != "" {
 		params.Set("bytes", s.bytes)
@@ -163,9 +213,10 @@ func (s *CatIndicesService) Do(ctx context.Context) (CatIndicesResponse, error) 
 
 	// Get HTTP response
 	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
-		Method: "GET",
-		Path:   path,
-		Params: params,
+		Method:  "GET",
+		Path:    path,
+		Params:  params,
+		Headers: s.headers,
 	})
 	if err != nil {
 		return nil, err
@@ -219,8 +270,8 @@ type CatIndicesResponseRow struct {
 	PriRequestCacheHitCount      int    `json:"pri.request_cache.hit_count,string"`  // request cache hit count on primaries
 	RequestCacheMissCount        int    `json:"request_cache.miss_count,string"`     // request cache miss count on primaries & replicas
 	PriRequestCacheMissCount     int    `json:"pri.request_cache.miss_count,string"` // request cache miss count on primaries
-	FlushTotal                   int    `json:"flush.total"`                         // number of flushes on primaries & replicas
-	PriFlushTotal                int    `json:"pri.flush.total"`                     // number of flushes on primaries
+	FlushTotal                   int    `json:"flush.total,string"`                  // number of flushes on primaries & replicas
+	PriFlushTotal                int    `json:"pri.flush.total,string"`              // number of flushes on primaries
 	FlushTotalTime               string `json:"flush.total_time"`                    // time spent in flush on primaries & replicas
 	PriFlushTotalTime            string `json:"pri.flush.total_time"`                // time spent in flush on primaries
 	GetCurrent                   int    `json:"get.current,string"`                  // number of current get ops on primaries & replicas
@@ -267,8 +318,12 @@ type CatIndicesResponseRow struct {
 	PriMergesTotalTime           string `json:"pri.merges.total_time"`               // time spent in merges on primaries
 	RefreshTotal                 int    `json:"refresh.total,string"`                // total refreshes on primaries & replicas
 	PriRefreshTotal              int    `json:"pri.refresh.total,string"`            // total refreshes on primaries
+	RefreshExternalTotal         int    `json:"refresh.external_total,string"`       // total external refreshes on primaries & replicas
+	PriRefreshExternalTotal      int    `json:"pri.refresh.external_total,string"`   // total external refreshes on primaries
 	RefreshTime                  string `json:"refresh.time"`                        // time spent in refreshes on primaries & replicas
 	PriRefreshTime               string `json:"pri.refresh.time"`                    // time spent in refreshes on primaries
+	RefreshExternalTime          string `json:"refresh.external_time"`               // external time spent in refreshes on primaries & replicas
+	PriRefreshExternalTime       string `json:"pri.refresh.external_time"`           // external time spent in refreshes on primaries
 	RefreshListeners             int    `json:"refresh.listeners,string"`            // number of pending refresh listeners on primaries & replicas
 	PriRefreshListeners          int    `json:"pri.refresh.listeners,string"`        // number of pending refresh listeners on primaries
 	SearchFetchCurrent           int    `json:"search.fetch_current,string"`         // current fetch phase ops on primaries & replicas
@@ -291,6 +346,7 @@ type CatIndicesResponseRow struct {
 	PriSearchScrollTime          string `json:"pri.search.scroll_time"`              // time scroll contexts held open on primaries, e.g. "0s"
 	SearchScrollTotal            int    `json:"search.scroll_total,string"`          // completed scroll contexts on primaries & replicas
 	PriSearchScrollTotal         int    `json:"pri.search.scroll_total,string"`      // completed scroll contexts on primaries
+	SearchThrottled              bool   `json:"search.throttled,string"`             // indicates if the index is search throttled
 	SegmentsCount                int    `json:"segments.count,string"`               // number of segments on primaries & replicas
 	PriSegmentsCount             int    `json:"pri.segments.count,string"`           // number of segments on primaries
 	SegmentsMemory               string `json:"segments.memory"`                     // memory used by segments on primaries & replicas, e.g. "1.3kb"
@@ -301,8 +357,8 @@ type CatIndicesResponseRow struct {
 	PriSegmentsVersionMapMemory  string `json:"pri.segments.version_map_memory"`     // memory used by version map on primaries, e.g. "0b"
 	SegmentsFixedBitsetMemory    string `json:"segments.fixed_bitset_memory"`        // memory used by fixed bit sets for nested object field types and type filters for types referred in _parent fields on primaries & replicas, e.g. "0b"
 	PriSegmentsFixedBitsetMemory string `json:"pri.segments.fixed_bitset_memory"`    // memory used by fixed bit sets for nested object field types and type filters for types referred in _parent fields on primaries, e.g. "0b"
-	WarmerCurrent                int    `json:"warmer.count,string"`                 // current warmer ops on primaries & replicas
-	PriWarmerCurrent             int    `json:"pri.warmer.count,string"`             // current warmer ops on primaries
+	WarmerCurrent                int    `json:"warmer.current,string"`               // current warmer ops on primaries & replicas
+	PriWarmerCurrent             int    `json:"pri.warmer.current,string"`           // current warmer ops on primaries
 	WarmerTotal                  int    `json:"warmer.total,string"`                 // total warmer ops on primaries & replicas
 	PriWarmerTotal               int    `json:"pri.warmer.total,string"`             // total warmer ops on primaries
 	WarmerTotalTime              string `json:"warmer.total_time"`                   // time spent in warmers on primaries & replicas, e.g. "47s"

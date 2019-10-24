@@ -6,6 +6,8 @@ deploy: off
 environment:
   PATH: C:\msys64\mingw64\bin;%PATH%
   GOPATH: C:\gopath
+  GO111MODULE: on
+  GOPROXY: https://proxy.golang.org
 
 build_script:
 - cmd: go get -t ./...

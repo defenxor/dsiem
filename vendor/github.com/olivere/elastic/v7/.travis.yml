@@ -1,9 +1,9 @@
 sudo: required
 language: go
 go:
-- "1.11.x"
 - "1.12.x"
-# - tip
+- "1.13.x"
+- tip
 matrix:
   allow_failures:
   - go: tip
@@ -11,7 +11,6 @@ env:
 - GO111MODULE=on
 - GO111MODULE=off
 addons:
-  ssh_known_hosts: github.com
   apt:
     update: true
     packages:
@@ -21,7 +20,6 @@ services:
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" && ! $(which nc) ]] ; then sudo apt-get install -y netcat ; fi
 - sudo sysctl -w vm.max_map_count=262144
-# - docker run -d --rm -p 9200:9200  -e "http.host=0.0.0.0" -e "transport.host=127.0.0.1" -e "bootstrap.memory_lock=true" -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" docker.elastic.co/elasticsearch/elasticsearch:7.1.0 elasticsearch -Enetwork.host=_local_,_site_ -Enetwork.publish_host=_local_
 - docker-compose pull
 - docker-compose up -d
 - go get -u github.com/google/go-cmp/cmp
@@ -31,4 +29,4 @@ before_install:
 - while ! nc -z localhost 9210; do sleep 1; done
 install: true # ignore the go get -t -v ./...
 script:
-- go test -race -v . ./aws/... ./config/... ./trace/... ./uritemplates/...
+- go test -race -deprecations -strict-decoder -v . ./aws/... ./config/... ./trace/... ./uritemplates/...

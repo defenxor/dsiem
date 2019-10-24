@@ -27,8 +27,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"go.elastic.co/apm/internal/apmconfig"
+	"go.elastic.co/apm/internal/configutil"
 	"go.elastic.co/apm/internal/wildcard"
+	"go.elastic.co/apm/model"
 )
 
 const (
@@ -48,27 +49,32 @@ const (
 	envAPIBufferSize         = "ELASTIC_APM_API_BUFFER_SIZE"
 	envMetricsBufferSize     = "ELASTIC_APM_METRICS_BUFFER_SIZE"
 	envDisableMetrics        = "ELASTIC_APM_DISABLE_METRICS"
+	envGlobalLabels          = "ELASTIC_APM_GLOBAL_LABELS"
+	envStackTraceLimit       = "ELASTIC_APM_STACK_TRACE_LIMIT"
+	envCentralConfig         = "ELASTIC_APM_CENTRAL_CONFIG"
+	envBreakdownMetrics      = "ELASTIC_APM_BREAKDOWN_METRICS"
 
-	defaultAPIRequestSize        = 750 * apmconfig.KByte
+	defaultAPIRequestSize        = 750 * configutil.KByte
 	defaultAPIRequestTime        = 10 * time.Second
-	defaultAPIBufferSize         = 1 * apmconfig.MByte
-	defaultMetricsBufferSize     = 100 * apmconfig.KByte
+	defaultAPIBufferSize         = 1 * configutil.MByte
+	defaultMetricsBufferSize     = 750 * configutil.KByte
 	defaultMetricsInterval       = 30 * time.Second
 	defaultMaxSpans              = 500
 	defaultCaptureHeaders        = true
 	defaultCaptureBody           = CaptureBodyOff
 	defaultSpanFramesMinDuration = 5 * time.Millisecond
+	defaultStackTraceLimit       = 50
 
-	minAPIBufferSize     = 10 * apmconfig.KByte
-	maxAPIBufferSize     = 100 * apmconfig.MByte
-	minAPIRequestSize    = 1 * apmconfig.KByte
-	maxAPIRequestSize    = 5 * apmconfig.MByte
-	minMetricsBufferSize = 10 * apmconfig.KByte
-	maxMetricsBufferSize = 100 * apmconfig.MByte
+	minAPIBufferSize     = 10 * configutil.KByte
+	maxAPIBufferSize     = 100 * configutil.MByte
+	minAPIRequestSize    = 1 * configutil.KByte
+	maxAPIRequestSize    = 5 * configutil.MByte
+	minMetricsBufferSize = 10 * configutil.KByte
+	maxMetricsBufferSize = 100 * configutil.MByte
 )
 
 var (
-	defaultSanitizedFieldNames = apmconfig.ParseWildcardPatterns(strings.Join([]string{
+	defaultSanitizedFieldNames = configutil.ParseWildcardPatterns(strings.Join([]string{
 		"password",
 		"passwd",
 		"pwd",
@@ -81,18 +87,33 @@ var (
 		"authorization",
 		"set-cookie",
 	}, ","))
+
+	globalLabels = func() model.StringMap {
+		var labels model.StringMap
+		for _, kv := range configutil.ParseListEnv(envGlobalLabels, ",", nil) {
+			i := strings.IndexRune(kv, '=')
+			if i > 0 {
+				k, v := strings.TrimSpace(kv[:i]), strings.TrimSpace(kv[i+1:])
+				labels = append(labels, model.StringMapItem{
+					Key:   cleanTagKey(k),
+					Value: truncateString(v),
+				})
+			}
+		}
+		return labels
+	}()
 )
 
 func initialRequestDuration() (time.Duration, error) {
-	return apmconfig.ParseDurationEnv(envAPIRequestTime, defaultAPIRequestTime)
+	return configutil.ParseDurationEnv(envAPIRequestTime, defaultAPIRequestTime)
 }
 
 func initialMetricsInterval() (time.Duration, error) {
-	return apmconfig.ParseDurationEnv(envMetricsInterval, defaultMetricsInterval)
+	return configutil.ParseDurationEnv(envMetricsInterval, defaultMetricsInterval)
 }
 
 func initialMetricsBufferSize() (int, error) {
-	size, err := apmconfig.ParseSizeEnv(envMetricsBufferSize, defaultMetricsBufferSize)
+	size, err := configutil.ParseSizeEnv(envMetricsBufferSize, defaultMetricsBufferSize)
 	if err != nil {
 		return 0, err
 	}
@@ -106,7 +127,7 @@ func initialMetricsBufferSize() (int, error) {
 }
 
 func initialAPIBufferSize() (int, error) {
-	size, err := apmconfig.ParseSizeEnv(envAPIBufferSize, defaultAPIBufferSize)
+	size, err := configutil.ParseSizeEnv(envAPIBufferSize, defaultAPIBufferSize)
 	if err != nil {
 		return 0, err
 	}
@@ -120,7 +141,7 @@ func initialAPIBufferSize() (int, error) {
 }
 
 func initialAPIRequestSize() (int, error) {
-	size, err := apmconfig.ParseSizeEnv(envAPIRequestSize, defaultAPIRequestSize)
+	size, err := configutil.ParseSizeEnv(envAPIRequestSize, defaultAPIRequestSize)
 	if err != nil {
 		return 0, err
 	}
@@ -148,28 +169,33 @@ func initialMaxSpans() (int, error) {
 // initialSampler returns a nil Sampler if all transactions should be sampled.
 func initialSampler() (Sampler, error) {
 	value := os.Getenv(envTransactionSampleRate)
-	if value == "" || value == "1.0" {
-		return nil, nil
+	return parseSampleRate(envTransactionSampleRate, value)
+}
+
+// parseSampleRate parses a numeric sampling rate in the range [0,1.0], returning a Sampler.
+func parseSampleRate(name, value string) (Sampler, error) {
+	if value == "" {
+		value = "1"
 	}
 	ratio, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse %s", envTransactionSampleRate)
+		return nil, errors.Wrapf(err, "failed to parse %s", name)
 	}
 	if ratio < 0.0 || ratio > 1.0 {
 		return nil, errors.Errorf(
-			"invalid %s value %s: out of range [0,1.0]",
-			envTransactionSampleRate, value,
+			"invalid value for %s: %s (out of range [0,1.0])",
+			name, value,
 		)
 	}
 	return NewRatioSampler(ratio), nil
 }
 
 func initialSanitizedFieldNames() wildcard.Matchers {
-	return apmconfig.ParseWildcardPatternsEnv(envSanitizeFieldNames, defaultSanitizedFieldNames)
+	return configutil.ParseWildcardPatternsEnv(envSanitizeFieldNames, defaultSanitizedFieldNames)
 }
 
 func initialCaptureHeaders() (bool, error) {
-	return apmconfig.ParseBoolEnv(envCaptureHeaders, defaultCaptureHeaders)
+	return configutil.ParseBoolEnv(envCaptureHeaders, defaultCaptureHeaders)
 }
 
 func initialCaptureBody() (CaptureBodyMode, error) {
@@ -205,13 +231,33 @@ func initialService() (name, version, environment string) {
 }
 
 func initialSpanFramesMinDuration() (time.Duration, error) {
-	return apmconfig.ParseDurationEnv(envSpanFramesMinDuration, defaultSpanFramesMinDuration)
+	return configutil.ParseDurationEnv(envSpanFramesMinDuration, defaultSpanFramesMinDuration)
 }
 
 func initialActive() (bool, error) {
-	return apmconfig.ParseBoolEnv(envActive, true)
+	return configutil.ParseBoolEnv(envActive, true)
 }
 
 func initialDisabledMetrics() wildcard.Matchers {
-	return apmconfig.ParseWildcardPatternsEnv(envDisableMetrics, nil)
+	return configutil.ParseWildcardPatternsEnv(envDisableMetrics, nil)
+}
+
+func initialStackTraceLimit() (int, error) {
+	value := os.Getenv(envStackTraceLimit)
+	if value == "" {
+		return defaultStackTraceLimit, nil
+	}
+	limit, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to parse %s", envStackTraceLimit)
+	}
+	return limit, nil
+}
+
+func initialCentralConfigEnabled() (bool, error) {
+	return configutil.ParseBoolEnv(envCentralConfig, true)
+}
+
+func initialBreakdownMetricsEnabled() (bool, error) {
+	return configutil.ParseBoolEnv(envBreakdownMetrics, true)
 }

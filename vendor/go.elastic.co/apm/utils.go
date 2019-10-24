@@ -48,6 +48,16 @@ const (
 	envHostname = "ELASTIC_APM_HOSTNAME"
 
 	serviceNameValidClass = "a-zA-Z0-9 _-"
+
+	// At the time of writing, all keyword length limits
+	// are 1024 runes, enforced by JSON Schema.
+	stringLengthLimit = 1024
+
+	// Non-keyword string fields are not limited in length
+	// by JSON Schema, but we still truncate all strings.
+	// Some strings, such as database statement, we explicitly
+	// allow to be longer than others.
+	longStringLengthLimit = 10000
 )
 
 func init() {
@@ -157,18 +167,13 @@ func sanitizeServiceName(name string) string {
 }
 
 func truncateString(s string) string {
-	// At the time of writing, all keyword length
-	// limits are 1024, enforced by JSON Schema.
-	return apmstrings.Truncate(s, 1024)
+	s, _ = apmstrings.Truncate(s, stringLengthLimit)
+	return s
 }
 
 func truncateLongString(s string) string {
-	// Non-keyword string fields are not limited
-	// in length by JSON Schema, but we still
-	// truncate all strings. Some strings, such
-	// as database statement, we explicitly allow
-	// to be longer than others.
-	return apmstrings.Truncate(s, 10000)
+	s, _ = apmstrings.Truncate(s, longStringLengthLimit)
+	return s
 }
 
 func nextGracePeriod(p time.Duration) time.Duration {
@@ -190,4 +195,10 @@ func jitterDuration(d time.Duration, rng *rand.Rand, j float64) time.Duration {
 	}
 	r := (rng.Float64() * j * 2) - j
 	return d + time.Duration(float64(d)*r)
+}
+
+func durationMicros(d time.Duration) float64 {
+	us := d / time.Microsecond
+	ns := d % time.Microsecond
+	return float64(us) + float64(ns)/1e9
 }

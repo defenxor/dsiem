@@ -43,6 +43,7 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 			Context: Context{
 				captureBodyMask: CaptureBodyTransactions,
 			},
+			spanTimings: make(spanTimingsMap),
 		}
 		var seed int64
 		if err := binary.Read(cryptorand.Reader, binary.LittleEndian, &seed); err != nil {
@@ -91,9 +92,15 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 	tx.spanFramesMinDuration = t.spanFramesMinDuration
 	t.spanFramesMinDurationMu.RUnlock()
 
+	t.stackTraceLimitMu.RLock()
+	tx.stackTraceLimit = t.stackTraceLimit
+	t.stackTraceLimitMu.RUnlock()
+
 	t.captureHeadersMu.RLock()
 	tx.Context.captureHeaders = t.captureHeaders
 	t.captureHeadersMu.RUnlock()
+
+	tx.breakdownMetricsEnabled = t.breakdownMetrics.enabled
 
 	if root {
 		t.samplerMu.RLock()
@@ -237,6 +244,9 @@ func (tx *Transaction) enqueue() {
 	case tx.tracer.events <- event:
 	default:
 		// Enqueuing a transaction should never block.
+		tx.tracer.breakdownMetrics.recordTransaction(tx.TransactionData)
+
+		// TODO(axw) use an atomic operation to increment.
 		tx.tracer.statsMu.Lock()
 		tx.tracer.stats.TransactionsDropped++
 		tx.tracer.statsMu.Unlock()
@@ -276,14 +286,18 @@ type TransactionData struct {
 	// Result holds the transaction result.
 	Result string
 
-	maxSpans              int
-	spanFramesMinDuration time.Duration
-	timestamp             time.Time
+	maxSpans                int
+	spanFramesMinDuration   time.Duration
+	stackTraceLimit         int
+	breakdownMetricsEnabled bool
+	timestamp               time.Time
 
-	mu           sync.Mutex
-	spansCreated int
-	spansDropped int
-	rand         *rand.Rand // for ID generation
+	mu            sync.Mutex
+	spansCreated  int
+	spansDropped  int
+	childrenTimer childrenTimer
+	spanTimings   spanTimingsMap
+	rand          *rand.Rand // for ID generation
 	// parentSpan holds the transaction's parent ID. It is protected by
 	// mu, since it can be updated by calling EnsureParent.
 	parentSpan SpanID
@@ -293,10 +307,12 @@ type TransactionData struct {
 // into the transaction pool.
 func (td *TransactionData) reset(tracer *Tracer) {
 	*td = TransactionData{
-		Context:  td.Context,
-		Duration: -1,
-		rand:     td.rand,
+		Context:     td.Context,
+		Duration:    -1,
+		rand:        td.rand,
+		spanTimings: td.spanTimings,
 	}
 	td.Context.reset()
+	td.spanTimings.reset()
 	tracer.transactionDataPool.Put(td)
 }

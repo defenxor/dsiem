@@ -48,7 +48,12 @@ var (
 			`(?:^/kubepods\.slice/kubepods-[^/]+\.slice/kubepods-[^/]+-pod([^/]+)\.slice/$)`,
 	)
 
-	containerIDRegexp = regexp.MustCompile("^[[:xdigit:]]{64}$")
+	containerIDRegexp = regexp.MustCompile(
+		"^" +
+			"[[:xdigit:]]{64}|" +
+			"[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4,}" +
+			"$",
+	)
 )
 
 func containerInfo() (*model.Container, error) {

@@ -6,18 +6,19 @@ image: Visual Studio 2015
 # Environment variables
 environment:
   GOPATH: c:\gopath
-  GVM_GO_VERSION: 1.9.3
-  GVM_DL: https://github.com/andrewkroh/gvm/releases/download/v0.0.5/gvm-windows-amd64.exe
+  GO111MODULE: on
+  GVM_GO_VERSION: 1.12.4
+  GVM_DL: https://github.com/andrewkroh/gvm/releases/download/v0.2.0/gvm-windows-amd64.exe
 
 # Custom clone folder (variables are not expanded here).
 clone_folder: c:\gopath\src\github.com\elastic\go-sysinfo
 
 # Cache mingw install until appveyor.yml is modified.
 cache:
-- C:\ProgramData\chocolatey\bin -> .appveyor.yml
-- C:\ProgramData\chocolatey\lib -> .appveyor.yml
-- C:\Users\appveyor\.gvm -> .appveyor.yml
-- C:\Windows\System32\gvm.exe -> .appveyor.yml
+  - C:\ProgramData\chocolatey\bin -> .appveyor.yml
+  - C:\ProgramData\chocolatey\lib -> .appveyor.yml
+  - C:\Users\appveyor\.gvm -> .appveyor.yml
+  - C:\Windows\System32\gvm.exe -> .appveyor.yml
 
 # Scripts that run after cloning repository
 install:
@@ -31,24 +32,26 @@ install:
   - set PATH=%GOPATH%\bin;%PATH%
   - go version
   - go env
+  - cmd /C "set ""GO111MODULE=off"" && go get github.com/elastic/go-licenser"
   - python --version
+
 before_build:
-- go get -u github.com/elastic/go-licenser
-- go-licenser -d
-- go run .ci/scripts/check_format.go
+  - go mod verify
+  - go-licenser -d
+  - go run .ci/scripts/check_format.go
+  - go run .ci/scripts/check_lint.go
 
 build_script:
   # Compile
   - appveyor AddCompilationMessage "Starting Compile"
   - cd c:\gopath\src\github.com\elastic\go-sysinfo
-  - go get -v -t -d ./...
   - go build
   - appveyor AddCompilationMessage "Compile Success"
 
 test_script:
   # Unit tests
   - ps: Add-AppveyorTest "Unit Tests" -Outcome Running
-  - go test -v . github.com/elastic/go-sysinfo/providers/windows
+  - go test -v ./...
   - ps: Update-AppveyorTest "Unit Tests" -Outcome Passed
 
 # To disable deployment
