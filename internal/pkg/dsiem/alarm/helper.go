@@ -99,6 +99,8 @@ func copyAlarm(dst *alarm, src *alarm) {
 }
 
 func updateElasticsearch(a *alarm, checker string, connID uint64, tx *apm.Transaction) {
+	a.RLock()
+	defer a.RUnlock()
 	if a.Risk == 0 {
 		log.Debug(log.M{Msg: "Risk is 0, alarm not updating ES", CId: connID})
 		return
@@ -110,9 +112,7 @@ func updateElasticsearch(a *alarm, checker string, connID uint64, tx *apm.Transa
 		}
 		return
 	}
-	a.RLock()
 	log.Warn(log.M{Msg: checker + ": failed to update Elasticsearch!" + err.Error(), BId: a.ID, CId: connID})
-	a.RUnlock()
 	if apm.Enabled() && tx != nil {
 		tx.Result("Alarm failed to update ES")
 		tx.SetError(err)

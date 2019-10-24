@@ -75,6 +75,60 @@ type CustomData struct {
 	Content string `json:"content"`
 }
 
+// SIDPair defines the fields to include during PluginRule quick check
+type SIDPair struct {
+	PluginID  int
+	PluginSID []int
+}
+
+// TaxoPair defines the fields to include during TaxonomyRule quick check
+type TaxoPair struct {
+	Product  []string
+	Category string
+}
+
+// QuickCheckPluginRule checks event against the key fields in a directive plugin rules
+func QuickCheckPluginRule(pairs []SIDPair, e *event.NormalizedEvent) bool {
+	for i := range pairs {
+		if pairs[i].PluginID != e.PluginID {
+			continue
+		}
+		for _, v := range pairs[i].PluginSID {
+			if v == e.PluginSID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// QuickCheckTaxoRule checks event against the key fields in a directive taxonomy rules
+func QuickCheckTaxoRule(pairs []TaxoPair, e *event.NormalizedEvent) bool {
+	for i := range pairs {
+		for _, v := range pairs[i].Product {
+			if v == e.Product && pairs[i].Category == e.Category {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// GetQuickCheckPairs returns SIDPairs and TaxoPairs for a given set of directive rules
+func GetQuickCheckPairs(r []DirectiveRule) (sidPairs []SIDPair, taxoPairs []TaxoPair) {
+	for i := range r {
+		if r[i].PluginID != 0 && len(r[i].PluginSID) > 0 {
+			sidPairs = append(sidPairs, SIDPair{
+				PluginID: r[i].PluginID, PluginSID: r[i].PluginSID})
+		}
+		if len(r[i].Product) > 0 && r[i].Category != "" {
+			taxoPairs = append(taxoPairs, TaxoPair{
+				Product: r[i].Product, Category: r[i].Category})
+		}
+	}
+	return
+}
+
 // DoesEventMatch check event against rule
 // for rule with stickyDiff set, s will be appended as needed
 func DoesEventMatch(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) bool {

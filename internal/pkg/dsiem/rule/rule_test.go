@@ -18,6 +18,7 @@ package rule
 
 import (
 	"path"
+	"reflect"
 	"testing"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
@@ -46,6 +47,100 @@ func TestIPinCIDR(t *testing.T) {
 		actual := isIPinCIDR(tt.ip, tt.cidr)
 		if actual != tt.expected {
 			t.Errorf("IP %s in %s result is %v. Expected %v.", tt.ip, tt.cidr, actual, tt.expected)
+		}
+	}
+
+}
+
+func TestGetQuickCheckPairs(t *testing.T) {
+	spRef := []SIDPair{
+		{PluginID: 1, PluginSID: []int{1, 2}},
+		{PluginID: 1, PluginSID: []int{2, 3}},
+	}
+	tpRef := []TaxoPair{
+		{Product: []string{"P1"}, Category: "C1"},
+		{Product: []string{"P1, P2"}, Category: "C1"},
+	}
+	dr := []DirectiveRule{}
+	for i := range spRef {
+		dr = append(dr, DirectiveRule{
+			PluginID:  spRef[i].PluginID,
+			PluginSID: spRef[i].PluginSID,
+			Product:   tpRef[i].Product,
+			Category:  tpRef[i].Category,
+		})
+	}
+	sp, tp := GetQuickCheckPairs(dr)
+	if !reflect.DeepEqual(sp, spRef) {
+		t.Fatalf("sp expected to be equal to spRef. sp: %v spRef: %v", sp, spRef)
+	}
+	if !reflect.DeepEqual(tp, tpRef) {
+		t.Fatalf("tp expected to be equal to tpRef. tp: %v tpRef: %v", tp, tpRef)
+	}
+}
+
+func TestQuickCheck(t *testing.T) {
+	type tpTest struct {
+		pair     []TaxoPair
+		evt      event.NormalizedEvent
+		expected bool
+	}
+
+	var tpTbl = []tpTest{
+		{
+			[]TaxoPair{TaxoPair{Product: []string{"P1", "P2"}, Category: "C1"}},
+			event.NormalizedEvent{Product: "P1", Category: "C1"},
+			true,
+		},
+		{
+			[]TaxoPair{TaxoPair{Product: []string{"P1", "P2"}, Category: "C1"}},
+			event.NormalizedEvent{Product: "P1", Category: "C2"},
+			false,
+		},
+		{
+			[]TaxoPair{TaxoPair{Product: []string{"P1", "P2"}, Category: "C1"}},
+			event.NormalizedEvent{Product: "P3", Category: "C1"},
+			false,
+		},
+	}
+
+	for _, tt := range tpTbl {
+		actual := QuickCheckTaxoRule(tt.pair, &tt.evt)
+		if actual != tt.expected {
+			t.Fatalf("QuickCheck taxo actual != expected. TaxoPair: %v, Event: %v",
+				tt.pair, tt.evt)
+		}
+	}
+
+	type spTest struct {
+		pair     []SIDPair
+		evt      event.NormalizedEvent
+		expected bool
+	}
+
+	var spTbl = []spTest{
+		{
+			[]SIDPair{SIDPair{PluginID: 10, PluginSID: []int{1, 2}}},
+			event.NormalizedEvent{PluginID: 10, PluginSID: 1},
+			true,
+		},
+		{
+			[]SIDPair{SIDPair{PluginID: 10, PluginSID: []int{1, 2}}},
+			event.NormalizedEvent{PluginID: 10, PluginSID: 3},
+			false,
+		},
+		{
+			[]SIDPair{SIDPair{PluginID: 10, PluginSID: []int{1, 2}}},
+			event.NormalizedEvent{PluginID: 9, PluginSID: 1},
+			false,
+		},
+	}
+
+	for _, tt := range spTbl {
+		actual := QuickCheckPluginRule(tt.pair, &tt.evt)
+		if actual != tt.expected {
+			t.Fatalf("QuickCheck SID actual != expected. SIDPair: %v, Event: %v",
+				tt.pair, tt.evt)
 		}
 	}
 
@@ -184,7 +279,7 @@ func TestRule(t *testing.T) {
 	ec8.CustomData2 = "malware"
 
 	// StickyDiff rules
-	// TODO: add the appropriate test that test the length of stickyDiffData 
+	// TODO: add the appropriate test that test the length of stickyDiffData
 	// before and after
 
 	rs1 := r1
