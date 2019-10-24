@@ -66,6 +66,7 @@ func init() {
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
 	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling incoming events")
+	serverCmd.Flags().IntP("maxQueue", "q", 25000, "Length of queue for directive evaluation process, 0 means unlimited and will deactivate maxDelay")
 	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. number of incoming events/second")
 	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
 	serverCmd.Flags().IntP("minAlarmLifetime", "l", 0,
@@ -79,7 +80,7 @@ func init() {
 	serverCmd.Flags().Bool("intelPrivateIP", false, "Whether to check private IP addresses against threat intel")
 	serverCmd.Flags().StringP("mode", "m", "standalone", "Deployment mode, can be set to standalone, cluster-frontend, or cluster-backend")
 	serverCmd.Flags().IntP("cacheDuration", "c", 10, "Cache expiration time in minutes for intel and vuln query results")
-	serverCmd.Flags().String("msq", "nats://dsiem-nats:4222", "Nats address to use for frontend - backend communication.")
+	serverCmd.Flags().String("msq", "nats://dsiem-nats:4222", "Nats address to use for frontend - backend communication")
 	serverCmd.Flags().String("frontend", "", "Frontend URL to pull configuration from, e.g. http://frontend:8080 (used only by backends).")
 	serverCmd.Flags().String("node", "", "Unique node name to use when deployed in cluster mode.")
 	serverCmd.Flags().StringSliceP("tags", "t", []string{"Identified Threat", "False Positive", "Valid Threat", "Security Incident"},
@@ -96,6 +97,7 @@ func init() {
 	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
 	viper.BindPFlag("maxDelay", serverCmd.Flags().Lookup("maxDelay"))
+	viper.BindPFlag("maxQueue", serverCmd.Flags().Lookup("maxQueue"))
 	viper.BindPFlag("maxEPS", serverCmd.Flags().Lookup("maxEPS"))
 	viper.BindPFlag("minEPS", serverCmd.Flags().Lookup("minEPS"))
 	viper.BindPFlag("minAlarmLifetime", serverCmd.Flags().Lookup("minAlarmLifetime"))
@@ -208,6 +210,7 @@ external message queue.`,
 		traceFlag := viper.GetBool("trace")
 		intelPrivIPFlag := viper.GetBool("intelPrivateIP")
 		frontend := viper.GetString("frontend")
+		maxQueue := viper.GetInt("maxQueue")
 		maxEPS := viper.GetInt("maxEPS")
 		minEPS := viper.GetInt("minEPS")
 		holdDuration := viper.GetInt("holdDuration")
@@ -286,7 +289,7 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize Vulnerability scan result", err)
 			}
-			err = siem.InitDirectives(confDir, eventChan, minAlarmLifetime)
+			err = siem.InitDirectives(confDir, eventChan, minAlarmLifetime, maxEPS, maxQueue)
 			if err != nil {
 				exit("Cannot initialize directives", err)
 			}

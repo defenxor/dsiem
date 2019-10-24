@@ -26,9 +26,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/queue"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -63,9 +65,9 @@ var uCases Directives
 
 // InitDirectives initialize directive from directive_*.json files in confDir then start
 // backlog manager for each directive
-func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLifetime int) error {
+func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLifetime, maxEPS, maxEventQueueLength int) error {
 
-	var dirchan []evtChan
+	var dirchan []event.Channel
 	uCases, totalFromFile, err := LoadDirectivesFromFile(confDir, directiveFileGlob, false)
 
 	if err != nil {
@@ -76,9 +78,9 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 	log.Info(log.M{Msg: "Successfully Loaded " + strconv.Itoa(total) + "/" + strconv.Itoa(totalFromFile) + " defined directives."})
 
 	for i := 0; i < total; i++ {
-		dirchan = append(dirchan, evtChan{
-			ch:    make(chan event.NormalizedEvent),
-			dirID: uCases.Dirs[i].ID,
+		dirchan = append(dirchan, event.Channel{
+			Ch:    make(chan event.NormalizedEvent),
+			DirID: uCases.Dirs[i].ID,
 		})
 		blogs := backlogs{}
 		blogs.DRWMutex = drwmutex.New()
@@ -88,13 +90,11 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 		l := blogs.RLock()
 		allBacklogs = append(allBacklogs, blogs)
 		l.Unlock()
-		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i].ch, minAlarmLifetime)
+		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i].Ch, minAlarmLifetime)
 	}
 
-	// use queue here for faster return to NATS client in cluster mode
-	// let downstream deal with backpressure control instead
-	eq := eventQueue{}
-	eq.init(dirchan)
+	eq := queue.EventQueue{}
+	eq.Init(dirchan, maxEventQueueLength, maxEPS)
 
 	copier := func() {
 		for {
@@ -102,13 +102,13 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 			if isWhitelisted(evt.SrcIP) {
 				continue
 			}
-			eq.enqueue(evt)
+			eq.Enqueue(evt)
 		}
 	}
 
-	go eq.dequeue()
+	go eq.Dequeue()
 	go copier()
-	go eq.reporter()
+	go eq.Reporter(30 * time.Second)
 	return nil
 }
 
