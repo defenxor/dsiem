@@ -37,11 +37,11 @@ func TestInitDirective(t *testing.T) {
 	t.Logf("Using base dir %s", testDir)
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 	evtChan := make(chan event.NormalizedEvent)
-	err := InitDirectives(path.Join(fDir, "directive2"), evtChan, 0)
+	err := InitDirectives(path.Join(fDir, "directive2"), evtChan, 0, 1000, 0)
 	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
 		t.Fatal(err)
 	}
-	err = InitDirectives(path.Join(fDir, "directive1"), evtChan, 0)
+	err = InitDirectives(path.Join(fDir, "directive1"), evtChan, 0, 1000, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

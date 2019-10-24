@@ -48,6 +48,12 @@ type NormalizedEvent struct {
 	RcvdTime     int64  `json:"rcvd_time,omitempty"` // for backpressure control
 }
 
+// Channel define event channel with directive ID
+type Channel struct {
+	DirID int
+	Ch    chan NormalizedEvent
+}
+
 // Valid check if event contains valid content for required fields
 func (e *NormalizedEvent) Valid() bool {
 	// fmt.Println(e.Timestamp, ":", e.Sensor, ":", e.EventID, ":", e.SrcIP, ":", e.DstIP, ":", e.PluginID, ":", e.PluginSID)
