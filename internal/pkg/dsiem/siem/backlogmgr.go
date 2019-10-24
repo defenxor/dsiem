@@ -133,10 +133,31 @@ func CountBackLogs() (sum int, activeDirectives int, ttlDirectives int) {
 
 func (blogs *backlogs) manager(d Directive, ch <-chan event.NormalizedEvent, minAlarmLifetime int) {
 
+	sidPairs, taxoPairs := rule.GetQuickCheckPairs(d.Rules)
+
+	isPluginRule := false
+	isTaxoRule := false
+	if len(sidPairs) > 0 {
+		isPluginRule = true
+	}
+	if len(taxoPairs) > 0 {
+		isTaxoRule = true
+	}
+
 mainLoop:
 	for {
 		evt := <-ch
-		
+
+		if isPluginRule {
+			if rule.QuickCheckPluginRule(sidPairs, &evt) == false {
+				continue mainLoop
+			}
+		} else if isTaxoRule {
+			if rule.QuickCheckTaxoRule(taxoPairs, &evt) == false {
+				continue mainLoop
+			}
+		}
+
 		var tx *apm.Transaction
 		if apm.Enabled() {
 			if evt.RcvdTime == 0 {
