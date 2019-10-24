@@ -34,10 +34,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	alarmLogs = "siem_alarms.json"
-)
-
 var aLogFile string
 var mediumRiskLowerBound int
 var mediumRiskUpperBound int
@@ -45,6 +41,9 @@ var defaultTag string
 var defaultStatus string
 var alarmRemovalChannel chan string
 var intelCheckPrivateIP bool
+var fWriter fs.FileWriter
+
+const maxFileQueueLength = 1000
 
 type alarm struct {
 	sync.RWMutex `json:"-"`
@@ -81,6 +80,10 @@ func Init(logFile string, intelPrivIPFlag bool) error {
 	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
 		return err
 	}
+	if err := fWriter.Init(logFile, maxFileQueueLength); err != nil {
+		return err
+	}
+
 	intelCheckPrivateIP = intelPrivIPFlag
 
 	alarms.Lock()
