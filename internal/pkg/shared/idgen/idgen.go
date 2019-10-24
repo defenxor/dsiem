@@ -20,7 +20,7 @@ import (
 	"github.com/teris-io/shortid"
 )
 
-var sid, _ = shortid.New(1, shortid.DEFAULT_ABC, 2342)
+var sid, _ = shortid.New(1, shortid.DefaultABC, 2342)
 
 // GenerateID creates random shortid
 func GenerateID() (id string, err error) {
