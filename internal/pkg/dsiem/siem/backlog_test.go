@@ -18,6 +18,7 @@ package siem
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"testing"
 	"time"
@@ -45,7 +46,8 @@ func initAlarm(t *testing.T) {
 	viper.Set("medRiskMax", 6)
 	viper.Set("tags", []string{"Identified Threat", "Valid Threat"})
 	viper.Set("status", []string{"Open", "Closed"})
-	err := alarm.Init("", false)
+	tmpLog := path.Join(os.TempDir(), "siem_alarms.log")
+	err := alarm.Init(tmpLog, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,6 +79,8 @@ func TestBackLog(t *testing.T) {
 
 	initAlarm(t)
 	initAsset(t)
+	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
+	fWriter.Init(tmpLog, 10)
 
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 

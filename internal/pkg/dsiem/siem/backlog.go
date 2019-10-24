@@ -18,7 +18,6 @@ package siem
 
 import (
 	"encoding/json"
-	"os"
 	"runtime"
 	"strconv"
 	"sync"
@@ -34,11 +33,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/spf13/viper"
-)
-
-var (
-	bLogFileMutex = sync.Mutex{}
-	bLogFile      string
 )
 
 type backLog struct {
@@ -325,7 +319,7 @@ func (b *backLog) updateAlarm(connID uint64, checkIntelVuln bool, tx *apm.Transa
 
 	// running this under goroutine seem to make processMatchedEvent
 	// fails to record startTime
-	alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vCustomData, vSrcPort,
+	go alarm.Upsert(vID, vName, vKing, vCat, vSrc, vDst, vCustomData, vSrcPort,
 		vDstPort, vRisk, vStatTime, tmp, connID, checkIntelVuln, tx)
 }
 
@@ -479,19 +473,11 @@ func (b *backLog) updateElasticsearch(e event.NormalizedEvent, idx int) error {
 	stage := idx + 1
 	v := siemAlarmEvents{b.ID, stage, e.EventID}
 	b.Unlock()
-	bLogFileMutex.Lock()
-	f, err := os.OpenFile(bLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	bLogFileMutex.Unlock()
-	if err != nil {
-		return err
-	}
-	defer f.Close()
 
 	vJSON, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
-	f.SetDeadline(time.Now().Add(60 * time.Second))
-	_, err = f.WriteString(string(vJSON) + "\n")
-	return err
+	fWriter.EnqueueWrite(string(vJSON))
+	return nil
 }

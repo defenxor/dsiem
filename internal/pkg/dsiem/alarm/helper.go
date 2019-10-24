@@ -18,8 +18,6 @@ package alarm
 
 import (
 	"encoding/json"
-	"os"
-	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
@@ -127,13 +125,5 @@ func logToES(a *alarm, connID uint64) error {
 	aJSON, _ := json.Marshal(a)
 	a.RUnlock()
 
-	f, err := os.OpenFile(aLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	f.SetDeadline(time.Now().Add(60 * time.Second))
-
-	_, err = f.WriteString(string(aJSON) + "\n")
-	return err
+	return fWriter.EnqueueWrite(string(aJSON) + "\n")
 }

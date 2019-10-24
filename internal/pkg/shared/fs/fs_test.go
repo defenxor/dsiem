@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 )
 
 func TestFS(t *testing.T) {
@@ -56,4 +57,24 @@ func TestFS(t *testing.T) {
 	if err := OverwriteFile("test", "/proc"); err == nil {
 		t.Fatal("o rly?")
 	}
+}
+
+func TestFWriter(t *testing.T) {
+	fw := FileWriter{}
+	tmpLog := path.Join(os.TempDir(), "tmp1.log")
+	if err := fw.Init(tmpLog, 10); err != nil {
+		t.Fatal(err)
+	}
+	fw.EnqueueWrite("foo1")
+	fw.EnqueueWrite("foo2")
+	time.Sleep(time.Second)
+	tmpLog = path.Join(os.TempDir(), "tmp2.log")
+	if err := fw.Init(tmpLog, 10); err != nil {
+		t.Fatal(err)
+	}
+	fw.EnqueueWrite("bar1")
+	fw.EnqueueWrite("bar2")
+	fw.Stop()
+	time.Sleep(3 * time.Second)
+
 }

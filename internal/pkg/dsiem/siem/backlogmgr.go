@@ -23,6 +23,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
+	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	"github.com/defenxor/dsiem/internal/pkg/shared/idgen"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/str"
@@ -40,12 +41,19 @@ type backlogs struct {
 	bpCh chan bool
 }
 
-var allBacklogs []backlogs
+var (
+	allBacklogs []backlogs
+	fWriter     fs.FileWriter
+)
+
+const (
+	maxFileQueueLength = 10000
+)
 
 // InitBackLogManager initialize backlog and ticker
 func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
 	// bLogFile is defined in backlog.go
-	bLogFile = logFile
+	_ = fWriter.Init(logFile, maxFileQueueLength)
 
 	go func() { bpChan <- false }() // set initial state
 	go initBpTicker(bpChan, holdDuration)

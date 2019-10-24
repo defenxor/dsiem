@@ -29,7 +29,8 @@ func TestHelper(t *testing.T) {
 	log.EnableTestingMode()
 	a := alarm{Risk: 1}
 	apm.Enable(true)
-	aLogFile = ""
+	// tmpLog := path.Join(os.TempDir(), "foo.log")
+	fWriter.Init("", 10)
 
 	tx := apm.StartTransaction("test", "test", nil)
 	verifyFuncOutput(t, func() {
