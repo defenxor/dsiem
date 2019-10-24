@@ -23,21 +23,27 @@ const (
 
 // ScrollService iterates over pages of search results from Elasticsearch.
 type ScrollService struct {
-	client            *Client
-	retrier           Retrier
+	client  *Client
+	retrier Retrier
+
+	pretty     *bool       // pretty format the returned JSON response
+	human      *bool       // return human readable values for statistics
+	errorTrace *bool       // include the stack trace of returned errors
+	filterPath []string    // list of filters used to reduce the response
+	headers    http.Header // custom request-level HTTP headers
+
 	indices           []string
 	types             []string
 	keepAlive         string
 	body              interface{}
 	ss                *SearchSource
 	size              *int
-	pretty            bool
 	routing           string
 	preference        string
 	ignoreUnavailable *bool
 	allowNoIndices    *bool
 	expandWildcards   string
-	headers           http.Header
+	maxResponseSize   int64
 
 	mu       sync.RWMutex
 	scrollId string
@@ -53,12 +59,43 @@ func NewScrollService(client *Client) *ScrollService {
 	return builder
 }
 
-// Header sets headers on the request
+// Pretty tells Elasticsearch whether to return a formatted JSON response.
+func (s *ScrollService) Pretty(pretty bool) *ScrollService {
+	s.pretty = &pretty
+	return s
+}
+
+// Human specifies whether human readable values should be returned in
+// the JSON response, e.g. "7.5mb".
+func (s *ScrollService) Human(human bool) *ScrollService {
+	s.human = &human
+	return s
+}
+
+// ErrorTrace specifies whether to include the stack trace of returned errors.
+func (s *ScrollService) ErrorTrace(errorTrace bool) *ScrollService {
+	s.errorTrace = &errorTrace
+	return s
+}
+
+// FilterPath specifies a list of filters used to reduce the response.
+func (s *ScrollService) FilterPath(filterPath ...string) *ScrollService {
+	s.filterPath = filterPath
+	return s
+}
+
+// Header adds a header to the request.
 func (s *ScrollService) Header(name string, value string) *ScrollService {
 	if s.headers == nil {
 		s.headers = http.Header{}
 	}
 	s.headers.Add(name, value)
+	return s
+}
+
+// Headers specifies the headers of the request.
+func (s *ScrollService) Headers(headers http.Header) *ScrollService {
+	s.headers = headers
 	return s
 }
 
@@ -95,7 +132,7 @@ func (s *ScrollService) Scroll(keepAlive string) *ScrollService {
 }
 
 // KeepAlive sets the maximum time after which the cursor will expire.
-// It is "2m" by default.
+// It is "5m" by default.
 func (s *ScrollService) KeepAlive(keepAlive string) *ScrollService {
 	s.keepAlive = keepAlive
 	return s
@@ -105,6 +142,12 @@ func (s *ScrollService) KeepAlive(keepAlive string) *ScrollService {
 // from each shard, per page.
 func (s *ScrollService) Size(size int) *ScrollService {
 	s.size = &size
+	return s
+}
+
+// Highlight allows to highlight search results on one or more fields
+func (s *ScrollService) Highlight(highlight *Highlight) *ScrollService {
+	s.ss = s.ss.Highlight(highlight)
 	return s
 }
 
@@ -136,7 +179,7 @@ func (s *ScrollService) Query(query Query) *ScrollService {
 
 // PostFilter is executed as the last filter. It only affects the
 // search hits but not facets. See
-// https://www.elastic.co/guide/en/elasticsearch/reference/6.2/search-request-post-filter.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/6.8/search-request-post-filter.html
 // for details.
 func (s *ScrollService) PostFilter(postFilter Query) *ScrollService {
 	s.ss = s.ss.PostFilter(postFilter)
@@ -145,7 +188,7 @@ func (s *ScrollService) PostFilter(postFilter Query) *ScrollService {
 
 // Slice allows slicing the scroll request into several batches.
 // This is supported in Elasticsearch 5.0 or later.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/6.2/search-request-scroll.html#sliced-scroll
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.8/search-request-scroll.html#sliced-scroll
 // for details.
 func (s *ScrollService) Slice(sliceQuery Query) *ScrollService {
 	s.ss = s.ss.Slice(sliceQuery)
@@ -166,7 +209,7 @@ func (s *ScrollService) FetchSourceContext(fetchSourceContext *FetchSourceContex
 }
 
 // Version can be set to true to return a version for each search hit.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/6.2/search-request-version.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.8/search-request-version.html.
 func (s *ScrollService) Version(version bool) *ScrollService {
 	s.ss = s.ss.Version(version)
 	return s
@@ -190,12 +233,6 @@ func (s *ScrollService) SortWithInfo(info SortInfo) *ScrollService {
 // negative impact on scroll performance.
 func (s *ScrollService) SortBy(sorter ...Sorter) *ScrollService {
 	s.ss = s.ss.SortBy(sorter...)
-	return s
-}
-
-// Pretty asks Elasticsearch to pretty-print the returned JSON.
-func (s *ScrollService) Pretty(pretty bool) *ScrollService {
-	s.pretty = pretty
 	return s
 }
 
@@ -238,6 +275,13 @@ func (s *ScrollService) ExpandWildcards(expandWildcards string) *ScrollService {
 	return s
 }
 
+// MaxResponseSize sets an upper limit on the response body size that we accept,
+// to guard against OOM situations.
+func (s *ScrollService) MaxResponseSize(maxResponseSize int64) *ScrollService {
+	s.maxResponseSize = maxResponseSize
+	return s
+}
+
 // ScrollId specifies the identifier of a scroll in action.
 func (s *ScrollService) ScrollId(scrollId string) *ScrollService {
 	s.mu.Lock()
@@ -271,6 +315,18 @@ func (s *ScrollService) Clear(ctx context.Context) error {
 
 	path := "/_search/scroll"
 	params := url.Values{}
+	if v := s.pretty; v != nil {
+		params.Set("pretty", fmt.Sprint(*v))
+	}
+	if v := s.human; v != nil {
+		params.Set("human", fmt.Sprint(*v))
+	}
+	if v := s.errorTrace; v != nil {
+		params.Set("error_trace", fmt.Sprint(*v))
+	}
+	if len(s.filterPath) > 0 {
+		params.Set("filter_path", strings.Join(s.filterPath, ","))
+	}
 	body := struct {
 		ScrollId []string `json:"scroll_id,omitempty"`
 	}{
@@ -309,12 +365,13 @@ func (s *ScrollService) first(ctx context.Context) (*SearchResult, error) {
 
 	// Get HTTP response
 	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
-		Method:  "POST",
-		Path:    path,
-		Params:  params,
-		Body:    body,
-		Retrier: s.retrier,
-		Headers: s.headers,
+		Method:          "POST",
+		Path:            path,
+		Params:          params,
+		Body:            body,
+		Retrier:         s.retrier,
+		Headers:         s.headers,
+		MaxResponseSize: s.maxResponseSize,
 	})
 	if err != nil {
 		return nil, err
@@ -329,7 +386,7 @@ func (s *ScrollService) first(ctx context.Context) (*SearchResult, error) {
 	s.scrollId = ret.ScrollId
 	s.mu.Unlock()
 	if ret.Hits == nil || len(ret.Hits.Hits) == 0 {
-		return nil, io.EOF
+		return ret, io.EOF
 	}
 	return ret, nil
 }
@@ -361,8 +418,19 @@ func (s *ScrollService) buildFirstURL() (string, url.Values, error) {
 
 	// Add query string parameters
 	params := url.Values{}
-	if s.pretty {
-		params.Set("pretty", "true")
+	if v := s.pretty; v != nil {
+		params.Set("pretty", fmt.Sprint(*v))
+	}
+	if v := s.human; v != nil {
+		params.Set("human", fmt.Sprint(*v))
+	}
+	if v := s.errorTrace; v != nil {
+		params.Set("error_trace", fmt.Sprint(*v))
+	}
+	if len(s.filterPath) > 0 {
+		// Always add "hits._scroll_id", otherwise we cannot scroll
+		s.filterPath = append(s.filterPath, "_scroll_id")
+		params.Set("filter_path", strings.Join(s.filterPath, ","))
 	}
 	if s.size != nil && *s.size > 0 {
 		params.Set("size", fmt.Sprintf("%d", *s.size))
@@ -430,12 +498,13 @@ func (s *ScrollService) next(ctx context.Context) (*SearchResult, error) {
 
 	// Get HTTP response
 	res, err := s.client.PerformRequest(ctx, PerformRequestOptions{
-		Method:  "POST",
-		Path:    path,
-		Params:  params,
-		Body:    body,
-		Retrier: s.retrier,
-		Headers: s.headers,
+		Method:          "POST",
+		Path:            path,
+		Params:          params,
+		Body:            body,
+		Retrier:         s.retrier,
+		Headers:         s.headers,
+		MaxResponseSize: s.maxResponseSize,
 	})
 	if err != nil {
 		return nil, err
@@ -450,7 +519,7 @@ func (s *ScrollService) next(ctx context.Context) (*SearchResult, error) {
 	s.scrollId = ret.ScrollId
 	s.mu.Unlock()
 	if ret.Hits == nil || len(ret.Hits.Hits) == 0 {
-		return nil, io.EOF
+		return ret, io.EOF
 	}
 	return ret, nil
 }
@@ -461,8 +530,19 @@ func (s *ScrollService) buildNextURL() (string, url.Values, error) {
 
 	// Add query string parameters
 	params := url.Values{}
-	if s.pretty {
-		params.Set("pretty", "true")
+	if v := s.pretty; v != nil {
+		params.Set("pretty", fmt.Sprint(*v))
+	}
+	if v := s.human; v != nil {
+		params.Set("human", fmt.Sprint(*v))
+	}
+	if v := s.errorTrace; v != nil {
+		params.Set("error_trace", fmt.Sprint(*v))
+	}
+	if len(s.filterPath) > 0 {
+		// Always add "hits._scroll_id", otherwise we cannot scroll
+		s.filterPath = append(s.filterPath, "_scroll_id")
+		params.Set("filter_path", strings.Join(s.filterPath, ","))
 	}
 
 	return path, params, nil

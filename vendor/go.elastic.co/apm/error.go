@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 
 	"go.elastic.co/apm/internal/pkgerrorsutil"
+	"go.elastic.co/apm/model"
 	"go.elastic.co/apm/stacktrace"
 )
 
@@ -138,6 +139,10 @@ func (t *Tracer) newError() *Error {
 	e.Context.captureHeaders = t.captureHeaders
 	t.captureHeadersMu.RUnlock()
 
+	t.stackTraceLimitMu.RLock()
+	e.stackTraceLimit = t.stackTraceLimit
+	t.stackTraceLimitMu.RUnlock()
+
 	return &Error{ErrorData: e}
 }
 
@@ -160,6 +165,7 @@ type Error struct {
 // When the error is sent, its ErrorData field will be set to nil.
 type ErrorData struct {
 	tracer             *Tracer
+	stackTraceLimit    int
 	stacktrace         []stacktrace.Frame
 	exception          exceptionData
 	log                ErrorLogRecord
@@ -232,15 +238,20 @@ func (e *Error) Error() string {
 
 // SetTransaction sets TraceID, TransactionID, and ParentID to the transaction's
 // IDs, and records the transaction's Type and whether or not it was sampled.
+//
+// If any custom context has been recorded in tx, it will also be carried across
+// to e, but will not override any custom context already recorded on e.
 func (e *Error) SetTransaction(tx *Transaction) {
 	tx.mu.RLock()
 	traceContext := tx.traceContext
 	var txType string
+	var custom model.IfaceMap
 	if !tx.ended() {
 		txType = tx.Type
+		custom = tx.Context.model.Custom
 	}
 	tx.mu.RUnlock()
-	e.setSpanData(traceContext, traceContext.Span, txType)
+	e.setSpanData(traceContext, traceContext.Span, txType, custom)
 }
 
 // SetSpan sets TraceID, TransactionID, and ParentID to the span's IDs.
@@ -248,25 +259,46 @@ func (e *Error) SetTransaction(tx *Transaction) {
 // There is no need to call both SetTransaction and SetSpan. If you do call
 // both, then SetSpan must be called second in order to set the error's
 // ParentID correctly.
+//
+// If any custom context has been recorded in s's transaction, it will
+// also be carried across to e, but will not override any custom context
+// already recorded on e.
 func (e *Error) SetSpan(s *Span) {
 	var txType string
+	var custom model.IfaceMap
 	if s.tx != nil {
 		s.tx.mu.RLock()
 		if !s.tx.ended() {
 			txType = s.tx.Type
+			custom = s.tx.Context.model.Custom
 		}
 		s.tx.mu.RUnlock()
 	}
-	e.setSpanData(s.traceContext, s.transactionID, txType)
+	e.setSpanData(s.traceContext, s.transactionID, txType, custom)
 }
 
-func (e *Error) setSpanData(traceContext TraceContext, transactionID SpanID, transactionType string) {
+func (e *Error) setSpanData(
+	traceContext TraceContext,
+	transactionID SpanID,
+	transactionType string,
+	customContext model.IfaceMap,
+) {
 	e.TraceID = traceContext.Trace
 	e.ParentID = traceContext.Span
 	e.TransactionID = transactionID
 	e.transactionSampled = traceContext.Options.Recorded()
 	if e.transactionSampled {
 		e.transactionType = transactionType
+	}
+	if n := len(customContext); n != 0 {
+		m := len(e.Context.model.Custom)
+		e.Context.model.Custom = append(e.Context.model.Custom, customContext...)
+		// If there was already custom context in e, shift the custom context from
+		// tx to the beginning of the slice so that e's context takes precedence.
+		if m != 0 {
+			copy(e.Context.model.Custom[n:], e.Context.model.Custom[:m])
+			copy(e.Context.model.Custom[:n], customContext)
+		}
 	}
 }
 
@@ -385,11 +417,15 @@ func initStacktrace(e *Error, err error) {
 	}
 	switch stackTracer := err.(type) {
 	case internalStackTracer:
-		e.stacktrace = append(e.stacktrace[:0], stackTracer.StackTrace()...)
+		stackTrace := stackTracer.StackTrace()
+		if e.stackTraceLimit >= 0 && len(stackTrace) > e.stackTraceLimit {
+			stackTrace = stackTrace[:e.stackTraceLimit]
+		}
+		e.stacktrace = append(e.stacktrace[:0], stackTrace...)
 	case errorsStackTracer:
 		stackTrace := stackTracer.StackTrace()
 		e.stacktrace = e.stacktrace[:0]
-		pkgerrorsutil.AppendStacktrace(stackTrace, &e.stacktrace)
+		pkgerrorsutil.AppendStacktrace(stackTrace, &e.stacktrace, e.stackTraceLimit)
 	}
 }
 
@@ -398,12 +434,13 @@ func initStacktrace(e *Error, err error) {
 // the SetStacktrace function.
 func (e *Error) SetStacktrace(skip int) {
 	retain := e.stacktrace[:0]
+	limit := e.stackTraceLimit
 	if e.log.Message != "" {
 		// This is a log error; the exception stacktrace
 		// is unaffected by SetStacktrace in this case.
 		retain = e.stacktrace[:e.exceptionStacktraceFrames]
 	}
-	e.stacktrace = stacktrace.AppendStacktrace(retain, skip+1, -1)
+	e.stacktrace = stacktrace.AppendStacktrace(retain, skip+1, limit)
 }
 
 // ErrorLogRecord holds details of an error log record.

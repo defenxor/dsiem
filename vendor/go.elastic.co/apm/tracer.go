@@ -24,12 +24,14 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"go.elastic.co/apm/internal/apmconfig"
+	"go.elastic.co/apm/apmconfig"
 	"go.elastic.co/apm/internal/apmlog"
+	"go.elastic.co/apm/internal/configutil"
 	"go.elastic.co/apm/internal/iochan"
 	"go.elastic.co/apm/internal/ringbuffer"
 	"go.elastic.co/apm/internal/wildcard"
@@ -58,12 +60,41 @@ var (
 )
 
 func init() {
-	var opts options
-	opts.init(true)
+	var opts TracerOptions
+	opts.initDefaults(true)
 	DefaultTracer = newTracer(opts)
 }
 
-type options struct {
+// TracerOptions holds initial tracer options, for passing to NewTracerOptions.
+type TracerOptions struct {
+	// ServiceName holds the service name.
+	//
+	// If ServiceName is empty, the service name will be defined using the
+	// ELASTIC_APM_SERVICE_NAME environment variable, or if that is not set,
+	// the executable name.
+	ServiceName string
+
+	// ServiceVersion holds the service version.
+	//
+	// If ServiceVersion is empty, the service version will be defined using
+	// the ELASTIC_APM_SERVICE_VERSION environment variable.
+	ServiceVersion string
+
+	// ServiceEnvironment holds the service environment.
+	//
+	// If ServiceEnvironment is empty, the service environment will be defined
+	// using the ELASTIC_APM_ENVIRONMENT environment variable.
+	ServiceEnvironment string
+
+	// Transport holds the transport to use for sending events.
+	//
+	// If Transport is nil, transport.Default will be used.
+	//
+	// If Transport implements apmconfig.Watcher, the tracer will begin watching
+	// for remote changes immediately. This behaviour can be disabled by setting
+	// the environment variable ELASTIC_APM_CENTRAL_CONFIG=false.
+	Transport transport.Transport
+
 	requestDuration       time.Duration
 	metricsInterval       time.Duration
 	maxSpans              int
@@ -76,13 +107,14 @@ type options struct {
 	captureHeaders        bool
 	captureBody           CaptureBodyMode
 	spanFramesMinDuration time.Duration
-	serviceName           string
-	serviceVersion        string
-	serviceEnvironment    string
+	stackTraceLimit       int
 	active                bool
+	configWatcher         apmconfig.Watcher
+	breakdownMetrics      bool
 }
 
-func (opts *options) init(continueOnError bool) error {
+// initDefaults updates opts with default values.
+func (opts *TracerOptions) initDefaults(continueOnError bool) error {
 	var errs []error
 	failed := func(err error) bool {
 		if err == nil {
@@ -146,9 +178,31 @@ func (opts *options) init(continueOnError bool) error {
 		spanFramesMinDuration = defaultSpanFramesMinDuration
 	}
 
+	stackTraceLimit, err := initialStackTraceLimit()
+	if failed(err) {
+		stackTraceLimit = defaultStackTraceLimit
+	}
+
 	active, err := initialActive()
 	if failed(err) {
 		active = true
+	}
+
+	centralConfigEnabled, err := initialCentralConfigEnabled()
+	if failed(err) {
+		centralConfigEnabled = true
+	}
+
+	breakdownMetricsEnabled, err := initialBreakdownMetricsEnabled()
+	if failed(err) {
+		breakdownMetricsEnabled = true
+	}
+
+	if opts.ServiceName != "" {
+		err := validateServiceName(opts.ServiceName)
+		if failed(err) {
+			opts.ServiceName = ""
+		}
 	}
 
 	if len(errs) != 0 && !continueOnError {
@@ -167,11 +221,31 @@ func (opts *options) init(continueOnError bool) error {
 	opts.sampler = sampler
 	opts.sanitizedFieldNames = initialSanitizedFieldNames()
 	opts.disabledMetrics = initialDisabledMetrics()
+	opts.breakdownMetrics = breakdownMetricsEnabled
 	opts.captureHeaders = captureHeaders
 	opts.captureBody = captureBody
 	opts.spanFramesMinDuration = spanFramesMinDuration
-	opts.serviceName, opts.serviceVersion, opts.serviceEnvironment = initialService()
+	opts.stackTraceLimit = stackTraceLimit
 	opts.active = active
+	if opts.Transport == nil {
+		opts.Transport = transport.Default
+	}
+	if centralConfigEnabled {
+		if cw, ok := opts.Transport.(apmconfig.Watcher); ok {
+			opts.configWatcher = cw
+		}
+	}
+
+	serviceName, serviceVersion, serviceEnvironment := initialService()
+	if opts.ServiceName == "" {
+		opts.ServiceName = serviceName
+	}
+	if opts.ServiceVersion == "" {
+		opts.ServiceVersion = serviceVersion
+	}
+	if opts.ServiceEnvironment == "" {
+		opts.ServiceEnvironment = serviceEnvironment
+	}
 	return nil
 }
 
@@ -213,7 +287,9 @@ type Tracer struct {
 	forceFlush        chan chan<- struct{}
 	forceSendMetrics  chan chan<- struct{}
 	configCommands    chan tracerConfigCommand
+	configWatcher     chan apmconfig.Watcher
 	events            chan tracerEvent
+	breakdownMetrics  *breakdownMetrics
 
 	statsMu sync.Mutex
 	stats   TracerStats
@@ -224,8 +300,18 @@ type Tracer struct {
 	spanFramesMinDurationMu sync.RWMutex
 	spanFramesMinDuration   time.Duration
 
+	stackTraceLimitMu sync.RWMutex
+	stackTraceLimit   int
+
 	samplerMu sync.RWMutex
 	sampler   Sampler
+	// localSampler holds the most recently locally-configured Sampler,
+	// which is what sampler will be set to when a centrally defined
+	// sampler is removed.
+	localSampler Sampler
+	// remoteSampler records whether sampler is defined by the remote
+	// config watcher.
+	remoteSampler bool
 
 	captureHeadersMu sync.RWMutex
 	captureHeaders   bool
@@ -239,30 +325,30 @@ type Tracer struct {
 }
 
 // NewTracer returns a new Tracer, using the default transport,
-// initializing a Service with the specified name and version,
-// or taking the service name and version from the environment
-// if unspecified.
-//
-// If serviceName is empty, then the service name will be defined
-// using the ELASTIC_APM_SERVER_NAME environment variable.
+// and with the specified service name and version if specified.
+// This is equivalent to calling NewTracerOptions with a
+// TracerOptions having ServiceName and ServiceVersion set to
+// the provided arguments.
 func NewTracer(serviceName, serviceVersion string) (*Tracer, error) {
-	var opts options
-	if err := opts.init(false); err != nil {
+	return NewTracerOptions(TracerOptions{
+		ServiceName:    serviceName,
+		ServiceVersion: serviceVersion,
+	})
+}
+
+// NewTracerOptions returns a new Tracer using the provided options.
+// See TracerOptions for details on the options, and their default
+// values.
+func NewTracerOptions(opts TracerOptions) (*Tracer, error) {
+	if err := opts.initDefaults(false); err != nil {
 		return nil, err
-	}
-	if serviceName != "" {
-		if err := validateServiceName(serviceName); err != nil {
-			return nil, err
-		}
-		opts.serviceName = serviceName
-		opts.serviceVersion = serviceVersion
 	}
 	return newTracer(opts), nil
 }
 
-func newTracer(opts options) *Tracer {
+func newTracer(opts TracerOptions) *Tracer {
 	t := &Tracer{
-		Transport:             transport.Default,
+		Transport:             opts.Transport,
 		process:               &currentProcess,
 		system:                &localSystem,
 		closing:               make(chan struct{}),
@@ -270,19 +356,24 @@ func newTracer(opts options) *Tracer {
 		forceFlush:            make(chan chan<- struct{}),
 		forceSendMetrics:      make(chan chan<- struct{}),
 		configCommands:        make(chan tracerConfigCommand),
+		configWatcher:         make(chan apmconfig.Watcher),
 		events:                make(chan tracerEvent, tracerEventChannelCap),
 		active:                1,
+		breakdownMetrics:      newBreakdownMetrics(),
 		maxSpans:              opts.maxSpans,
 		sampler:               opts.sampler,
+		localSampler:          opts.sampler,
 		captureHeaders:        opts.captureHeaders,
 		captureBody:           opts.captureBody,
 		spanFramesMinDuration: opts.spanFramesMinDuration,
+		stackTraceLimit:       opts.stackTraceLimit,
 		bufferSize:            opts.bufferSize,
 		metricsBufferSize:     opts.metricsBufferSize,
 	}
-	t.Service.Name = opts.serviceName
-	t.Service.Version = opts.serviceVersion
-	t.Service.Environment = opts.serviceEnvironment
+	t.Service.Name = opts.ServiceName
+	t.Service.Version = opts.ServiceVersion
+	t.Service.Environment = opts.ServiceEnvironment
+	t.breakdownMetrics.enabled = opts.breakdownMetrics
 
 	if !opts.active {
 		t.active = 0
@@ -304,6 +395,9 @@ func newTracer(opts options) *Tracer {
 			cfg.logger = apmlog.DefaultLogger
 		}
 	}
+	if opts.configWatcher != nil {
+		t.configWatcher <- opts.configWatcher
+	}
 	return t
 }
 
@@ -313,7 +407,7 @@ type tracerConfig struct {
 	requestSize             int
 	requestDuration         time.Duration
 	metricsInterval         time.Duration
-	logger                  Logger
+	logger                  WarningLogger
 	metricsGatherers        []MetricsGatherer
 	contextSetter           stacktrace.ContextSetter
 	preContext, postContext int
@@ -385,12 +479,15 @@ func (t *Tracer) SetContextSetter(setter stacktrace.ContextSetter) {
 // SetLogger sets the Logger to be used for logging the operation of
 // the tracer.
 //
+// If logger implements WarningLogger, its Warningf method will be used
+// for logging warnings. Otherwise, warnings will logged using Debugf.
+//
 // The tracer is initialized with a default logger configured with the
 // environment variables ELASTIC_APM_LOG_FILE and ELASTIC_APM_LOG_LEVEL.
 // Calling SetLogger will replace the default logger.
 func (t *Tracer) SetLogger(logger Logger) {
 	t.sendConfigCommand(func(cfg *tracerConfig) {
-		cfg.logger = logger
+		cfg.logger = makeWarningLogger(logger)
 	})
 }
 
@@ -404,7 +501,7 @@ func (t *Tracer) SetSanitizedFieldNames(patterns ...string) error {
 	if len(patterns) != 0 {
 		matchers = make(wildcard.Matchers, len(patterns))
 		for i, p := range patterns {
-			matchers[i] = apmconfig.ParseWildcardPattern(p)
+			matchers[i] = configutil.ParseWildcardPattern(p)
 		}
 	}
 	t.sendConfigCommand(func(cfg *tracerConfig) {
@@ -440,6 +537,25 @@ func (t *Tracer) RegisterMetricsGatherer(g MetricsGatherer) func() {
 	}
 }
 
+// SetConfigWatcher sets w as the config watcher.
+//
+// By default, the tracer will be configured to use the transport for
+// watching config, if the transport implements apmconfig.Watcher. This
+// can be overridden by calling SetConfigWatcher.
+//
+// If w is nil, config watching will be stopped.
+//
+// Calling SetConfigWatcher will discard any previously observed remote
+// config, reverting to local config until a config change from w is
+// observed.
+func (t *Tracer) SetConfigWatcher(w apmconfig.Watcher) {
+	select {
+	case t.configWatcher <- w:
+	case <-t.closing:
+	case <-t.closed:
+	}
+}
+
 func (t *Tracer) sendConfigCommand(cmd tracerConfigCommand) {
 	select {
 	case t.configCommands <- cmd:
@@ -448,11 +564,19 @@ func (t *Tracer) sendConfigCommand(cmd tracerConfigCommand) {
 	}
 }
 
-// SetSampler sets the sampler the tracer. It is valid to pass nil,
-// in which case all transactions will be sampled.
+// SetSampler sets the sampler the tracer.
+//
+// It is valid to pass nil, in which case all transactions will be sampled.
+//
+// Configuration via Kibana takes precedence over local configuration, so
+// if sampling has been configured via Kibana, this call will not have any
+// effect until/unless that configuration has been removed.
 func (t *Tracer) SetSampler(s Sampler) {
 	t.samplerMu.Lock()
-	t.sampler = s
+	t.localSampler = s
+	if !t.remoteSampler {
+		t.sampler = s
+	}
 	t.samplerMu.Unlock()
 }
 
@@ -471,6 +595,14 @@ func (t *Tracer) SetSpanFramesMinDuration(d time.Duration) {
 	t.spanFramesMinDurationMu.Lock()
 	t.spanFramesMinDuration = d
 	t.spanFramesMinDurationMu.Unlock()
+}
+
+// SetStackTraceLimit sets the the maximum number of stack frames to collect
+// for each stack trace. If limit is negative, then all frames will be collected.
+func (t *Tracer) SetStackTraceLimit(limit int) {
+	t.stackTraceLimitMu.Lock()
+	t.stackTraceLimit = limit
+	t.stackTraceLimitMu.Unlock()
 }
 
 // SetCaptureHeaders enables or disables capturing of HTTP headers.
@@ -556,6 +688,7 @@ func (t *Tracer) loop() {
 		}
 	}()
 
+	var breakdownMetricsLimitWarningLogged bool
 	var stats TracerStats
 	var metrics Metrics
 	var sentMetrics chan<- struct{}
@@ -567,6 +700,15 @@ func (t *Tracer) loop() {
 	if !metricsTimer.Stop() {
 		<-metricsTimer.C
 	}
+
+	var lastConfigChange map[string]string
+	var configChanges <-chan apmconfig.Change
+	var stopConfigWatcher func()
+	defer func() {
+		if stopConfigWatcher != nil {
+			stopConfigWatcher()
+		}
+	}()
 
 	var cfg tracerConfig
 	buffer := ringbuffer.New(t.bufferSize)
@@ -620,9 +762,52 @@ func (t *Tracer) loop() {
 				}
 			}
 			continue
+		case cw := <-t.configWatcher:
+			if configChanges != nil {
+				stopConfigWatcher()
+				t.updateConfig(&cfg, lastConfigChange, nil)
+				lastConfigChange = nil
+				configChanges = nil
+			}
+			if cw == nil {
+				continue
+			}
+			var configWatcherContext context.Context
+			var watchParams apmconfig.WatchParams
+			watchParams.Service.Name = t.Service.Name
+			watchParams.Service.Environment = t.Service.Environment
+			configWatcherContext, stopConfigWatcher = context.WithCancel(ctx)
+			configChanges = cw.WatchConfig(configWatcherContext, watchParams)
+			// Silence go vet's "possible context leak" false positive.
+			// We call a previous stopConfigWatcher before reassigning
+			// the variable, and we have a defer at the top level of the
+			// loop method that will call the final stopConfigWatcher
+			// value on method exit.
+			_ = stopConfigWatcher
+			continue
+		case change, ok := <-configChanges:
+			if !ok {
+				configChanges = nil
+				continue
+			}
+			if change.Err != nil {
+				if cfg.logger != nil {
+					cfg.logger.Errorf("config request failed: %s", change.Err)
+				}
+			} else {
+				t.updateConfig(&cfg, lastConfigChange, change.Attrs)
+				lastConfigChange = change.Attrs
+			}
+			continue
 		case event := <-t.events:
 			switch event.eventType {
 			case transactionEvent:
+				if !t.breakdownMetrics.recordTransaction(event.tx.TransactionData) {
+					if !breakdownMetricsLimitWarningLogged && cfg.logger != nil {
+						cfg.logger.Warningf("%s", breakdownMetricsLimitWarning)
+						breakdownMetricsLimitWarningLogged = true
+					}
+				}
 				modelWriter.writeTransaction(event.tx.Transaction, event.tx.TransactionData)
 			case spanEvent:
 				modelWriter.writeSpan(event.span.Span, event.span.SpanData)
@@ -659,6 +844,12 @@ func (t *Tracer) loop() {
 				event := <-t.events
 				switch event.eventType {
 				case transactionEvent:
+					if !t.breakdownMetrics.recordTransaction(event.tx.TransactionData) {
+						if !breakdownMetricsLimitWarningLogged && cfg.logger != nil {
+							cfg.logger.Warningf("%s", breakdownMetricsLimitWarning)
+							breakdownMetricsLimitWarningLogged = true
+						}
+					}
 					modelWriter.writeTransaction(event.tx.Transaction, event.tx.TransactionData)
 				case spanEvent:
 					modelWriter.writeSpan(event.span.Span, event.span.SpanData)
@@ -854,6 +1045,10 @@ func (t *Tracer) jsonRequestMetadata() []byte {
 	t.process.MarshalFastJSON(&json)
 	json.RawString(`,"service":`)
 	service.MarshalFastJSON(&json)
+	if len(globalLabels) > 0 {
+		json.RawString(`,"labels":`)
+		globalLabels.MarshalFastJSON(&json)
+	}
 	json.RawString("}}\n")
 	return json.Bytes()
 }
@@ -873,11 +1068,74 @@ func (t *Tracer) gatherMetrics(ctx context.Context, gatherers []MetricsGatherer,
 	}
 	go func() {
 		group.Wait()
+		for _, m := range m.transactionGroupMetrics {
+			m.Timestamp = timestamp
+		}
 		for _, m := range m.metrics {
 			m.Timestamp = timestamp
 		}
 		gathered <- struct{}{}
 	}()
+}
+
+// updateConfig updates t and cfg with changes held in "attrs", and reverts
+// to local config for config attributes that have been removed (exist in old
+// but not in attrs).
+//
+// On return from updateConfig, unapplied config will have been removed from attrs.
+func (t *Tracer) updateConfig(cfg *tracerConfig, old, attrs map[string]string) {
+	warningf := func(string, ...interface{}) {}
+	debugf := func(string, ...interface{}) {}
+	errorf := func(string, ...interface{}) {}
+	if cfg.logger != nil {
+		warningf = cfg.logger.Warningf
+		debugf = cfg.logger.Debugf
+		errorf = cfg.logger.Errorf
+	}
+	envName := func(k string) string {
+		return "ELASTIC_APM_" + strings.ToUpper(k)
+	}
+
+	for k, v := range attrs {
+		if oldv, ok := old[k]; ok && oldv == v {
+			continue
+		}
+		switch envName(k) {
+		case envTransactionSampleRate:
+			sampler, err := parseSampleRate(k, v)
+			if err != nil {
+				errorf("central config failure: %s", err)
+				delete(attrs, k)
+				continue
+			} else {
+				t.samplerMu.Lock()
+				t.sampler = sampler
+				t.remoteSampler = true
+				t.samplerMu.Unlock()
+			}
+		default:
+			warningf("central config failure: unsupported config: %s", k)
+			delete(attrs, k)
+			continue
+		}
+		debugf("central config update: updated %s to %s", k, v)
+	}
+
+	for k := range old {
+		if _, ok := attrs[k]; ok {
+			continue
+		}
+		switch envName(k) {
+		case envTransactionSampleRate:
+			t.samplerMu.Lock()
+			t.sampler = t.localSampler
+			t.remoteSampler = false
+			t.samplerMu.Unlock()
+		default:
+			continue
+		}
+		debugf("central config update: reverted %s to local config", k)
+	}
 }
 
 type tracerEventType int

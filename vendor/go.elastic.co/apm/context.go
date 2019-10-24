@@ -26,6 +26,8 @@ import (
 )
 
 // Context provides methods for setting transaction and error context.
+//
+// NOTE this is entirely unrelated to the standard library's context.Context.
 type Context struct {
 	model            model.Context
 	request          model.Request
@@ -46,6 +48,7 @@ func (c *Context) build() *model.Context {
 	case c.model.User != nil:
 	case c.model.Service != nil:
 	case len(c.model.Tags) != 0:
+	case len(c.model.Custom) != 0:
 	default:
 		return nil
 	}
@@ -55,7 +58,8 @@ func (c *Context) build() *model.Context {
 func (c *Context) reset() {
 	*c = Context{
 		model: model.Context{
-			Tags: c.model.Tags[:0],
+			Custom: c.model.Custom[:0],
+			Tags:   c.model.Tags[:0],
 		},
 		captureBodyMask: c.captureBodyMask,
 		request: model.Request{
@@ -77,6 +81,21 @@ func (c *Context) SetTag(key, value string) {
 	c.model.Tags = append(c.model.Tags, model.StringMapItem{
 		Key:   cleanTagKey(key),
 		Value: truncateString(value),
+	})
+}
+
+// SetCustom sets custom context.
+//
+// Invalid characters ('.', '*', and '"') in the key will be
+// replaced with an underscore. The value may be any JSON-encodable
+// value.
+func (c *Context) SetCustom(key string, value interface{}) {
+	// Note that we do not attempt to de-duplicate the keys.
+	// This is OK, since json.Unmarshal will always take the
+	// final instance.
+	c.model.Custom = append(c.model.Custom, model.IfaceMapItem{
+		Key:   cleanTagKey(key),
+		Value: value,
 	})
 }
 

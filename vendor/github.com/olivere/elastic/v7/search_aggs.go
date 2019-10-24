@@ -473,6 +473,21 @@ func (a Aggregations) Histogram(name string) (*AggregationBucketHistogramItems, 
 	return nil, false
 }
 
+// AutoDateHistogram returns auto date histogram aggregation results.
+// See: https://www.elastic.co/guide/en/elasticsearch/reference/7.0/search-aggregations-bucket-datehistogram-aggregation.html
+func (a Aggregations) AutoDateHistogram(name string) (*AggregationBucketHistogramItems, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationBucketHistogramItems)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
 // DateHistogram returns date histogram aggregation results.
 // See: https://www.elastic.co/guide/en/elasticsearch/reference/7.0/search-aggregations-bucket-datehistogram-aggregation.html
 func (a Aggregations) DateHistogram(name string) (*AggregationBucketHistogramItems, bool) {
@@ -753,6 +768,22 @@ func (a Aggregations) SerialDiff(name string) (*AggregationPipelineSimpleValue, 
 func (a Aggregations) Composite(name string) (*AggregationBucketCompositeItems, bool) {
 	if raw, found := a[name]; found {
 		agg := new(AggregationBucketCompositeItems)
+		if raw == nil {
+			return agg, true
+		}
+		if err := json.Unmarshal(raw, agg); err == nil {
+			return agg, true
+		}
+	}
+	return nil, false
+}
+
+// ScriptedMetric returns scripted metric aggregation results.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/7.2/search-aggregations-metrics-scripted-metric-aggregation.html
+// for details.
+func (a Aggregations) ScriptedMetric(name string) (*AggregationScriptedMetric, bool) {
+	if raw, found := a[name]; found {
+		agg := new(AggregationScriptedMetric)
 		if raw == nil {
 			return agg, true
 		}
@@ -1375,8 +1406,9 @@ func (a *AggregationBucketAdjacencyMatrix) UnmarshalJSON(data []byte) error {
 type AggregationBucketHistogramItems struct {
 	Aggregations
 
-	Buckets []*AggregationBucketHistogramItem //`json:"buckets"`
-	Meta    map[string]interface{}            // `json:"meta,omitempty"`
+	Buckets  []*AggregationBucketHistogramItem //`json:"buckets"`
+	Interval interface{}                       // `json:"interval"` // can be numeric or a string
+	Meta     map[string]interface{}            // `json:"meta,omitempty"`
 }
 
 // UnmarshalJSON decodes JSON data and initializes an AggregationBucketHistogramItems structure.
@@ -1387,6 +1419,9 @@ func (a *AggregationBucketHistogramItems) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["buckets"]; ok && v != nil {
 		json.Unmarshal(v, &a.Buckets)
+	}
+	if v, ok := aggs["interval"]; ok && v != nil {
+		json.Unmarshal(v, &a.Interval)
 	}
 	if v, ok := aggs["meta"]; ok && v != nil {
 		json.Unmarshal(v, &a.Meta)
@@ -1696,6 +1731,33 @@ func (a *AggregationBucketCompositeItem) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := aggs["doc_count"]; ok && v != nil {
 		json.Unmarshal(v, &a.DocCount)
+	}
+	a.Aggregations = aggs
+	return nil
+}
+
+// AggregationScriptedMetric is the value return by a scripted metric aggregation.
+// Value maybe one of map[string]interface{}/[]interface{}/string/bool/json.Number
+type AggregationScriptedMetric struct {
+	Aggregations
+
+	Value interface{}            //`json:"value"`
+	Meta  map[string]interface{} //`json:"meta,omitempty"`
+}
+
+// UnmarshalJSON decodes JSON data and initializes an AggregationScriptedMetric structure.
+func (a *AggregationScriptedMetric) UnmarshalJSON(data []byte) error {
+	var aggs map[string]json.RawMessage
+	if err := json.Unmarshal(data, &aggs); err != nil {
+		return err
+	}
+	if v, ok := aggs["value"]; ok && v != nil {
+		decoder := json.NewDecoder(bytes.NewReader(v))
+		decoder.UseNumber()
+		decoder.Decode(&a.Value)
+	}
+	if v, ok := aggs["meta"]; ok && v != nil {
+		json.Unmarshal(v, &a.Meta)
 	}
 	a.Aggregations = aggs
 	return nil

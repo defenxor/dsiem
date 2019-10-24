@@ -543,6 +543,18 @@ func (v *Context) MarshalFastJSON(w *fastjson.Writer) error {
 	var firstErr error
 	w.RawByte('{')
 	first := true
+	if !v.Custom.isZero() {
+		const prefix = ",\"custom\":"
+		if first {
+			first = false
+			w.RawString(prefix[1:])
+		} else {
+			w.RawString(prefix)
+		}
+		if err := v.Custom.MarshalFastJSON(w); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 	if v.Request != nil {
 		const prefix = ",\"request\":"
 		if first {
@@ -1066,14 +1078,80 @@ func (v *Metrics) MarshalFastJSON(w *fastjson.Writer) error {
 	if err := v.Timestamp.MarshalFastJSON(w); err != nil && firstErr == nil {
 		firstErr = err
 	}
+	if !v.Span.isZero() {
+		w.RawString(",\"span\":")
+		if err := v.Span.MarshalFastJSON(w); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 	if !v.Labels.isZero() {
 		w.RawString(",\"tags\":")
 		if err := v.Labels.MarshalFastJSON(w); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
+	if !v.Transaction.isZero() {
+		w.RawString(",\"transaction\":")
+		if err := v.Transaction.MarshalFastJSON(w); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 	w.RawByte('}')
 	return firstErr
+}
+
+func (v *MetricsTransaction) MarshalFastJSON(w *fastjson.Writer) error {
+	w.RawByte('{')
+	first := true
+	if v.Name != "" {
+		const prefix = ",\"name\":"
+		if first {
+			first = false
+			w.RawString(prefix[1:])
+		} else {
+			w.RawString(prefix)
+		}
+		w.String(v.Name)
+	}
+	if v.Type != "" {
+		const prefix = ",\"type\":"
+		if first {
+			first = false
+			w.RawString(prefix[1:])
+		} else {
+			w.RawString(prefix)
+		}
+		w.String(v.Type)
+	}
+	w.RawByte('}')
+	return nil
+}
+
+func (v *MetricsSpan) MarshalFastJSON(w *fastjson.Writer) error {
+	w.RawByte('{')
+	first := true
+	if v.Subtype != "" {
+		const prefix = ",\"subtype\":"
+		if first {
+			first = false
+			w.RawString(prefix[1:])
+		} else {
+			w.RawString(prefix)
+		}
+		w.String(v.Subtype)
+	}
+	if v.Type != "" {
+		const prefix = ",\"type\":"
+		if first {
+			first = false
+			w.RawString(prefix[1:])
+		} else {
+			w.RawString(prefix)
+		}
+		w.String(v.Type)
+	}
+	w.RawByte('}')
+	return nil
 }
 
 func (v *Metric) MarshalFastJSON(w *fastjson.Writer) error {
