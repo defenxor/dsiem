@@ -78,6 +78,9 @@ func (t *Transaction) Recover() {
 func (t *Transaction) SetCustom(key string, value string) {
 	t.Lock()
 	defer t.Unlock()
+	if t.ended {
+		return
+	}
 	defer t.Recover()
 	t.Tx.Context.SetTag(key, value)
 }
