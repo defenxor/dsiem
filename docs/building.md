@@ -20,7 +20,7 @@
 
 - Open terminal and `cd` to Dsiem working directory.
 
-- To build all Dsiem commands:
+- To build all Dsiem commands (linux version):
 
   ```shell
   $ ./scripts/gobuild-cmd.sh
@@ -31,6 +31,12 @@
   $ ./scripts/gobuild-cmd.sh ./cmd/dpluger
   ```
   The result will all be located in the working directory.
+
+- To also build the commands for Windows and Darwin version:
+  ```shell
+  $ ./scripts/gobuild-cmd-release.sh
+  ```
+  The result will be several zip files located in temp/release/latest/ directory.
 
 - To build the web UI:
   
@@ -45,3 +51,4 @@
   $ ./scripts/dockerbuild-dev.sh
   ```
   The result will be an image named `defenxor/dsiem-devel`.
+
