@@ -18,6 +18,13 @@ const (
 	unbound
 )
 
+const (
+	timeoutNone = iota
+	timeoutDeadlock
+	timeoutZero
+	timeoutProcessing
+)
+
 // EventQueue represents queue obj for Normalized Events
 type EventQueue struct {
 	q                  lgc.Queue
@@ -39,9 +46,9 @@ type bufEvent struct {
 }
 
 type bufChan struct {
-	dirID     int
-	ch        chan bufEvent
-	isTimeOut bool
+	dirID         int
+	ch            chan bufEvent
+	timeoutStatus int
 	sync.RWMutex
 }
 
@@ -66,32 +73,32 @@ func (eq *EventQueue) Init(target []event.Channel, maxQueueLength int, eps int) 
 	listener := func(i int) {
 		for {
 			be := <-eq.bufChans[i].ch
-			timedOut := false
+			timeoutStatus := timeoutNone
 			switch eq.qMode {
 			case unbound:
 				select {
 				case target[i].Ch <- be.evt:
 				case <-time.After(deadlockLimit):
 					log.Warn(log.M{Msg: "Directive " + strconv.Itoa(target[i].DirID) + " timed out! potential deadlock detected"})
-					timedOut = true
+					timeoutStatus = timeoutDeadlock
 				}
 			case bound:
 				if be.maxWait == 0 {
 					select {
 					case target[i].Ch <- be.evt:
 					default:
-						timedOut = true
+						timeoutStatus = timeoutZero
 					}
 				} else {
 					select {
 					case target[i].Ch <- be.evt:
 					case <-time.After(be.maxWait):
-						timedOut = true
+						timeoutStatus = timeoutProcessing
 					}
 				}
 			}
 			eq.bufChans[i].Lock()
-			eq.bufChans[i].isTimeOut = timedOut
+			eq.bufChans[i].timeoutStatus = timeoutStatus
 			eq.bufChans[i].Unlock()
 		}
 	}
@@ -153,17 +160,24 @@ func (eq *EventQueue) Reporter(d time.Duration) {
 	for {
 		<-ticker.C
 		eq.dcLock.RLock()
-		c := 0
+		var cDeadlock, cZero, cProcessing int
 		for i := range eq.bufChans {
 			eq.bufChans[i].RLock()
-			if eq.bufChans[i].isTimeOut {
-				c++
+			switch eq.bufChans[i].timeoutStatus {
+			case timeoutDeadlock:
+				cDeadlock++
+			case timeoutZero:
+				cZero++
+			case timeoutProcessing:
+				cProcessing++
 			}
 			eq.bufChans[i].RUnlock()
 		}
 		log.Info(log.M{Msg: "Backend queue length: " + strconv.Itoa(eq.q.GetLen()) +
 			" dequeue duration: " + eq.dequeueDuration.String() +
-			" timed-out directives: " + strconv.Itoa(c) + " max-proc.time/directive: " + eq.maxWait.String()})
+			" timed-out directives: " + strconv.Itoa(cDeadlock+cZero+cProcessing) + "(" +
+			strconv.Itoa(cDeadlock) + "/" + strconv.Itoa(cZero) + "/" + strconv.Itoa(cProcessing) +
+			") max-proc.time/directive: " + eq.maxWait.String()})
 		if eq.dequeueDuration > eq.maxDequeueDuration {
 			log.Warn(log.M{Msg: "Single event processing took " + eq.dequeueDuration.String() +
 				", may not be able to sustain the target " + eq.eps + " events/sec (" + eq.maxDequeueDuration.String() + "/event)"})
