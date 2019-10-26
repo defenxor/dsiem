@@ -4,6 +4,8 @@ require (
 	github.com/allegro/bigcache v1.2.1
 	github.com/buaazp/fasthttprouter v0.1.1
 	github.com/dogenzaka/tsv v0.0.0-20150215104501-8e02e611b1fb
+	github.com/elastic/go-sysinfo v1.1.1-0.20191025104200-74588a38895c // indirect
+	github.com/elastic/go-windows v1.0.1 // indirect
 	github.com/enriquebris/goconcurrentqueue v0.0.0-20190719205347-3e5689c24f05
 	github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072
 	github.com/gocarina/gocsv/v2 v2.0.0-20181026075406-cde31a6ec2a8
@@ -35,8 +37,7 @@ require (
 	go.elastic.co/apm v1.5.0
 	go.uber.org/multierr v1.2.0 // indirect
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
-	golang.org/x/sys v0.0.0-20190926180325-855e68c8590b // indirect
+	golang.org/x/sys v0.0.0-20191025090151-53bf42e6b339 // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0
 	gopkg.in/olivere/elastic.v5 v5.0.82

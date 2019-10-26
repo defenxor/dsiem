@@ -10,7 +10,5 @@ require (
 	github.com/santhosh-tekuri/jsonschema v1.2.4
 	github.com/stretchr/testify v1.3.0
 	go.elastic.co/fastjson v1.0.0
-	golang.org/x/sys v0.0.0-20190926180325-855e68c8590b
+	golang.org/x/sys v0.0.0-20190726091711-fc99dfbffb4e
 )
-
-go 1.13
