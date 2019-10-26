@@ -207,8 +207,14 @@ func getUserProcessParams(handle syscall.Handle, pbi windows.ProcessBasicInforma
 // read an UTF-16 string from another process memory. Result is an []byte
 // with the UTF-16 data.
 func readProcessUnicodeString(handle syscall.Handle, s *windows.UnicodeString) ([]byte, error) {
-	buf := make([]byte, s.Size)
-	nRead, err := windows.ReadProcessMemory(handle, s.Buffer, buf)
+	// Allocate an extra UTF-16 null character at the end in case the read string
+	// is not terminated.
+	extra := 2
+	if s.Size&1 != 0 {
+		extra = 3 // If size is odd, need 3 nulls to terminate.
+	}
+	buf := make([]byte, int(s.Size)+extra)
+	nRead, err := windows.ReadProcessMemory(handle, s.Buffer, buf[:s.Size])
 	if err != nil {
 		return nil, err
 	}
@@ -221,14 +227,32 @@ func readProcessUnicodeString(handle syscall.Handle, s *windows.UnicodeString) (
 // Use Windows' CommandLineToArgv API to split an UTF-16 command line string
 // into a list of parameters.
 func splitCommandline(utf16 []byte) ([]string, error) {
-	if len(utf16) == 0 {
+	n := len(utf16)
+	// Discard odd byte
+	if n&1 != 0 {
+		n--
+		utf16 = utf16[:n]
+	}
+	if n == 0 {
 		return nil, nil
+	}
+	terminated := false
+	for i := 0; i < n && !terminated; i += 2 {
+		terminated = utf16[i] == 0 && utf16[i+1] == 0
+	}
+	if !terminated {
+		// Append a null uint16 at the end if terminator is missing
+		utf16 = append(utf16, 0, 0)
 	}
 	var numArgs int32
 	argsWide, err := syscall.CommandLineToArgv((*uint16)(unsafe.Pointer(&utf16[0])), &numArgs)
 	if err != nil {
 		return nil, err
 	}
+
+	// Free memory allocated for CommandLineToArgvW arguments.
+	defer syscall.LocalFree((syscall.Handle)(unsafe.Pointer(argsWide)))
+
 	args := make([]string, numArgs)
 	for idx := range args {
 		args[idx] = syscall.UTF16ToString(argsWide[idx][:])
@@ -280,18 +304,18 @@ func (p *process) User() (types.UserInfo, error) {
 		return types.UserInfo{}, errors.Wrap(err, "GetTokenUser failed")
 	}
 
-	sid, err := tokenUser.User.Sid.String()
-	if err != nil {
-		return types.UserInfo{}, errors.Wrap(err, "failed to look up user SID")
+	sid := tokenUser.User.Sid.String()
+	if sid == "" {
+		return types.UserInfo{}, errors.New("failed to look up user SID")
 	}
 
 	tokenGroup, err := accessToken.GetTokenPrimaryGroup()
 	if err != nil {
 		return types.UserInfo{}, errors.Wrap(err, "GetTokenPrimaryGroup failed")
 	}
-	gsid, err := tokenGroup.PrimaryGroup.String()
-	if err != nil {
-		return types.UserInfo{}, errors.Wrap(err, "failed to look up primary group SID")
+	gsid := tokenGroup.PrimaryGroup.String()
+	if gsid == "" {
+		return types.UserInfo{}, errors.New("failed to look up primary group SID")
 	}
 
 	return types.UserInfo{
