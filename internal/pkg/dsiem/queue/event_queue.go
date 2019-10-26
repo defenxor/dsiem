@@ -118,6 +118,18 @@ func (eq *EventQueue) Dequeue() {
 		limitCap = eq.q.GetCap() * 5 / 10 // 50%
 	}
 	bEvt := bufEvent{}
+	// timer for when to calculate dequeuing duration
+	ticker := time.NewTicker(10 * time.Second)
+	chTime := make(chan struct{}, 1)
+	go func() {
+		for {
+			<-ticker.C
+			select {
+			case chTime <- struct{}{}:
+			default:
+			}
+		}
+	}()
 	for {
 		res, err := eq.q.DequeueOrWaitForNextElement()
 		if err != nil {
@@ -136,10 +148,15 @@ func (eq *EventQueue) Dequeue() {
 			eq.bufChans[i].ch <- bEvt
 		}
 
-		sStop := time.Since(sTime)
-		eq.dcLock.Lock()
-		eq.dequeueDuration = sStop
-		eq.dcLock.Unlock()
+		select {
+		case <-chTime:
+			sStop := time.Since(sTime)
+			eq.dcLock.Lock()
+			eq.dequeueDuration = sStop
+			eq.dcLock.Unlock()
+		default:
+		}
+
 	}
 }
 
