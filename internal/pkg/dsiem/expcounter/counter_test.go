@@ -17,7 +17,6 @@
 package expcounter
 
 import (
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"time"
 
 	"testing"
@@ -33,7 +32,7 @@ func TestInit(t *testing.T) {
 	viper.Set("tags", []string{"0"})
 	viper.Set("status", []string{"Open"})
 	// server.InitRcCounter()
-	alarm.Init("doesntmatter", false)
+	// alarm.Init("doesntmatter", false)
 	Init("standalone")
 	startTicker("standalone", true)
 	time.Sleep(6 * time.Second)

@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/server"
@@ -63,7 +62,6 @@ func startTicker(mode string, once bool) {
 		time.Sleep(5 * time.Second)
 	}
 	countGoroutine() // not used in the loop for now
-	countAlarm()     // same as countGoroutine
 	for {
 		var e, b, m string
 		<-ticker.C
@@ -96,11 +94,13 @@ func countGoroutine() string {
 	return strconv.Itoa(r)
 }
 
+/*
 func countAlarm() string {
 	a := alarm.Count()
 	alarmCounter.Set(int64(a))
 	return strconv.Itoa(a)
 }
+*/
 
 func countBacklogs() string {
 	b, act, ttl := siem.CountBackLogs()
