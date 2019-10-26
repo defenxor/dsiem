@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ver=${1}
 cmd=${2}
@@ -22,8 +22,8 @@ for os in $goos; do
   for c in $cmd; do
     [ ! -d $c ] && echo $c directory doesnt exist, skipping. && continue
     n=$(basename $c)
-    [ "$os" != "linux" ] && [ "$n" == "dsiem" ] && continue
-    [ "$os" == "windows" ] && n="${n}.exe"
+    [ "$os" != "linux" ] && [ "$n" = "dsiem" ] && continue
+    [ "$os" = "windows" ] && n="${n}.exe"
     echo building $c ver=${ver} buildtime=${now} for $os: $n ..
     GOFLAGS="-mod=vendor" CGO_ENABLED=0 GOOS=$os GOARCH=amd64 \
     go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c || exit 1
@@ -39,7 +39,7 @@ for os in $goos; do
     zname="$rdir/dsiem-server_${os}_amd64.zip"
     echo "creating $zname .."
     dsiembin="dsiem"
-    [ "$os" == "windows" ] && dsiembin="${dsiembin}.exe"
+    [ "$os" = "windows" ] && dsiembin="${dsiembin}.exe"
     zip -9 -r $zname $dsiembin configs web LICENSE README.md || exit 1
   fi
 
