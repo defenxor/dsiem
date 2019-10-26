@@ -15,4 +15,6 @@ Available topics are:
 * [Dsiem Elasticsearch Indices](./es_indices.md)
 * [Notes on Security](./security.md)
 * [Elastic SIEM integration](./elastic_siem_integration.md)
+* [Differences from OSSIM](./differences_from_ossim.md)
+* [Managing Performance](./managing_performance.md)
 * [Building from Source](./building.md)
