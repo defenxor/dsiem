@@ -108,7 +108,8 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 
 	go eq.Dequeue()
 	go copier()
-	go eq.Reporter(30 * time.Second)
+	f := eq.GetReporter()
+	go f(30 * time.Second)
 	return nil
 }
 
