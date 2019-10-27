@@ -94,7 +94,7 @@ func TestBackLog(t *testing.T) {
 	e.EventID = "1"
 	e.Sensor = "sensor1"
 	e.SrcIP = "10.0.0.1"
-	e.DstIP = "8.8.8.8"
+	e.DstIP = "192.168.0.1"
 	e.Title = "ICMP Ping"
 	e.Protocol = "ICMP"
 	e.ConnID = 1
@@ -159,21 +159,28 @@ func TestBackLog(t *testing.T) {
 	e.PluginSID = b.Directive.Rules[0].PluginSID[0]
 	verifyEventOutput(t, e, b.chData, "consumes matching event")
 
-	e.RcvdTime = time.Now().Add(-time.Second).Unix()
+	fmt.Print("out of order event ..")
 	e.ConnID = 4
 	e.PluginSID = b.Directive.Rules[1].PluginSID[0]
-	fmt.Print("reached max stage ..")
-	verifyEventOutput(t, e, b.chData, "reached max stage and occurrence")
-
-	fmt.Print("out of order event ..")
-	e.ConnID = 5
 	e.Timestamp = time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339)
 	verifyEventOutput(t, e, b.chData, "event timestamp out of order")
 
 	fmt.Print("invalid timestamp ..")
-	e.ConnID = 6
+	e.ConnID = 5
 	e.Timestamp = "#"
 	verifyEventOutput(t, e, b.chData, "cannot parse event timestamp")
+
+	_ = fWriter.Init("", 0)
+	fmt.Print("err in updating ES ..")
+	e.ConnID = 6
+	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	verifyEventOutput(t, e, b.chData, "failed to update Elasticsearch!")
+
+	e.RcvdTime = time.Now().Add(-time.Second).Unix()
+	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	e.ConnID = 7
+	fmt.Print("reached max stage ..")
+	verifyEventOutput(t, e, b.chData, "reached max stage and occurrence")
 
 	fmt.Print("Check expiration ..")
 	// maxTime < limit

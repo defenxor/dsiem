@@ -122,6 +122,7 @@ func (b *backLog) newEventProcessor() {
 			nString := len(b.Directive.StickyDiffs[idx].SDiffString)
 			nInt := len(b.Directive.StickyDiffs[idx].SDiffInt)
 			if nString == lenSDiffString && nInt == lenSDiffInt {
+				b.debug("backlog can't find new unique value in stickydiff field "+currRule.StickyDiff, evt.ConnID)
 				continue
 			}
 		}
@@ -177,17 +178,16 @@ func (b *backLog) expirationChecker() {
 
 }
 
-func (b *backLog) isUnderPressure(rcvd int64, maxDelay int64) bool {
-	if maxDelay == 0 {
-		return false
+func (b *backLog) isUnderPressure(rcvd int64, maxDelay int64) (ret bool) {
+	if maxDelay != 0 {
+		now := time.Now().Unix()
+		ret = now-rcvd > maxDelay
 	}
-	now := time.Now().Unix()
-	return now-rcvd > maxDelay
+	return
 }
 
 // no modification so use value receiver
 func (b *backLog) isTimeInOrder(idx int, ts int64) bool {
-
 	b.RLock()
 	prevStageTime := b.Directive.Rules[idx-1].EndTime
 	b.RUnlock()
@@ -385,13 +385,16 @@ func (b *backLog) isStageReachMaxEvtCount(idx int) (reachMaxEvtCount bool) {
 
 func (b *backLog) increaseStage(e event.NormalizedEvent) {
 	b.Lock()
-	n := int32(b.CurrentStage)
-	b.CurrentStage = int(atomic.AddInt32(&n, 1))
-	if b.CurrentStage > b.HighestStage {
-		b.CurrentStage = b.HighestStage
+	increased := false
+	if b.CurrentStage < b.HighestStage {
+		n := int32(b.CurrentStage)
+		b.CurrentStage = int(atomic.AddInt32(&n, 1))
+		increased = true
 	}
 	b.Unlock()
-	b.info("stage increased", e.ConnID)
+	if increased {
+		b.info("stage increased", e.ConnID)
+	}
 }
 
 func (b *backLog) setRuleStartTime(e event.NormalizedEvent) {
@@ -408,12 +411,14 @@ func (b *backLog) calcRisk(connID uint64) (riskChanged bool) {
 	s := b.CurrentStage
 	idx := s - 1
 
+	/* no longer neccessary to check, we're calculating risk at the end of a stage
 	if len(b.Directive.Rules[idx].Events) == 0 {
 		b.RUnlock()
 		b.debug("skip calculating risk, no event received for this stage yet", connID)
 		riskChanged = false
 		return
 	}
+	*/
 
 	value := 0
 	for i := range b.SrcIPs {
@@ -466,7 +471,7 @@ func (b *backLog) setStatusTime() {
 	b.Unlock()
 }
 
-func (b *backLog) updateElasticsearch(e event.NormalizedEvent, idx int) error {
+func (b *backLog) updateElasticsearch(e event.NormalizedEvent, idx int) (err error) {
 	b.debug("backlog updating Elasticsearch", e.ConnID)
 	b.Lock()
 	b.StatusTime = time.Now().Unix()
@@ -474,10 +479,10 @@ func (b *backLog) updateElasticsearch(e event.NormalizedEvent, idx int) error {
 	v := siemAlarmEvents{b.ID, stage, e.EventID}
 	b.Unlock()
 
-	vJSON, err := json.Marshal(v)
-	if err != nil {
-		return err
+	var vJSON []byte
+	vJSON, err = json.Marshal(v)
+	if err == nil {
+		err = fWriter.EnqueueWrite(string(vJSON))
 	}
-	fWriter.EnqueueWrite(string(vJSON))
-	return nil
+	return
 }
