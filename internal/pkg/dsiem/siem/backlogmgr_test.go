@@ -95,12 +95,12 @@ func TestBacklogMgr(t *testing.T) {
 	e.Title = "ICMP Ping"
 	e.Protocol = "ICMP"
 	e.ConnID = 1
-	dctives := dirs.Dirs[0]
-	e.PluginID = dctives.Rules[0].PluginID
+	e.PluginID = dirs.Dirs[0].Rules[0].PluginID
 	e.PluginSID = 2100384
 
 	var blogs backlogs
 	ch := make(chan event.NormalizedEvent)
+	ch2 := make(chan event.NormalizedEvent)
 	blogs.DRWMutex = drwmutex.New()
 	blogs.id = 1
 	blogs.bpCh = make(chan bool)
@@ -116,7 +116,8 @@ func TestBacklogMgr(t *testing.T) {
 		}
 	}()
 
-	go allBacklogs[0].manager(dctives, ch, 0)
+	go allBacklogs[0].manager(dirs.Dirs[0], ch, 0)
+	go allBacklogs[0].manager(dirs.Dirs[1], ch2, 0)
 
 	holdSecDuration := 4
 	if err = InitBackLogManager(tmpLog, bpChOutput, holdSecDuration); err != nil {
@@ -136,8 +137,16 @@ func TestBacklogMgr(t *testing.T) {
 	e.ConnID = 1
 	verifyEventOutput(t, e, ch, "Fail to create new backlog")
 
-	fmt.Print("first event ..")
+	// will fail to create new backlog due to wrong SRC_IP
+	fmt.Print("event doesn't match rule SRC_IP (HOME_NET) ..")
 	e.Timestamp = time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339)
+	e.SrcIP = "8.8.8.8"
+	verifyFuncOutput(t, func() {
+		verifyEventOutput(t, e, ch, "")
+	}, "Creating new backlog", false)
+
+	fmt.Print("first event ..")
+	e.SrcIP = "10.0.0.1"
 	verifyEventOutput(t, e, ch, "stage increased")
 
 	fmt.Print("second event ..")
@@ -145,14 +154,6 @@ func TestBacklogMgr(t *testing.T) {
 	e.EventID = "2"
 	verifyEventOutput(t, e, ch, "backlog updating")
 
-	/*
-		fmt.Print("3rd event, will also fail updating ES ..")
-		e.ConnID = 3
-		e.EventID = "3"
-		// bLogFile = ""
-		verifyEventOutput(t, e, ch, "failed to update Elasticsearch")
-		// bLogFile = tmpLog
-	*/
 	fmt.Print("third event ..")
 	e.ConnID = 3
 	e.EventID = "3"
@@ -190,10 +191,46 @@ func TestBacklogMgr(t *testing.T) {
 	e.PluginSID = 31337
 	e.ConnID = 7
 	e.EventID = "7"
-	verifyEventOutput(t, e, ch, "")
+	verifyFuncOutput(t, func() {
+		verifyEventOutput(t, e, ch, "")
+	}, "Creating new backlog", false)
+
+	// will not match rule nor existing backlogs
+	/// no text will be shown as it is rejected by QuickCheckTaxonomyRule
+	fmt.Print("8th event (for the second manager)..")
+	e.PluginSID = 0
+	e.Product = "Non existant product"
+	e.Category = "Random category"
+	e.SubCategory = "Random subcat"
+	e.ConnID = 8
+	e.EventID = "8"
+	verifyFuncOutput(t, func() {
+		verifyEventOutput(t, e, ch2, "")
+	}, "Creating new backlog", false)
+
+	// should create a new backlog on the 2nd directive
+	fmt.Print("9th event ..")
+	e.ConnID = 9
+	e.Product = "Firewall"
+	e.Category = "Packet processing"
+	e.SubCategory = "Drop"
+	e.EventID = "9"
+	verifyEventOutput(t, e, ch2, "stage increased")
+
+	// first event for the 2nd stage
+	fmt.Print("10th event ..")
+	e.ConnID = 10
+	e.EventID = "10"
+	verifyEventOutput(t, e, ch2, "backlog updating Elasticsearch")
+
+	// shouldn't pass sticky diff test
+	fmt.Print("11th event ..")
+	e.ConnID = 11
+	e.EventID = "11"
+	verifyEventOutput(t, e, ch2, "stickydiff field")
 
 	sum, act, ttl := CountBackLogs()
-	if sum != 2 || act != 1 || ttl != 1 {
+	if sum != 3 || act != 1 || ttl != 1 {
 		t.Fatalf("sum|act|ttl is incorrect. Found: %d %d %d", sum, act, ttl)
 	}
 

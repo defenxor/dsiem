@@ -309,9 +309,26 @@ func TestRule(t *testing.T) {
 	rs9 := rs1
 	rs9.StickyDiff = "DST_PORT"
 
+	s4 := &StickyDiffData{}
+	s4.SDiffString = []string{"foo", "bar"}
+	rs10 := rs1
+	rs10.CustomData1 = "foo"
+	e1.CustomData1 = "foo"
+	rs10.StickyDiff = "CUSTOM_DATA1"
+
+	rs11 := rs1
+	rs11.CustomData2 = "bar"
+	e1.CustomData2 = "bar"
+	rs11.StickyDiff = "CUSTOM_DATA2"
+
+	rs12 := rs1
+	rs12.CustomData3 = "foo"
+	e1.CustomData3 = "custom"
+	rs12.StickyDiff = "CUSTOM_DATA3"
+
 	var tbl = []ruleTests{
 		{1, e1, r1, s1, true}, {2, e1, r2, s1, true}, {3, e1, r3, s1, false}, {4, e1, r4, s1, false},
-		{5, e1, r5, s1, false}, {6, e1, r6, s1, false}, {7, e1, r7, s1, false}, {8, e1, r8, s1, false},
+		{5, e1, r5, s1, false}, {6, e1, r6, s1, false}, {7, e1, r7, s1, true}, {8, e1, r8, s1, false},
 		{9, e1, r9, s1, false}, {10, e2, r10, s1, false}, {11, e1, r11, s1, false},
 		{12, e1, r12, s1, false}, {13, e1, r13, s1, false}, {14, e3, r14, s1, false},
 		{15, e1, r15, s1, false}, {16, e1, r16, s1, false}, {17, e1, r17, s1, false},
@@ -329,13 +346,14 @@ func TestRule(t *testing.T) {
 		{104, e1, rs4, s2, true}, {105, e1, rs5, s1, true},
 		{106, e1, rs6, nil, true}, {107, e1, rs7, nil, true},
 		{108, e1, rs8, s3, true}, {109, e1, rs9, s3, true},
+		{110, e1, rs10, s4, true}, {111, e1, rs11, s4, true}, {112, e1, rs12, s4, false},
 	}
 
 	for _, tt := range tbl {
 		actual := DoesEventMatch(tt.e, tt.r, tt.s, 0)
 		if actual != tt.expected {
-			t.Fatalf("Rule %d actual != expected. Event: %v, Rule: %v, Sticky: %v",
-				tt.n, tt.e, tt.r, tt.s)
+			t.Fatalf("Rule %d actual %t != expected %t. Event: %v, Rule: %v, Sticky: %v",
+				tt.n, actual, tt.expected, tt.e, tt.r, tt.s)
 		}
 	}
 }

@@ -158,19 +158,19 @@ func taxonomyRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffDa
 		return
 	}
 
+	// subcategory is optional and can use "ANY"
 	l := len(r.SubCategory)
-	if l == 0 {
-		return
-	}
-	scMatch := false
-	for i := range r.SubCategory {
-		if r.SubCategory[i] == e.SubCategory {
-			scMatch = true
-			break
+	if l != 0 {
+		scMatch := false
+		for i := range r.SubCategory {
+			if r.SubCategory[i] == e.SubCategory || r.SubCategory[i] == "ANY" {
+				scMatch = true
+				break
+			}
 		}
-	}
-	if !scMatch {
-		return
+		if !scMatch {
+			return
+		}
 	}
 	ret = ipPortCheck(e, r, s, connID)
 	return
@@ -188,6 +188,15 @@ func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 	}
 	if r.CustomData3 != "" {
 		r3 = r.CustomData3 == e.CustomData3
+	}
+	switch {
+	case r.StickyDiff == "CUSTOM_DATA1":
+		_ = isStringStickyDiff(e.CustomData1, s)
+	case r.StickyDiff == "CUSTOM_DATA2":
+		_ = isStringStickyDiff(e.CustomData2, s)
+	case r.StickyDiff == "CUSTOM_DATA3":
+		_ = isStringStickyDiff(e.CustomData3, s)
+	default:
 	}
 	ret = r1 && r2 && r3
 	return
