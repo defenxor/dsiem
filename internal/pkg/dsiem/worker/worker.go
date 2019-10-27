@@ -38,12 +38,17 @@ var transport *nats.Transport
 var eventChan <-chan event.NormalizedEvent
 var bpChan chan<- bool
 var errChan <-chan error
+var bpChanReady chan struct{}
 
 type configFile struct {
 	Filename string `json:"filename"`
 }
 type configFiles struct {
 	Files []configFile `json:"files"`
+}
+
+func init() {
+	bpChanReady = make(chan struct{}, 1)
 }
 
 func getConfigFileList(frontendAddr string) (cf *configFiles, err error) {
@@ -88,6 +93,7 @@ func downloadConfigFiles(confDir string, frontendAddr string, node string) error
 
 //GetBackPressureChannel returns channel for sending backpressure bool messages
 func GetBackPressureChannel() chan<- bool {
+	<-bpChanReady
 	return bpChan
 }
 
@@ -112,6 +118,10 @@ func initMsgQueue(msq string, prefix, nodeName string) (errOccurred bool) {
 		err := initMsq()
 		if err == nil {
 			log.Info(log.M{Msg: "Successfully connected to message queue " + msq})
+			select {
+			case bpChanReady <- struct{}{}:
+			default:
+			}
 			break
 		}
 		errOccurred = true
