@@ -53,7 +53,7 @@ const (
 // InitBackLogManager initialize backlog and ticker
 func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
 	// bLogFile is defined in backlog.go
-	_ = fWriter.Init(logFile, maxFileQueueLength)
+	err = fWriter.Init(logFile, maxFileQueueLength)
 
 	go func() { bpChan <- false }() // set initial state
 	go initBpTicker(bpChan, holdDuration)
@@ -73,13 +73,14 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 			sl.Lock()
 			timer.Reset(time.Second * sWait)
 			if prevState {
-				log.Debug(log.M{Msg: "Sending overload=false signal from backend"})
-				bpChan <- false
-				prevState = false
-				sl.Unlock()
-			} else {
-				sl.Unlock()
+				select {
+				case bpChan <- false:
+					prevState = false
+					log.Debug(log.M{Msg: "Overload=false signal sent from backend"})
+				default:
+				}
 			}
+			sl.Unlock()
 		}
 	}()
 
@@ -93,13 +94,15 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 		sl.Lock()
 		timer.Reset(time.Second * sWait)
 		if !prevState {
-			log.Debug(log.M{Msg: "Sending overload=true signal from backend"})
-			bpChan <- true
-			prevState = true
-			sl.Unlock()
-		} else {
-			sl.Unlock()
+			select {
+			case bpChan <- true:
+				log.Debug(log.M{Msg: "Overload=true signal sent from backend"})
+				prevState = true
+
+			default:
+			}
 		}
+		sl.Unlock()
 	}
 }
 
@@ -179,26 +182,23 @@ mainLoop:
 		for k := range blogs.bl {
 			wg.Add(1)
 			go func(k string) {
-				// go try-receive pattern
-				select {
-				case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
-					wg.Done()
-					return
-					// continue
-				default:
-				}
-
+				/*
+					select {
+					case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
+						wg.Done()
+						return
+					default:
+					}
+				*/
 				select {
 				case <-blogs.bl[k].chDone: // exit early if done
 					wg.Done()
 					return
-					// continue
 				case blogs.bl[k].chData <- evt: // fwd to backlog
 					select {
 					case <-blogs.bl[k].chDone: // exit early if done
 						wg.Done()
 						return
-						// continue
 					// wait for the result
 					case f := <-blogs.bl[k].chFound:
 						if f {
