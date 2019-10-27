@@ -20,12 +20,40 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 6,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 0, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 0,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -35,12 +63,57 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 11, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 11,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 2,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": -1,
+          "timeout": 0
+        },
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 2,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         }
       ]
     },
@@ -50,12 +123,40 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRulesss", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRulesss",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -65,12 +166,39 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -80,12 +208,37 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -95,12 +248,41 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 0, 1 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            0,
+            1
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -110,12 +292,40 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "TaxonomyRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 11, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "TaxonomyRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 11,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -125,12 +335,43 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "TaxonomyRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "TaxonomyRule",
+          "product": [
+            "Firewall"
+          ],
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -140,12 +381,43 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NETs", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "product": [
+            "Firewall"
+          ],
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NETs",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -155,12 +427,41 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "product": [
+            "Firewall"
+          ],
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -170,12 +471,43 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "0", "port_to": "ANY", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "product": [
+            "Firewall"
+          ],
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "0",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 2, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 2,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -185,12 +517,42 @@
       "category": "Misc Activity",
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "a", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "product": [
+            "Firewall"
+          ],
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "a",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
     },
@@ -201,14 +563,44 @@
       "disabled": true,
       "id": 2,
       "priority": 5,
-      "rules" : [
-        { "name": "ICMP Ping", "type": "PluginRule", "product": [ "Firewall" ], "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 100, 
-          "from": "HOME_NET", "to": "ANY", "port_from": "ANY", "port_to": "a", "protocol": "ICMP", "reliability": 10, "timeout": 0 
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "product": [
+            "Firewall"
+          ],
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 100,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "a",
+          "protocol": "ICMP",
+          "reliability": 10,
+          "timeout": 0
         },
-        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
-          "from": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2100384
+          ],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0
         }
       ]
-    }    
+    }
   ]
 }
