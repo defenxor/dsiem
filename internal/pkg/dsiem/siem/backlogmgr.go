@@ -182,14 +182,12 @@ mainLoop:
 		for k := range blogs.bl {
 			wg.Add(1)
 			go func(k string) {
-				/*
-					select {
-					case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
-						wg.Done()
-						return
-					default:
-					}
-				*/
+				select {
+				case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
+					wg.Done()
+					return
+				default:
+				}
 				select {
 				case <-blogs.bl[k].chDone: // exit early if done
 					wg.Done()
