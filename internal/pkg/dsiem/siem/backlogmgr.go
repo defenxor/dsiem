@@ -52,7 +52,7 @@ const (
 
 // InitBackLogManager initialize backlog and ticker
 func InitBackLogManager(logFile string, bpChan chan<- bool, holdDuration int) (err error) {
-	// bLogFile is defined in backlog.go
+
 	err = fWriter.Init(logFile, maxFileQueueLength)
 
 	go func() { bpChan <- false }() // set initial state
@@ -178,12 +178,13 @@ mainLoop:
 
 		wg := &sync.WaitGroup{}
 
-		// todo this should use channel and send to all at once concurrently
 		for k := range blogs.bl {
 			wg.Add(1)
 			go func(k string) {
+				// this first select is required, see #2 on https://go101.org/article/channel-closing.html
 				select {
-				case <-blogs.bl[k].chDone: // exit early if done, this should be the case while backlog in waiting for deletion mode
+				// exit early if done, this should be the case while backlog in waiting for deletion mode
+				case <-blogs.bl[k].chDone:
 					wg.Done()
 					return
 				default:
@@ -261,7 +262,6 @@ mainLoop:
 			continue mainLoop
 		}
 		blogs.bl[b.ID] = b
-		// blogs.bl[b.ID].DRWMutex = drwmutex.New()
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
 		blogs.bl[b.ID].start(evt, minAlarmLifetime)
@@ -271,7 +271,7 @@ mainLoop:
 func (blogs *backlogs) delete(b *backLog) {
 	go func() {
 		// first prevent another blogs.delete to enter here
-		blogs.Lock() // to protect bl.Lock??
+		blogs.Lock()
 		b.Lock()
 		if b.deleted {
 			// already in the closing process
