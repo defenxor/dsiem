@@ -46,6 +46,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(directiveCmd)
+	rootCmd.AddCommand(splitterCmd)
 	rootCmd.PersistentFlags().StringP("config", "c", "dpluger_config.json", "config file to use")
 	createCmd.Flags().StringP("address", "a", "http://elasticsearch:9200", "Elasticsearch endpoint to use")
 	createCmd.Flags().StringP("indexPattern", "i", "suricata-*", "index pattern to read fields from")
@@ -61,6 +62,9 @@ func init() {
 	directiveCmd.Flags().StringP("kingdom", "k", "Environmental Awareness", "default kingdom to use")
 	directiveCmd.Flags().StringP("titleTemplate", "m", "EVENT_TITLE (SRC_IP to DST_IP)", "directive title template. EVENT_TITLE will be replaced with entries from TSV file, and SRC_IP and DST_IP will be replaced at runtime with the actual addresses.")
 	directiveCmd.Flags().IntP("dirNumber", "i", 100000, "Starting directive number")
+	splitterCmd.Flags().StringP("targetFile", "i", "", "Directive file to split")
+	splitterCmd.Flags().StringP("suffix", "s", "_", "Suffix for generated file, example: test.json will be splitted into test_1.json and test_2.json if suffix set to _")
+	splitterCmd.Flags().IntP("min", "n", 1024, "Minimum content before splitting")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
@@ -77,6 +81,9 @@ func init() {
 	viper.BindPFlag("kingdom", directiveCmd.Flags().Lookup("kingdom"))
 	viper.BindPFlag("dirNumber", directiveCmd.Flags().Lookup("dirNumber"))
 	viper.BindPFlag("titleTemplate", directiveCmd.Flags().Lookup("titleTemplate"))
+	viper.BindPFlag("targetFile", splitterCmd.Flags().Lookup("targetFile"))
+	viper.BindPFlag("suffix", splitterCmd.Flags().Lookup("suffix"))
+	viper.BindPFlag("min", splitterCmd.Flags().Lookup("min"))
 }
 
 func initConfig() {
@@ -198,5 +205,30 @@ var directiveCmd = &cobra.Command{
 		}
 		fmt.Println("Directives file written in " + outFile + "\n" +
 			"Now you should edit the generated file and deploy it to dsiem frontend configs directory")
+	},
+}
+
+var splitterCmd = &cobra.Command{
+	Use: "split-directive",
+	Short: "Split Directive file",
+	Long: `Split large directive file into multiple with certain suffix`,
+	Run: func(cmd *cobra.Command, args []string) {
+		target := viper.GetString("targetFile")
+		suffix := viper.GetString("suffix")
+		count := viper.GetInt("min")
+
+		if !fs.FileExist(target) {
+			exit(target+" doesn't exist", errors.New("wrong Target parameter"))
+		}
+
+		if count < 1 {
+			exit("count must be greater than 0", errors.New("wrong count"))
+		}
+		
+		if err:= dpluger.SplitDirective(target, suffix, count); err != nil {
+			exit("Failed to split " + target + " file", err)
+		}
+
+		fmt.Println("File ", target, " have been splitted")
 	},
 }
