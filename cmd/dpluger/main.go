@@ -64,7 +64,8 @@ func init() {
 	directiveCmd.Flags().IntP("dirNumber", "i", 100000, "Starting directive number")
 	splitterCmd.Flags().StringP("targetFile", "i", "", "Directive file to split")
 	splitterCmd.Flags().StringP("suffix", "s", "_", "Suffix for generated file, example: test.json will be splitted into test_1.json and test_2.json if suffix set to _")
-	splitterCmd.Flags().IntP("min", "n", 1024, "Minimum content before splitting")
+	splitterCmd.Flags().IntP("min", "n", 1024, "Directive count for splitted files")
+	splitterCmd.Flags().BoolP("delete-input", "d", false, "Delete input file after splitting")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("address", createCmd.Flags().Lookup("address"))
@@ -84,6 +85,7 @@ func init() {
 	viper.BindPFlag("targetFile", splitterCmd.Flags().Lookup("targetFile"))
 	viper.BindPFlag("suffix", splitterCmd.Flags().Lookup("suffix"))
 	viper.BindPFlag("min", splitterCmd.Flags().Lookup("min"))
+	viper.BindPFlag("delete", splitterCmd.Flags().Lookup("delete-input"))
 }
 
 func initConfig() {
@@ -216,6 +218,7 @@ var splitterCmd = &cobra.Command{
 		target := viper.GetString("targetFile")
 		suffix := viper.GetString("suffix")
 		count := viper.GetInt("min")
+		delete := viper.GetBool("delete")
 
 		if !fs.FileExist(target) {
 			exit(target+" doesn't exist", errors.New("wrong Target parameter"))
@@ -225,7 +228,7 @@ var splitterCmd = &cobra.Command{
 			exit("count must be greater than 0", errors.New("wrong count"))
 		}
 		
-		if err:= dpluger.SplitDirective(target, suffix, count); err != nil {
+		if err:= dpluger.SplitDirective(target, suffix, count, delete); err != nil {
 			exit("Failed to split " + target + " file", err)
 		}
 

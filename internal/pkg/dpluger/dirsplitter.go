@@ -7,12 +7,14 @@ import (
 	"math"
 	"strconv"
 	"path/filepath"
+	"errors"
+	"fmt"
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 )
 
-func SplitDirective(target string, suffix string, count int) (err error) {
+func SplitDirective(target string, suffix string, count int, delete bool) (err error) {
 	directiveFile, err := os.Open(target)
 	if err != nil {
 		return err
@@ -24,12 +26,23 @@ func SplitDirective(target string, suffix string, count int) (err error) {
 	var directives siem.Directives
 	json.Unmarshal(byteValue, &directives)
 
-	length := len(directives.Dirs)
-	files := int(math.Ceil(float64(length/count)))
+	length := float64(len(directives.Dirs))
+	files := int(math.Ceil(float64(length/float64(count))))
+
+	if files < 2 {
+		err = errors.New("Cannot split into single file, the target directive only contains " + strconv.Itoa(int(length)) + " directive, but the splitted directive count is set to " + strconv.Itoa(count) + ", \nuse -n flags to define another splitted item count, or use --help to show available flags")
+		return
+	}
 
 	for i := 0; i < files; i++ {
 		d := siem.Directives{}
-		d.Dirs = directives.Dirs[i * count: i * count + count]
+		start := i * count
+		end := start + count
+		if end > int(length) {
+			end = int(length)
+		}
+		
+		d.Dirs = directives.Dirs[start: end]
 
 		b, err := json.MarshalIndent(d, "", "  ")
 		if err != nil {
@@ -38,7 +51,12 @@ func SplitDirective(target string, suffix string, count int) (err error) {
 
 		err = fs.OverwriteFile(string(b), getFilename(target, suffix, i))
 	}
+
+	if delete {
+		err = os.Remove(target)
+	}
 	
+	fmt.Println("succesfully splitted", length, "directives into", files, "files")
 	return
 }
 
