@@ -13,7 +13,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 )
 
-// Split single directive json file into multiple json files
+// SplitDirective Split single directive json file into multiple json files
 func SplitDirective(target string, suffix string, count int, delete bool) (err error) {
 	directiveFile, err := os.Open(target)
 	if err != nil {
