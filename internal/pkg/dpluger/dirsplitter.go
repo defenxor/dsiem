@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"path/filepath"
 	"errors"
-	"fmt"
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 )
 
+// Split single directive json file into multiple json files
 func SplitDirective(target string, suffix string, count int, delete bool) (err error) {
 	directiveFile, err := os.Open(target)
 	if err != nil {
@@ -56,7 +56,6 @@ func SplitDirective(target string, suffix string, count int, delete bool) (err e
 		err = os.Remove(target)
 	}
 	
-	fmt.Println("succesfully splitted", length, "directives into", files, "files")
 	return
 }
 
