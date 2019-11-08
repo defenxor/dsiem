@@ -126,11 +126,17 @@ export class TablesComponent {
   }
 
   async checkES(): Promise<boolean> {
-    const rgxp = this.url2obj(this.elasticsearch);
-    const protocol = rgxp.protocol;
-    const host = rgxp.host;
-    const username = rgxp.user ? ' as ' + rgxp.user : '';
-    const esurl = protocol + '://' + host;
+    let rgxp, protocol, host, username, esurl;
+
+    try {
+      rgxp = this.url2obj(this.elasticsearch);
+      protocol = rgxp.protocol;
+      host = rgxp.host;
+      username = rgxp.user ? ' as ' + rgxp.user : '';
+      esurl = protocol + '://' + host;
+    } catch (err) {
+      console.error('parsing ES url error: ', err);
+    }
 
     try {
       await this.es.isAvailable();
