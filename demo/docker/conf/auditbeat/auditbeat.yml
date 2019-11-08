@@ -1,0 +1,13 @@
+auditbeat.modules:
+
+#- module: auditd
+#  audit_rules: |
+#    -w /etc/passwd -p wa -k identity
+#    -a always,exit -F arch=b32 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access
+
+- module: file_integrity
+  paths:
+    - /var/www/html
+
+output.elasticsearch:
+  hosts: elasticsearch:9200

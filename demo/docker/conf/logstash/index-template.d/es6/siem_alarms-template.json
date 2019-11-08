@@ -1,0 +1,38 @@
+{
+  "index_patterns" : [ "siem_alarms-*" ],
+  "version" : 1,
+  "settings" : {
+    "number_of_replicas": 0,
+    "number_of_shards": 1,
+    "index.refresh_interval" : "1s"
+  },
+  "aliases" : {
+    "siem_alarms" : {},
+    "siem_alarms_id_lookup" : {}
+  },
+  "mappings": {
+    "doc": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "norms": false,
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        }
+      ],
+      "properties": { 
+        "src_ips": { "type": "ip" },
+        "dst_ips": { "type": "ip" }
+      }
+    }
+  }
+}

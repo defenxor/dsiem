@@ -1,0 +1,216 @@
+{
+  "objects": [
+    {
+      "id": "ed4a2ca0-b335-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Alarm Risk per Network Heatmap",
+        "visState": "{\"title\":\"SIEM - Alarm Risk per Network Heatmap\",\"type\":\"heatmap\",\"params\":{\"type\":\"heatmap\",\"addTooltip\":true,\"addLegend\":true,\"enableHover\":true,\"legendPosition\":\"right\",\"times\":[],\"colorsNumber\":4,\"colorSchema\":\"Reds\",\"setColorRange\":false,\"colorsRange\":[],\"invertColors\":false,\"percentageMode\":false,\"valueAxes\":[{\"show\":false,\"id\":\"ValueAxis-1\",\"type\":\"value\",\"scale\":{\"type\":\"linear\",\"defaultYExtents\":false},\"labels\":{\"show\":false,\"rotate\":0,\"overwriteColor\":false,\"color\":\"#555\"}}]},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"networks.keyword\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\",\"customLabel\":\"Networks\"}},{\"id\":\"3\",\"enabled\":true,\"type\":\"range\",\"schema\":\"group\",\"params\":{\"field\":\"risk\",\"ranges\":[{\"from\":7,\"to\":10},{\"from\":3,\"to\":6},{\"from\":0,\"to\":2}]}}]}",
+        "uiStateJSON": "{\"vis\":{\"defaultColors\":{\"0 - 4\":\"rgb(255,245,240)\",\"4 - 8\":\"rgb(252,187,161)\",\"8 - 12\":\"rgb(251,106,74)\",\"12 - 16\":\"rgb(203,24,29)\"}}}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"siem_alarms\",\"filter\":[],\"query\":{\"query\":\"\",\"language\":\"lucene\"}}"
+        }
+      }
+    },
+    {
+      "id": "a0f5c810-b339-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Tag Category",
+        "visState": "{\"title\":\"SIEM - Tag Category\",\"type\":\"tagcloud\",\"params\":{\"scale\":\"log\",\"orientation\":\"single\",\"minFontSize\":13,\"maxFontSize\":32,\"showLabel\":false},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"category.keyword\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\",\"otherBucket\":true,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"siem_alarms\",\"filter\":[],\"query\":{\"query\":\"\",\"language\":\"lucene\"}}"
+        }
+      }
+    },
+    {
+      "id": "56c8e620-b337-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Alarm Kingdom",
+        "visState": "{\"title\":\"SIEM - Alarm Kingdom\",\"type\":\"histogram\",\"params\":{\"type\":\"histogram\",\"grid\":{\"categoryLines\":false,\"style\":{\"color\":\"#eee\"},\"valueAxis\":\"ValueAxis-1\"},\"categoryAxes\":[{\"id\":\"CategoryAxis-1\",\"type\":\"category\",\"position\":\"bottom\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\"},\"labels\":{\"show\":true,\"truncate\":100,\"rotate\":0},\"title\":{}}],\"valueAxes\":[{\"id\":\"ValueAxis-1\",\"name\":\"LeftAxis-1\",\"type\":\"value\",\"position\":\"left\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\",\"mode\":\"normal\",\"setYExtents\":false,\"defaultYExtents\":false},\"labels\":{\"show\":true,\"rotate\":0,\"filter\":false,\"truncate\":100},\"title\":{\"text\":\"Count\"}}],\"seriesParams\":[{\"show\":\"true\",\"type\":\"area\",\"mode\":\"normal\",\"data\":{\"label\":\"Count\",\"id\":\"1\"},\"valueAxis\":\"ValueAxis-1\",\"drawLinesBetweenPoints\":true,\"showCircles\":true,\"interpolate\":\"step-after\"}],\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"times\":[],\"addTimeMarker\":true,\"radiusRatio\":35},\"aggs\":[{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"4\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"split\",\"params\":{\"field\":\"kingdom.keyword\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"_key\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"row\":true}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"siem_alarms\",\"filter\":[],\"query\":{\"query\":\"\",\"language\":\"lucene\"}}"
+        }
+      }
+    },
+    {
+      "id": "b4844b80-b45c-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Events Count",
+        "visState": "{\"title\":\"SIEM - Events Count\",\"type\":\"timelion\",\"params\":{\"expression\":\".es(q=*, index=siem_events-*).label('SIEM Events'), .es(q=*, index=siem_alarms).label('SIEM Alarms'),\",\"interval\":\"auto\"},\"aggs\":[]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"query\":{\"query\":\"\",\"language\":\"lucene\"},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "217b62e0-b45e-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Open Alarms",
+        "visState": "{\"title\":\"SIEM - Open Alarms\",\"type\":\"gauge\",\"params\":{\"type\":\"gauge\",\"addTooltip\":true,\"addLegend\":false,\"isDisplayWarning\":false,\"gauge\":{\"verticalSplit\":false,\"extendRange\":true,\"percentageMode\":false,\"gaugeType\":\"Arc\",\"gaugeStyle\":\"Full\",\"backStyle\":\"Full\",\"orientation\":\"vertical\",\"colorSchema\":\"Green to Red\",\"gaugeColorMode\":\"Labels\",\"colorsRange\":[{\"from\":0,\"to\":20},{\"from\":20,\"to\":100},{\"from\":100,\"to\":500}],\"invertColors\":false,\"labels\":{\"show\":false,\"color\":\"black\"},\"scale\":{\"show\":true,\"labels\":false,\"color\":\"#333\"},\"type\":\"meter\",\"style\":{\"bgWidth\":0.9,\"width\":0.9,\"mask\":false,\"bgMask\":false,\"maskBars\":50,\"bgFill\":\"#eee\",\"bgColor\":false,\"subText\":\"\",\"fontSize\":60,\"labelColor\":true}}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}}]}",
+        "uiStateJSON": "{\"vis\":{\"defaultColors\":{\"0 - 20\":\"rgb(0,104,55)\",\"20 - 100\":\"rgb(255,255,190)\",\"100 - 500\":\"rgb(165,0,38)\"}}}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"siem_alarms\",\"filter\":[],\"query\":{\"language\":\"lucene\",\"query\":\"\"}}"
+        }
+      }
+    },
+    {
+      "id": "820da8f0-b465-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Control Status Tag Risk",
+        "visState": "{\"aggs\":[],\"params\":{\"controls\":[{\"fieldName\":\"status.keyword\",\"id\":\"1536520507633\",\"indexPattern\":\"siem_alarms\",\"label\":\"Status\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":5,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"},{\"fieldName\":\"tag.keyword\",\"id\":\"1536520643529\",\"indexPattern\":\"siem_alarms\",\"label\":\"Tag\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":5,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"},{\"fieldName\":\"risk_class.keyword\",\"id\":\"1536520687909\",\"indexPattern\":\"siem_alarms\",\"label\":\"Risk\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":3,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"},{\"fieldName\":\"\",\"id\":\"1536520836444\",\"indexPattern\":\"\",\"label\":\"\",\"options\":{\"multiselect\":true,\"order\":\"desc\",\"size\":5,\"type\":\"terms\"},\"parent\":\"\",\"type\":\"list\"}],\"pinFilters\":false,\"updateFiltersOnChange\":true,\"useTimeFilter\":false},\"title\":\"SIEM - Control Status Tag Risk\",\"type\":\"input_control_vis\"}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"query\":{\"language\":\"lucene\",\"query\":\"\"},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "9badafd0-c009-11e8-b3e4-11404c6637fe",
+      "type": "visualization",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Kingdom Category Title Chart",
+        "visState": "{\"title\":\"SIEM - Kingdom Category Title Chart\",\"type\":\"pie\",\"params\":{\"type\":\"pie\",\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"isDonut\":true,\"labels\":{\"show\":false,\"values\":true,\"last_level\":true,\"truncate\":100}},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"3\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"kingdom.keyword\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"4\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"category.keyword\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}},{\"id\":\"5\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"title.keyword\",\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "",
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"siem_alarms\",\"filter\":[],\"query\":{\"query\":\"\",\"language\":\"lucene\"}}"
+        }
+      }
+    },
+    {
+      "id": "c7aa9f10-e365-11e8-9c9b-556fd2a389b2",
+      "type": "search",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Events Search",
+        "description": "",
+        "hits": 0,
+        "columns": [
+          "timestamp",
+          "title",
+          "src_ip",
+          "dst_ip",
+          "protocol",
+          "plugin_id",
+          "plugin_sid",
+          "product",
+          "category",
+          "src_index_pattern"
+        ],
+        "sort": [
+          "@timestamp",
+          "desc"
+        ],
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\n  \"index\": \"siem_events\",\n  \"highlightAll\": true,\n  \"version\": true,\n  \"query\": {\n    \"language\": \"lucene\",\n    \"query\": \"\"\n  },\n  \"filter\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "334c77b0-b338-11e8-b3e4-11404c6637fe",
+      "type": "search",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM - Alarm Search",
+        "description": "",
+        "hits": 0,
+        "columns": [
+          "updated_time",
+          "title",
+          "src_ips",
+          "dst_ips",
+          "risk_class",
+          "tag",
+          "Dsiem Link"
+        ],
+        "sort": [
+          "@timestamp",
+          "desc"
+        ],
+        "version": 1,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"siem_alarms\",\"highlightAll\":true,\"version\":true,\"query\":{\"language\":\"knql\",\"query\":\"*\",\"suggestions\":[],\"parsed\":{\"match_all\":{}}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "siem_alarms",
+      "type": "index-pattern",
+      "updated_at": "2019-06-02T21:32:46.301Z",
+      "version": 2,
+      "attributes": {
+        "title": "siem_alarms",
+        "timeFieldName": "@timestamp",
+        "fields": "[{\"name\":\"@timestamp\",\"type\":\"date\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"_id\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_index\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_score\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_source\",\"type\":\"_source\",\"count\":0,\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_type\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"category\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"category.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"custom_data.content\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"custom_data.content.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"custom_data.label\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"custom_data.label.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_ips\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"intel_hits.provider\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"intel_hits.provider.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"intel_hits.result\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"intel_hits.result.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"intel_hits.term\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"intel_hits.term.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"kingdom\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"kingdom.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"networks\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"networks.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"perm_index\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"perm_index.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"risk\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"risk_class\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"risk_class.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.end_time\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.from\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.from.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.name\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.name.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.occurrence\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.plugin_id\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.plugin_sid\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.port_from\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.port_from.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.port_to\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.port_to.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.protocol\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.protocol.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.rcvd_time\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.reliability\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.stage\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.start_time\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.status\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.status.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.timeout\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.to\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.to.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"rules.type\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"rules.type.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_ips\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"status\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"status.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"tag\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"tag.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"timestamp\",\"type\":\"date\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"title\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"title.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"updated_time\",\"type\":\"date\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"vulnerabilities.provider\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"vulnerabilities.provider.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"vulnerabilities.result\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"vulnerabilities.result.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"vulnerabilities.term\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"vulnerabilities.term.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"Dsiem Link\",\"type\":\"string\",\"count\":1,\"scripted\":true,\"script\":\"doc['_id'].value\",\"lang\":\"painless\",\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1}]",
+        "fieldFormatMap": "{\"Dsiem Link\":{\"id\":\"url\",\"params\":{\"urlTemplate\":\"http://localhost:8080/ui/#/data/alarm-detail/{{value}}\",\"labelTemplate\":\"Alarm #{{value}}\"}}}"
+      }
+    },
+    {
+      "id": "siem_events",
+      "type": "index-pattern",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "siem_events-*",
+        "timeFieldName": "@timestamp",
+        "fields": "[{\"name\":\"@timestamp\",\"type\":\"date\",\"count\":1,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"@version\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"_id\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_index\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_score\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_source\",\"type\":\"_source\",\"count\":0,\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"_type\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"category\",\"type\":\"string\",\"count\":1,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"category.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"category.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_geoip.ip\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_geoip.latitude\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_geoip.location\",\"type\":\"geo_point\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_geoip.longitude\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_ip\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_ip.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_ip.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"dst_port\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"event_id\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"event_id.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"event_id.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"plugin_id\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"plugin_sid\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"product\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"product.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"product.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"protocol\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"protocol.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"protocol.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"sensor\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"sensor.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"sensor.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_geoip.ip\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_geoip.latitude\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_geoip.location\",\"type\":\"geo_point\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_geoip.longitude\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_index_pattern\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"src_index_pattern.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_index_pattern.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_ip\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_ip.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_ip.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"src_port\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"timestamp\",\"type\":\"date\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"title\",\"type\":\"string\",\"count\":2,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false,\"displayPriority\":1},{\"name\":\"title.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1},{\"name\":\"title.raw\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"displayPriority\":1}]"
+      }
+    },
+    {
+      "id": "87c18520-b337-11e8-b3e4-11404c6637fe",
+      "type": "dashboard",
+      "updated_at": "2019-06-02T21:31:00.119Z",
+      "version": 1,
+      "attributes": {
+        "title": "SIEM",
+        "hits": 0,
+        "description": "Kibana dashboard for DSIEM",
+        "panelsJSON": "[{\"embeddableConfig\":{},\"gridData\":{\"x\":0,\"y\":9,\"w\":18,\"h\":10,\"i\":\"2\"},\"id\":\"ed4a2ca0-b335-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"2\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{\"spy\":null},\"gridData\":{\"x\":12,\"y\":0,\"w\":22,\"h\":9,\"i\":\"7\"},\"id\":\"a0f5c810-b339-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"7\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{\"vis\":{\"legendOpen\":false}},\"gridData\":{\"x\":18,\"y\":9,\"w\":16,\"h\":10,\"i\":\"8\"},\"id\":\"56c8e620-b337-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"8\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{},\"gridData\":{\"x\":34,\"y\":0,\"w\":14,\"h\":9,\"i\":\"9\"},\"id\":\"b4844b80-b45c-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"9\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{\"vis\":{\"defaultColors\":{\"0 - 20\":\"rgb(0,104,55)\",\"20 - 50\":\"rgb(255,255,190)\",\"50 - 100\":\"rgb(165,0,38)\"},\"legendOpen\":true}},\"gridData\":{\"x\":0,\"y\":0,\"w\":12,\"h\":9,\"i\":\"10\"},\"id\":\"217b62e0-b45e-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"10\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{},\"gridData\":{\"x\":0,\"y\":19,\"w\":11,\"h\":16,\"i\":\"11\"},\"id\":\"820da8f0-b465-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"11\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{},\"gridData\":{\"x\":34,\"y\":9,\"w\":14,\"h\":10,\"i\":\"12\"},\"id\":\"9badafd0-c009-11e8-b3e4-11404c6637fe\",\"panelIndex\":\"12\",\"title\":\"Alarms\",\"type\":\"visualization\",\"version\":\"6.3.0\"},{\"embeddableConfig\":{},\"gridData\":{\"x\":0,\"y\":35,\"w\":48,\"h\":17,\"i\":\"14\"},\"id\":\"c7aa9f10-e365-11e8-9c9b-556fd2a389b2\",\"panelIndex\":\"14\",\"type\":\"search\",\"version\":\"6.4.2\"},{\"gridData\":{\"x\":11,\"y\":19,\"w\":37,\"h\":16,\"i\":\"15\"},\"version\":\"6.4.2\",\"panelIndex\":\"15\",\"type\":\"search\",\"id\":\"334c77b0-b338-11e8-b3e4-11404c6637fe\",\"embeddableConfig\":{}}]",
+        "optionsJSON": "{\"darkTheme\":false,\"hidePanelTitles\":false,\"useMargins\":true}",
+        "version": 1,
+        "timeRestore": false,
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"query\":{\"language\":\"lucene\",\"query\":\"\"},\"filter\":[],\"highlightAll\":true,\"version\":true}"
+        }
+      }
+    }
+  ]
+}

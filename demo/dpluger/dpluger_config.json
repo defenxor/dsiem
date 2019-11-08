@@ -1,0 +1,28 @@
+{
+  "name": "suricata",
+  "type": "SID",
+  "output_file": "70_dsiem-plugin_suricata.conf",
+  "index_pattern": "suricata-*",
+  "elasticsearch_address": "http://localhost:9200",
+  "identifier_field": "[application]",
+  "identifier_value": "suricata",
+  "identifier_filter": "and [alert]",
+  "es_collect_filter": "",
+  "field_mapping": {
+    "title": "es:alert.signature",
+    "timestamp": "es:timestamp",
+    "timestamp_format": "ISO8601",
+    "sensor": "es:host.name",
+    "plugin_id": "1001",
+    "plugin_sid": "es:alert.signature_id",
+    "product": "Network Intrusion Detection System",
+    "category": "es:alert.category",
+    "src_ip": "es:src_ip",
+    "src_port": "es:src_port",
+    "dst_ip": "es:dest_ip",
+    "dst_port": "es:dest_port",
+    "protocol": "es:proto",
+    "custom_data1": "es:payload_printable",
+    "custom_label1": "payload"
+  }
+}
