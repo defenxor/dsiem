@@ -1,0 +1,19 @@
+{
+  "directives": [
+    {
+      "name": "Ping Flood to DST_IP",
+      "kingdom": "Reconnaissance & Probing",
+      "category": "Misc Activity",
+      "id": 2,
+      "priority": 3,
+      "rules" : [
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 1, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 1, 
+          "from": "ANY", "to": "HOME_NET", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 1, "timeout": 0 },
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 2, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 3,
+          "from": "ANY", "to": ":1", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 6, "timeout": 3600 },
+        { "name": "ICMP Ping", "type": "PluginRule", "stage": 3, "plugin_id": 1001, "plugin_sid": [ 2100384 ], "occurrence": 10000,
+          "from": "ANY", "to": ":1", "port_from": "ANY", "port_to": "ANY", "protocol": "ICMP", "reliability": 10, "timeout": 3600 }
+      ]
+    }
+  ] 
+}

@@ -1,0 +1,11 @@
+{
+  "description": "use dsiem alarm_id as _id and convert to time from string",
+  "processors": [
+    {
+      "set": {
+        "field": "_id",
+        "value": "{{event.id}}"
+      }
+    }
+  ]
+}

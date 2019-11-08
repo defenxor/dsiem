@@ -1,0 +1,213 @@
+version: "3"
+services:
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - xpack.security.enabled=false
+      - xpack.monitoring.enabled=false
+      - xpack.ml.enabled=false
+      - xpack.graph.enabled=false
+      - xpack.watcher.enabled=false
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+    ports:
+      - 9200:9200
+    networks:
+      - siemnet
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  logstash:
+    container_name: logstash
+    image: defenxor/docker-logstash:7.4.0
+    command:
+      - -f/etc/logstash/conf.d
+    environment:
+      - XPACK_MONITORING_ENABLED=false
+    ports:
+      - 5001:5001
+      - 5002:5002/tcp
+      - 5002:5002/udp
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/logstash/conf.d:/etc/logstash/conf.d
+      - ./conf/logstash/index-template.d/es7:/etc/logstash/index-template.d
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.4.0
+    environment:
+      - XPACK_MONITORING_ENABLED=false
+    ports:
+      - 5601:5601
+    networks:
+      - siemnet
+
+  dsiem:
+    container_name: dsiem
+    image: defenxor/dsiem:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - siemnet
+    volumes:
+      - dsiem-log:/dsiem/logs
+      - ./conf/dsiem/configs:/dsiem/configs
+    environment:
+      - DSIEM_WEB_ESURL=http://${DEMO_HOST}:9200
+      - DSIEM_WEB_KBNURL=http://${DEMO_HOST}:5601
+      - DSIEM_MAXQUEUE=0
+      - DSIEM_INTELPRIVATEIP=true
+      - DSIEM_DEBUG=true
+      - DSIEM_APM=true
+      - DSIEM_PPROF=true
+      - ELASTIC_APM_SERVER_URL=http://apm:8200
+
+  dsiem-demo-frontend:
+    container_name: dsiem-demo-frontend
+    image: defenxor/dsiem-demo-frontend:latest
+    ports:
+      - "8000:80"
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/dsiem-demo-frontend/nginx:/etc/nginx/conf.d
+
+  apm:
+    container_name: apm
+    image: docker.elastic.co/apm/apm-server:7.4.0
+    networks:
+      - siemnet
+    environment:
+      - output.elasticsearch.hosts=["elasticsearch:9200"]
+
+  nesd:
+    container_name: dsiem-nesd
+    image: mmta/dsiem-nesd
+    ports:
+      - "8082:8081"
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/nesd/csv:/csv
+    environment:
+      - NESD_CSVDIR=/csv
+      - NESD_PORT=8081
+
+  wise:
+    container_name: wise
+    image: mmta/moloch-wise
+    ports:
+      - "8083:8081"
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/wise/etc:/wiseService/etc
+
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    user: root
+    networks:
+      - siemnet
+    volumes:
+      - filebeat-data:/usr/share/filebeat/data
+      - ./conf/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - dsiem-log:/var/log/dsiem
+      - suricata-log:/var/log/suricata
+
+  filebeat-es:
+    container_name: filebeat-es
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    user: root
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/filebeat-es/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./conf/filebeat-es/fields.yml:/usr/share/filebeat/fields.yml
+      - ./conf/filebeat-es/module:/usr/share/filebeat/module
+      - ./conf/filebeat-es/modules.d:/usr/share/filebeat/modules.d
+      - filebeat-es-data:/usr/share/filebeat/data
+      - dsiem-log:/var/log/dsiem
+      - apache-log:/var/log/apache2
+      - suricata-log:/var/log/suricata
+
+  auditbeat:
+    container_name: auditbeat
+    image: docker.elastic.co/beats/auditbeat:7.4.0
+    user: root
+    cap_add:
+      - AUDIT_CONTROL
+      - AUDIT_READ
+    networks:
+      - siemnet
+    environment:
+      - output.elasticsearch.hosts=["elasticsearch:9200"]
+    volumes:
+      - ./conf/auditbeat/auditbeat.yml:/usr/share/auditbeat/auditbeat.yml:ro
+      - apache-html:/var/www/html
+
+  suricata:
+    container_name: suricata
+    image: defenxor/suricata:1710
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+      - NET_RAW
+    command: [ 
+      "sh",
+      "-c",
+      "chmod +x /start.sh && /start.sh"
+    ]
+    volumes:
+      - suricata-log:/var/log/suricata
+      - ./conf/suricata/start.sh:/start.sh
+      - ./conf/suricata/suricata.yaml:/etc/suricata/suricata.yaml
+
+  ossec:
+    container_name: ossec
+    image: atomicorp/ossec-docker
+    volumes:
+      - ./conf/ossec/ossec.conf:/root/ossec.conf
+      - ./conf/ossec/ossec-server.sh:/var/ossec/bin/ossec-server.sh
+      - apache-log:/var/log/apache2
+      - apache-html:/var/www/html
+      - ossec-data:/var/ossec/data
+    networks:
+      - siemnet      
+
+  shellshock:
+    container_name: shellshock
+    image: mmta/cve-2014-6271
+    ports:
+      - 8081:80/tcp
+    networks:
+      - siemnet
+    volumes:
+      - apache-log:/var/log/apache2
+      - apache-html:/var/www/html
+
+volumes:
+  filebeat-data:
+  filebeat-es-data:
+  es-data:
+  dsiem-log:
+  suricata-log:
+  apache-log:
+  apache-html:
+  ossec-data:
+networks:
+  siemnet:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        # this is just to make sure it will not conflict with WSL or other DHCP servers
+        # adjust as needed
+        - subnet: 192.168.99.0/24

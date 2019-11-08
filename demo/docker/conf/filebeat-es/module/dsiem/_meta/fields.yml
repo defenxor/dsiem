@@ -1,0 +1,9 @@
+- key: dsiem
+  title: "dsiem"
+  description: >
+    dsiem Module
+  fields:
+    - name: dsiem
+      type: group
+      description: >
+      fields:

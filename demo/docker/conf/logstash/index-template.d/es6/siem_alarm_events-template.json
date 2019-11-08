@@ -1,0 +1,30 @@
+{
+  "index_patterns" : [ "siem_alarm_events-*" ],
+  "version" : 1,
+  "settings" : {
+    "number_of_replicas": 0,
+    "number_of_shards": 1,
+    "index.refresh_interval" : "1s"
+  },
+  "mappings": {
+    "doc": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "text",
+              "norms": false,
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
