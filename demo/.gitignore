@@ -1,0 +1,10 @@
+refs/*
+temp/*
+docker/conf/nesd/csv/nessus_shellshock.csv
+docker/conf/dsiem/configs/directives_dsiem.json
+dpluger/directives_dsiem.json
+vagrant/ubuntu/.vagrant
+vagrant/alpine/.vagrant
+vagrant/ubuntu/*.log
+vagrant/alpine/*.log
+
