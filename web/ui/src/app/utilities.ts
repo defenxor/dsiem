@@ -42,3 +42,17 @@ export async function parallelPromiseAllFlow(IDs: any[], func): Promise<any[]> {
 export function isEmptyOrUndefined(v): boolean {
   if (v === '' || v === 0 || v === undefined) { return true; }
 }
+
+export function url2obj(url) {
+    const pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
+    const matches = url.match(pattern);
+
+    return {
+      protocol: matches[1],
+      user: matches[2] !== undefined ? matches[2].split(':')[0] : undefined,
+      password: matches[2] !== undefined ? matches[2].split(':')[1] : undefined,
+      host: matches[3],
+      hostname: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
+      port: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
+    };
+  }
