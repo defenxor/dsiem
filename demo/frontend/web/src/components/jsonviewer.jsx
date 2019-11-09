@@ -1,54 +1,32 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import ReactJson from 'react-json-view'
+import { fetchUrl } from './utils.js'
 
-const baseUrl = 'http://' + window.location.hostname
-const dirFile = 'directives_demo.json'
-// this one goes through nginx reverse proxy to avoid CORS
-const appPort = window.location.port
-const jsonUrl = baseUrl + ':' + appPort + '/dsiem/config/' + dirFile
+export const JsonViewer = props => {
+  const [result, setResult] = useState({})
+  const [status, setStatus] = useState('Loading ..')
 
-export class JsonViewer extends React.Component {
-  constructor () {
-    super()
-    this.state = {
-      directives: {},
-      status: 'Loading ..'
-    }
-  }
+  const { directiveFile = 'directives_demo.json' } = props.match.params
+  const {
+    configUrl = `http://${window.location.hostname}:${
+      window.location.port
+    }/dsiem/config`
+  } = props
+  const targetUrl = `${configUrl}/${directiveFile}`
 
-  async readJson () {
-    try {
-      const response = await fetch(jsonUrl)
-      if (response.status === 200) {
-        const j = await response.json()
-        console.log('response.Json: ', j)
-        console.log('response.text: ', response.text)
-        this.setState({ directives: j, status: 'success' })
-      } else {
-        this.setState({
-          status:
-            'Failed to load ' +
-            dirFile +
-            '. HTTP status code: ' +
-            response.status
-        })
-      }
-    } catch (err) {
-      this.setState({
-        status: 'Error loading ' + dirFile + '. Error message: ' + err
+  useEffect(
+    () => {
+      fetchUrl(targetUrl).then(val => {
+        setResult(val.result)
+        setStatus(val.status)
       })
-    }
-  }
+    },
+    [targetUrl]
+  )
 
-  componentDidMount () {
-    this.readJson()
-  }
-
-  render () {
-    if (this.state.status === 'success') {
-      return <ReactJson src={this.state.directives} displayDataTypes={false} />
-    } else {
-      return this.state.status
-    }
+  if (status === 'success') {
+    return <ReactJson src={result} displayDataTypes={false} />
+  } else {
+    return status
   }
 }
