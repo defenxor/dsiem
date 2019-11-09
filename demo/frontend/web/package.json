@@ -8,8 +8,11 @@
     "start": "webpack-dev-server --host 0.0.0.0 --port 9000 --config webpack-dev.js",
     "build": "webpack --config webpack-prod.js --progress --display-error-details",
     "lint": "eslint --ext [.js,.jsx] ./",
-    "fix": "eslint --fix --ext [.js,.jsx] ./ "
+    "fix": "eslint --fix --ext [.js,.jsx] ./"
   },
+  "eslintIgnore": [
+    "dist"
+  ],
   "dependencies": {
     "@babel/runtime": "^7.6.3",
     "@elastic/datemath": "^5.0.2",
