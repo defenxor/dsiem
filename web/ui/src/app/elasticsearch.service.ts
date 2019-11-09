@@ -19,6 +19,7 @@ import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
 import { Http } from '@angular/http';
 import { map } from 'rxjs/operators';
+import { url2obj } from './utilities';
 
 @Injectable({
   providedIn: 'root'
@@ -28,8 +29,10 @@ export class ElasticsearchService {
   private client: Client;
   server: string;
   kibana: string;
+  user: string;
   esVersion: string;
   logstashType: boolean;
+  initialized: boolean;
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndex = 'siem_alarms';
   esIndexEvent = 'siem_events-*';
@@ -46,27 +49,43 @@ export class ElasticsearchService {
     };
   }
 
-  constructor(private http: Http) {
-    this.loadConfig()
-    .then(res => {
-      this.server = res['elasticsearch'];
-      this.kibana = res['kibana'];
-      if (!this.client) {
-        this.client = new Client({
-          host:  this.server,
-          log: 'info',
-        });
-      }
-      return this.getESVersion();
-    }).catch(err => {
-      console.log(`[ES] error in constructor, ${err}`);
-    });
-  }
+  constructor(private http: Http) {}
 
   loadConfig() {
     return this.http.get('./assets/config/esconfig.json')
       .pipe(map(res => res.json()))
       .toPromise();
+  }
+
+  reset() {
+    this.initialized = false;
+  }
+
+  async init() {
+    const ret = {
+      initialized: this.initialized,
+      errMsg: ''
+    };
+    if (ret.initialized) {
+      return ret;
+    }
+    this.initialized = false;
+    try {
+      const res = await this.loadConfig();
+      this.kibana = res['kibana'];
+      const rgxp = url2obj(res['elasticsearch']);
+      this.server = rgxp.protocol + '://' + rgxp.host;
+      this.user = rgxp.user;
+      this.initialized = true;
+      this.client = new Client({
+        host:  this.server,
+        log: 'info',
+      });
+    } catch (err) {
+      ret.errMsg = err;
+    }
+    ret.initialized = this.initialized;
+    return ret;
   }
 
   async getESVersion() {
@@ -177,9 +196,13 @@ export class ElasticsearchService {
     return this.server;
   }
 
+  getUser () {
+    return this.user;
+  }
+
   isAvailable(): any {
     return this.client.ping({
-      requestTimeout: Infinity,
+      requestTimeout: 10000,
       body: 'hello'
     });
   }

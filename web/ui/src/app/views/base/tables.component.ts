@@ -51,7 +51,6 @@ export class TablesComponent {
   disabledBtn: boolean;
 
   constructor(private es: ElasticsearchService, private spinner: NgxSpinnerService, private cd: ChangeDetectorRef) {
-    this.elasticsearch = this.es.getServer();
   }
 
   async onSearchboxReady() {
@@ -107,17 +106,9 @@ export class TablesComponent {
     try {
       if (esAlive) {
         await this.getData();
-        if (this.tableData.length === 0) {
-          // if esAlive but tableData is empty, then ES service needs to be restarted.
-          // this always happen when the app started without an initial network connection to ES server.
-          // use window.location.reload() for now until we find a cleaner way to do this
-          //
-          // dont need to do the above, there's an auto refresh
-          // window.location.reload();
-        }
       }
     } catch (err) {
-      console.log('Error occur in syncing ES: ', err);
+      console.log('Fail to sync data with elasticsearch: ' + err);
     } finally {
       this.disabledBtn = false;
       this.animateProgress = false;
@@ -126,26 +117,26 @@ export class TablesComponent {
   }
 
   async checkES(): Promise<boolean> {
-    let rgxp, protocol, host, username, esurl;
 
-    try {
-      rgxp = this.url2obj(this.elasticsearch);
-      protocol = rgxp.protocol;
-      host = rgxp.host;
-      username = rgxp.user ? ' as ' + rgxp.user : '';
-      esurl = protocol + '://' + host;
-    } catch (err) {
-      console.error('parsing ES url error: ', err);
+    let esStatus = await this.es.init();
+    while (esStatus.initialized === false) {
+      this.alertBox.showAlert('Fail to read or parse esconfig.json: ' +
+        esStatus.errMsg + '. Will retry every 5s ..', 'danger', true);
+      await sleep(10000);
+      esStatus = await this.es.init();
     }
 
+    this.elasticsearch = this.es.getServer();
+    const esUser = this.es.getUser();
+    const label = esUser ? this.elasticsearch + ' as ' + esUser : this.elasticsearch;
     try {
       await this.es.isAvailable();
-      this.alertBox.showAlert('Connected to ES ' + esurl + username, 'success', true);
+      this.alertBox.showAlert('Connected to ES ' + label, 'success', true);
       return true;
     } catch (err) {
-      this.alertBox.showAlert('Disconnected from ES ' + esurl, 'danger', true);
-      console.error('Elasticsearch is down:', err);
-    }
+      this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch + ': ' + err, 'danger', true);
+      this.es.reset();
+     }
     return false;
   }
 
@@ -206,17 +197,4 @@ export class TablesComponent {
     }
   }
 
-  url2obj(url) {
-    const pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
-    const matches = url.match(pattern);
-
-    return {
-      protocol: matches[1],
-      user: matches[2] !== undefined ? matches[2].split(':')[0] : undefined,
-      password: matches[2] !== undefined ? matches[2].split(':')[1] : undefined,
-      host: matches[3],
-      hostname: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
-      port: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
-    };
-  }
 }
