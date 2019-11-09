@@ -5,18 +5,14 @@ import { DemoOverview } from './demooverview.jsx'
 import { JsonViewer } from './jsonviewer.jsx'
 import { EuiPage } from '@elastic/eui'
 
-export default class App extends React.Component {
-  render = () => {
-    return (
-      <Router>
-        <EuiPage>
-          <Switch>
-            <Route exact path='/' component={DemoMenu} />
-            <Route exact path='/directive' component={JsonViewer} />
-            <Route exact path='/overview' component={DemoOverview} />
-          </Switch>
-        </EuiPage>
-      </Router>
-    )
-  }
-}
+export const App = props => (
+  <Router>
+    <EuiPage>
+      <Switch>
+        <Route exact path='/' component={DemoMenu} />
+        <Route exact path='/directive/:directiveFile?' component={JsonViewer} />
+        <Route exact path='/overview' component={DemoOverview} />
+      </Switch>
+    </EuiPage>
+  </Router>
+)

@@ -1,5 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import mermaid from 'mermaid'
+import { windowNavigate } from './utils.js'
+import PropTypes from 'prop-types'
 import {
   EuiEmptyPrompt,
   EuiButton,
@@ -17,11 +19,10 @@ mermaid.initialize({
   }
 })
 
-export class DemoOverview extends React.Component {
-  constructor () {
-    super()
-    this.state = {
-      chart: `
+export const DemoOverview = props => {
+  const { targetUrl = `http://${window.location.hostname}:8081` } = props
+  const {
+    chart = `
         graph TD
         A("Attacker (you)")
         B[Switch]
@@ -34,9 +35,9 @@ export class DemoOverview extends React.Component {
         I(Dsiem)
         J(Filebeat)
         A -->|Shellshock exploit / HTTP| B
-        D --- |detect file changes / OS hook| E 
+        D --- |detect file changes / OS hook| E
         D --- |detect file changes / OS hook| F
-        B --> |Shellshock exploit / HTTP| D 
+        B --> |Shellshock exploit / HTTP| D
         B --> |packet trace| C
         C --> |eve JSON log / beats| G
         E --> |file integrity log / syslog| G
@@ -46,63 +47,62 @@ export class DemoOverview extends React.Component {
         I --> |alarms / JSON file| J
         J --> |alarms / beats | G
       `
-    }
-  }
+  } = props
 
-  componentDidMount = () => {
-    mermaid.contentLoaded()
-  }
+  useEffect(
+    () => {
+      mermaid.contentLoaded()
+    },
+    [chart]
+  )
 
-  gotoTarget = () => {
-    const baseUrl = 'http://' + window.location.hostname
-    const targetUrl = baseUrl + ':8081'
-    window.location.href = targetUrl
-  }
-
-  render = () => {
-    return (
-      <EuiPageBody>
-        <EuiPageContent>
-          <EuiEmptyPrompt
-            iconType='questionInCircle'
-            title={<h1>Demo Guide</h1>}
-            body={
-              <>
-                <p>
-                  Review the logical network setup below. Open the target web
-                  page once you&lsquo;re ready to proceed.
-                </p>
-                <p>
-                  After that, once Kibana is ready, you can begin using the
-                  cards above. Start by exploiting the target multiple times to
-                  generate alarm.
-                </p>
-              </>
-            }
-            actions={
-              <EuiButton
-                color='primary'
-                // fill
-                onClick={() => this.gotoTarget()}
-                iconType='bullseye'
-              >
-                Open the target web page
-              </EuiButton>
-            }
-          />
-          <EuiPageContentBody>
-            <EuiFlexGroup
-              // style={divStyle}
-              justifyContent='spaceAround'
-              alignItems='center'
+  return (
+    <EuiPageBody>
+      <EuiPageContent>
+        <EuiEmptyPrompt
+          iconType='questionInCircle'
+          title={<h1>Demo Guide</h1>}
+          body={
+            <>
+              <p>
+                Review the logical network setup below. Open the target web page
+                once you&lsquo;re ready to proceed.
+              </p>
+              <p>
+                After that, once Kibana is ready, you can begin using the cards
+                above. Start by exploiting the target multiple times to generate
+                alarm.
+              </p>
+            </>
+          }
+          actions={
+            <EuiButton
+              color='primary'
+              // fill
+              onClick={() => windowNavigate(targetUrl)}
+              iconType='bullseye'
             >
-              <EuiFlexItem grow={false}>
-                <div className='mermaid'>{this.state.chart}</div>
-              </EuiFlexItem>
-            </EuiFlexGroup>
-          </EuiPageContentBody>
-        </EuiPageContent>
-      </EuiPageBody>
-    )
-  }
+              Open the target web page
+            </EuiButton>
+          }
+        />
+        <EuiPageContentBody>
+          <EuiFlexGroup
+            // style={divStyle}
+            justifyContent='spaceAround'
+            alignItems='center'
+          >
+            <EuiFlexItem grow={false}>
+              <div className='mermaid'>{chart}</div>
+            </EuiFlexItem>
+          </EuiFlexGroup>
+        </EuiPageContentBody>
+      </EuiPageContent>
+    </EuiPageBody>
+  )
+}
+
+DemoOverview.propTypes = {
+  targetUrl: PropTypes.string,
+  chart: PropTypes.string
 }

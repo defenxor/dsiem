@@ -3,6 +3,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const WebpackMd5Hash = require('webpack-md5-hash')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
   entry: './src/index.js',
@@ -20,10 +21,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        include: [
-          path.resolve(__dirname, 'src/styles.css'),
-          path.resolve(__dirname, 'node_modules')
-        ],
+        include: [path.resolve(__dirname, 'src/styles.css')],
         use: [
           {
             loader: MiniCssExtractPlugin.loader
@@ -33,10 +31,6 @@ module.exports = {
       }
     ]
   },
-  resolve: {
-    extensions: ['*', '.js', '.jsx']
-  },
-
   plugins: [
     new HtmlWebpackPlugin({
       template: './src/index.html',
@@ -48,6 +42,7 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: '[name].[hash].css'
     }),
+    new CopyWebpackPlugin([{ from: 'src/favicon.ico', to: 'favicon.ico' }]),
     new WebpackMd5Hash()
   ]
 }
