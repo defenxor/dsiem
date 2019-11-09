@@ -1,0 +1,24 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/bionic64"
+  config.vm.network "private_network", type: "dhcp"
+  config.vm.define "dsiem-demo-ubuntu"
+
+  config.vm.provider "virtualbox" do |v|
+    v.name = "dsiem-demo-ubuntu"
+    v.memory = 6144
+    v.cpus = 4
+    v.customize ["modifyvm", :id, "--vram", "16"]
+  end
+
+  config.vm.provision "file", source: "../../../demo", destination: "/tmp/demo"
+  config.vm.provision "file", source: "./remaster.sh", destination: "/tmp/remaster.sh"
+  config.vm.provision "file", source: "../shared/start-demo.sh", destination: "/tmp/start-demo.sh"
+  config.vm.provision "shell",
+    inline: "cd /tmp && sudo ./remaster.sh"
+  config.vm.provision "shell",
+    inline: "sudo cp -r /tmp/demo /dsiem/ && sudo rm -rf /dsiem/demo/.git && chown -R demo /dsiem"
+
+  config.vm.provision "shell",
+    inline: "sudo rm -rf /tmp/*"
+
+end
