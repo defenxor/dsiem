@@ -11,12 +11,15 @@
     "standard",
     "standard-react"
   ],
+  "plugins": ["react-hooks"],
   "globals": {
     "Atomics": "readonly",
     "SharedArrayBuffer": "readonly"
   },
   "rules": {
-    "react/jsx-indent": "off"
+    "react/jsx-indent": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
   },
   "settings": {
     "react": {
