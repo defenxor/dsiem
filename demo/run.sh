@@ -211,10 +211,13 @@ done
 echo done
 
 title "** installing kibana dashboards .. "
-while (./scripts/kbndashboard-import.sh localhost ./kibana/dashboard-siem.json | grep -q "failed"); do
+cp -r ./kibana /tmp/ && \
+sed -i "s/localhost/$DEMO_HOST/g" /tmp/kibana/dashboard-siem.json
+while (./scripts/kbndashboard-import.sh localhost /tmp/kibana/dashboard-siem.json | grep -q "failed"); do
   sleep 1
 done
 echo done
+rm -rf /tmp/kibana
 
 title "** installing additional kibana index patterns .. "
 while (./scripts/idxpattern-import.sh localhost ./kibana/dashboard-siem.json | grep -q "failed"); do
