@@ -17,7 +17,7 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
-import { Http } from '@angular/http';
+import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
 import { url2obj } from './utilities';
 
@@ -49,12 +49,10 @@ export class ElasticsearchService {
     };
   }
 
-  constructor(private http: Http) {}
+  constructor(private http: HttpClient) {}
 
   loadConfig() {
-    return this.http.get('./assets/config/esconfig.json')
-      .pipe(map(res => res.json()))
-      .toPromise();
+    return this.http.get('./assets/config/esconfig.json').toPromise();
   }
 
   reset() {
@@ -90,9 +88,7 @@ export class ElasticsearchService {
 
   async getESVersion() {
     try {
-      const res = await this.http.get(this.server)
-        .pipe(map(out => out.json()))
-        .toPromise();
+      const res = await this.http.get(this.server).toPromise();
       const fullVer = res['version']['number'];
       this.esVersion = fullVer;
       // disable type if es major version >= 7

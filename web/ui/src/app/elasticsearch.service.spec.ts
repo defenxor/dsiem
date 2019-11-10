@@ -17,7 +17,7 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { TestBed } from '@angular/core/testing';
 import { ElasticsearchService } from './elasticsearch.service';
-import { HttpModule } from '@angular/http';
+import { HttpClientModule } from '@angular/common/http';
 
 describe('Elasticsearch Service', () => {
   beforeEach(() => {
@@ -25,7 +25,7 @@ describe('Elasticsearch Service', () => {
       declarations: [
       ],
       imports: [
-        HttpModule
+        HttpClientModule
       ]
     }).compileComponents();
   });
