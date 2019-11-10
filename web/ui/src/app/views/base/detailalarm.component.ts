@@ -19,7 +19,7 @@ import { Component, OnInit, ViewChildren, ViewChild, QueryList, OnDestroy } from
 import { sleep, isEmptyOrUndefined } from '../../utilities';
 import { ActivatedRoute } from '@angular/router';
 import { ElasticsearchService } from '../../elasticsearch.service';
-import { Http } from '@angular/http';
+import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { AlertboxComponent } from './alertbox.component';
@@ -52,7 +52,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   dsiemStatuses: string[] = [];
   dsiemTags: string[] = [];
 
-  constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: Http,
+  constructor(private route: ActivatedRoute, private es: ElasticsearchService, private http: HttpClient,
     private spinner: NgxSpinnerService) { }
 
   ngOnDestroy() {
@@ -60,31 +60,39 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.kibanaUrl = this.es.kibana;
-    this.elasticsearch = this.es.server;
     this.sub = this.route.params.subscribe(async params => {
       this.alarmID = params['alarmID'];
-      this.checkES()
-      .then(() => this.getAlarmDetail(this.alarmID))
-      .then(() => this.loadDsiemConfig());
+      const esAlive = await this.checkES();
+      if (esAlive) {
+        this.kibanaUrl = this.es.kibana;
+        await this.getAlarmDetail(this.alarmID);
+        await this.loadDsiemConfig();
+      }
     });
   }
 
   async checkES(): Promise<boolean> {
-    const rgxp = this.url2obj(this.elasticsearch);
-    const protocol = rgxp.protocol;
-    const host = rgxp.host;
-    const username = rgxp.user ? ' as ' + rgxp.user : '';
-    const esurl = protocol + '://' + host;
 
+    let esStatus = await this.es.init();
+    while (esStatus.initialized === false) {
+      this.alertBox.showAlert('Fail to read or parse esconfig.json: ' +
+        esStatus.errMsg + '. Will retry every 10s ..', 'danger', true);
+      await sleep(10000);
+      esStatus = await this.es.init();
+    }
+
+    this.elasticsearch = this.es.getServer();
+    this.kibanaUrl = this.es.kibana;
+    const esUser = this.es.getUser();
+    const label = esUser ? this.elasticsearch + ' as ' + esUser : this.elasticsearch;
     try {
       await this.es.isAvailable();
-      this.alertBox.showAlert('Connected to ES ' + esurl + username, 'success', true);
+      this.alertBox.showAlert('Connected to ES ' + label, 'success', true);
       return true;
     } catch (err) {
-      this.alertBox.showAlert('Disconnected from ES ' + esurl, 'danger', true);
-      console.error('Elasticsearch is down:', err);
-    }
+      this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch + ': ' + err, 'danger', true);
+      this.es.reset();
+     }
     return false;
   }
 
@@ -92,11 +100,11 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     // try to load from both /config and /assets/config, the later being used for testing ng serve
     let out;
     try {
-      out = await this.http.get('/config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
+      out = await this.http.get('/config/dsiem_config.json').toPromise();
     } catch (err) {}
     if (typeof out === 'undefined') {
       try {
-        out = await this.http.get('./assets/config/dsiem_config.json').pipe(map(res => res.json())).toPromise();
+        out = await this.http.get('./assets/config/dsiem_config.json').toPromise();
       } catch (err) {
         const msg = 'Cannot load dsiem_config.json from server, status and tag changes will be disabled';
         this.alertBox.showAlert(msg, 'danger', false);
@@ -316,20 +324,6 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     } else {
       this.wideAlarmEv[index] = true;
     }
-  }
-
-  url2obj(url) {
-    const pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
-    const matches = url.match(pattern);
-
-    return {
-      protocol: matches[1],
-      user: matches[2] !== undefined ? matches[2].split(':')[0] : undefined,
-      password: matches[2] !== undefined ? matches[2].split(':')[1] : undefined,
-      host: matches[3],
-      hostname: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
-      port: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
-    };
   }
 
 }

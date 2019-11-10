@@ -56,6 +56,10 @@ export const routes: Routes = [
         loadChildren: './views/base/base.module#BaseModule'
       },
     ]
+  },
+  {
+    path: '**',
+    redirectTo: '/404'
   }
 ];
 
