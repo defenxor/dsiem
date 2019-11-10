@@ -16,6 +16,5 @@ You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 export const environment = {
-  production: true,
-  elasticsearch: 'http://localhost:9200'
+  production: true
 };

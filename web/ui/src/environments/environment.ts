@@ -21,6 +21,5 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 // The list of which env maps to which file can be found in `.angular-cli.json`.
 
 export const environment = {
-  production: false,
-  elasticsearch: 'http://localhost:9200'
+  production: false
 };
