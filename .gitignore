@@ -33,3 +33,6 @@ test/pprof_results
 dsiem_config.json
 logs
 .vscode/
+
+# include the demo app vscode
+!demo/frontend/web/.vscode/
