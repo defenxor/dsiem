@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import mermaid from 'mermaid'
 import { windowNavigate } from './utils.js'
 import PropTypes from 'prop-types'
@@ -56,6 +56,13 @@ export const DemoOverview = props => {
     [chart]
   )
 
+  const openTarget = useCallback(
+    () => {
+      windowNavigate(targetUrl)
+    },
+    [targetUrl]
+  )
+
   return (
     <EuiPageBody>
       <EuiPageContent>
@@ -79,7 +86,7 @@ export const DemoOverview = props => {
             <EuiButton
               color='primary'
               // fill
-              onClick={() => windowNavigate(targetUrl)}
+              onClick={openTarget}
               iconType='bullseye'
             >
               Open the target web page

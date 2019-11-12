@@ -1,11 +1,12 @@
 import React from 'react'
 import { HashRouter as Router, Switch, Route } from 'react-router-dom'
-import { DemoMenu } from './demomenu.jsx'
-import { DemoOverview } from './demooverview.jsx'
-import { JsonViewer } from './jsonviewer.jsx'
+import { DemoMenu } from './components/DemoMenu.jsx'
+import { DemoOverview } from './components/DemoOverview.jsx'
+import { JsonViewer } from './components/JsonViewer.jsx'
 import { EuiPage } from '@elastic/eui'
+import './App.css'
 
-export const App = props => (
+const App = props => (
   <Router>
     <EuiPage>
       <Switch>
@@ -16,3 +17,5 @@ export const App = props => (
     </EuiPage>
   </Router>
 )
+
+export default App

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import Iframe from 'react-iframe'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Iframe } from './Iframe.jsx'
 import { isChrome, untilKibanaIsReady, shellshockSend } from './utils.js'
-import { Card } from './card.jsx'
+import { Card } from './Card.jsx'
 import {
   EuiSpacer,
   EuiFlexGroup,
@@ -54,53 +54,84 @@ export const DemoMenu = props => {
     [kibanaCheckUrl]
   )
 
-  const removeToast = removedToast => {
-    setToasts(toasts.filter(toast => toast.id !== removedToast.id))
-  }
+  const removeToast = useCallback(
+    removedToast => {
+      setToasts(toasts.filter(toast => toast.id !== removedToast.id))
+    },
+    [toasts]
+  )
 
-  const handleToggleTab = e => {
+  const handleToggleTab = useCallback(e => {
     setTab(e.target.checked)
-  }
+  }, [])
 
-  const openUrl = (url, forceTab) => {
-    if (useTab || forceTab) {
-      window.open(url, '_blank')
-    } else {
-      setIframeUrl(url)
-    }
-  }
+  const openUrl = useCallback(
+    (url, forceTab) => {
+      console.log('rerendering?')
+      if (useTab || forceTab) {
+        window.open(url, '_blank')
+      } else {
+        setIframeUrl(url)
+      }
+    },
+    [useTab]
+  )
 
-  const exploit = async () => {
-    setExploitOngoing(true)
-    const r = Math.round(Math.random() * 1000)
-    const fileContent =
-      '<html><body><h1>Defaced - By #' + r + '</h1></body></html>'
-    const file = '/var/www/html/index.html'
-    const res = await shellshockSend(targetUrl, file, fileContent)
-    let toast
-    setToastId(toastId + 1)
-    if (res.success) {
-      const cnt = exploitCount + 1
-      setExploitCount(cnt)
-      toast = {
-        id: String(toastId),
-        title: 'Successful exploitation ' + cnt + 'x',
-        color: 'success'
+  const exploit = useCallback(
+    async () => {
+      setExploitOngoing(true)
+      const r = Math.round(Math.random() * 1000)
+      const fileContent =
+        '<html><body><h1>Defaced - By #' + r + '</h1></body></html>'
+      const file = '/var/www/html/index.html'
+      const res = await shellshockSend(targetUrl, file, fileContent)
+      let toast
+      setToastId(toastId + 1)
+      if (res.success) {
+        const cnt = exploitCount + 1
+        setExploitCount(cnt)
+        toast = {
+          id: String(toastId),
+          title: 'Successful exploitation ' + cnt + 'x',
+          color: 'success'
+        }
+      } else {
+        toast = {
+          id: String(toastId),
+          title: 'Failed exploitation!',
+          color: 'danger',
+          text: 'status: ' + res.errMsg
+        }
       }
-    } else {
-      toast = {
-        id: String(toastId),
-        title: 'Failed exploitation!',
-        color: 'danger',
-        text: 'status: ' + res.errMsg
+      setToasts(toasts.concat(toast))
+      if (res.success) {
+        openUrl(targetHost + '?' + r)
       }
-    }
-    setToasts(toasts.concat(toast))
-    if (res.success) {
-      openUrl(targetHost + '?' + r)
-    }
-    setExploitOngoing(false)
-  }
+      setExploitOngoing(false)
+    },
+    [exploitCount, openUrl, targetHost, targetUrl, toasts, toastId]
+  )
+
+  const openDoc = useCallback(
+    () => {
+      openUrl(docsUrl, true)
+    },
+    [openUrl, docsUrl]
+  )
+
+  const openCode = useCallback(
+    () => {
+      openUrl(codeUrl, true)
+    },
+    [openUrl, codeUrl]
+  )
+
+  const openHelp = useCallback(
+    () => {
+      openUrl(helpUrl, true)
+    },
+    [openUrl, helpUrl]
+  )
 
   return (
     <EuiPageBody>
@@ -111,16 +142,9 @@ export const DemoMenu = props => {
               <EuiHeaderLogo iconType='securityApp'>Dsiem Demo</EuiHeaderLogo>
             </EuiHeaderSectionItem>
             <EuiHeaderLinks>
-              <EuiHeaderLink onClick={() => openUrl(docsUrl, true)}>
-                Docs
-              </EuiHeaderLink>
-              <EuiHeaderLink onClick={() => openUrl(codeUrl, true)}>
-                Code
-              </EuiHeaderLink>
-              <EuiHeaderLink
-                iconType='help'
-                onClick={() => openUrl(helpUrl, true)}
-              >
+              <EuiHeaderLink onClick={openDoc}>Docs</EuiHeaderLink>
+              <EuiHeaderLink onClick={openCode}>Code</EuiHeaderLink>
+              <EuiHeaderLink iconType='help' onClick={openHelp}>
                 Help
               </EuiHeaderLink>
             </EuiHeaderLinks>
@@ -214,7 +238,12 @@ export const DemoMenu = props => {
         <EuiPageContentBody>
           <EuiFlexGroup>
             <EuiFlexItem>
-              <Iframe url={iframeUrl} height='1000px' />
+              <Iframe
+                src={iframeUrl}
+                height='1000px'
+                width='100%'
+                key={iframeUrl}
+              />
             </EuiFlexItem>
           </EuiFlexGroup>
         </EuiPageContentBody>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import ReactJson from 'react-json-view'
 import { fetchUrl } from './utils.js'
+import { PropTypes } from 'prop-types'
 
 export const JsonViewer = props => {
   const [result, setResult] = useState({})
@@ -8,7 +9,7 @@ export const JsonViewer = props => {
 
   const { directiveFile = 'directives_demo.json' } = props.match.params
   const {
-    configUrl = `http://${window.location.hostname}:${
+    configUrl = `${window.location.protocol}//${window.location.hostname}:${
       window.location.port
     }/dsiem/config`
   } = props
@@ -29,4 +30,13 @@ export const JsonViewer = props => {
   } else {
     return status
   }
+}
+
+JsonViewer.propTypes = {
+  configUrl: PropTypes.string,
+  match: PropTypes.shape({
+    params: PropTypes.shape({
+      directiveFile: PropTypes.string
+    })
+  })
 }
