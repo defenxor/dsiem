@@ -14,6 +14,4 @@ RUN apk update && apk upgrade && \
   rm /var/cache/apk/*
 
 WORKDIR /usr/share/nginx/html
-COPY --from=builder /web/dist .
-
-
+COPY --from=builder /web/build .

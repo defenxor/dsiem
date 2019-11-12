@@ -24,7 +24,7 @@ Requirements:
 Building just the web app:
 
 ```shell
-$ cd web && npm install && npm build
+$ cd web && npm install && npm run build
 ```
 
 Building the docker image:
