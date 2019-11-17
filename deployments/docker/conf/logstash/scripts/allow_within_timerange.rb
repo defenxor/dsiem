@@ -1,4 +1,4 @@
-# This is a Logstash Ruby filter plugin to remove events whose timestamp 
+# This is a Logstash Ruby filter plugin script to remove events whose timestamp 
 # falls outside of a given time frame.
 # 
 # Usage:
@@ -154,7 +154,7 @@ test "event outside of time range that crosses 00:00 - 1" do
   end
 end
 
-test "event outside of time range that crosses 00:00 - 1" do
+test "event outside of time range that crosses 00:00 - 2" do
   parameters do
     { "timestamp_field" => "field", "time_from" => "22:00", "time_to" => "01:00" }
   end
