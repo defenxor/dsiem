@@ -4,6 +4,7 @@ This directory contains Dsiem documentation pages until there's a need for a ded
 
 Available topics are:
 
+* [Frequently Asked Questions](./faq.md)
 * [Installation](./installation.md)
 * [Web Interfaces](./web_interfaces.md)
 * [Dsiem Command and Tools](./commands.md)
