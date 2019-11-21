@@ -18,7 +18,6 @@ package alarm
 
 import (
 	"errors"
-	"path"
 	"sync"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
@@ -77,9 +76,6 @@ var alarms struct {
 
 // Init initialize alarm, storing result into logFile
 func Init(logFile string, intelPrivIPFlag bool) error {
-	if err := fs.EnsureDir(path.Dir(logFile)); err != nil {
-		return err
-	}
 	if err := fWriter.Init(logFile, maxFileQueueLength); err != nil {
 		return err
 	}

@@ -125,5 +125,5 @@ func logToES(a *alarm, connID uint64) error {
 	aJSON, _ := json.Marshal(a)
 	a.RUnlock()
 
-	return fWriter.EnqueueWrite(string(aJSON) + "\n")
+	return fWriter.EnqueueWrite(string(aJSON))
 }
