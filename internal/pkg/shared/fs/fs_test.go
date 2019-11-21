@@ -61,10 +61,17 @@ func TestFS(t *testing.T) {
 
 func TestFWriter(t *testing.T) {
 	fw := FileWriter{}
+	if err := fw.Init("\x00\x00/", 10); err == nil {
+		t.Fatal("Expected error due to invalid file path")
+	}
+	if err := fw.EnqueueWrite("foo1"); err == nil {
+		t.Fatal("Expected error due to uninitialized queue")
+	}
 	tmpLog := path.Join(os.TempDir(), "tmp1.log")
 	if err := fw.Init(tmpLog, 10); err != nil {
 		t.Fatal(err)
 	}
+
 	fw.EnqueueWrite("foo1")
 	fw.EnqueueWrite("foo2")
 	time.Sleep(time.Second)
