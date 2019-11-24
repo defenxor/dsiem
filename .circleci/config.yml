@@ -41,7 +41,7 @@ jobs:
             - node-mod-v1-{{ checksum "web/ui/package.json" }}
       - run:
           name: install deps
-          command: | 
+          command: |
             cd web/ui
             rm -rf node_modules
             npx npm-force-resolutions
@@ -54,9 +54,9 @@ jobs:
       - run:
           name: Linting
           command: cd web/ui && npm run lint
-      - run:
-          name: Testing
-          command: cd web/ui && npm run test && bash <(curl -s https://codecov.io/bash)
+      # - run:
+      #    name: Testing
+      #    command: cd web/ui && npm run test && bash <(curl -s https://codecov.io/bash)
       - run:
           name: build dist
           command: |
@@ -80,7 +80,7 @@ jobs:
           name: check if release needed
           command: |
             # dry-run, but will trigger @semantic-release/exec to write ./release_ver as needed
-            npx semantic-release -b master -d 
+            npx semantic-release -b master -d
       - persist_to_workspace:
           root: .
           paths: release_ver
@@ -141,7 +141,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - release_tag            
+            - release_tag
   release-dockerhub:
     machine: true
     steps:
