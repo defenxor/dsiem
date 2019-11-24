@@ -123,8 +123,8 @@ var versionCmd = &cobra.Command{
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Creates logstash plugin for dsiem",
-	Long:  `Creates logstash plugin for dsiem`,
+	Short: "Create Logstash plugin for Dsiem",
+	Long:  `Create Logstash plugin for Dsiem`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config := viper.GetString("config")
 		validate := viper.GetBool("validate")
@@ -154,8 +154,8 @@ var runCmd = &cobra.Command{
 
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Creates an empty config template for dpluger",
-	Long:  `Creates an empty config template for dpluger`,
+	Short: "Create an empty config template for dpluger",
+	Long:  `Create an empty config template for dpluger`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config := viper.GetString("config")
 		address := viper.GetString("address")
@@ -172,8 +172,8 @@ var createCmd = &cobra.Command{
 
 var directiveCmd = &cobra.Command{
 	Use:   "directive",
-	Short: "Creates a DSIEM directive file from dpluger TSV",
-	Long:  `Creates a DSIEM directive file from dpluger TSV`,
+	Short: "Create a Dsiem directive file from dpluger TSV",
+	Long:  `Create a Dsiem directive file from dpluger TSV`,
 	Run: func(cmd *cobra.Command, args []string) {
 		tsvFile := viper.GetString("tsvFile")
 		outFile := viper.GetString("outFile")
@@ -212,8 +212,8 @@ var directiveCmd = &cobra.Command{
 
 var splitterCmd = &cobra.Command{
 	Use: "split-directive",
-	Short: "Split Directive file",
-	Long: `Split large directive file into multiple with certain suffix`,
+	Short: "Split directive file",
+	Long: `Split large directive file into multiple files with certain suffix`,
 	Run: func(cmd *cobra.Command, args []string) {
 		target := viper.GetString("targetFile")
 		suffix := viper.GetString("suffix")
@@ -221,7 +221,7 @@ var splitterCmd = &cobra.Command{
 		delete := viper.GetBool("delete")
 
 		if !fs.FileExist(target) {
-			exit(target+" doesn't exist", errors.New("wrong Target parameter"))
+			exit(target+" doesn't exist", errors.New("wrong target parameter"))
 		}
 
 		if count < 1 {
@@ -232,6 +232,6 @@ var splitterCmd = &cobra.Command{
 			exit("Failed to split " + target + " file", err)
 		}
 
-		fmt.Println("File ", target, " have been splitted")
+		fmt.Println("File ", target, " has been splitted")
 	},
 }
