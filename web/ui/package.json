@@ -87,8 +87,8 @@
     "typescript": "~3.4.5"
   },
   "engines": {
-    "node": ">= 8.9.4",
-    "npm": ">= 5.6.0"
+    "node": ">= 12.13.1",
+    "npm": ">= 6.12.1"
   },
   "license-check-and-add-config": {
     "folder": ".",
