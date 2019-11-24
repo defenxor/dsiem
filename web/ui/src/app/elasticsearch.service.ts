@@ -30,7 +30,6 @@ export class ElasticsearchService {
   kibana: string;
   user: string;
   esType = 'doc'; // default to ES6
-  logstashType: boolean;
   initialized: boolean;
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndex = 'siem_alarms';
