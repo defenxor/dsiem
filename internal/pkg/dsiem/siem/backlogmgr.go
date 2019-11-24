@@ -108,13 +108,13 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 
 func merge() <-chan bool {
 	out := make(chan bool)
-	for i := range allBacklogs {
-		go func(i int) {
-			for v := range allBacklogs[i].bpCh {
+	for _, v := range allBacklogs {
+		go func(ch chan bool) {
+			for v := range ch {
 				// v will only contain true
 				out <- v
 			}
-		}(i)
+		}(v.bpCh)
 	}
 	return out
 }
