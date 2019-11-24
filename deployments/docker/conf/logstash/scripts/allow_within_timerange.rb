@@ -110,7 +110,7 @@ test "event outside of time range - 1" do
   n = Time.now()
   ts_ms = Time.new(n.year, n.month, n.day, 0, 15, 0).to_i
   in_event { { "field" => ts_ms } }
-  expect("pass the event") do |events|
+  expect("drop the event") do |events|
     events.size == 0
   end
 end
@@ -123,7 +123,7 @@ test "event outside of time range - 2" do
   n = Time.now()
   ts_ms = Time.new(n.year, n.month, n.day, 2, 0, 0).to_i
   in_event { { "field" => ts_ms } }
-  expect("pass the event") do |events|
+  expect("drop the event") do |events|
     events.size == 0
   end
 end
@@ -136,7 +136,7 @@ test "event outside of time range - 3" do
   n = Time.at(Time.now.to_i - 86400)
   ts_ms = Time.new(n.year, n.month, n.day, 2, 0, 0).to_i
   in_event { { "field" => ts_ms } }
-  expect("pass the event") do |events|
+  expect("drop the event") do |events|
     events.size == 0
   end
 end
@@ -149,7 +149,7 @@ test "event outside of time range that crosses 00:00 - 1" do
   n = Time.now()
   ts_ms = Time.new(n.year, n.month, n.day, 21, 0, 0).to_i
   in_event { { "field" => ts_ms } }
-  expect("pass the event") do |events|
+  expect("drop the event") do |events|
     events.size == 0
   end
 end
@@ -162,7 +162,7 @@ test "event outside of time range that crosses 00:00 - 2" do
   n = Time.now()
   ts_ms = Time.new(n.year, n.month, n.day, 2, 0, 0).to_i
   in_event { { "field" => ts_ms } }
-  expect("pass the event") do |events|
+  expect("drop the event") do |events|
     events.size == 0
   end
 end
