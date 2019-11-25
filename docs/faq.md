@@ -62,7 +62,7 @@ We have a full working demo for [docker compose](../demo) or [virtual machine](.
 
 You *really* should be monitoring Dsiem alarms and events mainly from Kibana. You then open Dsiem web UI only when you want to close an alarm, change its tag, or to see the parent-child relationship between alarm and the corresponding events. To easily adopt this workflow, Dsiem default Kibana dashboard has a [scripted field](https://www.elastic.co/guide/en/kibana/7.3/scripted-fields.html) that links each alarm to their respective web UI's page.
 
-If that's not good enough, you can always just use `curl` command against `siem_alarms` index to update the alarm's `tag` and `status` directly. Example on how to change alarm ID q59Azehjpp status to Closed:
+If that's not good enough, you can always just use `curl` command against `siem_alarms` index to update the alarm's `tag` and `status` directly 😎. Example on how to change alarm ID q59Azehjpp status to Closed:
 ```shell
 $ curl -X POST "localhost:9200/siem_alarms/_update_by_query?pretty" -H 'Content-Type: application/json' -d'
 {
@@ -142,7 +142,7 @@ You *do* however, have to restrict access to Elasticsearch and Kibana. You'll al
 
 ## How to use the web UI to access an X-Pack Security-enabled Elastic cluster?
 
-The web UI needs to access Elasticsearch endpoint to read alarms data, and (optionally) to Kibana for pivoting to it from the web UI's detail alarm view.
+The web UI needs access to Elasticsearch endpoint to read alarms data, and (optionally) to Kibana for pivoting to it from the web UI's detail alarm view.
 
 For Elasticsearch, first make sure you create a dedicated user account for Dsiem web UI, and only authorize it to access `siem_alarms`, `siem_events`, and `siem_alarm_events` indices.
 
@@ -160,7 +160,7 @@ Kibana on the other hand uses form-based authentication, so the above method wil
 
 ## How to trigger alarm only during a specific time window?
 
-The most efficient way to achieve this is by only sending normalized events in question to Dsiem during that time frame. so outside of that range, Elasticsearch will still receive the events normally in `siem_events` index but Dsiem will not.
+The most efficient way to achieve this is by only sending normalized events in question to Dsiem during that time frame. So outside of that range, Elasticsearch will still receive the events normally in `siem_events` index but Dsiem will not.
 
 We provide a Logstash ruby filter script to achieve that purpose [here](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/scripts/allow_within_timerange.rb). For instance, to send normalized events with `plugin_id` 1001 and `plugin_sid` 12345 to Dsiem *only* between 23.00 - 2.00 (UTC), you can put the following `filter` configuration in Logstash:
 
