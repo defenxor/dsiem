@@ -34,7 +34,7 @@ $ ./run.sh
 
 And it will:
 
-- Ask for the hostname/IP address that you can use to access the docker containers from a browser (which depends on the network and/or NAT setup), and the network interface that Suricata will listen on.
+- Ask for the hostname/IP address that you can use to access the docker containers from a browser (which depends on the network and/or NAT setup).
 - Run `docker-compose up`
 - Perform all necessary checks and initial setup (like uploading Kibana dashboard, index templates, etc.) required. Be aware that the script will run `sudo chown` once to change the file owner of the demo filebeat configuration files to `root`.
 
