@@ -24,14 +24,12 @@ import { url2obj } from './utilities';
 @Injectable({
   providedIn: 'root'
 })
-
 export class ElasticsearchService {
   private client: Client;
   server: string;
   kibana: string;
   user: string;
-  esVersion: string;
-  logstashType: boolean;
+  esType = 'doc'; // default to ES6
   initialized: boolean;
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndex = 'siem_alarms';
@@ -40,12 +38,12 @@ export class ElasticsearchService {
 
   queryAllDocsPaging(from, size) {
     return {
-      'from': from,
-      'size': size,
-      'query': {
-        'match_all': {}
+      from: from,
+      size: size,
+      query: {
+        match_all: {}
       },
-      'sort': { 'timestamp' : 'desc' }
+      sort: { timestamp: 'desc' }
     };
   }
 
@@ -76,39 +74,44 @@ export class ElasticsearchService {
       this.user = rgxp.user;
       this.initialized = true;
       this.client = new Client({
-        host:  this.server,
-        log: 'info',
+        host: this.server,
+        log: 'info'
       });
     } catch (err) {
       ret.errMsg = err;
     }
     ret.initialized = this.initialized;
+    if (this.initialized) {
+      this.esType = await this.getESType();
+    }
     return ret;
   }
 
-  async getESVersion() {
+  async getESType() {
     try {
-      const res = await this.http.get(this.server).toPromise();
-      const fullVer = res['version']['number'];
-      this.esVersion = fullVer;
+      const res = await this.client.info();
+      const fullVer = res.version.number;
       // disable type if es major version >= 7
       const re = new RegExp(/^\d+/);
       const reVer = re.exec(fullVer);
       if (parseInt(reVer[0], 10) >= 7) {
-        this.logstashType = false;
-      } else {
-          this.logstashType = true;
+        return '_doc';
       }
-    } catch (err) {}
+      return 'doc';
+    } catch (err) {
+      console.log('err', err);
+    }
+    // default to ES6
+    return 'doc';
   }
 
   buildQueryAlarmEvents(alarmId, stage) {
     return {
-      'query': {
-        'bool': {
-          'must': [
-            { 'term': { 'stage': stage }},
-            { 'term': { 'alarm_id.keyword': alarmId }}
+      query: {
+        bool: {
+          must: [
+            { term: { stage: stage } },
+            { term: { 'alarm_id.keyword': alarmId } }
           ]
         }
       }
@@ -117,16 +120,16 @@ export class ElasticsearchService {
 
   buildQueryAlarmEventsPagination(alarmId, stage, from, size) {
     return {
-      'from': from,
-      'size': size,
-      'query': {
-        'bool': {
-          'must': [
+      from: from,
+      size: size,
+      query: {
+        bool: {
+          must: [
             {
-              'term': { 'stage': stage }
+              term: { stage: stage }
             },
             {
-              'term': { 'alarm_id.keyword': alarmId }
+              term: { 'alarm_id.keyword': alarmId }
             }
           ]
         }
@@ -136,17 +139,17 @@ export class ElasticsearchService {
 
   buildQueryAllAlarmEvents(alarmId, size) {
     return {
-      'size': size,
-      'query': {
-        'term': { 'alarm_id.keyword': alarmId }
+      size: size,
+      query: {
+        term: { 'alarm_id.keyword': alarmId }
       }
     };
   }
 
   buildQueryEvents(eventId) {
     return {
-      'query': {
-        'term': { 'event_id.keyword': eventId }
+      query: {
+        term: { 'event_id.keyword': eventId }
       }
     };
   }
@@ -154,36 +157,36 @@ export class ElasticsearchService {
   buildQueryMultipleEvents(keywords: string[]) {
     const k = keywords.join(',');
     return {
-      'query': {
-        'terms': { 'event_id.keyword': keywords }
+      query: {
+        terms: { 'event_id.keyword': keywords }
       },
-      'sort': { 'timestamp' : 'desc' }
+      sort: { timestamp: 'desc' }
     };
   }
 
   buildQueryMultipleAlarms(keywords: string[]) {
     const k = keywords.join(',');
     return {
-      'query': {
-        'terms': { '_id': keywords }
+      query: {
+        terms: { _id: keywords }
       },
-      'sort': { 'timestamp' : 'desc' }
+      sort: { timestamp: 'desc' }
     };
   }
 
   buildQueryAlarms(alarmId) {
     return {
-      'query': {
-        'term': { '_id': alarmId }
+      query: {
+        term: { _id: alarmId }
       }
     };
   }
 
   buildQueryAlarmEventsWithoutStage(alarmId) {
     return {
-      'size': 10000,
-      'query': {
-        'term': { 'alarm_id': alarmId }
+      size: 10000,
+      query: {
+        term: { alarm_id: alarmId }
       }
     };
   }
@@ -192,7 +195,7 @@ export class ElasticsearchService {
     return this.server;
   }
 
-  getUser () {
+  getUser() {
     return this.user;
   }
 
@@ -204,15 +207,7 @@ export class ElasticsearchService {
   }
 
   getType(): string {
-    if (this.esVersion === '') {
-      // esGetVersion in constructor failed, just default to use es 6.x
-      this.logstashType = true;
-    }
-    if (this.logstashType) {
-      return 'doc';
-    } else {
-      return '_doc';
-    }
+    return this.esType;
   }
 
   countEvents(_index, alarmId, stage): any {
@@ -260,7 +255,10 @@ export class ElasticsearchService {
   }
 
   getEventsMulti(_index, eventIds: string[]): any {
-    const len = eventIds.length > this.MAX_DOCS_RETURNED ? this.MAX_DOCS_RETURNED : eventIds.length;
+    const len =
+      eventIds.length > this.MAX_DOCS_RETURNED
+        ? this.MAX_DOCS_RETURNED
+        : eventIds.length;
     return this.client.search({
       index: _index,
       size: len,
@@ -274,7 +272,7 @@ export class ElasticsearchService {
     return this.client.search({
       index: _index,
       type: this.getType(),
-      body: this.queryAllDocsPaging(from, size),
+      body: this.queryAllDocsPaging(from, size)
     });
   }
 
@@ -296,7 +294,10 @@ export class ElasticsearchService {
   }
 
   getAlarmsMulti(_index, alarmIds: string[]): any {
-    const len = alarmIds.length > this.MAX_DOCS_RETURNED ? this.MAX_DOCS_RETURNED : alarmIds.length;
+    const len =
+      alarmIds.length > this.MAX_DOCS_RETURNED
+        ? this.MAX_DOCS_RETURNED
+        : alarmIds.length;
     return this.client.search({
       index: _index,
       size: len,
@@ -423,8 +424,13 @@ export class ElasticsearchService {
   }
 
   async deleteAlarm(targetID: string) {
-    const res = await this.getAlarmEventsWithoutStage(this.esIndexAlarmEvent, targetID);
-    if (typeof res.hits.hits === 'undefined') { throw new Error('getAlarmEventsWithoutStage return undefined hits'); }
+    const res = await this.getAlarmEventsWithoutStage(
+      this.esIndexAlarmEvent,
+      targetID
+    );
+    if (typeof res.hits.hits === 'undefined') {
+      throw new Error('getAlarmEventsWithoutStage return undefined hits');
+    }
 
     const tempAlarmEvent = res.hits.hits;
     const numOfAlarmEvent = tempAlarmEvent.length;
@@ -435,14 +441,21 @@ export class ElasticsearchService {
     }
     const resAlarm = await this.removeAlarmById(this.esIndex, targetID);
     if (resAlarm.deleted === 1) {
-        console.log('Deleting alarm ' + targetID + ' done');
+      console.log('Deleting alarm ' + targetID + ' done');
     }
   }
 
   async deleteAllAlarmEvents(alarmID: string) {
-    const arrDelete = [], size = 4500;
-    const res = await this.getAllAlarmEvents(this.esIndexAlarmEvent, alarmID, size);
-    if (typeof res.hits.hits === 'undefined') { throw new Error('getAllAlarmEvents return undefined hits'); }
+    const arrDelete = [],
+      size = 4500;
+    const res = await this.getAllAlarmEvents(
+      this.esIndexAlarmEvent,
+      alarmID,
+      size
+    );
+    if (typeof res.hits.hits === 'undefined') {
+      throw new Error('getAllAlarmEvents return undefined hits');
+    }
 
     const tempAlarmEvent = res.hits.hits;
 
@@ -450,10 +463,10 @@ export class ElasticsearchService {
       const idx = tempAlarmEvent[i]['_index'];
       arrDelete.push({
         delete: {
-        _index: idx,
-        _type: tempAlarmEvent[i]['_type'],
-        _id: tempAlarmEvent[i]['_id']
-       }
+          _index: idx,
+          _type: tempAlarmEvent[i]['_type'],
+          _id: tempAlarmEvent[i]['_id']
+        }
       });
     }
     return await this.bulk(arrDelete);
@@ -464,5 +477,4 @@ export class ElasticsearchService {
       body: params
     });
   }
-
 }
