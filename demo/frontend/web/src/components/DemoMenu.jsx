@@ -222,7 +222,7 @@ export const DemoMenu = props => {
                   title='Open terminal'
                   disabled={loading}
                   clickHandler={openUrl}
-                  url='chrome-extension://pnhechapfaindjhompbnflcldabbghjo/html/nassh.html'
+                  url='chrome-extension://iodihamcpbpeioajjeobimgagajmlibd/html/nassh.html'
                   //
                   desc='Use dpluger to integrate new logs and create Dsiem correlation directives (requires Chrome Secure Shell app).'
                   footerUrl='https://chrome.google.com/webstore/detail/secure-shell-app/pnhechapfaindjhompbnflcldabbghjo'
