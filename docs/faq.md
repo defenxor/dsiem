@@ -134,7 +134,7 @@ The web UI is just an Angular app that runs completely on the browser and access
 The only "integrations" that we have for the web UI are:
 
 - By-default, `dsiem` will serve the web UI files from its `/ui/` HTTP endpoint for easier deployment. This of course, can just as easily be done using something like Apache or Nginx.
-- The web UI reads ES and Kibana endpoint locations from `/ui/assets/config/esconfig.json`. Again, for easier deployment, in the docker image we have a start-up script that automatically write the content of that file based on `DSIEM_WEB_ESURL` and `DSIEM_WEB_KBNURL` environment variables. For non-docker environment, you can just change the file content manually by editing `${DSIEM_DIR}/web/dist/assets/config/esconfig.json`.
+- The web UI reads ES and Kibana endpoint locations from `/ui/assets/config/esconfig.json`. Again, for easier deployment, in the docker image we have a [start-up script](https://github.com/defenxor/dsiem/blob/master/deployments/docker/build/s6files/cont-init.d/01_set_web_esaddr) that automatically write the content of that file based on `DSIEM_WEB_ESURL` and `DSIEM_WEB_KBNURL` environment variables. For non-docker environment, you can just change the file content manually by editing `${DSIEM_DIR}/web/dist/assets/config/esconfig.json`.
 
 So to answer the original question: No, you don't need to restrict access to the web UI itself. For access control purposes, the web UI has the same access level as a `curl` command running on the same machine.
 
