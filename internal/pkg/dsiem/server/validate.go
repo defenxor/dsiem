@@ -28,7 +28,7 @@ import (
 )
 
 func isCfgFileNameValid(filename string) (ok bool) {
-	r, err := regexp.Compile(`[a-zA-Z0-9_-]+.json`)
+	r, err := regexp.Compile(`^[a-zA-Z0-9]([a-zA-Z0-9_-]+)?.json$`)
 	if err != nil {
 		return
 	}

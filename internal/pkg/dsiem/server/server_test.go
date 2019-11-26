@@ -205,8 +205,14 @@ func TestServerStartupAndFileServer(t *testing.T) {
 	httpTest(t, url+"/config/", "GET", "", 200)
 	httpTest(t, url+"/config/intel_wise.json", "GET", "", 200)
 	httpTest(t, url+"/config/doesntexist.json", "GET", "", 400)
+	httpTest(t, url+"/config/a.json", "GET", "", 400)
 	httpTest(t, url+"/config/payload.exe", "GET", "", 418)
 	httpTest(t, url+"/config/dir/asdad/", "GET", "", 404)
+
+	httpTest(t, url+"/config/test.json.foo", "GET", "", 418)
+	httpTest(t, url+"/config/..dot_in_fname.json", "GET", "", 418)
+	httpTest(t, url+"/config/ʘunicode.json", "GET", "", 418)
+	httpTest(t, url+"/config/_.json", "GET", "", 418)
 
 	stopServer(t)
 
