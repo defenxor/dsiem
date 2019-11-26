@@ -45,6 +45,8 @@ The final result of the above processes is that now we can watch for new alarms 
 
 You can use Docker Compose or the release binaries to install Dsiem. Refer to the [Installation Guide](https://github.com/defenxor/dsiem/blob/master/docs/installation.md) for details.
 
+Alternatively, there's also a Docker Compose or virtual machine-based [demo environment](https://github.com/defenxor/dsiem/tree/master/demo) that you can use to evaluate all Dsiem integration from one simple web interface.
+
 ## Documentation
 
 Currently available docs are located [here](https://github.com/defenxor/dsiem/blob/master/docs/).
