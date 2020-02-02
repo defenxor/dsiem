@@ -22,7 +22,7 @@ Two important differences mentioned were how Dsiem and OSSIM deal with vulnerabi
 
 ## Why there's no support for [insert feature here]?
 
-Whatever additional functionalities you think should be in Dsiem, they're probably be best implemented outside of it. Dsiem is meant to replace just the OSSIM *correlation engine* and not the entire OSSIM package which also includes a ticketing system, knowledge-base system, integrated security tools (Suricata, Ossec, OpenVAS, etc.), and PHP-based web interface.
+Whatever additional functionalities you think should be in Dsiem, they're probably be best implemented outside of it. Dsiem is meant to replace just the OSSIM _correlation engine_ and not the entire OSSIM package which also includes a ticketing system, knowledge-base system, integrated security tools (Suricata, Ossec, OpenVAS, etc.), and PHP-based web interface.
 
 To further illustrate this point, the only reason there's a web UI for Dsiem is because Kibana doesn't have a widget to do two things that we need: updating a document's field (alarm's `status` and `tags`), and presenting a many-many relationship (between `siem_alarms` and `siem_events` indices, through `siem_alarm_events`).
 
@@ -60,9 +60,10 @@ We have a full working demo for [docker compose](../demo) or [virtual machine](.
 
 ## The web UI lacks features and aesthetic!
 
-You *really* should be monitoring Dsiem alarms and events mainly from Kibana. You then open Dsiem web UI only when you want to close an alarm, change its tag, or to see the parent-child relationship between alarm and the corresponding events. To easily adopt this workflow, Dsiem default Kibana dashboard has a [scripted field](https://www.elastic.co/guide/en/kibana/7.3/scripted-fields.html) that links each alarm to their respective web UI's page.
+You _really_ should be monitoring Dsiem alarms and events mainly from Kibana. You then open Dsiem web UI only when you want to close an alarm, change its tag, or to see the parent-child relationship between alarm and the corresponding events. To easily adopt this workflow, Dsiem default Kibana dashboard has a [scripted field](https://www.elastic.co/guide/en/kibana/7.3/scripted-fields.html) that links each alarm to their respective web UI's page.
 
 If that's not good enough, you can always just use `curl` command against `siem_alarms` index to update the alarm's `tag` and `status` directly 😎. Example on how to change alarm ID q59Azehjpp status to Closed:
+
 ```shell
 $ curl -X POST "localhost:9200/siem_alarms/_update_by_query?pretty" -H 'Content-Type: application/json' -d'
 {
@@ -105,22 +106,26 @@ Alternative #2: Adjust the `docker-compose.yml` configuration
 - The first step is to make sure you can indeed access the docker-hosted Elasticsearch and Kibana remotely. From your local machine, try opening http://your-server-ip:9200/ and http://your-server-ip:5601/ using a browser. Investigate your network setup and docker daemon config if those URLs don't work.
 
 - Open `docker-compose.yml` in an editor, and search for these lines.
-  
+
   ```yaml
   - DSIEM_WEB_ESURL=http://localhost:9200
   - DSIEM_WEB_KBNURL=http://localhost:5601
   ```
+
   Replace `localhost` above with the actual server IP address or hostname that is accessible from the browser.
 
 - Then search for this line in the same file above:
-  
+
   ```yaml
-  - http.cors.allow-origin=/https?:\/\/localhost(:[0-9]+)?/ 
+  - http.cors.allow-origin=/https?:\/\/localhost(:[0-9]+)?/
   ```
+
   and replace it with:
+
   ```yaml
   - http.cors.allow-origin=*
   ```
+
 - Refresh Dsiem container:
   ```shell
   $ docker-compose up -d
@@ -138,7 +143,7 @@ The only "integrations" that we have for the web UI are:
 
 So to answer the original question: No, you don't need to restrict access to the web UI itself. For access control purposes, the web UI has the same access level as a `curl` command running on the same machine.
 
-You *do* however, have to restrict access to Elasticsearch and Kibana. You'll also have to restrict access to the `esconfig.json` file above if you put something like `http://user:password@elasticsearch-server:9200` in it either manually or through `DSIEM_WEB_ESURL` environment variable for authentication purpose (see next question for more).
+You _do_ however, have to restrict access to Elasticsearch and Kibana. You'll also have to restrict access to the `esconfig.json` file above if you put something like `http://user:password@elasticsearch-server:9200` in it either manually or through `DSIEM_WEB_ESURL` environment variable for authentication purpose (see next question for more).
 
 ## How to use the web UI to access an X-Pack Security-enabled Elastic cluster?
 
@@ -148,13 +153,23 @@ For Elasticsearch, first make sure you create a dedicated user account for Dsiem
 
 After that, you will need to enter that credential into `${DSIEM_DIR}/web/dist/assets/config/esconfig.json` file (notice the `${UID}` and `${PASSWD}` placeholders):
 
-  ```json
-  {
-    "elasticsearch": "http(s)://${UID}:${PASSWD}@address-reachable-from-the-browser:9200/",
-    "kibana": "http(s)://address-reachable-from-the-browser:5601/"
-  }
-  ```
-*Don't forget to also restrict access to `esconfig.json` from the web with something like Nginx/Apache or similar frontend that does authentication and authorization.*
+```json
+{
+  "elasticsearch": "http(s)://${UID}:${PASSWD}@address-reachable-from-the-browser:9200/",
+  "kibana": "http(s)://address-reachable-from-the-browser:5601/"
+}
+```
+
+Elasticsearch CORS configuration should also be adjusted as follows:
+
+```
+    http.cors.enabled=true
+    http.cors.allow-credentials=true
+    http.cors.allow-origin=*
+    http.cors.allow-headers=Authorization,X-Requested-With,Content-Type,Content-Length
+```
+
+_Don't forget to also restrict access to `esconfig.json` from the web with something like Nginx/Apache or similar frontend that does authentication and authorization._
 
 Kibana on the other hand uses form-based authentication, so the above method will not work. The workaround for now is to first login into it manually from a separate browser tab, before attempting to click a link to it from the web UI.
 
@@ -162,7 +177,7 @@ Kibana on the other hand uses form-based authentication, so the above method wil
 
 The most efficient way to achieve this is by only sending normalized events in question to Dsiem during that time frame. So outside of that range, Elasticsearch will still receive the events normally in `siem_events` index but Dsiem will not.
 
-We provide a Logstash ruby filter script to achieve that purpose [here](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/scripts/allow_within_timerange.rb). For instance, to send normalized events with `plugin_id` 1001 and `plugin_sid` 12345 to Dsiem *only* between 23.00 - 2.00 (UTC), you can put the following `filter` configuration in Logstash:
+We provide a Logstash ruby filter script to achieve that purpose [here](https://github.com/defenxor/dsiem/blob/master/deployments/docker/conf/logstash/scripts/allow_within_timerange.rb). For instance, to send normalized events with `plugin_id` 1001 and `plugin_sid` 12345 to Dsiem _only_ between 23.00 - 2.00 (UTC), you can put the following `filter` configuration in Logstash:
 
 ```
 filter {
