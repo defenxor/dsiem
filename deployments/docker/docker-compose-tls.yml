@@ -1,0 +1,119 @@
+version: '3'
+services:
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    environment:
+      - discovery.type=single-node
+      - 'ES_JAVA_OPTS=-Xms256m -Xmx256m'
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.keystore.type=PKCS12
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.type=PKCS12
+      - xpack.monitoring.enabled=false
+      - xpack.ml.enabled=false
+      - xpack.graph.enabled=false
+      - xpack.watcher.enabled=false
+      - http.cors.enabled=true
+      - http.cors.allow-credentials=true
+      - http.cors.allow-origin=*
+      - http.cors.allow-headers=Authorization,X-Requested-With,Content-Type,Content-Length
+    ports:
+      - 9200:9200
+    networks:
+      - siemnet
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+      - ./conf/es-tls/elastic-certificates-example.p12:/usr/share/elasticsearch/config/elastic-certificates.p12
+
+  logstash:
+    container_name: logstash
+    image: defenxor/docker-logstash:7.4.0
+    command:
+      - -f/etc/logstash/conf.d
+    environment:
+      - XPACK_MONITORING_ENABLED=false
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/logstash/conf.d:/etc/logstash/conf.d
+      - ./conf/logstash/index-template.d/es7:/etc/logstash/index-template.d
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.4.0
+    environment:
+      - XPACK_MONITORING_ENABLED=false
+    ports:
+      - 5601:5601
+    networks:
+      - siemnet
+
+  dsiem:
+    container_name: dsiem
+    image: defenxor/dsiem:latest
+    ports:
+      - '8080:8080'
+    networks:
+      - siemnet
+    volumes:
+      - dsiem-log:/dsiem/logs
+    environment:
+      - DSIEM_WEB_ESURL=http://localhost:9200
+      - DSIEM_WEB_KBNURL=http://localhost:5601
+
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    user: root
+    networks:
+      - siemnet
+    volumes:
+      - filebeat-data:/usr/share/filebeat/data
+      - ./conf/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - dsiem-log:/var/log/dsiem
+      - suricata-log:/var/log/suricata
+
+  filebeat-es:
+    container_name: filebeat-es
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    user: root
+    networks:
+      - siemnet
+    volumes:
+      - ./conf/filebeat-es/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./conf/filebeat-es/fields.yml:/usr/share/filebeat/fields.yml
+      - ./conf/filebeat-es/module:/usr/share/filebeat/module
+      - ./conf/filebeat-es/modules.d:/usr/share/filebeat/modules.d
+      - filebeat-es-data:/usr/share/filebeat/data
+      - dsiem-log:/var/log/dsiem
+
+  suricata:
+    container_name: suricata
+    image: defenxor/suricata:1710
+    network_mode: 'host'
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+      - NET_RAW
+    command:
+      [
+        '/bin/bash',
+        '-c',
+        'chown -R suri /var/log/suricata && /usr/bin/suricata -v -i ${PROMISC_INTERFACE}',
+      ]
+    volumes:
+      - suricata-log:/var/log/suricata
+
+volumes:
+  filebeat-es-data:
+  filebeat-data:
+  es-data:
+  dsiem-log:
+  suricata-log:
+networks:
+  siemnet:
