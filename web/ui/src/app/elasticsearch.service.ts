@@ -74,7 +74,7 @@ export class ElasticsearchService {
       this.user = rgxp.user;
       this.initialized = true;
       this.client = new Client({
-        host: this.server,
+        host: res['elasticsearch'],
         log: 'info'
       });
     } catch (err) {
