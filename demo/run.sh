@@ -126,7 +126,7 @@ echo done
 # prep suricata
 title "** setting up suricata interface .. "
 targetif=$(docker exec -it shellshock ip a | grep 'eth0@' | cut -d: -f1) || { echo "cannot get shellshock container interface!"; end_demo;}
-surif=$(ip a | grep if${targetif} | cut -d: -f2 | cut -d'@' -f1) || { echo "cannot get suricata interface!"; end_demo; }
+surif=$(docker exec -it suricata ip a | grep if${targetif} | cut -d: -f2 | cut -d'@' -f1) || { echo "cannot get suricata interface!"; end_demo; }
 docker exec suricata bash -c "echo $surif > /tmp/iface" || { echo "cannot set suricata interface"; end_demo; }
 sleep 3
 docker exec suricata ps axuw | grep -q suricata || { echo "cannot find suricata process inside its container!"; end_demo; }
