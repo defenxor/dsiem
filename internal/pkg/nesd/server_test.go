@@ -51,13 +51,27 @@ func TestServer(t *testing.T) {
 		csvDir := path.Join(dir, "fixtures", "example2")
 		InitCSV(csvDir)
 	}
+
+	errs := make(chan error, 1)
+
 	go func() {
-		err = Start("127.0.0.1", 8085)
-		if err != nil && err.Error() != "http: Server closed" {
-			t.Fatal(err)
+		e := Start("127.0.0.1", 8085)
+		if e.Error() == "http: Server closed" {
+			e = nil
 		}
+		errs <- e
 	}()
+
 	time.Sleep(time.Second * 2)
+
+	select {
+	case res := <-errs:
+		if res != nil {
+			t.Fatal(res)
+		}
+	default:
+	}
+
 	defer httpSrv.Shutdown(ctx)
 
 	url := "http://127.0.0.1:8085/?"

@@ -2,7 +2,7 @@ version: 2
 jobs:
   build-cmd:
     docker:
-      - image: circleci/golang:1.13.1
+      - image: circleci/golang:1.16.0
         environment:
           GO111MODULE: "on"
           GOFLAGS: "-mod=vendor"
@@ -86,7 +86,7 @@ jobs:
           paths: release_ver
   build-release:
     docker:
-      - image: circleci/golang:1.13.1
+      - image: circleci/golang:1.16.0
         environment:
           GO111MODULE: "on"
           GOFLAGS: "-mod=vendor"

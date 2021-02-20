@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"fmt"
+
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
@@ -76,16 +77,26 @@ func TestQueue(t *testing.T) {
 
 		fmt.Println("enqueing 1st event")
 		eq.Enqueue(evt)
+
+		errs := make(chan error, 1)
 		go func() {
 			for i := range target {
 				select {
 				case <-target[i].Ch:
 				case <-time.After(3 * time.Second):
-					t.Fatalf("Cannot read from channel %d\n", i)
+					errs <- fmt.Errorf("cannot read from channel %d", i)
+					return
 				}
 			}
+			errs <- nil
 		}()
+
 		eq.Dequeue()
+
+		res := <-errs
+		if res != nil {
+			t.Fatal(res)
+		}
 
 		fmt.Println("simulating timeout")
 		ttl := 0
