@@ -15,20 +15,26 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
+	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 
+	"go.elastic.co/apm/internal/apmcloudutil"
 	"go.elastic.co/apm/internal/apmhostutil"
+	"go.elastic.co/apm/internal/apmlog"
 	"go.elastic.co/apm/internal/apmstrings"
 	"go.elastic.co/apm/model"
 )
@@ -40,12 +46,19 @@ var (
 	goRuntime      = model.Runtime{Name: runtime.Compiler, Version: runtime.Version()}
 	localSystem    model.System
 
+	cloudMetadataOnce sync.Once
+	cloudMetadata     *model.Cloud
+
 	serviceNameInvalidRegexp = regexp.MustCompile("[^" + serviceNameValidClass + "]")
-	tagKeyReplacer           = strings.NewReplacer(`.`, `_`, `*`, `_`, `"`, `_`)
+	labelKeyReplacer         = strings.NewReplacer(`.`, `_`, `*`, `_`, `"`, `_`)
+
+	rtypeBool    = reflect.TypeOf(false)
+	rtypeFloat64 = reflect.TypeOf(float64(0))
 )
 
 const (
-	envHostname = "ELASTIC_APM_HOSTNAME"
+	envHostname        = "ELASTIC_APM_HOSTNAME"
+	envServiceNodeName = "ELASTIC_APM_SERVICE_NODE_NAME"
 
 	serviceNameValidClass = "a-zA-Z0-9 _-"
 
@@ -80,7 +93,7 @@ func getCurrentProcess() model.Process {
 }
 
 func makeService(name, version, environment string) model.Service {
-	return model.Service{
+	service := model.Service{
 		Name:        truncateString(name),
 		Version:     truncateString(version),
 		Environment: truncateString(environment),
@@ -88,6 +101,13 @@ func makeService(name, version, environment string) model.Service {
 		Language:    &goLanguage,
 		Runtime:     &goRuntime,
 	}
+
+	serviceNodeName := os.Getenv(envServiceNodeName)
+	if serviceNodeName != "" {
+		service.Node = &model.ServiceNode{ConfiguredName: truncateString(serviceNodeName)}
+	}
+
+	return service
 }
 
 func getLocalSystem() model.System {
@@ -147,8 +167,57 @@ func getKubernetesMetadata() *model.Kubernetes {
 	return kubernetes
 }
 
-func cleanTagKey(k string) string {
-	return tagKeyReplacer.Replace(k)
+func getCloudMetadata() *model.Cloud {
+	// Querying cloud metadata can block, so we don't fetch it at
+	// package initialisation time. Instead, we defer until it is
+	// first requested by the tracer.
+	cloudMetadataOnce.Do(func() {
+		logger := apmlog.DefaultLogger
+		provider := apmcloudutil.Auto
+		if str := os.Getenv(envCloudProvider); str != "" {
+			var err error
+			provider, err = apmcloudutil.ParseProvider(str)
+			if err != nil && logger != nil {
+				logger.Warningf("disabling %q cloud metadata: %s", envCloudProvider, err)
+			}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		var out model.Cloud
+		if provider.GetCloudMetadata(ctx, logger, &out) {
+			cloudMetadata = &out
+		}
+	})
+	return cloudMetadata
+}
+
+func cleanLabelKey(k string) string {
+	return labelKeyReplacer.Replace(k)
+}
+
+// makeLabelValue returns v as a value suitable for including
+// in a label value. If v is numerical or boolean, then it will
+// be returned as-is; otherwise the value will be returned as a
+// string, using fmt.Sprint if necessary, and possibly truncated
+// using truncateString.
+func makeLabelValue(v interface{}) interface{} {
+	switch v.(type) {
+	case nil, bool, float32, float64,
+		uint, uint8, uint16, uint32, uint64,
+		int, int8, int16, int32, int64:
+		return v
+	case string:
+		return truncateString(v.(string))
+	}
+	// Slow path. If v has a non-basic type whose underlying
+	// type is convertible to bool or float64, return v as-is.
+	// Otherwise, stringify.
+	rtype := reflect.TypeOf(v)
+	if rtype.ConvertibleTo(rtypeBool) || rtype.ConvertibleTo(rtypeFloat64) {
+		// Custom type
+		return v
+	}
+	return truncateString(fmt.Sprint(v))
 }
 
 func validateServiceName(name string) error {

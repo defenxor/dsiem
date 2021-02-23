@@ -79,6 +79,9 @@ func TestVuln(t *testing.T) {
 	}
 
 	apm.Enable(true)
+	apmString := "dummy"
+	tx := apm.StartTransaction(apmString, apmString, nil, nil)
+	th := tx.GetTraceContext()
 	vuln.RegisterExtension(new(DummyV), "DummyV")
 
 	vulnFileGlob = "vuln_dummy.json"
@@ -96,8 +99,8 @@ func TestVuln(t *testing.T) {
 	}
 
 	for _, tt := range tblVuln {
-		_, _ = CheckVulnIPPort(tt.ip, tt.port)
-		found, res := CheckVulnIPPort(tt.ip, tt.port)
+		_, _ = CheckVulnIPPort(tt.ip, tt.port, th)
+		found, res := CheckVulnIPPort(tt.ip, tt.port, th)
 		if found != tt.expectedFound {
 			t.Errorf("Vuln: %v %v, expected found %v, actual %v", tt.ip, tt.port, tt.expectedFound, found)
 		}
@@ -110,7 +113,7 @@ func TestVuln(t *testing.T) {
 	ip := tblVuln[0].ip
 	port := tblVuln[0].port
 	vulnCache.Set(ip+":"+strconv.Itoa(port), []byte("foo"))
-	if found, _ := CheckVulnIPPort(ip, port); found {
+	if found, _ := CheckVulnIPPort(ip, port, nil); found {
 		t.Errorf("Vuln: expected to fail on corrupted cache")
 	}
 }

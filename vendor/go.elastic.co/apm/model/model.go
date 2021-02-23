@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package model
+package model // import "go.elastic.co/apm/model"
 
 import (
 	"net/http"
@@ -49,6 +49,9 @@ type Service struct {
 	// Runtime holds information about the programming language runtime
 	// running this service.
 	Runtime *Runtime `json:"runtime,omitempty"`
+
+	// Node holds unique information about each service node
+	Node *ServiceNode `json:"node,omitempty"`
 }
 
 // Agent holds information about the Elastic APM agent.
@@ -86,6 +89,12 @@ type Runtime struct {
 
 	// Version is the version of the programming language runtime.
 	Version string `json:"version"`
+}
+
+// ServiceNode holds unique information about each service node
+type ServiceNode struct {
+	// ConfiguredName holds the name of the service node
+	ConfiguredName string `json:"configured_name,omitempty"`
 }
 
 // System represents the system (operating system and machine) running the
@@ -156,6 +165,63 @@ type KubernetesPod struct {
 	UID string `json:"uid,omitempty"`
 }
 
+// Cloud represents the cloud in which the service is running.
+type Cloud struct {
+	// Provider is the cloud provider name, e.g. aws, azure, gcp.
+	Provider string `json:"provider"`
+
+	// Region is the cloud region name, e.g. us-east-1.
+	Region string `json:"region,omitempty"`
+
+	// AvailabilityZone is the cloud availability zone name, e.g. us-east-1a.
+	AvailabilityZone string `json:"availability_zone,omitempty"`
+
+	// Instance holds information about the cloud instance (virtual machine).
+	Instance *CloudInstance `json:"instance,omitempty"`
+
+	// Machine also holds information about the cloud instance (virtual machine).
+	Machine *CloudMachine `json:"machine,omitempty"`
+
+	// Account holds information about the cloud account.
+	Account *CloudAccount `json:"account,omitempty"`
+
+	// Project holds information about the cloud project.
+	Project *CloudProject `json:"project,omitempty"`
+}
+
+// CloudInstance holds information about a cloud instance (virtual machine).
+type CloudInstance struct {
+	// ID holds the cloud instance identifier.
+	ID string `json:"id,omitempty"`
+
+	// ID holds the cloud instance name.
+	Name string `json:"name,omitempty"`
+}
+
+// CloudMachine holds information about a cloud instance (virtual machine).
+type CloudMachine struct {
+	// Type holds the cloud instance type, e.g. t2.medium.
+	Type string `json:"type,omitempty"`
+}
+
+// CloudAccount holds information about a cloud account.
+type CloudAccount struct {
+	// ID holds the cloud account identifier.
+	ID string `json:"id,omitempty"`
+
+	// ID holds the cloud account name.
+	Name string `json:"name,omitempty"`
+}
+
+// CloudProject holds information about a cloud project.
+type CloudProject struct {
+	// ID holds the cloud project identifier.
+	ID string `json:"id,omitempty"`
+
+	// Name holds the cloud project name.
+	Name string `json:"name,omitempty"`
+}
+
 // Transaction represents a transaction handled by the service.
 type Transaction struct {
 	// ID holds the 64-bit hex-encoded transaction ID.
@@ -196,8 +262,15 @@ type Transaction struct {
 	// it to true.
 	Sampled *bool `json:"sampled,omitempty"`
 
+	// SampleRate holds the sample rate in effect when the trace was started,
+	// if known. This is used by the server to aggregate transaction metrics.
+	SampleRate *float64 `json:"sample_rate,omitempty"`
+
 	// SpanCount holds statistics on spans within a transaction.
 	SpanCount SpanCount `json:"span_count"`
+
+	// Outcome holds the transaction outcome: success, failure, or unknown.
+	Outcome string `json:"outcome,omitempty"`
 }
 
 // SpanCount holds statistics on spans within a transaction.
@@ -237,7 +310,7 @@ type Span struct {
 	ID SpanID `json:"id"`
 
 	// TransactionID holds the ID of the transaction of which the span is a part.
-	TransactionID SpanID `json:"transaction_id"`
+	TransactionID SpanID `json:"transaction_id,omitempty"`
 
 	// TraceID holds the ID of the trace that this span is a part of.
 	TraceID TraceID `json:"trace_id"`
@@ -245,15 +318,25 @@ type Span struct {
 	// ParentID holds the ID of the span's parent (span or transaction).
 	ParentID SpanID `json:"parent_id,omitempty"`
 
+	// SampleRate holds the sample rate in effect when the trace was started,
+	// if known. This is used by the server to aggregate span metrics.
+	SampleRate *float64 `json:"sample_rate,omitempty"`
+
 	// Context holds contextual information relating to the span.
 	Context *SpanContext `json:"context,omitempty"`
 
 	// Stacktrace holds stack frames corresponding to the span.
 	Stacktrace []StacktraceFrame `json:"stacktrace,omitempty"`
+
+	// Outcome holds the span outcome: success, failure, or unknown.
+	Outcome string `json:"outcome,omitempty"`
 }
 
 // SpanContext holds contextual information relating to the span.
 type SpanContext struct {
+	// Destination holds information about a destination service.
+	Destination *DestinationSpanContext `json:"destination,omitempty"`
+
 	// Database holds contextual information for database
 	// operation spans.
 	Database *DatabaseSpanContext `json:"db,omitempty"`
@@ -262,7 +345,35 @@ type SpanContext struct {
 	HTTP *HTTPSpanContext `json:"http,omitempty"`
 
 	// Tags holds user-defined key/value pairs.
-	Tags StringMap `json:"tags,omitempty"`
+	Tags IfaceMap `json:"tags,omitempty"`
+}
+
+// DestinationSpanContext holds contextual information about the destination
+// for a span that relates to an operation involving an external service.
+type DestinationSpanContext struct {
+	// Address holds the network address of the destination service.
+	// This may be a hostname, FQDN, or (IPv4 or IPv6) network address.
+	Address string `json:"address,omitempty"`
+
+	// Port holds the network port for the destination service.
+	Port int `json:"port,omitempty"`
+
+	// Service holds additional destination service context.
+	Service *DestinationServiceSpanContext `json:"service,omitempty"`
+}
+
+// DestinationServiceSpanContext holds contextual information about a
+// destination service,.
+type DestinationServiceSpanContext struct {
+	// Type holds the destination service type.
+	Type string `json:"type,omitempty"`
+
+	// Name holds the destination service name.
+	Name string `json:"name,omitempty"`
+
+	// Resource identifies the destination service
+	// resource, e.g. a URI or message queue name.
+	Resource string `json:"resource,omitempty"`
 }
 
 // DatabaseSpanContext holds contextual information for database
@@ -273,6 +384,10 @@ type DatabaseSpanContext struct {
 
 	// Statement holds the database statement (e.g. query).
 	Statement string `json:"statement,omitempty"`
+
+	// RowsAffected holds the number of rows affected by the
+	// database operation.
+	RowsAffected *int64 `json:"rows_affected,omitempty"`
 
 	// Type holds the database type. For any SQL database,
 	// this should be "sql"; for others, the lower-cased
@@ -310,7 +425,7 @@ type Context struct {
 	User *User `json:"user,omitempty"`
 
 	// Tags holds user-defined key/value pairs.
-	Tags StringMap `json:"tags,omitempty"`
+	Tags IfaceMap `json:"tags,omitempty"`
 
 	// Service holds values to overrides service-level metadata.
 	Service *Service `json:"service,omitempty"`
@@ -396,6 +511,9 @@ type Exception struct {
 
 	// Handled indicates whether or not the error was caught and handled.
 	Handled bool `json:"handled"`
+
+	// Cause holds the causes of this error.
+	Cause []Exception `json:"cause,omitempty"`
 }
 
 // ExceptionCode represents an exception code as either a number or a string.
@@ -422,6 +540,9 @@ type StacktraceFrame struct {
 	// Module holds the module to which the frame belongs. For Go, we
 	// use the package path (e.g. "net/http").
 	Module string `json:"module,omitempty"`
+
+	// Classname holds the name of the class to which the frame belongs.
+	Classname string `json:"classname,omitempty"`
 
 	// Function holds the name of the function to which the frame belongs.
 	Function string `json:"function,omitempty"`

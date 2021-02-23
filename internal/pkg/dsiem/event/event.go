@@ -45,7 +45,9 @@ type NormalizedEvent struct {
 	CustomLabel2 string `json:"custom_label2,omitempty"`
 	CustomData3  string `json:"custom_data3,omitempty"`
 	CustomLabel3 string `json:"custom_label3,omitempty"`
-	RcvdTime     int64  `json:"rcvd_time,omitempty"` // for backpressure control
+	RcvdTime     int64  `json:"rcvd_time,omitempty"`    // for backpressure control
+	TraceParent  string `json:"trace_parent,omitempty"` // for distributed tracing
+	TraceState   string `json:"trace_state,omitempty"`  // for distributed tracing
 }
 
 // Channel define event channel with directive ID

@@ -180,8 +180,10 @@ func (b *backLog) expirationChecker() {
 
 func (b *backLog) isUnderPressure(rcvd int64, maxDelay int64) (ret bool) {
 	if maxDelay != 0 {
+		// rcvd in nanosec
+		rcvdSec := rcvd / int64(time.Second)
 		now := time.Now().Unix()
-		ret = now-rcvd > maxDelay
+		ret = now-rcvdSec > maxDelay
 	}
 	return
 }
@@ -221,7 +223,11 @@ func (b *backLog) processMatchedEvent(e event.NormalizedEvent, idx int) {
 
 	var tx *apm.Transaction
 	if apm.Enabled() {
-		tx = apm.StartTransaction("Directive Event Processing", "SIEM", nil)
+		th := apm.TraceHeader{
+			Traceparent: e.TraceParent,
+			TraceState:  e.TraceState,
+		}
+		tx = apm.StartTransaction("Event Processing", "Event Correlation", nil, &th)
 		tx.SetCustom("event_id", e.EventID)
 		b.RLock()
 		tx.SetCustom("backlog_id", b.ID)

@@ -15,13 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"go.elastic.co/apm/model"
 )
@@ -44,6 +45,11 @@ const (
 	spanSelfTimeCountMetricName         = "span.self_time.count"
 	spanSelfTimeSumMetricName           = "span.self_time.sum.us"
 )
+
+type pad32 struct {
+	// Zero-sized on 64-bit architectures, 4 bytes on 32-bit.
+	_ [(unsafe.Alignof(uint64(0)) % 8) / 4]uintptr
+}
 
 var (
 	breakdownMetricsLimitWarning = fmt.Sprintf(`
@@ -123,8 +129,8 @@ func newBreakdownMetricsMap() *breakdownMetricsMap {
 }
 
 type breakdownMetricsMapEntry struct {
-	breakdownMetricsKey
 	breakdownTiming
+	breakdownMetricsKey
 }
 
 // breakdownMetricsKey identifies a transaction group, and optionally a
@@ -153,13 +159,16 @@ type breakdownTiming struct {
 	// transaction holds the "transaction.duration" metric values.
 	transaction spanTiming
 
+	// Padding to ensure the span field below is 64-bit aligned.
+	_ pad32
+
+	// span holds the "span.self_time" metric values.
+	span spanTiming
+
 	// breakdownCount records the number of transactions for which we
 	// have calculated breakdown metrics. If breakdown metrics are
 	// enabled, this will be equal transaction.count.
 	breakdownCount uintptr
-
-	// span holds the "span.self_time" metric values.
-	span spanTiming
 }
 
 func (lhs *breakdownTiming) accumulate(rhs breakdownTiming) {
@@ -249,7 +258,10 @@ func (m *breakdownMetricsMap) record(k breakdownMetricsKey, bt breakdownTiming) 
 		return false
 	}
 	entry := &m.space[m.entries]
-	*entry = breakdownMetricsMapEntry{k, bt}
+	*entry = breakdownMetricsMapEntry{
+		breakdownTiming:     bt,
+		breakdownMetricsKey: k,
+	}
 	m.m[hash] = append(entries, entry)
 	m.entries++
 	m.mu.Unlock()

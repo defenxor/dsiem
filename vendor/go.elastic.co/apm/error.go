@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	"crypto/rand"
@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -31,6 +32,14 @@ import (
 	"go.elastic.co/apm/internal/pkgerrorsutil"
 	"go.elastic.co/apm/model"
 	"go.elastic.co/apm/stacktrace"
+)
+
+const (
+	// maxErrorGraphSize is the maximum number of errors
+	// to report in an error tree. Once this number of
+	// nodes is reached, we will stop recursing through
+	// error causes.
+	maxErrorTreeNodes = 50
 )
 
 // Recovered creates an Error with t.NewError(err), where
@@ -84,13 +93,13 @@ func (t *Tracer) NewError(err error) *Error {
 	e := t.newError()
 	e.cause = err
 	e.err = err.Error()
-	rand.Read(e.ID[:]) // ignore error, can't do anything about it
-	initException(&e.exception, err)
-	initStacktrace(e, err)
-	if len(e.stacktrace) == 0 {
-		e.SetStacktrace(2)
+	if e.recording {
+		rand.Read(e.ID[:]) // ignore error, can't do anything about it
+		initException(&e.exception, err, e.stackTraceLimit)
+		if len(e.exception.stacktrace) == 0 {
+			e.SetStacktrace(2)
+		}
 	}
-	e.exceptionStacktraceFrames = len(e.stacktrace)
 	return e
 }
 
@@ -102,22 +111,22 @@ func (t *Tracer) NewError(err error) *Error {
 // If r.Message is empty, "[EMPTY]" will be used.
 func (t *Tracer) NewErrorLog(r ErrorLogRecord) *Error {
 	e := t.newError()
-	e.log = ErrorLogRecord{
-		Message:       truncateString(r.Message),
-		MessageFormat: truncateString(r.MessageFormat),
-		Level:         truncateString(r.Level),
-		LoggerName:    truncateString(r.LoggerName),
-	}
-	if e.log.Message == "" {
-		e.log.Message = "[EMPTY]"
-	}
 	e.cause = r.Error
 	e.err = e.log.Message
-	rand.Read(e.ID[:]) // ignore error, can't do anything about it
-	if r.Error != nil {
-		initException(&e.exception, r.Error)
-		initStacktrace(e, r.Error)
-		e.exceptionStacktraceFrames = len(e.stacktrace)
+	if e.recording {
+		e.log = ErrorLogRecord{
+			Message:       truncateString(r.Message),
+			MessageFormat: truncateString(r.MessageFormat),
+			Level:         truncateString(r.Level),
+			LoggerName:    truncateString(r.LoggerName),
+		}
+		if e.log.Message == "" {
+			e.log.Message = "[EMPTY]"
+		}
+		rand.Read(e.ID[:]) // ignore error, can't do anything about it
+		if r.Error != nil {
+			initException(&e.exception, r.Error, e.stackTraceLimit)
+		}
 	}
 	return e
 }
@@ -133,15 +142,15 @@ func (t *Tracer) newError() *Error {
 			},
 		}
 	}
-	e.Timestamp = time.Now()
 
-	t.captureHeadersMu.RLock()
-	e.Context.captureHeaders = t.captureHeaders
-	t.captureHeadersMu.RUnlock()
-
-	t.stackTraceLimitMu.RLock()
-	e.stackTraceLimit = t.stackTraceLimit
-	t.stackTraceLimitMu.RUnlock()
+	instrumentationConfig := t.instrumentationConfig()
+	e.recording = instrumentationConfig.recording
+	if e.recording {
+		e.Timestamp = time.Now()
+		e.Context.captureHeaders = instrumentationConfig.captureHeaders
+		e.Context.sanitizedFieldNames = instrumentationConfig.sanitizedFieldNames
+		e.stackTraceLimit = instrumentationConfig.stackTraceLimit
+	}
 
 	return &Error{ErrorData: e}
 }
@@ -152,8 +161,9 @@ type Error struct {
 	// the error's Send method is called.
 	*ErrorData
 
-	// cause holds original error.
-	// It is accessible by Cause method
+	// cause holds the original error.
+	//
+	// It is accessible via the Cause method:
 	// https://godoc.org/github.com/pkg/errors#Cause
 	cause error
 
@@ -165,17 +175,13 @@ type Error struct {
 // When the error is sent, its ErrorData field will be set to nil.
 type ErrorData struct {
 	tracer             *Tracer
+	recording          bool
 	stackTraceLimit    int
-	stacktrace         []stacktrace.Frame
 	exception          exceptionData
 	log                ErrorLogRecord
+	logStacktrace      []stacktrace.Frame
 	transactionSampled bool
 	transactionType    string
-
-	// exceptionStacktraceFrames holds the number of stacktrace
-	// frames for the exception; stacktrace may hold frames for
-	// both the exception and the log record.
-	exceptionStacktraceFrames int
 
 	// ID is the unique identifier of the error. This is set by
 	// the various error constructors, and is exposed only so
@@ -310,7 +316,11 @@ func (e *Error) Send() {
 	if e == nil || e.sent() {
 		return
 	}
-	e.ErrorData.enqueue()
+	if e.recording {
+		e.ErrorData.enqueue()
+	} else {
+		e.reset()
+	}
 	e.ErrorData = nil
 }
 
@@ -332,10 +342,10 @@ func (e *ErrorData) enqueue() {
 
 func (e *ErrorData) reset() {
 	*e = ErrorData{
-		tracer:     e.tracer,
-		stacktrace: e.stacktrace[:0],
-		Context:    e.Context,
-		exception:  e.exception,
+		tracer:        e.tracer,
+		logStacktrace: e.logStacktrace[:0],
+		Context:       e.Context,
+		exception:     e.exception,
 	}
 	e.Context.reset()
 	e.exception.reset()
@@ -343,14 +353,19 @@ func (e *ErrorData) reset() {
 }
 
 type exceptionData struct {
-	message string
+	message    string
+	stacktrace []stacktrace.Frame
+	cause      []exceptionData
 	ErrorDetails
 }
 
 func (e *exceptionData) reset() {
 	*e = exceptionData{
+		cause:      e.cause[:0],
+		stacktrace: e.stacktrace[:0],
 		ErrorDetails: ErrorDetails{
-			attrs: e.attrs,
+			attrs: e.ErrorDetails.attrs,
+			Cause: e.ErrorDetails.Cause[:0],
 		},
 	}
 	for k := range e.attrs {
@@ -358,17 +373,43 @@ func (e *exceptionData) reset() {
 	}
 }
 
-func initException(e *exceptionData, err error) {
+func initException(e *exceptionData, err error, stackTraceLimit int) {
+	b := exceptionDataBuilder{stackTraceLimit: stackTraceLimit}
+	b.init(e, err)
+}
+
+type exceptionDataBuilder struct {
+	stackTraceLimit int
+	errorCount      int
+	pointerErrors   map[uintptr]struct{}
+}
+
+func (b *exceptionDataBuilder) init(e *exceptionData, err error) bool {
+	b.errorCount++
+	reflectValue := reflect.ValueOf(err)
+	reflectType := reflectValue.Type()
+	switch reflectType.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Slice, reflect.UnsafePointer:
+		// Prevent infinite recursion due to cyclic error causes.
+		ptrVal := reflectValue.Pointer()
+		if b.pointerErrors == nil {
+			b.pointerErrors = map[uintptr]struct{}{ptrVal: struct{}{}}
+		} else {
+			if _, ok := b.pointerErrors[ptrVal]; ok {
+				return false
+			}
+			b.pointerErrors[ptrVal] = struct{}{}
+		}
+	}
+
 	e.message = truncateString(err.Error())
 	if e.message == "" {
 		e.message = "[EMPTY]"
 	}
-	err = errors.Cause(err)
 
-	errType := reflect.TypeOf(err)
-	namedType := errType
-	if errType.Name() == "" && errType.Kind() == reflect.Ptr {
-		namedType = errType.Elem()
+	namedType := reflectType
+	if reflectType.Name() == "" && reflectType.Kind() == reflect.Ptr {
+		namedType = reflectType.Elem()
 	}
 	e.Type.Name = namedType.Name()
 	e.Type.PackagePath = namedType.PkgPath()
@@ -395,8 +436,22 @@ func initException(e *exceptionData, err error) {
 		e.Code.Number = err.Code()
 	}
 
+	// If the error implements an Unwrap or Cause method, use that to set the cause error.
+	// Unwrap is defined by errors wrapped using fmt.Errorf, while Cause is defined by
+	// errors wrapped using pkg/errors.Wrap.
+	switch err := err.(type) {
+	case interface{ Unwrap() error }:
+		if cause := err.Unwrap(); cause != nil {
+			e.ErrorDetails.Cause = append(e.ErrorDetails.Cause, cause)
+		}
+	case interface{ Cause() error }:
+		if cause := err.Cause(); cause != nil {
+			e.ErrorDetails.Cause = append(e.ErrorDetails.Cause, cause)
+		}
+	}
+
 	// Run registered ErrorDetailers over the error.
-	for _, ed := range typeErrorDetailers[errType] {
+	for _, ed := range typeErrorDetailers[reflectType] {
 		ed.ErrorDetails(err, &e.ErrorDetails)
 	}
 	for _, ed := range errorDetailers {
@@ -406,26 +461,54 @@ func initException(e *exceptionData, err error) {
 	e.Code.String = truncateString(e.Code.String)
 	e.Type.Name = truncateString(e.Type.Name)
 	e.Type.PackagePath = truncateString(e.Type.PackagePath)
+	b.initErrorStacktrace(&e.stacktrace, err)
+
+	for _, err := range e.ErrorDetails.Cause {
+		if b.errorCount >= maxErrorTreeNodes {
+			break
+		}
+		var data exceptionData
+		if b.init(&data, err) {
+			e.cause = append(e.cause, data)
+		}
+	}
+	return true
 }
 
-func initStacktrace(e *Error, err error) {
+func (b *exceptionDataBuilder) initErrorStacktrace(out *[]stacktrace.Frame, err error) {
 	type internalStackTracer interface {
 		StackTrace() []stacktrace.Frame
 	}
 	type errorsStackTracer interface {
 		StackTrace() errors.StackTrace
 	}
+	type runtimeStackTracer interface {
+		StackTrace() *runtime.Frames
+	}
 	switch stackTracer := err.(type) {
 	case internalStackTracer:
 		stackTrace := stackTracer.StackTrace()
-		if e.stackTraceLimit >= 0 && len(stackTrace) > e.stackTraceLimit {
-			stackTrace = stackTrace[:e.stackTraceLimit]
+		if b.stackTraceLimit >= 0 && len(stackTrace) > b.stackTraceLimit {
+			stackTrace = stackTrace[:b.stackTraceLimit]
 		}
-		e.stacktrace = append(e.stacktrace[:0], stackTrace...)
+		*out = append(*out, stackTrace...)
 	case errorsStackTracer:
 		stackTrace := stackTracer.StackTrace()
-		e.stacktrace = e.stacktrace[:0]
-		pkgerrorsutil.AppendStacktrace(stackTrace, &e.stacktrace, e.stackTraceLimit)
+		pkgerrorsutil.AppendStacktrace(stackTrace, out, b.stackTraceLimit)
+	case runtimeStackTracer:
+		frames := stackTracer.StackTrace()
+		count := 0
+		for {
+			if b.stackTraceLimit >= 0 && count == b.stackTraceLimit {
+				break
+			}
+			frame, more := frames.Next()
+			*out = append(*out, stacktrace.RuntimeFrame(frame))
+			if !more {
+				break
+			}
+			count++
+		}
 	}
 }
 
@@ -433,14 +516,11 @@ func initStacktrace(e *Error, err error) {
 // skipping the first skip number of frames, excluding
 // the SetStacktrace function.
 func (e *Error) SetStacktrace(skip int) {
-	retain := e.stacktrace[:0]
-	limit := e.stackTraceLimit
+	out := &e.exception.stacktrace
 	if e.log.Message != "" {
-		// This is a log error; the exception stacktrace
-		// is unaffected by SetStacktrace in this case.
-		retain = e.stacktrace[:e.exceptionStacktraceFrames]
+		out = &e.logStacktrace
 	}
-	e.stacktrace = stacktrace.AppendStacktrace(retain, skip+1, limit)
+	*out = stacktrace.AppendStacktrace((*out)[:0], skip+1, e.stackTraceLimit)
 }
 
 // ErrorLogRecord holds details of an error log record.
@@ -504,21 +584,25 @@ func init() {
 				details.SetAttr("addr", fmt.Sprintf("%s:%s", addr.Network(), addr.String()))
 			}
 		}
+		details.Cause = append(details.Cause, opErr.Err)
 	}))
 	RegisterTypeErrorDetailer(reflect.TypeOf(&os.LinkError{}), ErrorDetailerFunc(func(err error, details *ErrorDetails) {
 		linkErr := err.(*os.LinkError)
 		details.SetAttr("op", linkErr.Op)
 		details.SetAttr("old", linkErr.Old)
 		details.SetAttr("new", linkErr.New)
+		details.Cause = append(details.Cause, linkErr.Err)
 	}))
 	RegisterTypeErrorDetailer(reflect.TypeOf(&os.PathError{}), ErrorDetailerFunc(func(err error, details *ErrorDetails) {
 		pathErr := err.(*os.PathError)
 		details.SetAttr("op", pathErr.Op)
 		details.SetAttr("path", pathErr.Path)
+		details.Cause = append(details.Cause, pathErr.Err)
 	}))
 	RegisterTypeErrorDetailer(reflect.TypeOf(&os.SyscallError{}), ErrorDetailerFunc(func(err error, details *ErrorDetails) {
 		syscallErr := err.(*os.SyscallError)
 		details.SetAttr("syscall", syscallErr.Syscall)
+		details.Cause = append(details.Cause, syscallErr.Err)
 	}))
 	RegisterTypeErrorDetailer(reflect.TypeOf(syscall.Errno(0)), ErrorDetailerFunc(func(err error, details *ErrorDetails) {
 		errno := err.(syscall.Errno)
@@ -612,6 +696,9 @@ type ErrorDetails struct {
 		//     }
 		Number float64
 	}
+
+	// Cause holds the errors that were the cause of this error.
+	Cause []error
 }
 
 // SetAttr sets the attribute with key k to value v.

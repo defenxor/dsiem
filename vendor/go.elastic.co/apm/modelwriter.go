@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	"go.elastic.co/apm/internal/ringbuffer"
@@ -109,26 +109,21 @@ func (w *modelWriter) buildModelTransaction(out *model.Transaction, tx *Transact
 	if !sampled {
 		out.Sampled = &notSampled
 	}
+	if tx.traceContext.State.haveSampleRate {
+		out.SampleRate = &tx.traceContext.State.sampleRate
+	}
 
 	out.ParentID = model.SpanID(td.parentSpan)
 	out.Name = truncateString(td.Name)
 	out.Type = truncateString(td.Type)
 	out.Result = truncateString(td.Result)
+	out.Outcome = normalizeOutcome(td.Outcome)
 	out.Timestamp = model.Time(td.timestamp.UTC())
 	out.Duration = td.Duration.Seconds() * 1000
 	out.SpanCount.Started = td.spansCreated
 	out.SpanCount.Dropped = td.spansDropped
 	if sampled {
 		out.Context = td.Context.build()
-	}
-
-	if len(w.cfg.sanitizedFieldNames) != 0 && out.Context != nil {
-		if out.Context.Request != nil {
-			sanitizeRequest(out.Context.Request, w.cfg.sanitizedFieldNames)
-		}
-		if out.Context.Response != nil {
-			sanitizeResponse(out.Context.Response, w.cfg.sanitizedFieldNames)
-		}
 	}
 }
 
@@ -137,6 +132,9 @@ func (w *modelWriter) buildModelSpan(out *model.Span, span *Span, sd *SpanData) 
 	out.ID = model.SpanID(span.traceContext.Span)
 	out.TraceID = model.TraceID(span.traceContext.Trace)
 	out.TransactionID = model.SpanID(span.transactionID)
+	if span.traceContext.State.haveSampleRate {
+		out.SampleRate = &span.traceContext.State.sampleRate
+	}
 
 	out.ParentID = model.SpanID(sd.parentID)
 	out.Name = truncateString(sd.Name)
@@ -145,7 +143,13 @@ func (w *modelWriter) buildModelSpan(out *model.Span, span *Span, sd *SpanData) 
 	out.Action = truncateString(sd.Action)
 	out.Timestamp = model.Time(sd.timestamp.UTC())
 	out.Duration = sd.Duration.Seconds() * 1000
+	out.Outcome = normalizeOutcome(sd.Outcome)
 	out.Context = sd.Context.build()
+
+	// Copy the span type to context.destination.service.type.
+	if out.Context != nil && out.Context.Destination != nil && out.Context.Destination.Service != nil {
+		out.Context.Destination.Service.Type = out.Type
+	}
 
 	w.modelStacktrace = appendModelStacktraceFrames(w.modelStacktrace, sd.stacktrace)
 	out.Stacktrace = w.modelStacktrace
@@ -168,30 +172,58 @@ func (w *modelWriter) buildModelError(out *model.Error, e *ErrorData) {
 		}
 	}
 
+	// Create model stacktrace frames, and set the context.
 	w.modelStacktrace = w.modelStacktrace[:0]
-	if len(e.stacktrace) != 0 {
-		w.modelStacktrace = appendModelStacktraceFrames(w.modelStacktrace, e.stacktrace)
-		w.setStacktraceContext(w.modelStacktrace)
+	var appendModelErrorStacktraceFrames func(exception *exceptionData)
+	appendModelErrorStacktraceFrames = func(exception *exceptionData) {
+		if len(exception.stacktrace) != 0 {
+			w.modelStacktrace = appendModelStacktraceFrames(w.modelStacktrace, exception.stacktrace)
+		}
+		for _, cause := range exception.cause {
+			appendModelErrorStacktraceFrames(&cause)
+		}
 	}
+	appendModelErrorStacktraceFrames(&e.exception)
+	if len(e.logStacktrace) != 0 {
+		w.modelStacktrace = appendModelStacktraceFrames(w.modelStacktrace, e.logStacktrace)
+	}
+	w.setStacktraceContext(w.modelStacktrace)
 
+	var modelStacktraceOffset int
 	if e.exception.message != "" {
-		out.Exception = model.Exception{
-			Message: e.exception.message,
-			Code: model.ExceptionCode{
-				String: e.exception.Code.String,
-				Number: e.exception.Code.Number,
-			},
-			Type:       e.exception.Type.Name,
-			Module:     e.exception.Type.PackagePath,
-			Handled:    e.Handled,
-			Stacktrace: w.modelStacktrace[:e.exceptionStacktraceFrames],
+		var buildException func(exception *exceptionData) model.Exception
+		culprit := e.Culprit
+		buildException = func(exception *exceptionData) model.Exception {
+			out := model.Exception{
+				Message: exception.message,
+				Code: model.ExceptionCode{
+					String: exception.Code.String,
+					Number: exception.Code.Number,
+				},
+				Type:    exception.Type.Name,
+				Module:  exception.Type.PackagePath,
+				Handled: e.Handled,
+			}
+			if n := len(exception.stacktrace); n != 0 {
+				out.Stacktrace = w.modelStacktrace[modelStacktraceOffset : modelStacktraceOffset+n]
+				modelStacktraceOffset += n
+			}
+			if len(exception.attrs) != 0 {
+				out.Attributes = exception.attrs
+			}
+			if n := len(exception.cause); n > 0 {
+				out.Cause = make([]model.Exception, n)
+				for i := range exception.cause {
+					out.Cause[i] = buildException(&exception.cause[i])
+				}
+			}
+			if culprit == "" {
+				culprit = stacktraceCulprit(out.Stacktrace)
+			}
+			return out
 		}
-		if len(e.exception.attrs) != 0 {
-			out.Exception.Attributes = e.exception.attrs
-		}
-		if out.Culprit == "" {
-			out.Culprit = stacktraceCulprit(out.Exception.Stacktrace)
-		}
+		out.Exception = buildException(&e.exception)
+		out.Culprit = culprit
 	}
 	if e.log.Message != "" {
 		out.Log = model.Log{
@@ -199,10 +231,13 @@ func (w *modelWriter) buildModelError(out *model.Error, e *ErrorData) {
 			Level:        e.log.Level,
 			LoggerName:   e.log.LoggerName,
 			ParamMessage: e.log.MessageFormat,
-			Stacktrace:   w.modelStacktrace[e.exceptionStacktraceFrames:],
 		}
-		if out.Culprit == "" {
-			out.Culprit = stacktraceCulprit(out.Log.Stacktrace)
+		if n := len(e.logStacktrace); n != 0 {
+			out.Log.Stacktrace = w.modelStacktrace[modelStacktraceOffset : modelStacktraceOffset+n]
+			modelStacktraceOffset += n
+			if out.Culprit == "" {
+				out.Culprit = stacktraceCulprit(out.Log.Stacktrace)
+			}
 		}
 	}
 	out.Culprit = truncateString(out.Culprit)
@@ -227,5 +262,14 @@ func (w *modelWriter) setStacktraceContext(stack []model.StacktraceFrame) {
 			w.cfg.logger.Debugf("setting context failed: %v", err)
 		}
 		w.stats.Errors.SetContext++
+	}
+}
+
+func normalizeOutcome(outcome string) string {
+	switch outcome {
+	case "success", "failure", "unknown":
+		return outcome
+	default:
+		return "unknown"
 	}
 }

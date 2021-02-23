@@ -109,6 +109,7 @@ func updateElasticsearch(a *alarm, checker string, connID uint64, tx *apm.Transa
 	if err == nil {
 		if apm.Enabled() && tx != nil {
 			tx.Result("Alarm updated")
+			tx.End()
 		}
 		return
 	}
@@ -116,6 +117,7 @@ func updateElasticsearch(a *alarm, checker string, connID uint64, tx *apm.Transa
 	if apm.Enabled() && tx != nil {
 		tx.Result("Alarm failed to update ES")
 		tx.SetError(err)
+		tx.End()
 	}
 }
 

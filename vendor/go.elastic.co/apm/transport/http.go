@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package transport
+package transport // import "go.elastic.co/apm/transport"
 
 import (
 	"bytes"
@@ -28,9 +28,12 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"os"
+	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -45,9 +48,11 @@ import (
 )
 
 const (
-	intakePath = "/intake/v2/events"
-	configPath = "/config/v1/agents"
+	intakePath  = "/intake/v2/events"
+	profilePath = "/intake/v2/profile"
+	configPath  = "/config/v1/agents"
 
+	envAPIKey           = "ELASTIC_APM_API_KEY"
 	envSecretToken      = "ELASTIC_APM_SECRET_TOKEN"
 	envServerURLs       = "ELASTIC_APM_SERVER_URLS"
 	envServerURL        = "ELASTIC_APM_SERVER_URL"
@@ -70,25 +75,25 @@ var (
 type HTTPTransport struct {
 	// Client exposes the http.Client used by the HTTPTransport for
 	// sending requests to the APM Server.
-	Client        *http.Client
-	intakeHeaders http.Header
-	configHeaders http.Header
-	shuffleRand   *rand.Rand
+	Client         *http.Client
+	intakeHeaders  http.Header
+	configHeaders  http.Header
+	profileHeaders http.Header
+	shuffleRand    *rand.Rand
 
-	urlIndex   int32
-	intakeURLs []*url.URL
-	configURLs []*url.URL
+	urlIndex    int32
+	intakeURLs  []*url.URL
+	configURLs  []*url.URL
+	profileURLs []*url.URL
 }
 
 // NewHTTPTransport returns a new HTTPTransport which can be used for
 // streaming data to the APM Server. The returned HTTPTransport will be
 // initialized using the following environment variables:
 //
-// - ELASTIC_APM_SERVER_URLS: a comma-separated list of APM Server URLs.
-//   The transport will use this list of URLs for sending requests,
-//   switching to the next URL in the list upon error. The list will be
-//   shuffled first. If no URLs are specified, then the transport will
-//   use the default URL "http://localhost:8200".
+// - ELASTIC_APM_SERVER_URL: the APM Server URL used for sending
+//   requests. If no URL is specified, then the transport will use the
+//   default URL "http://localhost:8200".
 //
 // - ELASTIC_APM_SERVER_TIMEOUT: timeout for requests to the APM Server.
 //   If not specified, defaults to 30 seconds.
@@ -160,12 +165,19 @@ func NewHTTPTransport() (*HTTPTransport, error) {
 	intakeHeaders.Set("Content-Encoding", "deflate")
 	intakeHeaders.Set("Transfer-Encoding", "chunked")
 
+	profileHeaders := copyHeaders(commonHeaders)
+
 	t := &HTTPTransport{
-		Client:        client,
-		configHeaders: commonHeaders,
-		intakeHeaders: intakeHeaders,
+		Client:         client,
+		configHeaders:  commonHeaders,
+		intakeHeaders:  intakeHeaders,
+		profileHeaders: profileHeaders,
 	}
-	t.SetSecretToken(os.Getenv(envSecretToken))
+	if apiKey := os.Getenv(envAPIKey); apiKey != "" {
+		t.SetAPIKey(apiKey)
+	} else if secretToken := os.Getenv(envSecretToken); secretToken != "" {
+		t.SetSecretToken(secretToken)
+	}
 	t.SetServerURL(serverURLs...)
 	return t, nil
 }
@@ -179,9 +191,11 @@ func (t *HTTPTransport) SetServerURL(u ...*url.URL) {
 	}
 	intakeURLs := make([]*url.URL, len(u))
 	configURLs := make([]*url.URL, len(u))
+	profileURLs := make([]*url.URL, len(u))
 	for i, u := range u {
 		intakeURLs[i] = urlWithPath(u, intakePath)
 		configURLs[i] = urlWithPath(u, configPath)
+		profileURLs[i] = urlWithPath(u, profilePath)
 	}
 	if n := len(intakeURLs); n > 0 {
 		if t.shuffleRand == nil {
@@ -191,10 +205,12 @@ func (t *HTTPTransport) SetServerURL(u ...*url.URL) {
 			j := t.shuffleRand.Intn(i + 1)
 			intakeURLs[i], intakeURLs[j] = intakeURLs[j], intakeURLs[i]
 			configURLs[i], configURLs[j] = configURLs[j], configURLs[i]
+			profileURLs[i], profileURLs[j] = profileURLs[j], profileURLs[i]
 		}
 	}
 	t.intakeURLs = intakeURLs
 	t.configURLs = configURLs
+	t.profileURLs = profileURLs
 	t.urlIndex = 0
 }
 
@@ -204,8 +220,9 @@ func (t *HTTPTransport) SetUserAgent(ua string) {
 }
 
 // SetSecretToken sets the Authorization header with the given secret token.
-// This overrides the value specified via the ELASTIC_APM_SECRET_TOKEN
-// environment variable, if any.
+//
+// This overrides the value specified via the ELASTIC_APM_SECRET_TOKEN or
+// ELASTIC_APM_API_KEY environment variables, if either are set.
 func (t *HTTPTransport) SetSecretToken(secretToken string) {
 	if secretToken != "" {
 		t.setCommonHeader("Authorization", "Bearer "+secretToken)
@@ -214,14 +231,28 @@ func (t *HTTPTransport) SetSecretToken(secretToken string) {
 	}
 }
 
+// SetAPIKey sets the Authorization header with the given API Key.
+//
+// This overrides the value specified via the ELASTIC_APM_SECRET_TOKEN or
+// ELASTIC_APM_API_KEY environment variables, if either are set.
+func (t *HTTPTransport) SetAPIKey(apiKey string) {
+	if apiKey != "" {
+		t.setCommonHeader("Authorization", "ApiKey "+apiKey)
+	} else {
+		t.deleteCommonHeader("Authorization")
+	}
+}
+
 func (t *HTTPTransport) setCommonHeader(key, value string) {
 	t.configHeaders.Set(key, value)
 	t.intakeHeaders.Set(key, value)
+	t.profileHeaders.Set(key, value)
 }
 
 func (t *HTTPTransport) deleteCommonHeader(key string) {
 	t.configHeaders.Del(key)
 	t.intakeHeaders.Del(key)
+	t.profileHeaders.Del(key)
 }
 
 // SendStream sends the stream over HTTP. If SendStream returns an error and
@@ -258,6 +289,78 @@ func (t *HTTPTransport) sendStreamRequest(req *http.Request) error {
 		// This may be an old (pre-6.5) APM server
 		// that does not support the v2 intake API.
 		result.Message = fmt.Sprintf("%s not found (requires APM Server 6.5.0 or newer)", req.URL)
+	}
+	return result
+}
+
+// SendProfile sends a symbolised pprof profile, encoded as protobuf, and gzip-compressed.
+//
+// NOTE this is an experimental API, and may be removed in a future minor version, without
+// being considered a breaking change.
+func (t *HTTPTransport) SendProfile(
+	ctx context.Context,
+	metadataReader io.Reader,
+	profileReaders ...io.Reader,
+) error {
+	urlIndex := atomic.LoadInt32(&t.urlIndex)
+	profileURL := t.profileURLs[urlIndex]
+	req := t.newRequest("POST", profileURL)
+	req = requestWithContext(ctx, req)
+	req.Header = t.profileHeaders
+
+	writeBody := func(w *multipart.Writer) error {
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="metadata"`))
+		h.Set("Content-Type", "application/json")
+		part, err := w.CreatePart(h)
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(part, metadataReader); err != nil {
+			return err
+		}
+
+		for _, profileReader := range profileReaders {
+			h = make(textproto.MIMEHeader)
+			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="profile"`))
+			h.Set("Content-Type", `application/x-protobuf; messageType="perftools.profiles.Profile"`)
+			part, err = w.CreatePart(h)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(part, profileReader); err != nil {
+				return err
+			}
+		}
+		return w.Close()
+	}
+	pipeR, pipeW := io.Pipe()
+	mpw := multipart.NewWriter(pipeW)
+	req.Header.Set("Content-Type", mpw.FormDataContentType())
+	req.Body = pipeR
+	go func() {
+		err := writeBody(mpw)
+		pipeW.CloseWithError(err)
+	}()
+	return t.sendProfileRequest(req)
+}
+
+func (t *HTTPTransport) sendProfileRequest(req *http.Request) error {
+	resp, err := t.Client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "sending profile request failed")
+	}
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusAccepted:
+		resp.Body.Close()
+		return nil
+	}
+	defer resp.Body.Close()
+
+	result := newHTTPError(resp)
+	if resp.StatusCode == http.StatusNotFound && result.Message == "404 page not found" {
+		// TODO(axw) correct minimum server version.
+		result.Message = fmt.Sprintf("%s not found (requires APM Server 7.5.0 or newer)", req.URL)
 	}
 	return result
 }
@@ -390,9 +493,9 @@ func (t *HTTPTransport) newRequest(method string, url *url.URL) *http.Request {
 
 func urlWithPath(url *url.URL, p string) *url.URL {
 	urlCopy := *url
-	urlCopy.Path += p
+	urlCopy.Path = path.Clean(urlCopy.Path + p)
 	if urlCopy.RawPath != "" {
-		urlCopy.RawPath += p
+		urlCopy.RawPath = path.Clean(urlCopy.RawPath + p)
 	}
 	return &urlCopy
 }

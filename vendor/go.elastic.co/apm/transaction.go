@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	cryptorand "crypto/rand"
@@ -53,8 +53,21 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 	}
 	tx := &Transaction{tracer: t, TransactionData: td}
 
-	tx.Name = name
-	tx.Type = transactionType
+	// Take a snapshot of config that should apply to all spans within the
+	// transaction.
+	instrumentationConfig := t.instrumentationConfig()
+	tx.recording = instrumentationConfig.recording
+	if !tx.recording || !t.Active() {
+		return tx
+	}
+
+	tx.maxSpans = instrumentationConfig.maxSpans
+	tx.spanFramesMinDuration = instrumentationConfig.spanFramesMinDuration
+	tx.stackTraceLimit = instrumentationConfig.stackTraceLimit
+	tx.Context.captureHeaders = instrumentationConfig.captureHeaders
+	tx.propagateLegacyHeader = instrumentationConfig.propagateLegacyHeader
+	tx.Context.sanitizedFieldNames = instrumentationConfig.sanitizedFieldNames
+	tx.breakdownMetricsEnabled = t.breakdownMetrics.enabled
 
 	var root bool
 	if opts.TraceContext.Trace.Validate() == nil {
@@ -67,6 +80,9 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 			tx.traceContext.Span = opts.TransactionID
 		} else {
 			binary.LittleEndian.PutUint64(tx.traceContext.Span[:], tx.rand.Uint64())
+		}
+		if opts.TraceContext.State.Validate() == nil {
+			tx.traceContext.State = opts.TraceContext.State
 		}
 	} else {
 		// Start a new trace. We reuse the trace ID for the root transaction's ID
@@ -81,32 +97,31 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 		}
 	}
 
-	// Take a snapshot of the max spans config to ensure
-	// that once the maximum is reached, all future span
-	// creations are dropped.
-	t.maxSpansMu.RLock()
-	tx.maxSpans = t.maxSpans
-	t.maxSpansMu.RUnlock()
-
-	t.spanFramesMinDurationMu.RLock()
-	tx.spanFramesMinDuration = t.spanFramesMinDuration
-	t.spanFramesMinDurationMu.RUnlock()
-
-	t.stackTraceLimitMu.RLock()
-	tx.stackTraceLimit = t.stackTraceLimit
-	t.stackTraceLimitMu.RUnlock()
-
-	t.captureHeadersMu.RLock()
-	tx.Context.captureHeaders = t.captureHeaders
-	t.captureHeadersMu.RUnlock()
-
-	tx.breakdownMetricsEnabled = t.breakdownMetrics.enabled
-
 	if root {
-		t.samplerMu.RLock()
-		sampler := t.sampler
-		t.samplerMu.RUnlock()
-		if sampler == nil || sampler.Sample(tx.traceContext) {
+		var result SampleResult
+		if instrumentationConfig.extendedSampler != nil {
+			result = instrumentationConfig.extendedSampler.SampleExtended(SampleParams{
+				TraceContext: tx.traceContext,
+			})
+			if !result.Sampled {
+				// Special case: for unsampled transactions we
+				// report a sample rate of 0, so that we do not
+				// count them in aggregations in the server.
+				// This is necessary to avoid overcounting, as
+				// we will scale the sampled transactions.
+				result.SampleRate = 0
+			}
+			sampleRate := roundSampleRate(result.SampleRate)
+			tx.traceContext.State = NewTraceState(TraceStateEntry{
+				Key:   elasticTracestateVendorKey,
+				Value: formatElasticTracestateValue(sampleRate),
+			})
+		} else if instrumentationConfig.sampler != nil {
+			result.Sampled = instrumentationConfig.sampler.Sample(tx.traceContext)
+		} else {
+			result.Sampled = true
+		}
+		if result.Sampled {
 			o := tx.traceContext.Options.WithRecorded(true)
 			tx.traceContext.Options = o
 		}
@@ -118,6 +133,9 @@ func (t *Tracer) StartTransactionOptions(name, transactionType string, opts Tran
 		// applications may end up being sampled at a very high rate.
 		tx.traceContext.Options = opts.TraceContext.Options
 	}
+
+	tx.Name = name
+	tx.Type = transactionType
 	tx.timestamp = opts.Start
 	if tx.timestamp.IsZero() {
 		tx.timestamp = time.Now()
@@ -171,6 +189,21 @@ func (tx *Transaction) TraceContext() TraceContext {
 	return tx.traceContext
 }
 
+// ShouldPropagateLegacyHeader reports whether instrumentation should
+// propagate the legacy "Elastic-Apm-Traceparent" header in addition to
+// the standard W3C "traceparent" header.
+//
+// This method will be removed in a future major version when we remove
+// support for propagating the legacy header.
+func (tx *Transaction) ShouldPropagateLegacyHeader() bool {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	if tx.ended() {
+		return false
+	}
+	return tx.propagateLegacyHeader
+}
+
 // EnsureParent returns the span ID for for tx's parent, generating a
 // parent span ID if one has not already been set and tx has not been
 // ended. If tx is nil or has been ended, a zero (invalid) SpanID is
@@ -214,6 +247,7 @@ func (tx *Transaction) Discard() {
 		return
 	}
 	tx.reset(tx.tracer)
+	tx.TransactionData = nil
 }
 
 // End enqueues tx for sending to the Elastic APM server.
@@ -229,10 +263,17 @@ func (tx *Transaction) End() {
 	if tx.ended() {
 		return
 	}
-	if tx.Duration < 0 {
-		tx.Duration = time.Since(tx.timestamp)
+	if tx.recording {
+		if tx.Duration < 0 {
+			tx.Duration = time.Since(tx.timestamp)
+		}
+		if tx.Outcome == "" {
+			tx.Outcome = tx.Context.outcome()
+		}
+		tx.enqueue()
+	} else {
+		tx.reset(tx.tracer)
 	}
-	tx.enqueue()
 	tx.TransactionData = nil
 }
 
@@ -286,10 +327,23 @@ type TransactionData struct {
 	// Result holds the transaction result.
 	Result string
 
+	// Outcome holds the transaction outcome: success, failure, or
+	// unknown (the default). If Outcome is set to something else,
+	// it will be replaced with "unknown".
+	//
+	// Outcome is used for error rate calculations. A value of "success"
+	// indicates that a transaction succeeded, while "failure" indicates
+	// that the transaction failed. If Outcome is set to "unknown" (or
+	// some other value), then the transaction will not be included in
+	// error rate calculations.
+	Outcome string
+
+	recording               bool
 	maxSpans                int
 	spanFramesMinDuration   time.Duration
 	stackTraceLimit         int
 	breakdownMetricsEnabled bool
+	propagateLegacyHeader   bool
 	timestamp               time.Time
 
 	mu            sync.Mutex

@@ -28,7 +28,7 @@ func TestAPM(t *testing.T) {
 		t.Errorf("APM expected to be enabled")
 	}
 
-	tx := StartTransaction("test", "testType", nil)
+	tx := StartTransaction("test", "testType", nil, nil)
 	if tx.Tx == nil {
 		t.Fatal("Expected transaction not to be nil")
 	}
@@ -40,7 +40,7 @@ func TestAPM(t *testing.T) {
 	}
 
 	tm := time.Now()
-	tx = StartTransaction("test", "test", &tm)
+	tx = StartTransaction("test", "test", &tm, nil)
 	if tx.Tx == nil {
 		t.Fatal("Expected transaction not to be nil")
 	}
@@ -49,6 +49,10 @@ func TestAPM(t *testing.T) {
 	if tx.Tx.Result != "result test" {
 		t.Error("Expected result to be 'result test'")
 	}
+
+	th := tx.GetTraceContext()
+	tx2 := StartTransaction("test2", "test2", nil, th)
+	tx2.SetCustom("key2", "val")
 
 	// There's no getter methods so no way to verify the result of these without
 	// checking at the apm server

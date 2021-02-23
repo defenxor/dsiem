@@ -21,6 +21,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
@@ -55,6 +56,7 @@ func TestInitDirective(t *testing.T) {
 	e.ConnID = 1
 	e.PluginSID = 2100384
 	e.PluginID = 1001
+	e.RcvdTime = time.Now().UnixNano()
 
 	err = asset.Init(path.Join(testDir, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
 	if err != nil {

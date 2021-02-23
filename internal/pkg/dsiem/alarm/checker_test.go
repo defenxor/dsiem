@@ -95,7 +95,7 @@ func TestAsyncIntelCheck(t *testing.T) {
 	registerTI(testRootDir, t)
 
 	apm.Enable(true)
-	tx := apm.StartTransaction("test", "test", nil)
+	tx := apm.StartTransaction("test", "test", nil, nil)
 	if tx == nil {
 		t.Fatal("cannot create a new APM transaction")
 	}
@@ -183,7 +183,7 @@ func TestAsyncVulnCheck(t *testing.T) {
 	registerVuln(testRootDir, t)
 
 	apm.Enable(true)
-	tx := apm.StartTransaction("test", "test", nil)
+	tx := apm.StartTransaction("test", "test", nil, nil)
 	if tx == nil {
 		t.Fatal("cannot create a new APM transaction")
 	}

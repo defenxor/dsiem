@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	"bytes"
@@ -69,9 +69,7 @@ func (t *Tracer) CaptureHTTPRequestBody(req *http.Request) *BodyCapturer {
 	if req.Body == nil {
 		return nil
 	}
-	t.captureBodyMu.RLock()
-	captureBody := t.captureBody
-	t.captureBodyMu.RUnlock()
+	captureBody := t.instrumentationConfig().captureBody
 	if captureBody == CaptureBodyOff {
 		return nil
 	}

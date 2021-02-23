@@ -33,7 +33,7 @@ import (
 // requests (i.e. most server-side requests), we reconstruct the
 // URL based on various proxy forwarding headers and other request
 // attributes.
-func RequestURL(req *http.Request, forwarded *ForwardedHeader) model.URL {
+func RequestURL(req *http.Request) model.URL {
 	out := model.URL{
 		Path:   truncateString(req.URL.Path),
 		Search: truncateString(req.URL.RawQuery),
@@ -53,7 +53,8 @@ func RequestURL(req *http.Request, forwarded *ForwardedHeader) model.URL {
 	// We synthesize the full URL by extracting the host and protocol
 	// from headers, or inferring from other properties.
 	var fullHost string
-	if forwarded != nil && forwarded.Host != "" {
+	forwarded := ParseForwarded(req.Header.Get("Forwarded"))
+	if forwarded.Host != "" {
 		fullHost = forwarded.Host
 		out.Protocol = truncateString(forwarded.Proto)
 	} else if xfh := req.Header.Get("X-Forwarded-Host"); xfh != "" {
@@ -97,6 +98,9 @@ func splitHost(in string) (host, port string) {
 	}
 	host, port, err := net.SplitHostPort(in)
 	if err != nil {
+		if n := len(in); n > 1 && in[0] == '[' && in[n-1] == ']' {
+			in = in[1 : n-1]
+		}
 		return in, ""
 	}
 	return host, port

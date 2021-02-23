@@ -32,6 +32,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/queue"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
+	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/str"
@@ -101,6 +102,21 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 			evt := <-ch
 			if isWhitelisted(evt.SrcIP) {
 				continue
+			}
+			if apm.Enabled() {
+				if evt.RcvdTime == 0 {
+					log.Warn(log.M{Msg: "Cannot parse event received time, skipping event", CId: evt.ConnID})
+					continue
+				}
+				tStart := time.Unix(0, evt.RcvdTime)
+				th := apm.TraceHeader{
+					Traceparent: evt.TraceParent,
+					TraceState:  evt.TraceState,
+				}
+				tx := apm.StartTransaction("Frontend to Backend", "Network", &tStart, &th)
+				tx.SetCustom("event_id", evt.EventID)
+				tx.Result("Received from frontend")
+				tx.End()
 			}
 			eq.Enqueue(evt)
 		}

@@ -52,7 +52,7 @@ type IntelSource struct {
 	Config  string `json:"config"`
 }
 
-// IntelSource represents collection of IntelSource
+// IntelSources represents collection of IntelSource
 type IntelSources struct {
 	IntelSources []IntelSource `json:"intel_sources"`
 }
@@ -63,7 +63,7 @@ type intelCheckers struct {
 }
 
 // CheckIntelIP lookup ip on threat intel references
-func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result) {
+func CheckIntelIP(ip string, connID uint64, th *apm.TraceHeader) (found bool, results []intel.Result) {
 	/*
 		defer func() {
 			if r := recover(); r != nil {
@@ -93,8 +93,8 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 
 	for _, v := range checkers {
 		var tx *apm.Transaction
-		if apm.Enabled() {
-			tx = apm.StartTransaction("Threat Intel Lookup", "SIEM", nil)
+		if apm.Enabled() && th != nil {
+			tx = apm.StartTransaction("Threat Intel Lookup", "Plugin", nil, th)
 			tx.SetCustom("Term", term)
 			tx.SetCustom("Provider", v.name)
 		}
@@ -104,7 +104,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 		if err != nil {
 			log.Warn(log.M{Msg: "Error received from intel checker " + v.name + ": " + err.Error()})
 			cancel()
-			if apm.Enabled() {
+			if apm.Enabled() && th != nil {
 				tx.Result(err.Error())
 				tx.End()
 			}
@@ -118,7 +118,7 @@ func CheckIntelIP(ip string, connID uint64) (found bool, results []intel.Result)
 			results = append(results, r...)
 		}
 
-		if apm.Enabled() {
+		if apm.Enabled() && th != nil {
 			if found {
 				tx.Result("Intel found")
 			} else {
