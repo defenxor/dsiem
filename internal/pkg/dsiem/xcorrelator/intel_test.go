@@ -79,6 +79,9 @@ func TestIntel(t *testing.T) {
 	}
 
 	apm.Enable(true)
+	apmString := "dummy"
+	tx := apm.StartTransaction(apmString, apmString, nil, nil)
+	ts := tx.GetTraceContext()
 	intel.RegisterExtension(new(Dummy), "Dummy")
 
 	intelFileGlob = "intel_dummy.json"
@@ -96,8 +99,8 @@ func TestIntel(t *testing.T) {
 	}
 
 	for _, tt := range tblIntel {
-		_, _ = CheckIntelIP(tt.ip, 0)
-		found, res := CheckIntelIP(tt.ip, 0)
+		_, _ = CheckIntelIP(tt.ip, 0, ts)
+		found, res := CheckIntelIP(tt.ip, 0, ts)
 		if found != tt.expectedFound {
 			t.Errorf("Intel: %v, expected found %v, actual %v", tt.ip, tt.expectedFound, found)
 		}
@@ -109,7 +112,7 @@ func TestIntel(t *testing.T) {
 	// for corrupted cache
 	ip := tblIntel[0].ip
 	intelCache.Set(ip, []byte("foo"))
-	if found, _ := CheckIntelIP(ip, 0); found {
+	if found, _ := CheckIntelIP(ip, 0, nil); found {
 		t.Errorf("Intel: expected to fail on corrupted cache")
 	}
 

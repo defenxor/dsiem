@@ -32,7 +32,7 @@ func TestHelper(t *testing.T) {
 	// tmpLog := path.Join(os.TempDir(), "foo.log")
 	fWriter.Init("", 10)
 
-	tx := apm.StartTransaction("test", "test", nil)
+	tx := apm.StartTransaction("test", "test", nil, nil)
 	verifyFuncOutput(t, func() {
 		updateElasticsearch(&a, "test", 1, tx)
 	}, "failed to update Elasticsearch", true)

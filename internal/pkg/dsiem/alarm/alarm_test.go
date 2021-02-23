@@ -111,7 +111,7 @@ func TestAlarm(t *testing.T) {
 
 	connID := uint64(1)
 	checkIntelVuln := true
-	tx := apm.StartTransaction("test", "test", nil)
+	tx := apm.StartTransaction("test", "test", nil, nil)
 
 	cd := []rule.CustomData{}
 	fmt.Print("upserting low risk alarm ..")
