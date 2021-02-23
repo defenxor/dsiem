@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	"bytes"
@@ -24,7 +24,6 @@ import (
 	"io"
 	"log"
 	"math/rand"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -104,13 +103,20 @@ type TracerOptions struct {
 	sampler               Sampler
 	sanitizedFieldNames   wildcard.Matchers
 	disabledMetrics       wildcard.Matchers
+	ignoreTransactionURLs wildcard.Matchers
 	captureHeaders        bool
 	captureBody           CaptureBodyMode
 	spanFramesMinDuration time.Duration
 	stackTraceLimit       int
 	active                bool
+	recording             bool
 	configWatcher         apmconfig.Watcher
 	breakdownMetrics      bool
+	propagateLegacyHeader bool
+	profileSender         profileSender
+	cpuProfileInterval    time.Duration
+	cpuProfileDuration    time.Duration
+	heapProfileInterval   time.Duration
 }
 
 // initDefaults updates opts with default values.
@@ -188,6 +194,11 @@ func (opts *TracerOptions) initDefaults(continueOnError bool) error {
 		active = true
 	}
 
+	recording, err := initialRecording()
+	if failed(err) {
+		recording = true
+	}
+
 	centralConfigEnabled, err := initialCentralConfigEnabled()
 	if failed(err) {
 		centralConfigEnabled = true
@@ -196,6 +207,21 @@ func (opts *TracerOptions) initDefaults(continueOnError bool) error {
 	breakdownMetricsEnabled, err := initialBreakdownMetricsEnabled()
 	if failed(err) {
 		breakdownMetricsEnabled = true
+	}
+
+	propagateLegacyHeader, err := initialUseElasticTraceparentHeader()
+	if failed(err) {
+		propagateLegacyHeader = true
+	}
+
+	cpuProfileInterval, cpuProfileDuration, err := initialCPUProfileIntervalDuration()
+	if failed(err) {
+		cpuProfileInterval = 0
+		cpuProfileDuration = 0
+	}
+	heapProfileInterval, err := initialHeapProfileInterval()
+	if failed(err) {
+		heapProfileInterval = 0
 	}
 
 	if opts.ServiceName != "" {
@@ -221,12 +247,15 @@ func (opts *TracerOptions) initDefaults(continueOnError bool) error {
 	opts.sampler = sampler
 	opts.sanitizedFieldNames = initialSanitizedFieldNames()
 	opts.disabledMetrics = initialDisabledMetrics()
+	opts.ignoreTransactionURLs = initialIgnoreTransactionURLs()
 	opts.breakdownMetrics = breakdownMetricsEnabled
 	opts.captureHeaders = captureHeaders
 	opts.captureBody = captureBody
 	opts.spanFramesMinDuration = spanFramesMinDuration
 	opts.stackTraceLimit = stackTraceLimit
 	opts.active = active
+	opts.recording = recording
+	opts.propagateLegacyHeader = propagateLegacyHeader
 	if opts.Transport == nil {
 		opts.Transport = transport.Default
 	}
@@ -234,6 +263,12 @@ func (opts *TracerOptions) initDefaults(continueOnError bool) error {
 		if cw, ok := opts.Transport.(apmconfig.Watcher); ok {
 			opts.configWatcher = cw
 		}
+	}
+	if ps, ok := opts.Transport.(profileSender); ok {
+		opts.profileSender = ps
+		opts.cpuProfileInterval = cpuProfileInterval
+		opts.cpuProfileDuration = cpuProfileDuration
+		opts.heapProfileInterval = heapProfileInterval
 	}
 
 	serviceName, serviceVersion, serviceEnvironment := initialService()
@@ -290,34 +325,14 @@ type Tracer struct {
 	configWatcher     chan apmconfig.Watcher
 	events            chan tracerEvent
 	breakdownMetrics  *breakdownMetrics
+	profileSender     profileSender
 
 	statsMu sync.Mutex
 	stats   TracerStats
 
-	maxSpansMu sync.RWMutex
-	maxSpans   int
-
-	spanFramesMinDurationMu sync.RWMutex
-	spanFramesMinDuration   time.Duration
-
-	stackTraceLimitMu sync.RWMutex
-	stackTraceLimit   int
-
-	samplerMu sync.RWMutex
-	sampler   Sampler
-	// localSampler holds the most recently locally-configured Sampler,
-	// which is what sampler will be set to when a centrally defined
-	// sampler is removed.
-	localSampler Sampler
-	// remoteSampler records whether sampler is defined by the remote
-	// config watcher.
-	remoteSampler bool
-
-	captureHeadersMu sync.RWMutex
-	captureHeaders   bool
-
-	captureBodyMu sync.RWMutex
-	captureBody   CaptureBodyMode
+	// instrumentationConfig_ must only be accessed and mutated
+	// using Tracer.instrumentationConfig() and Tracer.setInstrumentationConfig().
+	instrumentationConfigInternal *instrumentationConfig
 
 	errorDataPool       sync.Pool
 	spanDataPool        sync.Pool
@@ -329,6 +344,12 @@ type Tracer struct {
 // This is equivalent to calling NewTracerOptions with a
 // TracerOptions having ServiceName and ServiceVersion set to
 // the provided arguments.
+//
+// NOTE when this package is imported, DefaultTracer is initialised
+// using environment variables for configuration. When creating a
+// tracer with NewTracer or NewTracerOptions, you should close
+// apm.DefaultTracer if it is not needed, e.g. by calling
+// apm.DefaultTracer.Close() in an init function.
 func NewTracer(serviceName, serviceVersion string) (*Tracer, error) {
 	return NewTracerOptions(TracerOptions{
 		ServiceName:    serviceName,
@@ -339,6 +360,12 @@ func NewTracer(serviceName, serviceVersion string) (*Tracer, error) {
 // NewTracerOptions returns a new Tracer using the provided options.
 // See TracerOptions for details on the options, and their default
 // values.
+//
+// NOTE when this package is imported, DefaultTracer is initialised
+// using environment variables for configuration. When creating a
+// tracer with NewTracer or NewTracerOptions, you should close
+// apm.DefaultTracer if it is not needed, e.g. by calling
+// apm.DefaultTracer.Close() in an init function.
 func NewTracerOptions(opts TracerOptions) (*Tracer, error) {
 	if err := opts.initDefaults(false); err != nil {
 		return nil, err
@@ -348,32 +375,70 @@ func NewTracerOptions(opts TracerOptions) (*Tracer, error) {
 
 func newTracer(opts TracerOptions) *Tracer {
 	t := &Tracer{
-		Transport:             opts.Transport,
-		process:               &currentProcess,
-		system:                &localSystem,
-		closing:               make(chan struct{}),
-		closed:                make(chan struct{}),
-		forceFlush:            make(chan chan<- struct{}),
-		forceSendMetrics:      make(chan chan<- struct{}),
-		configCommands:        make(chan tracerConfigCommand),
-		configWatcher:         make(chan apmconfig.Watcher),
-		events:                make(chan tracerEvent, tracerEventChannelCap),
-		active:                1,
-		breakdownMetrics:      newBreakdownMetrics(),
-		maxSpans:              opts.maxSpans,
-		sampler:               opts.sampler,
-		localSampler:          opts.sampler,
-		captureHeaders:        opts.captureHeaders,
-		captureBody:           opts.captureBody,
-		spanFramesMinDuration: opts.spanFramesMinDuration,
-		stackTraceLimit:       opts.stackTraceLimit,
-		bufferSize:            opts.bufferSize,
-		metricsBufferSize:     opts.metricsBufferSize,
+		Transport:         opts.Transport,
+		process:           &currentProcess,
+		system:            &localSystem,
+		closing:           make(chan struct{}),
+		closed:            make(chan struct{}),
+		forceFlush:        make(chan chan<- struct{}),
+		forceSendMetrics:  make(chan chan<- struct{}),
+		configCommands:    make(chan tracerConfigCommand),
+		configWatcher:     make(chan apmconfig.Watcher),
+		events:            make(chan tracerEvent, tracerEventChannelCap),
+		active:            1,
+		breakdownMetrics:  newBreakdownMetrics(),
+		bufferSize:        opts.bufferSize,
+		metricsBufferSize: opts.metricsBufferSize,
+		profileSender:     opts.profileSender,
+		instrumentationConfigInternal: &instrumentationConfig{
+			local: make(map[string]func(*instrumentationConfigValues)),
+		},
 	}
 	t.Service.Name = opts.ServiceName
 	t.Service.Version = opts.ServiceVersion
 	t.Service.Environment = opts.ServiceEnvironment
 	t.breakdownMetrics.enabled = opts.breakdownMetrics
+
+	// Initialise local transaction config.
+	t.setLocalInstrumentationConfig(envRecording, func(cfg *instrumentationConfigValues) {
+		cfg.recording = opts.recording
+	})
+	t.setLocalInstrumentationConfig(envCaptureBody, func(cfg *instrumentationConfigValues) {
+		cfg.captureBody = opts.captureBody
+	})
+	t.setLocalInstrumentationConfig(envCaptureHeaders, func(cfg *instrumentationConfigValues) {
+		cfg.captureHeaders = opts.captureHeaders
+	})
+	t.setLocalInstrumentationConfig(envMaxSpans, func(cfg *instrumentationConfigValues) {
+		cfg.maxSpans = opts.maxSpans
+	})
+	t.setLocalInstrumentationConfig(envTransactionSampleRate, func(cfg *instrumentationConfigValues) {
+		cfg.sampler = opts.sampler
+		cfg.extendedSampler, _ = opts.sampler.(ExtendedSampler)
+	})
+	t.setLocalInstrumentationConfig(envSpanFramesMinDuration, func(cfg *instrumentationConfigValues) {
+		cfg.spanFramesMinDuration = opts.spanFramesMinDuration
+	})
+	t.setLocalInstrumentationConfig(envStackTraceLimit, func(cfg *instrumentationConfigValues) {
+		cfg.stackTraceLimit = opts.stackTraceLimit
+	})
+	t.setLocalInstrumentationConfig(envUseElasticTraceparentHeader, func(cfg *instrumentationConfigValues) {
+		cfg.propagateLegacyHeader = opts.propagateLegacyHeader
+	})
+	t.setLocalInstrumentationConfig(envSanitizeFieldNames, func(cfg *instrumentationConfigValues) {
+		cfg.sanitizedFieldNames = opts.sanitizedFieldNames
+	})
+	t.setLocalInstrumentationConfig(envIgnoreURLs, func(cfg *instrumentationConfigValues) {
+		cfg.ignoreTransactionURLs = opts.ignoreTransactionURLs
+	})
+	if apmlog.DefaultLogger != nil {
+		defaultLogLevel := apmlog.DefaultLogger.Level()
+		t.setLocalInstrumentationConfig(apmlog.EnvLogLevel, func(cfg *instrumentationConfigValues) {
+			// Revert to the original, local, log level when
+			// the centrally defined log level is removed.
+			apmlog.DefaultLogger.SetLevel(defaultLogLevel)
+		})
+	}
 
 	if !opts.active {
 		t.active = 0
@@ -383,10 +448,13 @@ func newTracer(opts TracerOptions) *Tracer {
 
 	go t.loop()
 	t.configCommands <- func(cfg *tracerConfig) {
+		cfg.recording = opts.recording
+		cfg.cpuProfileInterval = opts.cpuProfileInterval
+		cfg.cpuProfileDuration = opts.cpuProfileDuration
+		cfg.heapProfileInterval = opts.heapProfileInterval
 		cfg.metricsInterval = opts.metricsInterval
 		cfg.requestDuration = opts.requestDuration
 		cfg.requestSize = opts.requestSize
-		cfg.sanitizedFieldNames = opts.sanitizedFieldNames
 		cfg.disabledMetrics = opts.disabledMetrics
 		cfg.preContext = defaultPreContext
 		cfg.postContext = defaultPostContext
@@ -404,6 +472,7 @@ func newTracer(opts TracerOptions) *Tracer {
 // tracerConfig holds the tracer's runtime configuration, which may be modified
 // by sending a tracerConfigCommand to the tracer's configCommands channel.
 type tracerConfig struct {
+	recording               bool
 	requestSize             int
 	requestDuration         time.Duration
 	metricsInterval         time.Duration
@@ -411,8 +480,10 @@ type tracerConfig struct {
 	metricsGatherers        []MetricsGatherer
 	contextSetter           stacktrace.ContextSetter
 	preContext, postContext int
-	sanitizedFieldNames     wildcard.Matchers
 	disabledMetrics         wildcard.Matchers
+	cpuProfileDuration      time.Duration
+	cpuProfileInterval      time.Duration
+	heapProfileInterval     time.Duration
 }
 
 type tracerConfigCommand func(*tracerConfig)
@@ -444,10 +515,29 @@ func (t *Tracer) Flush(abort <-chan struct{}) {
 	}
 }
 
+// Recording reports whether the tracer is recording events. Instrumentation
+// may use this to avoid creating transactions, spans, and metrics when the
+// tracer is configured to not record.
+//
+// Recording will also return false if the tracer is inactive.
+func (t *Tracer) Recording() bool {
+	return t.instrumentationConfig().recording && t.Active()
+}
+
 // Active reports whether the tracer is active. If the tracer is inactive,
 // no transactions or errors will be sent to the Elastic APM server.
 func (t *Tracer) Active() bool {
 	return atomic.LoadInt32(&t.active) == 1
+}
+
+// ShouldPropagateLegacyHeader reports whether instrumentation should
+// propagate the legacy "Elastic-Apm-Traceparent" header in addition to
+// the standard W3C "traceparent" header.
+//
+// This method will be removed in a future major version when we remove
+// support for propagating the legacy header.
+func (t *Tracer) ShouldPropagateLegacyHeader() bool {
+	return t.instrumentationConfig().propagateLegacyHeader
 }
 
 // SetRequestDuration sets the maximum amount of time to keep a request open
@@ -496,6 +586,10 @@ func (t *Tracer) SetLogger(logger Logger) {
 // of the the supplied patterns will have their values redacted. If
 // SetSanitizedFieldNames is called with no arguments, then no fields
 // will be redacted.
+//
+// Configuration via Kibana takes precedence over local configuration, so
+// if sanitized_field_names has been configured via Kibana, this call will
+// not have any effect until/unless that configuration has been removed.
 func (t *Tracer) SetSanitizedFieldNames(patterns ...string) error {
 	var matchers wildcard.Matchers
 	if len(patterns) != 0 {
@@ -504,8 +598,17 @@ func (t *Tracer) SetSanitizedFieldNames(patterns ...string) error {
 			matchers[i] = configutil.ParseWildcardPattern(p)
 		}
 	}
-	t.sendConfigCommand(func(cfg *tracerConfig) {
+	t.setLocalInstrumentationConfig(envSanitizeFieldNames, func(cfg *instrumentationConfigValues) {
 		cfg.sanitizedFieldNames = matchers
+	})
+	return nil
+}
+
+// SetIgnoreTransactionURLs sets the wildcard patterns that will be used to
+// ignore transactions with matching URLs.
+func (t *Tracer) SetIgnoreTransactionURLs(pattern string) error {
+	t.setLocalInstrumentationConfig(envIgnoreURLs, func(cfg *instrumentationConfigValues) {
+		cfg.ignoreTransactionURLs = configutil.ParseWildcardPatterns(pattern)
 	})
 	return nil
 }
@@ -564,6 +667,21 @@ func (t *Tracer) sendConfigCommand(cmd tracerConfigCommand) {
 	}
 }
 
+// SetRecording enables or disables recording of future events.
+//
+// SetRecording does not affect in-flight events.
+func (t *Tracer) SetRecording(r bool) {
+	t.setLocalInstrumentationConfig(envRecording, func(cfg *instrumentationConfigValues) {
+		// Update instrumentation config to disable transactions and errors.
+		cfg.recording = r
+	})
+	t.sendConfigCommand(func(cfg *tracerConfig) {
+		// Consult t.instrumentationConfig() as local config may not be in effect,
+		// or there may have been a concurrent change to instrumentation config.
+		cfg.recording = t.instrumentationConfig().recording
+	})
+}
+
 // SetSampler sets the sampler the tracer.
 //
 // It is valid to pass nil, in which case all transactions will be sampled.
@@ -572,51 +690,51 @@ func (t *Tracer) sendConfigCommand(cmd tracerConfigCommand) {
 // if sampling has been configured via Kibana, this call will not have any
 // effect until/unless that configuration has been removed.
 func (t *Tracer) SetSampler(s Sampler) {
-	t.samplerMu.Lock()
-	t.localSampler = s
-	if !t.remoteSampler {
-		t.sampler = s
-	}
-	t.samplerMu.Unlock()
+	t.setLocalInstrumentationConfig(envTransactionSampleRate, func(cfg *instrumentationConfigValues) {
+		cfg.sampler = s
+		cfg.extendedSampler, _ = s.(ExtendedSampler)
+	})
 }
 
 // SetMaxSpans sets the maximum number of spans that will be added
-// to a transaction before dropping spans. If set to a non-positive
-// value, the number of spans is unlimited.
+// to a transaction before dropping spans.
+//
+// Passing in zero will disable all spans, while negative values will
+// permit an unlimited number of spans.
 func (t *Tracer) SetMaxSpans(n int) {
-	t.maxSpansMu.Lock()
-	t.maxSpans = n
-	t.maxSpansMu.Unlock()
+	t.setLocalInstrumentationConfig(envMaxSpans, func(cfg *instrumentationConfigValues) {
+		cfg.maxSpans = n
+	})
 }
 
 // SetSpanFramesMinDuration sets the minimum duration for a span after which
 // we will capture its stack frames.
 func (t *Tracer) SetSpanFramesMinDuration(d time.Duration) {
-	t.spanFramesMinDurationMu.Lock()
-	t.spanFramesMinDuration = d
-	t.spanFramesMinDurationMu.Unlock()
+	t.setLocalInstrumentationConfig(envMaxSpans, func(cfg *instrumentationConfigValues) {
+		cfg.spanFramesMinDuration = d
+	})
 }
 
 // SetStackTraceLimit sets the the maximum number of stack frames to collect
 // for each stack trace. If limit is negative, then all frames will be collected.
 func (t *Tracer) SetStackTraceLimit(limit int) {
-	t.stackTraceLimitMu.Lock()
-	t.stackTraceLimit = limit
-	t.stackTraceLimitMu.Unlock()
+	t.setLocalInstrumentationConfig(envMaxSpans, func(cfg *instrumentationConfigValues) {
+		cfg.stackTraceLimit = limit
+	})
 }
 
 // SetCaptureHeaders enables or disables capturing of HTTP headers.
 func (t *Tracer) SetCaptureHeaders(capture bool) {
-	t.captureHeadersMu.Lock()
-	t.captureHeaders = capture
-	t.captureHeadersMu.Unlock()
+	t.setLocalInstrumentationConfig(envMaxSpans, func(cfg *instrumentationConfigValues) {
+		cfg.captureHeaders = capture
+	})
 }
 
 // SetCaptureBody sets the HTTP request body capture mode.
 func (t *Tracer) SetCaptureBody(mode CaptureBodyMode) {
-	t.captureBodyMu.Lock()
-	t.captureBody = mode
-	t.captureBodyMu.Unlock()
+	t.setLocalInstrumentationConfig(envMaxSpans, func(cfg *instrumentationConfigValues) {
+		cfg.captureBody = mode
+	})
 }
 
 // SendMetrics forces the tracer to gather and send metrics immediately,
@@ -674,8 +792,13 @@ func (t *Tracer) loop() {
 	// Run another goroutine to perform the blocking requests,
 	// communicating with the tracer loop to obtain stream data.
 	sendStreamRequest := make(chan time.Duration)
-	defer close(sendStreamRequest)
+	done := make(chan struct{})
+	defer func() {
+		close(sendStreamRequest)
+		<-done
+	}()
 	go func() {
+		defer close(done)
 		jitterRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for gracePeriod := range sendStreamRequest {
 			if gracePeriod > 0 {
@@ -710,6 +833,9 @@ func (t *Tracer) loop() {
 		}
 	}()
 
+	cpuProfilingState := newCPUProfilingState(t.profileSender)
+	heapProfilingState := newHeapProfilingState(t.profileSender)
+
 	var cfg tracerConfig
 	buffer := ringbuffer.New(t.bufferSize)
 	buffer.Evicted = func(h ringbuffer.BlockHeader) {
@@ -729,6 +855,46 @@ func (t *Tracer) loop() {
 		stats:         &stats,
 	}
 
+	handleTracerConfigCommand := func(cmd tracerConfigCommand) {
+		var oldMetricsInterval time.Duration
+		if cfg.recording {
+			oldMetricsInterval = cfg.metricsInterval
+		}
+		cmd(&cfg)
+		var metricsInterval, cpuProfileInterval, cpuProfileDuration, heapProfileInterval time.Duration
+		if cfg.recording {
+			metricsInterval = cfg.metricsInterval
+			cpuProfileInterval = cfg.cpuProfileInterval
+			cpuProfileDuration = cfg.cpuProfileDuration
+			heapProfileInterval = cfg.heapProfileInterval
+		}
+
+		cpuProfilingState.updateConfig(cpuProfileInterval, cpuProfileDuration)
+		heapProfilingState.updateConfig(heapProfileInterval, 0)
+		if !gatheringMetrics && metricsInterval != oldMetricsInterval {
+			if metricsTimerStart.IsZero() {
+				if metricsInterval > 0 {
+					metricsTimer.Reset(metricsInterval)
+					metricsTimerStart = time.Now()
+				}
+			} else {
+				if metricsInterval <= 0 {
+					metricsTimerStart = time.Time{}
+					if !metricsTimer.Stop() {
+						<-metricsTimer.C
+					}
+				} else {
+					alreadyPassed := time.Since(metricsTimerStart)
+					if alreadyPassed >= metricsInterval {
+						metricsTimer.Reset(0)
+					} else {
+						metricsTimer.Reset(metricsInterval - alreadyPassed)
+					}
+				}
+			}
+		}
+	}
+
 	for {
 		var gatherMetrics bool
 		select {
@@ -737,35 +903,12 @@ func (t *Tracer) loop() {
 			iochanReader.CloseRead(io.EOF)
 			return
 		case cmd := <-t.configCommands:
-			oldMetricsInterval := cfg.metricsInterval
-			cmd(&cfg)
-			if !gatheringMetrics && cfg.metricsInterval != oldMetricsInterval {
-				if metricsTimerStart.IsZero() {
-					if cfg.metricsInterval > 0 {
-						metricsTimer.Reset(cfg.metricsInterval)
-						metricsTimerStart = time.Now()
-					}
-				} else {
-					if cfg.metricsInterval <= 0 {
-						metricsTimerStart = time.Time{}
-						if !metricsTimer.Stop() {
-							<-metricsTimer.C
-						}
-					} else {
-						alreadyPassed := time.Since(metricsTimerStart)
-						if alreadyPassed >= cfg.metricsInterval {
-							metricsTimer.Reset(0)
-						} else {
-							metricsTimer.Reset(cfg.metricsInterval - alreadyPassed)
-						}
-					}
-				}
-			}
+			handleTracerConfigCommand(cmd)
 			continue
 		case cw := <-t.configWatcher:
 			if configChanges != nil {
 				stopConfigWatcher()
-				t.updateConfig(&cfg, lastConfigChange, nil)
+				t.updateRemoteConfig(cfg.logger, lastConfigChange, nil)
 				lastConfigChange = nil
 				configChanges = nil
 			}
@@ -795,8 +938,11 @@ func (t *Tracer) loop() {
 					cfg.logger.Errorf("config request failed: %s", change.Err)
 				}
 			} else {
-				t.updateConfig(&cfg, lastConfigChange, change.Attrs)
+				t.updateRemoteConfig(cfg.logger, lastConfigChange, change.Attrs)
 				lastConfigChange = change.Attrs
+				handleTracerConfigCommand(func(cfg *tracerConfig) {
+					cfg.recording = t.instrumentationConfig().recording
+				})
 			}
 			continue
 		case event := <-t.events:
@@ -823,21 +969,31 @@ func (t *Tracer) loop() {
 			metricsTimerStart = time.Time{}
 			gatherMetrics = !gatheringMetrics
 		case sentMetrics = <-t.forceSendMetrics:
-			if !metricsTimerStart.IsZero() {
-				if !metricsTimer.Stop() {
-					<-metricsTimer.C
+			if cfg.recording {
+				if !metricsTimerStart.IsZero() {
+					if !metricsTimer.Stop() {
+						<-metricsTimer.C
+					}
+					metricsTimerStart = time.Time{}
 				}
-				metricsTimerStart = time.Time{}
+				gatherMetrics = !gatheringMetrics
 			}
-			gatherMetrics = !gatheringMetrics
 		case <-gatheredMetrics:
 			modelWriter.writeMetrics(&metrics)
 			gatheringMetrics = false
 			flushRequest = true
-			if cfg.metricsInterval > 0 {
+			if cfg.recording && cfg.metricsInterval > 0 {
 				metricsTimerStart = time.Now()
 				metricsTimer.Reset(cfg.metricsInterval)
 			}
+		case <-cpuProfilingState.timer.C:
+			cpuProfilingState.start(ctx, cfg.logger, t.metadataReader())
+		case <-cpuProfilingState.finished:
+			cpuProfilingState.resetTimer()
+		case <-heapProfilingState.timer.C:
+			heapProfilingState.start(ctx, cfg.logger, t.metadataReader())
+		case <-heapProfilingState.finished:
+			heapProfilingState.resetTimer()
 		case flushed = <-t.forceFlush:
 			// Drain any objects buffered in the channels.
 			for n := len(t.events); n > 0; n-- {
@@ -1037,20 +1193,37 @@ func (t *Tracer) loop() {
 // first request is made.
 func (t *Tracer) jsonRequestMetadata() []byte {
 	var json fastjson.Writer
+	json.RawString(`{"metadata":`)
+	t.encodeRequestMetadata(&json)
+	json.RawString("}\n")
+	return json.Bytes()
+}
+
+// metadataReader returns an io.Reader that holds the JSON-encoded metadata,
+// suitable for including in a profile request.
+func (t *Tracer) metadataReader() io.Reader {
+	var metadata fastjson.Writer
+	t.encodeRequestMetadata(&metadata)
+	return bytes.NewReader(metadata.Bytes())
+}
+
+func (t *Tracer) encodeRequestMetadata(json *fastjson.Writer) {
 	service := makeService(t.Service.Name, t.Service.Version, t.Service.Environment)
-	json.RawString(`{"metadata":{`)
-	json.RawString(`"system":`)
-	t.system.MarshalFastJSON(&json)
+	json.RawString(`{"system":`)
+	t.system.MarshalFastJSON(json)
 	json.RawString(`,"process":`)
-	t.process.MarshalFastJSON(&json)
+	t.process.MarshalFastJSON(json)
 	json.RawString(`,"service":`)
-	service.MarshalFastJSON(&json)
+	service.MarshalFastJSON(json)
+	if cloud := getCloudMetadata(); cloud != nil {
+		json.RawString(`,"cloud":`)
+		cloud.MarshalFastJSON(json)
+	}
 	if len(globalLabels) > 0 {
 		json.RawString(`,"labels":`)
-		globalLabels.MarshalFastJSON(&json)
+		globalLabels.MarshalFastJSON(json)
 	}
-	json.RawString("}}\n")
-	return json.Bytes()
+	json.RawByte('}')
 }
 
 // gatherMetrics gathers metrics from each of the registered
@@ -1076,66 +1249,6 @@ func (t *Tracer) gatherMetrics(ctx context.Context, gatherers []MetricsGatherer,
 		}
 		gathered <- struct{}{}
 	}()
-}
-
-// updateConfig updates t and cfg with changes held in "attrs", and reverts
-// to local config for config attributes that have been removed (exist in old
-// but not in attrs).
-//
-// On return from updateConfig, unapplied config will have been removed from attrs.
-func (t *Tracer) updateConfig(cfg *tracerConfig, old, attrs map[string]string) {
-	warningf := func(string, ...interface{}) {}
-	debugf := func(string, ...interface{}) {}
-	errorf := func(string, ...interface{}) {}
-	if cfg.logger != nil {
-		warningf = cfg.logger.Warningf
-		debugf = cfg.logger.Debugf
-		errorf = cfg.logger.Errorf
-	}
-	envName := func(k string) string {
-		return "ELASTIC_APM_" + strings.ToUpper(k)
-	}
-
-	for k, v := range attrs {
-		if oldv, ok := old[k]; ok && oldv == v {
-			continue
-		}
-		switch envName(k) {
-		case envTransactionSampleRate:
-			sampler, err := parseSampleRate(k, v)
-			if err != nil {
-				errorf("central config failure: %s", err)
-				delete(attrs, k)
-				continue
-			} else {
-				t.samplerMu.Lock()
-				t.sampler = sampler
-				t.remoteSampler = true
-				t.samplerMu.Unlock()
-			}
-		default:
-			warningf("central config failure: unsupported config: %s", k)
-			delete(attrs, k)
-			continue
-		}
-		debugf("central config update: updated %s to %s", k, v)
-	}
-
-	for k := range old {
-		if _, ok := attrs[k]; ok {
-			continue
-		}
-		switch envName(k) {
-		case envTransactionSampleRate:
-			t.samplerMu.Lock()
-			t.sampler = t.localSampler
-			t.remoteSampler = false
-			t.samplerMu.Unlock()
-		default:
-			continue
-		}
-		debugf("central config update: reverted %s to local config", k)
-	}
 }
 
 type tracerEventType int

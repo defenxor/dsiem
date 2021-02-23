@@ -17,7 +17,7 @@
 
 // +build gofuzz
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	"bytes"
@@ -62,7 +62,7 @@ func Fuzz(data []byte) int {
 			return nil
 		}
 		for k, v := range in.Tags {
-			out.SetTag(k, v)
+			out.SetLabel(k, v)
 		}
 		if in.Request != nil {
 			var body io.Reader

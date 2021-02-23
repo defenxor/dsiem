@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package model
+package model // import "go.elastic.co/apm/model"
 
 import (
 	"encoding/hex"
@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"go.elastic.co/apm/internal/apmstrings"
 	"go.elastic.co/fastjson"
 )
 
@@ -70,15 +71,22 @@ func (v *HTTPSpanContext) UnmarshalJSON(data []byte) error {
 // MarshalFastJSON writes the JSON representation of v to w.
 func (v *HTTPSpanContext) MarshalFastJSON(w *fastjson.Writer) error {
 	w.RawByte('{')
-	beforeURL := w.Size()
-	w.RawString(`"url":"`)
-	if v.marshalURL(w) {
-		w.RawByte('"')
-	} else {
-		w.Rewind(beforeURL)
+	first := true
+	if v.URL != nil {
+		beforeURL := w.Size()
+		w.RawString(`"url":"`)
+		if v.marshalURL(w) {
+			w.RawByte('"')
+			first = false
+		} else {
+			w.Rewind(beforeURL)
+		}
 	}
 	if v.StatusCode > 0 {
-		w.RawString(`,"status_code":`)
+		if !first {
+			w.RawByte(',')
+		}
+		w.RawString(`"status_code":`)
 		w.Int64(int64(v.StatusCode))
 	}
 	w.RawByte('}')
@@ -191,7 +199,7 @@ func (v *URL) MarshalFastJSON(w *fastjson.Writer) error {
 		}
 		w.String(v.Search)
 	}
-	if schemeEnd != -1 && v.Hostname != "" && v.Path != "" {
+	if schemeEnd != -1 && v.Hostname != "" {
 		before := w.Size()
 		w.RawString(",\"full\":")
 		if !v.marshalFullURL(w, w.Bytes()[schemeBegin:schemeEnd]) {
@@ -232,32 +240,57 @@ func (v *URL) marshalFullURL(w *fastjson.Writer, scheme []byte) bool {
 	before := w.Size()
 	w.RawBytes(scheme)
 	w.RawString("://")
+
+	const maxRunes = 1024
+	runes := w.Size() - before // scheme is known to be all single-byte runes
+	if runes >= maxRunes {
+		// Pathological case, scheme >= 1024 runes.
+		w.Rewind(before + maxRunes)
+		w.RawByte('"')
+		return true
+	}
+
+	// Track how many runes we encode, and stop once we've hit the limit.
+	rawByte := func(v byte) {
+		if runes == maxRunes {
+			return
+		}
+		w.RawByte(v)
+		runes++
+	}
+	stringContents := func(v string) {
+		remaining := maxRunes - runes
+		truncated, n := apmstrings.Truncate(v, remaining)
+		if n > 0 {
+			w.StringContents(truncated)
+			runes += n
+		}
+	}
+
 	if strings.IndexByte(v.Hostname, ':') == -1 {
-		w.StringContents(v.Hostname)
+		stringContents(v.Hostname)
 	} else {
-		w.RawByte('[')
-		w.StringContents(v.Hostname)
-		w.RawByte(']')
+		rawByte('[')
+		stringContents(v.Hostname)
+		rawByte(']')
 	}
 	if v.Port != "" {
-		w.RawByte(':')
-		w.StringContents(v.Port)
+		rawByte(':')
+		stringContents(v.Port)
 	}
-	if !strings.HasPrefix(v.Path, "/") {
-		w.RawByte('/')
+	if v.Path != "" {
+		if !strings.HasPrefix(v.Path, "/") {
+			rawByte('/')
+		}
+		stringContents(v.Path)
 	}
-	w.StringContents(v.Path)
 	if v.Search != "" {
-		w.RawByte('?')
-		w.StringContents(v.Search)
+		rawByte('?')
+		stringContents(v.Search)
 	}
 	if v.Hash != "" {
-		w.RawByte('#')
-		w.StringContents(v.Hash)
-	}
-	if n := w.Size() - before; n > 1024 {
-		// Truncate the full URL to 1024 bytes.
-		w.Rewind(w.Size() - n + 1024)
+		rawByte('#')
+		stringContents(v.Hash)
 	}
 	w.RawByte('"')
 	return true

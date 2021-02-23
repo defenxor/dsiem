@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apm
+package apm // import "go.elastic.co/apm"
 
 import (
 	cryptorand "crypto/rand"
@@ -101,7 +101,7 @@ func (tx *Transaction) StartSpanOptions(name, spanType string, opts SpanOptions)
 	defer tx.TransactionData.mu.Unlock()
 	if !span.traceContext.Options.Recorded() {
 		span.tracer = nil // span is dropped
-	} else if tx.maxSpans > 0 && tx.spansCreated >= tx.maxSpans {
+	} else if tx.maxSpans >= 0 && tx.spansCreated >= tx.maxSpans {
 		span.tracer = nil // span is dropped
 		tx.spansDropped++
 	} else {
@@ -159,13 +159,9 @@ func (t *Tracer) StartSpan(name, spanType string, transactionID SpanID, opts Spa
 	span := t.startSpan(name, spanType, transactionID, opts)
 	span.traceContext.Span = spanID
 
-	t.spanFramesMinDurationMu.RLock()
-	span.stackFramesMinDuration = t.spanFramesMinDuration
-	t.spanFramesMinDurationMu.RUnlock()
-
-	t.stackTraceLimitMu.RLock()
-	span.stackTraceLimit = t.stackTraceLimit
-	t.stackTraceLimitMu.RUnlock()
+	instrumentationConfig := t.instrumentationConfig()
+	span.stackFramesMinDuration = instrumentationConfig.spanFramesMinDuration
+	span.stackTraceLimit = instrumentationConfig.stackTraceLimit
 
 	return span
 }
@@ -297,6 +293,9 @@ func (s *Span) End() {
 	if s.Duration < 0 {
 		s.Duration = time.Since(s.timestamp)
 	}
+	if s.Outcome == "" {
+		s.Outcome = s.Context.outcome()
+	}
 	if s.dropped() {
 		if s.tx == nil {
 			droppedSpanDataPool.Put(s.SpanData)
@@ -397,6 +396,15 @@ type SpanData struct {
 	// If you do not update Duration, calling Span.End will calculate the
 	// duration based on the elapsed time since the span's start time.
 	Duration time.Duration
+
+	// Outcome holds the span outcome: success, failure, or unknown (the default).
+	// If Outcome is set to something else, it will be replaced with "unknown".
+	//
+	// Outcome is used for error rate calculations. A value of "success" indicates
+	// that a operation succeeded, while "failure" indicates that the operation
+	// failed. If Outcome is set to "unknown" (or some other value), then the
+	// span will not be included in error rate calculations.
+	Outcome string
 
 	// Context describes the context in which span occurs.
 	Context SpanContext

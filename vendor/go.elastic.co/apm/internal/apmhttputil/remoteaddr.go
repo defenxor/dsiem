@@ -18,40 +18,43 @@
 package apmhttputil
 
 import (
-	"net"
 	"net/http"
-	"strings"
+	"strconv"
 )
 
-// RemoteAddr returns the remote address for the HTTP request.
-//
-// In order:
-//  - if the Forwarded header is set, then the first item in the
-//    list's "for" field is used, if it exists. The "for" value
-//    is returned even if it is an obfuscated identifier.
-//  - if the X-Real-Ip header is set, then its value is returned.
-//  - if the X-Forwarded-For header is set, then the first value
-//    in the comma-separated list is returned.
-//  - otherwise, the host portion of req.RemoteAddr is returned.
-func RemoteAddr(req *http.Request, forwarded *ForwardedHeader) string {
-	if forwarded != nil {
-		if forwarded.For != "" {
-			remoteAddr, _, err := net.SplitHostPort(forwarded.For)
-			if err != nil {
-				remoteAddr = forwarded.For
-			}
-			return remoteAddr
-		}
-	}
-	if realIP := req.Header.Get("X-Real-Ip"); realIP != "" {
-		return realIP
-	}
-	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
-		if sep := strings.IndexRune(xff, ','); sep > 0 {
-			xff = xff[:sep]
-		}
-		return strings.TrimSpace(xff)
-	}
+// RemoteAddr returns the remote (peer) socket address for req,
+// a server HTTP request.
+func RemoteAddr(req *http.Request) string {
 	remoteAddr, _ := splitHost(req.RemoteAddr)
 	return remoteAddr
+}
+
+// DestinationAddr returns the destination server address and port
+// for req, a client HTTP request.
+//
+// If req.URL.Host contains a port it will be returned, and otherwise
+// the default port according to req.URL.Scheme will be returned. If
+// the included port is not a valid integer, or no port is included
+// and the scheme is unknown, the returned port value will be zero.
+func DestinationAddr(req *http.Request) (string, int) {
+	host, strport := splitHost(req.URL.Host)
+	var port int
+	if strport != "" {
+		port, _ = strconv.Atoi(strport)
+	} else {
+		port = SchemeDefaultPort(req.URL.Scheme)
+	}
+	return host, port
+}
+
+// SchemeDefaultPort returns the default port for the given URI scheme,
+// if known, or 0 otherwise.
+func SchemeDefaultPort(scheme string) int {
+	switch scheme {
+	case "http":
+		return 80
+	case "https":
+		return 443
+	}
+	return 0
 }
