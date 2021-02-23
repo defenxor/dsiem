@@ -1,13 +1,17 @@
 # github.com/allegro/bigcache v1.2.1
+## explicit
 github.com/allegro/bigcache
 github.com/allegro/bigcache/queue
 # github.com/armon/go-radix v1.0.0
 github.com/armon/go-radix
 # github.com/buaazp/fasthttprouter v0.1.1
+## explicit
 github.com/buaazp/fasthttprouter
 # github.com/dogenzaka/tsv v0.0.0-20150215104501-8e02e611b1fb
+## explicit
 github.com/dogenzaka/tsv
 # github.com/elastic/go-sysinfo v1.1.1-0.20191025104200-74588a38895c
+## explicit
 github.com/elastic/go-sysinfo
 github.com/elastic/go-sysinfo/internal/registry
 github.com/elastic/go-sysinfo/providers/darwin
@@ -16,14 +20,18 @@ github.com/elastic/go-sysinfo/providers/shared
 github.com/elastic/go-sysinfo/providers/windows
 github.com/elastic/go-sysinfo/types
 # github.com/elastic/go-windows v1.0.1
+## explicit
 github.com/elastic/go-windows
 # github.com/enriquebris/goconcurrentqueue v0.0.0-20190719205347-3e5689c24f05
+## explicit
 github.com/enriquebris/goconcurrentqueue
 # github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072
+## explicit
 github.com/fasthttp-contrib/websocket
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/gocarina/gocsv/v2 v2.0.0-20181026075406-cde31a6ec2a8
+## explicit
 github.com/gocarina/gocsv/v2
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
@@ -41,20 +49,26 @@ github.com/inconshreveable/mousetrap
 # github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901
 github.com/joeshaw/multierror
 # github.com/jonhoo/drwmutex v0.0.0-20190519183033-0cffe0733098
+## explicit
 github.com/jonhoo/drwmutex
 # github.com/julienschmidt/httprouter v1.3.0
+## explicit
 github.com/julienschmidt/httprouter
 # github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+## explicit
 github.com/kardianos/osext
 # github.com/klauspost/compress v1.8.6
+## explicit
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/gzip
 github.com/klauspost/compress/zlib
 # github.com/klauspost/cpuid v1.2.1
 github.com/klauspost/cpuid
 # github.com/magiconair/properties v1.8.1
+## explicit
 github.com/magiconair/properties
 # github.com/mailru/easyjson v0.7.0
+## explicit
 github.com/mailru/easyjson
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
@@ -64,11 +78,13 @@ github.com/mitchellh/mapstructure
 # github.com/nats-io/jwt v0.3.0
 github.com/nats-io/jwt
 # github.com/nats-io/nats-server/v2 v2.1.0
+## explicit
 github.com/nats-io/nats-server/v2/conf
 github.com/nats-io/nats-server/v2/logger
 github.com/nats-io/nats-server/v2/server
 github.com/nats-io/nats-server/v2/server/pse
 # github.com/nats-io/nats.go v1.8.1
+## explicit
 github.com/nats-io/nats.go
 github.com/nats-io/nats.go/encoders/builtin
 github.com/nats-io/nats.go/util
@@ -77,26 +93,33 @@ github.com/nats-io/nkeys
 # github.com/nats-io/nuid v1.0.1
 github.com/nats-io/nuid
 # github.com/olivere/elastic v6.2.25+incompatible
+## explicit
 github.com/olivere/elastic
 github.com/olivere/elastic/config
 github.com/olivere/elastic/uritemplates
 # github.com/olivere/elastic/v7 v7.0.8
+## explicit
 github.com/olivere/elastic/v7
 github.com/olivere/elastic/v7/config
 github.com/olivere/elastic/v7/uritemplates
 # github.com/paulbellamy/ratecounter v0.2.0
+## explicit
 github.com/paulbellamy/ratecounter
 # github.com/pelletier/go-toml v1.5.0
+## explicit
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.8.1
 github.com/pkg/errors
 # github.com/pkg/profile v1.3.0
+## explicit
 github.com/pkg/profile
 # github.com/prometheus/procfs v0.0.5
+## explicit
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
 # github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
+## explicit
 github.com/remeh/sizedwaitgroup
 # github.com/santhosh-tekuri/jsonschema v1.2.4
 github.com/santhosh-tekuri/jsonschema
@@ -105,27 +128,36 @@ github.com/santhosh-tekuri/jsonschema/formats
 github.com/santhosh-tekuri/jsonschema/loader
 github.com/santhosh-tekuri/jsonschema/mediatypes
 # github.com/satori/go.uuid v0.0.0-20180103174451-36e9d2ebbde5
+## explicit
 github.com/satori/go.uuid
 # github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
+## explicit
 github.com/sebdah/goldie
 # github.com/spf13/afero v1.2.2
+## explicit
 github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.0
 github.com/spf13/cast
 # github.com/spf13/cobra v0.0.5
+## explicit
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
+## explicit
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.5
+## explicit
 github.com/spf13/pflag
 # github.com/spf13/viper v1.4.0
+## explicit
 github.com/spf13/viper
 # github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
+## explicit
 github.com/teris-io/shortid
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.5.0
+## explicit
 github.com/valyala/fasthttp
 github.com/valyala/fasthttp/expvarhandler
 github.com/valyala/fasthttp/fasthttpadaptor
@@ -136,9 +168,11 @@ github.com/valyala/fasthttp/stackless
 # github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a
 github.com/valyala/tcplisten
 # github.com/yl2chen/cidranger v0.0.0-20190806234802-fed7223fd934
+## explicit
 github.com/yl2chen/cidranger
 github.com/yl2chen/cidranger/net
 # go.elastic.co/apm v1.5.0
+## explicit
 go.elastic.co/apm
 go.elastic.co/apm/apmconfig
 go.elastic.co/apm/internal/apmcontext
@@ -161,8 +195,10 @@ go.elastic.co/fastjson
 # go.uber.org/atomic v1.4.0
 go.uber.org/atomic
 # go.uber.org/multierr v1.2.0
+## explicit
 go.uber.org/multierr
 # go.uber.org/zap v1.10.0
+## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
@@ -174,7 +210,10 @@ golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
+# golang.org/x/lint v0.0.0-20190930215403-16217165b5de
+## explicit
 # golang.org/x/sys v0.0.0-20191025090151-53bf42e6b339
+## explicit
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
@@ -183,11 +222,16 @@ golang.org/x/sys/windows/svc/debug
 golang.org/x/sys/windows/svc/eventlog
 golang.org/x/sys/windows/svc/mgr
 # golang.org/x/text v0.3.2
+## explicit
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0
+## explicit
 golang.org/x/time/rate
+# golang.org/x/tools v0.0.0-20191101200257-8dbcdeb83d3f
+## explicit
 # gopkg.in/olivere/elastic.v5 v5.0.82
+## explicit
 gopkg.in/olivere/elastic.v5
 gopkg.in/olivere/elastic.v5/config
 gopkg.in/olivere/elastic.v5/uritemplates
@@ -195,3 +239,4 @@ gopkg.in/olivere/elastic.v5/uritemplates
 gopkg.in/yaml.v2
 # howett.net/plist v0.0.0-20181124034731-591f970eefbb
 howett.net/plist
+# git.apache.org/thrift.git => github.com/apache/thrift v0.12.0

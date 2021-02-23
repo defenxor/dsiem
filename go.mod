@@ -37,14 +37,12 @@ require (
 	go.elastic.co/apm v1.5.0
 	go.uber.org/multierr v1.2.0 // indirect
 	go.uber.org/zap v1.10.0
-	golang.org/x/lint v0.0.0-20190930215403-16217165b5de // indirect
 	golang.org/x/sys v0.0.0-20191025090151-53bf42e6b339 // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0
-	golang.org/x/tools v0.0.0-20191101200257-8dbcdeb83d3f // indirect
 	gopkg.in/olivere/elastic.v5 v5.0.82
 )
 
 replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
 
-go 1.13
+go 1.16
