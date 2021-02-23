@@ -18,7 +18,6 @@ package xcorrelator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	"github.com/defenxor/dsiem/internal/pkg/shared/cache"
@@ -69,7 +68,7 @@ type vulnChecker struct {
 }
 
 // CheckVulnIPPort lookup ip-port pair on vulnerability scan result references
-func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
+func CheckVulnIPPort(ip string, port int, th *apm.TraceHeader) (found bool, results []vuln.Result) {
 	/*
 		defer func() {
 			if r := recover(); r != nil {
@@ -99,8 +98,8 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 
 	for _, v := range vulnCheckers {
 		var tx *apm.Transaction
-		if apm.Enabled() {
-			tx = apm.StartTransaction("Vulnerability Lookup", "SIEM", nil)
+		if apm.Enabled() && th != nil {
+			tx = apm.StartTransaction("Vulnerability Lookup", "Plugin", nil, th)
 			tx.SetCustom("Term", term)
 			tx.SetCustom("Provider", v.name)
 		}
@@ -123,7 +122,7 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 			results = append(results, r...)
 		}
 
-		if apm.Enabled() {
+		if apm.Enabled() && th != nil {
 			if found {
 				tx.Result("Vuln found")
 			} else {
@@ -141,7 +140,6 @@ func CheckVulnIPPort(ip string, port int) (found bool, results []vuln.Result) {
 		b, err := json.Marshal(results)
 		if err == nil {
 			vulnCache.Set(term, b)
-			fmt.Println("result: ", string(b))
 			log.Debug(log.M{Msg: "Storing vuln result for " + term + " in cache"})
 		}
 	} else {
