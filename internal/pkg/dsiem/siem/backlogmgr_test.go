@@ -125,14 +125,10 @@ func TestBacklogMgr(t *testing.T) {
 	}
 
 	// start of event-based testing
-	// will be rejected, missing rcvdTime
-	fmt.Print("rejected event ..")
-	e.Timestamp = "2018-10-08T07:16:50Z"
-	verifyEventOutput(t, e, ch, "Cannot parse event received time, skipping event")
 
 	// will fail to create new backlog due to wrong date
 	fmt.Print("failed event ..")
-	e.RcvdTime = time.Now().Unix()
+	e.RcvdTime = time.Now().UnixNano()
 	e.Timestamp = ""
 	e.ConnID = 1
 	verifyEventOutput(t, e, ch, "Fail to create new backlog")

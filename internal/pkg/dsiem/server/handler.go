@@ -209,7 +209,8 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	evt.RcvdTime = time.Now().Unix()
+	now := time.Now()
+	evt.RcvdTime = now.UnixNano()
 	evt.ConnID = connID
 
 	var tx *apm.Transaction
@@ -221,8 +222,14 @@ func handleEvents(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(fasthttp.StatusBadRequest)
 			return
 		}
-		tx = apm.StartTransaction("Log Source to Frontend", "SIEM", &tStart)
+		tx = apm.StartTransaction("Log Source to Frontend", "Network", &tStart, nil)
+		th := tx.GetTraceContext()
+		evt.TraceParent = th.Traceparent
+		evt.TraceState = th.TraceState
 		tx.SetCustom("event_id", evt.EventID)
+		duration := now.Sub(tStart)
+		tx.Tx.Duration = duration
+		tx.Result("Event received from log source")
 		defer tx.End()
 	}
 
