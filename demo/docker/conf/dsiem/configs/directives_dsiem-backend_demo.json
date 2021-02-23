@@ -1,0 +1,71 @@
+{
+  "directives": [
+    {
+      "name": "Successful Shellshock vulnerability exploitation",
+      "kingdom": "System Compromise",
+      "category": "Web Attack",
+      "all_rules_always_active": true,
+      "id": 10,
+      "priority": 4,
+      "rules": [
+        {
+          "name": "Possible shellshock exploit",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [
+            2019232
+          ],
+          "occurrence": 1,
+          "from": "ANY",
+          "to": "HOME_NET",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "HTTP",
+          "reliability": 1,
+          "timeout": 0
+        },
+        {
+          "name": "OS file system changed",
+          "type": "PluginRule",
+          "stage": 2,
+          "plugin_id": 50001,
+          "plugin_sid": [
+            550,
+            551,
+            552,
+            554
+          ],
+          "occurrence": 1,
+          "from": "ANY",
+          "to": ":1",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 6,
+          "timeout": 600
+        },
+        {
+          "name": "OS file system changed",
+          "type": "PluginRule",
+          "stage": 3,
+          "plugin_id": 50001,
+          "plugin_sid": [
+            550,
+            551,
+            552,
+            554
+          ],
+          "occurrence": 3,
+          "from": "ANY",
+          "to": ":1",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "TCP/IP",
+          "reliability": 10,
+          "timeout": 3600
+        }
+      ]
+    }
+  ]
+}
