@@ -151,26 +151,37 @@ mainLoop:
 	for {
 		evt := <-ch
 
+		var tx *apm.Transaction
+		if apm.Enabled() {
+			th := apm.TraceHeader{
+				Traceparent: evt.TraceParent,
+				TraceState:  evt.TraceState,
+			}
+			tx = apm.StartTransaction("Directive Evaluation", "Event Correlation", nil, &th)
+			tx.SetCustom("event_id", evt.EventID)
+			tx.SetCustom("directive_id", strconv.Itoa(d.ID))
+			// make this parent of downstream transactions
+			thisTh := tx.GetTraceContext()
+			evt.TraceParent = thisTh.Traceparent
+			evt.TraceState = thisTh.TraceState
+		}
+
 		if isPluginRule {
 			if rule.QuickCheckPluginRule(sidPairs, &evt) == false {
+				if apm.Enabled() {
+					tx.Result("Event doesn't match directive plugin rules")
+					tx.End()
+				}
 				continue mainLoop
 			}
 		} else if isTaxoRule {
 			if rule.QuickCheckTaxoRule(taxoPairs, &evt) == false {
+				if apm.Enabled() {
+					tx.Result("Event doesn't match directive taxo rules")
+					tx.End()
+				}
 				continue mainLoop
 			}
-		}
-
-		var tx *apm.Transaction
-		if apm.Enabled() {
-			if evt.RcvdTime == 0 {
-				log.Warn(log.M{Msg: "Cannot parse event received time, skipping event", CId: evt.ConnID})
-				continue mainLoop
-			}
-			tStart := time.Unix(evt.RcvdTime, 0)
-			tx = apm.StartTransaction("Frontend to Backend", "SIEM", &tStart)
-			tx.SetCustom("event_id", evt.EventID)
-			tx.SetCustom("directive_id", strconv.Itoa(d.ID))
 		}
 
 		found := false
@@ -264,6 +275,10 @@ mainLoop:
 		blogs.bl[b.ID] = b
 		blogs.bl[b.ID].bLogs = blogs
 		blogs.Unlock()
+		if apm.Enabled() && tx != nil {
+			tx.Result("Event created a new backlog")
+			tx.End()
+		}
 		blogs.bl[b.ID].start(evt, minAlarmLifetime)
 	}
 }
