@@ -37,7 +37,6 @@ require (
 	go.elastic.co/apm/module/apmhttp v1.11.0
 	go.uber.org/multierr v1.2.0 // indirect
 	go.uber.org/zap v1.10.0
-	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0
 	gopkg.in/olivere/elastic.v5 v5.0.82
 )
