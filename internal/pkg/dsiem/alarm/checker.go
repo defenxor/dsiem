@@ -54,8 +54,10 @@ func construcTerms(termsIn []vulnSearchTerm, IPs []string, ports []string, port 
 }
 
 func asyncVulnCheck(aSource *alarm, srcPort, dstPort int, connID uint64, tx *apm.Transaction) {
+	var th *apm.TraceHeader
 	if apm.Enabled() && tx != nil {
 		defer tx.Recover()
+		th = tx.GetTraceContext()
 	}
 
 	go func() {
@@ -103,7 +105,7 @@ func asyncVulnCheck(aSource *alarm, srcPort, dstPort int, connID uint64, tx *apm
 			}
 			log.Debug(log.M{Msg: "actually checking vuln for " + terms[i].ip + ":" + terms[i].port, BId: a.ID, CId: connID})
 
-			if found, res := xc.CheckVulnIPPort(terms[i].ip, p); found {
+			if found, res := xc.CheckVulnIPPort(terms[i].ip, p, th); found {
 				// append to the source too here
 				a.Vulnerabilities = append(a.Vulnerabilities, res...)
 				aSource.Lock()
@@ -122,8 +124,10 @@ func asyncVulnCheck(aSource *alarm, srcPort, dstPort int, connID uint64, tx *apm
 }
 
 func asyncIntelCheck(aSource *alarm, connID uint64, checkPrivateIP bool, tx *apm.Transaction) {
+	var th *apm.TraceHeader
 	if apm.Enabled() && tx != nil {
 		defer tx.Recover()
+		th = tx.GetTraceContext()
 	}
 
 	go func() {
@@ -160,7 +164,7 @@ func asyncIntelCheck(aSource *alarm, connID uint64, checkPrivateIP bool, tx *apm
 			if alreadyExist {
 				continue
 			}
-			if found, res := xc.CheckIntelIP(p[i], connID); found {
+			if found, res := xc.CheckIntelIP(p[i], connID, th); found {
 				a.ThreatIntels = append(a.ThreatIntels, res...)
 				aSource.Lock()
 				aSource.ThreatIntels = append(aSource.ThreatIntels, res...)
