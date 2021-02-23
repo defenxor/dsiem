@@ -4,12 +4,12 @@
   "private": true,
   "dependencies": {
     "@elastic/datemath": "^5.0.2",
-    "@elastic/eui": "^14.9.0",
+    "@elastic/eui": "^14.10.0",
     "mermaid": "^8.4.2",
     "moment": "^2.24.0",
     "react": "^16.11.0",
     "react-dom": "^16.11.0",
-    "react-json-view": "^1.19.1",
+    "react-json-view": "^1.21.1",
     "react-router-dom": "^5.1.2"
   },
   "scripts": {
@@ -42,15 +42,14 @@
   },
   "devDependencies": {
     "babel-eslint": "^10.0.3",
-    "eslint": "^6.6.0",
-    "eslint-plugin-react-hooks": "^2.2.0",
-    "mutationobserver-shim": "^0.3.3",
-    "react-scripts": "3.2.0",
-    "source-map-explorer": "^2.1.0",
-    "standard": "^14.3.1",
-    "standard-react": "^4.0.0",
+    "eslint": "^7.11.0",
     "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-react-hooks": "^2.2.0",
     "eslint-plugin-standard": "^4.0.1",
-    "espree": "^6.1.2"
+    "espree": "^6.1.2",
+    "mutationobserver-shim": "^0.3.3",
+    "react-scripts": "^4.0.3",
+    "source-map-explorer": "^2.1.0",
+    "standard": "^14.3.1"
   }
 }
