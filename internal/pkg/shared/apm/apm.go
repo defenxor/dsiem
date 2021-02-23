@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"go.elastic.co/apm"
+	"go.elastic.co/apm/module/apmhttp"
 )
 
 var enabled bool
@@ -43,6 +44,12 @@ func Enable(e bool) {
 	mu.Unlock()
 }
 
+// TraceHeader defines structure for distributed tracing headers
+type TraceHeader struct {
+	Traceparent string
+	TraceState  string
+}
+
 // Transaction wraps transaction from apm Default tracer and make it concurrency safe
 type Transaction struct {
 	sync.Mutex
@@ -51,12 +58,19 @@ type Transaction struct {
 }
 
 // StartTransaction returns a mutex protected apm.Transaction with optional starting time.
-func StartTransaction(name, transactionType string, startTime *time.Time) (tx *Transaction) {
+func StartTransaction(name, transactionType string, startTime *time.Time, parentHeader *TraceHeader) (tx *Transaction) {
 	txObj := Transaction{}
 	opts := apm.TransactionOptions{}
 	if startTime != nil {
 		opts.Start = *startTime
 	}
+	if parentHeader != nil {
+		tc := apm.TraceContext{}
+		tc, _ = apmhttp.ParseTraceparentHeader(parentHeader.Traceparent)
+		tc.State, _ = apmhttp.ParseTracestateHeader(parentHeader.TraceState)
+		opts.TraceContext = tc
+	}
+
 	txObj.Tx = apm.DefaultTracer.StartTransactionOptions(name, transactionType, opts)
 	tx = &txObj
 	return
@@ -111,4 +125,16 @@ func (t *Transaction) End() {
 	}
 	t.ended = true
 	t.Tx.End()
+}
+
+// GetTraceContext gets info for distributed transaction
+func (t *Transaction) GetTraceContext() (th *TraceHeader) {
+	t.Lock()
+	defer t.Unlock()
+	thObj := TraceHeader{}
+	traceContext := t.Tx.TraceContext()
+	thObj.Traceparent = apmhttp.FormatTraceparentHeader(traceContext)
+	thObj.TraceState = traceContext.State.String()
+	th = &thObj
+	return
 }
