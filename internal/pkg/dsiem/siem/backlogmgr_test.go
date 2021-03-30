@@ -97,10 +97,14 @@ func TestBacklogMgr(t *testing.T) {
 	e.ConnID = 1
 	e.PluginID = dirs.Dirs[0].Rules[0].PluginID
 	e.PluginSID = 2100384
+	e.CustomData1 = "test-1"
+	e.CustomData2 = "test-2"
+	e.CustomData3 = "test-3"
 
 	var blogs backlogs
 	ch := make(chan event.NormalizedEvent)
 	ch2 := make(chan event.NormalizedEvent)
+
 	blogs.DRWMutex = drwmutex.New()
 	blogs.id = 1
 	blogs.bpCh = make(chan bool)
@@ -220,7 +224,7 @@ func TestBacklogMgr(t *testing.T) {
 	verifyEventOutput(t, e, ch2, "backlog updating Elasticsearch")
 
 	// shouldn't pass sticky diff test
-	fmt.Print("11th event ..")
+	fmt.Print("11th event...")
 	e.ConnID = 11
 	e.EventID = "11"
 	verifyEventOutput(t, e, ch2, "stickydiff field")
