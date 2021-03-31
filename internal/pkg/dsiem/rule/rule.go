@@ -181,7 +181,6 @@ func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 
 	var r1, r2, r3 = true, true, true
 	if r.CustomData1 != "" {
-		// r1 = r.CustomData1 == e.CustomData1
 		r1 = isStrMatchCSVRule(r.CustomData1, e.CustomData1, false)
 	}
 	if r.CustomData2 != "" {
