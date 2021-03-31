@@ -42,10 +42,6 @@ func TestInitDirective(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
 		t.Fatal(err)
 	}
-	err = InitDirectives(path.Join(fDir, "directive5"), evtChan, 0, 1000, 0)
-	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
-		t.Fatal(err)
-	}	
 	err = InitDirectives(path.Join(fDir, "directive1"), evtChan, 0, 1000, 0)
 	if err != nil {
 		t.Fatal(err)
