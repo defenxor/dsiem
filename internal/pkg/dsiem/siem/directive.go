@@ -285,6 +285,10 @@ func validatePort(s string) error {
 	}
 	sSlice := str.CsvToSlice(s)
 	for _, v := range sSlice {
+		isInverse := strings.HasPrefix(v, "!")
+		if isInverse {
+			v = str.TrimLeftChar(v)
+		}
 		n, err := strconv.Atoi(v)
 		if err != nil {
 			return err
@@ -310,12 +314,15 @@ func validateFromTo(s string, isFirstRule bool) (err error) {
 			return nil
 		}
 	}
-	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
-	// first convert to slice, because netcidr maybe in a form of "cidr1,cidr2..."
+	// covers  r.To == "IP", r.To == "IP1, IP2, !IP3", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2, !CIDR3"
 	sSlice := str.CsvToSlice(s)
 	for i, v := range sSlice {
 		if !strings.Contains(v, "/") {
 			v = v + "/32"
+		}
+		isInverse := strings.HasPrefix(v, "!")
+		if isInverse {
+			v = str.TrimLeftChar(v)
 		}
 		if _, _, err := net.ParseCIDR(v); err != nil {
 			return errors.New(sSlice[i] + " is not a valid IPv4 address or CIDR")
