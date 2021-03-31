@@ -119,3 +119,13 @@ func RemoveElementUnlessEmpty(slice []string, target string) []string {
 	}
 	return slice
 }
+
+// TrimLeftChar remove the first char in string and trim any whitespaces from the result
+func TrimLeftChar(s string) string {
+	for i := range s {
+		if i > 0 {
+			return strings.TrimSpace(s[i:])
+		}
+	}
+	return s[:0]
+}

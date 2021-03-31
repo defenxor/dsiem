@@ -167,11 +167,11 @@ var validateCmd = &cobra.Command{
 			exit("Cannot get current directory??", err)
 		}
 		confDir := path.Join(d, "configs")
-		_, count, err := siem.LoadDirectivesFromFile(confDir, pattern, false)
+		res, count, err := siem.LoadDirectivesFromFile(confDir, pattern, false)
 		if err != nil {
 			exit("Error occur", err)
 		} else {
-			fmt.Printf("found %d valid directive(s) in configs/%s\n", count, pattern)
+			fmt.Printf("found %d valid entries out of %d directive(s) in configs/%s\n", len(res.Dirs), count, pattern)
 		}
 	},
 }
