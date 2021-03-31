@@ -181,13 +181,14 @@ func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 
 	var r1, r2, r3 = true, true, true
 	if r.CustomData1 != "" {
-		r1 = r.CustomData1 == e.CustomData1
+		// r1 = r.CustomData1 == e.CustomData1
+		r1 = isStrMatchCSVRule(r.CustomData1, e.CustomData1, false)
 	}
 	if r.CustomData2 != "" {
-		r2 = r.CustomData2 == e.CustomData2
+		r2 = isStrMatchCSVRule(r.CustomData2, e.CustomData2, false)
 	}
 	if r.CustomData3 != "" {
-		r3 = r.CustomData3 == e.CustomData3
+		r3 = isStrMatchCSVRule(r.CustomData3, e.CustomData3, false)
 	}
 	switch {
 	case r.StickyDiff == "CUSTOM_DATA1":
@@ -234,9 +235,9 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	if r.From == "!HOME_NET" && eSrcInHomeNet {
 		return
 	}
-	// covers  r.From == "IP", r.From == "IP1, IP2", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2"
+	// covers  r.From == "IP", r.From == "IP1, IP2, !IP3", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2, !CIDR3"
 	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
-		!str.IsInCSVList(r.From, e.SrcIP) && !isIPinCIDR(e.SrcIP, r.From) {
+		!isStrMatchCSVRule(r.From, e.SrcIP, false) && !isStrMatchCSVRule(r.From, e.SrcIP, true) {
 		return
 	}
 	eDstInHomeNet := e.DstIPInHomeNet()
@@ -246,15 +247,15 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	if r.To == "!HOME_NET" && eDstInHomeNet {
 		return
 	}
-	// covers  r.To == "IP", r.To == "IP1, IP2", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2"
+	// covers  r.To == "IP", r.To == "IP1, IP2, !IP3", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2, !CIDR3"
 	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
-		!str.IsInCSVList(r.To, e.DstIP) && !isIPinCIDR(e.DstIP, r.To) {
+		!isStrMatchCSVRule(r.To, e.DstIP, false) && !isStrMatchCSVRule(r.To, e.DstIP, true) {
 		return
 	}
-	if r.PortFrom != "ANY" && !str.IsInCSVList(r.PortFrom, strconv.Itoa(e.SrcPort)) {
+	if r.PortFrom != "ANY" && !isStrMatchCSVRule(r.PortFrom, strconv.Itoa(e.SrcPort), false) {
 		return
 	}
-	if r.PortTo != "ANY" && !str.IsInCSVList(r.PortTo, strconv.Itoa(e.DstPort)) {
+	if r.PortTo != "ANY" && !isStrMatchCSVRule(r.PortTo, strconv.Itoa(e.DstPort), false) {
 		return
 	}
 
@@ -273,7 +274,8 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	return true
 }
 
-// IsStringStickyDiff check if v fulfill stickydiff condition
+// isStringStickyDiff check if v fulfill stickydiff condition
+// ret code isn't used right now because the check is done in backlog
 func isStringStickyDiff(v string, r *StickyDiffData) bool {
 	// r could be nil on first check
 	if r == nil {
@@ -294,7 +296,8 @@ func isStringStickyDiff(v string, r *StickyDiffData) bool {
 	return true
 }
 
-// IsIntStickyDiff check if v fulfill stickydiff condition
+// isIntStickyDiff check if v fulfill stickydiff condition
+// ret code isn't used right now because the check is done in backlog
 func isIntStickyDiff(v int, r *StickyDiffData) (match bool) {
 	// r could be nil on first check
 	if r == nil {
@@ -315,34 +318,67 @@ func isIntStickyDiff(v int, r *StickyDiffData) (match bool) {
 	return true
 }
 
-func isIPinCIDR(ip string, netcidr string) (found bool) {
-	// first convert to slice, because netcidr maybe in a form of "cidr1,cidr2..."
-	cleaned := strings.Replace(netcidr, ",", " ", -1)
-	cidrSlice := strings.Fields(cleaned)
+func isStrMatchCSVRule(rulesInCSV string, term string, isNetAddr bool) (match bool) {
+	// s is something like stringA, stringB, !stringC, !stringD
+	sSlice := str.CsvToSlice(rulesInCSV)
 
-	found = false
-	if !strings.Contains(ip, "/") {
-		ip = ip + "/32"
-	}
-	ipB, _, err := net.ParseCIDR(ip)
-	if err != nil {
-		log.Warn(log.M{Msg: "Unable to parse IP address: " + ip + ". Make sure the plugin is configured correctly!"})
-		return
-	}
-
-	for _, v := range cidrSlice {
-		if !strings.Contains(v, "/") {
-			v = v + "/32"
+	var ipB net.IP
+	if isNetAddr {
+		if !strings.Contains(term, "/") {
+			term = term + "/32"
 		}
-		_, ipnetA, err := net.ParseCIDR(v)
+		var err error
+		ipB, _, err = net.ParseCIDR(term)
 		if err != nil {
-			log.Warn(log.M{Msg: "Unable to parse CIDR address: " + v + ". Make sure the directive is configured correctly!"})
+			log.Warn(log.M{Msg: "Unable to parse IP address: " + term + ". Make sure the plugin is configured correctly!"})
 			return
 		}
-		if ipnetA.Contains(ipB) {
-			found = true
+	}
+
+	for _, v := range sSlice {
+
+		isInverse := strings.HasPrefix(v, "!")
+		if isInverse {
+			v = str.TrimLeftChar(v)
+		}
+
+		termIsEqual := false
+		if isNetAddr {
+			if !strings.Contains(v, "/") {
+				v = v + "/32"
+			}
+			_, ipnetA, err := net.ParseCIDR(v)
+			if err != nil {
+				log.Warn(log.M{Msg: "Unable to parse CIDR address: " + v + ". Make sure the directive is configured correctly!"})
+				return
+			}
+			termIsEqual = ipnetA.Contains(ipB)
+		} else {
+			termIsEqual = v == term
+		}
+
+		/*
+			The correct logic here is to AND all inverse rules,
+			and then OR the result with all the non-inverse rules.
+			The following code implement that with shortcuts.
+		*/
+
+		// break early if !condition is violated
+		if isInverse && termIsEqual {
+			match = false
 			break
 		}
+		// break early if condition is fulfilled
+		if !isInverse && termIsEqual {
+			match = true
+			break
+		}
+		// if !condition is fulfilled, continue evaluation of next in item
+		if isInverse && !termIsEqual {
+			match = true
+		}
+		// !isInverse && !termIsEqual should result in match = false (default)
+		// so there's no need to handle it
 	}
 	return
 }
