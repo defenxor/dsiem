@@ -28,25 +28,41 @@ import (
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
-func TestIPinCIDR(t *testing.T) {
-	type ipTest struct {
-		ip       string
-		cidr     string
-		expected bool
+func TestTermInCSV(t *testing.T) {
+	type termTest struct {
+		term      string
+		csvRules  string
+		isNetAddr bool
+		expected  bool
 	}
 
 	log.Setup(false)
 
-	var tbl = []ipTest{
-		{"192.168.0", "192.168.0.0/16", false},
-		{"192.168.0.1", "192.168.0/16", false},
-		{"192.168.0.1", "192.168.0.0/16", true},
+	var tbl = []termTest{
+		{"192.168.0", "192.168.0.0/16", true, false},
+		{"192.168.0.1", "192.168.0/16", true, false},
+		{"192.168.0.1", "192.168.0.0/16", true, true},
+		{"192.168.0.1", "!10.0.0.1/16", true, true},
+		{"192.168.0.1", "!10.0.0.1/16, 192.168.0.0/24", true, true},
+		{"192.168.0.1", "!192.168.0.1/16", true, false},
+		{"192.168.0.1", "10.0.0.0/16, !192.168.0.1/16", true, false},
+		{"192.168.0.1", "10.0.0.0/16, !192.168.0.1/16, 192.168.0.0/16", true, false},
+		{"1231", "1000, 1001", false, false},
+		{"1231", "!1231, 1001", false, false},
+		{"1231", "1000, !1231", false, false},
+		{"1231", "1231, !1231", false, true},
+		{"1231", "!1231, 1231", false, false},
+		{"1231", "!1000, !1001", false, true},
+		{"1231", "!1000, 1001", false, true},
+		{"1231", "1001, !1000", false, true},
+		{"1231", "!1000, 1231", false, true},
+		{"foo", "!bar, foobar, foo", false, true},
 	}
 
 	for _, tt := range tbl {
-		actual := isIPinCIDR(tt.ip, tt.cidr)
+		actual := isStrMatchCSVRule(tt.csvRules, tt.term, tt.isNetAddr)
 		if actual != tt.expected {
-			t.Errorf("IP %s in %s result is %v. Expected %v.", tt.ip, tt.cidr, actual, tt.expected)
+			t.Errorf("IP %s in %s result is %v. Expected %v.", tt.term, tt.csvRules, actual, tt.expected)
 		}
 	}
 
@@ -278,6 +294,10 @@ func TestRule(t *testing.T) {
 	ec8 := ec7
 	ec8.CustomData2 = "malware"
 
+	rc9 := rc8
+	rc9.CustomData2 = "!malware"
+	ec9 := ec8
+
 	// StickyDiff rules
 	// TODO: add the appropriate test that test the length of stickyDiffData
 	// before and after
@@ -341,6 +361,7 @@ func TestRule(t *testing.T) {
 		{56, ec6, rc6, s1, false},
 		{57, ec7, rc7, s1, false},
 		{58, ec8, rc8, s1, true},
+		{58, ec9, rc9, s1, false},
 
 		{101, e1, rs1, s1, true}, {102, e1, rs2, s2, true}, {103, e1, rs3, s2, true},
 		{104, e1, rs4, s2, true}, {105, e1, rs5, s1, true},

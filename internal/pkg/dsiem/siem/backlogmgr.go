@@ -413,5 +413,21 @@ func initBackLogRules(d *Directive, e event.NormalizedEvent) {
 				d.Rules[i].PortTo = strconv.Itoa(e.DstPort)
 			}
 		}
+
+		// add reference for custom datas.
+		r = d.Rules[i].CustomData1
+		if v, ok := str.RefToDigit(r); ok {
+			d.Rules[i].CustomData1 = d.Rules[v-1].CustomData1
+		}
+
+		r = d.Rules[i].CustomData2
+		if v, ok := str.RefToDigit(r); ok {
+			d.Rules[i].CustomData2 = d.Rules[v-1].CustomData2
+		}
+
+		r = d.Rules[i].CustomData3
+		if v, ok := str.RefToDigit(r); ok {
+			d.Rules[i].CustomData3 = d.Rules[v-1].CustomData3
+		}
 	}
 }

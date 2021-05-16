@@ -12,7 +12,7 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 
 * Runs in standalone or clustered mode with [NATS](https://nats.io/) as messaging bus between frontend and backend nodes. Along with ELK, this made the entire SIEM platform horizontally scalable.
 * OSSIM-style correlation and directive rules, bridging easier transition from OSSIM.
-* Alarms enrichment with data from threat intel and vulnerability information sources. Builtin support for [Moloch Wise](https://github.com/aol/moloch/wiki/WISE) (which supports Alienvault OTX and others) and Nessus CSV exports. Support for other sources can easily be implemented as [plugins](https://github.com/defenxor/dsiem/blob/master/docs/ti_vuln_plugins.md#about-threat-intel-lookup-plugin).
+* Alarms enrichment with data from threat intel and vulnerability information sources. Builtin support for [Arkime Wise](https://arkime.com/wise) (which supports Alienvault OTX and others) and Nessus CSV exports. Support for other sources can easily be implemented as [plugins](https://github.com/defenxor/dsiem/blob/master/docs/ti_vuln_plugins.md#about-threat-intel-lookup-plugin).
 * Instrumentation supported through Metricbeat and/or Elastic APM server. No need extra stack for this purpose.
 * Builtin rate and back-pressure control, set the minimum and maximum events/second (EPS) received from Logstash depending on your hardware capacity and acceptable delays in event processing.
 * Loosely coupled, designed to be composable with other infrastructure platform, and doesn't try to do everything. Loose coupling also means that it's possible to use Dsiem as an OSSIM-style correlation engine with non ELK stack if needed.

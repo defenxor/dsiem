@@ -12,9 +12,7 @@
           "type": "PluginRule",
           "stage": 1,
           "plugin_id": 1001,
-          "plugin_sid": [
-            2100384
-          ],
+          "plugin_sid": [2100384],
           "occurrence": 1,
           "from": "HOME_NET",
           "to": "ANY",
@@ -22,16 +20,17 @@
           "port_to": "ANY",
           "protocol": "ICMP",
           "reliability": 1,
-          "timeout": 0
+          "timeout": 0,
+          "custom_data1": "test-1",
+          "custom_data2": "test-2",
+          "custom_data3": "test-3"
         },
         {
           "name": "ICMP Ping",
           "type": "PluginRule",
           "stage": 2,
           "plugin_id": 1001,
-          "plugin_sid": [
-            2100384
-          ],
+          "plugin_sid": [2100384],
           "occurrence": 3,
           "from": ":1",
           "to": ":1",
@@ -39,33 +38,35 @@
           "port_to": "ANY",
           "protocol": "ICMP",
           "reliability": 6,
-          "timeout": 10
+          "timeout": 10,
+          "custom_data1": ":1",
+          "custom_data2": ":1",
+          "custom_data3": ":1"
         },
         {
           "name": "ICMP Ping",
           "type": "PluginRule",
           "stage": 3,
           "plugin_id": 1001,
-          "plugin_sid": [
-            2100384
-          ],
+          "plugin_sid": [2100384],
           "occurrence": 10000,
           "from": "192.168.0.2",
           "to": "192.168.0.1",
-          "port_from": "123",
-          "port_to": "124",
+          "port_from": "!345, 123",
+          "port_to": "!345, 124",
           "protocol": "TCP",
           "reliability": 10,
-          "timeout": 3600
+          "timeout": 3600,
+          "custom_data1": ":1",
+          "custom_data2": ":1",
+          "custom_data3": ":1"
         },
         {
           "name": "ICMP Ping",
           "type": "PluginRule",
           "stage": 4,
           "plugin_id": 1001,
-          "plugin_sid": [
-            2100384
-          ],
+          "plugin_sid": [2100384],
           "occurrence": 10000,
           "from": ":1",
           "to": ":1",
@@ -73,16 +74,17 @@
           "port_to": ":1",
           "protocol": "TCP",
           "reliability": 10,
-          "timeout": 3600
+          "timeout": 3600,
+          "custom_data1": ":1",
+          "custom_data2": ":1",
+          "custom_data3": ":1"
         },
         {
           "name": "ICMP Ping",
           "type": "PluginRule",
           "stage": 5,
           "plugin_id": 1001,
-          "plugin_sid": [
-            2100384
-          ],
+          "plugin_sid": [2100384],
           "occurrence": 10000,
           "from": ":3",
           "to": ":3",
@@ -90,7 +92,10 @@
           "port_to": ":3",
           "protocol": "TCP",
           "reliability": 10,
-          "timeout": 3600
+          "timeout": 3600,
+          "custom_data1": ":1",
+          "custom_data2": ":1",
+          "custom_data3": ":1"
         }
       ]
     },
@@ -105,13 +110,9 @@
           "name": "Dropped packets",
           "type": "TaxonomyRule",
           "stage": 1,
-          "product": [
-            "Firewall"
-          ],
+          "product": ["Firewall"],
           "category": "Packet processing",
-          "sub_category": [
-            "Drop"
-          ],
+          "sub_category": ["Drop"],
           "occurrence": 1,
           "from": "HOME_NET",
           "to": "ANY",
@@ -125,17 +126,13 @@
           "name": "Dropped packets",
           "type": "TaxonomyRule",
           "stage": 2,
-          "product": [
-            "Firewall"
-          ],
+          "product": ["Firewall"],
           "category": "Packet processing",
-          "sub_category": [
-            "Drop"
-          ],
+          "sub_category": ["Drop"],
           "sticky_different": "SRC_IP",
           "occurrence": 100,
-          "from": "HOME_NET",
-          "to": "ANY",
+          "from": "!192.168.0.45, 192.168.0.44",
+          "to": "192.168.6.66, !10.0.0.5",
           "port_from": "ANY",
           "port_to": "ANY",
           "protocol": "ANY",
@@ -146,13 +143,9 @@
           "name": "Dropped packets",
           "type": "TaxonomyRule",
           "stage": 3,
-          "product": [
-            "Firewall"
-          ],
+          "product": ["Firewall"],
           "category": "Packet processing",
-          "sub_category": [
-            "Drop"
-          ],
+          "sub_category": ["Drop"],
           "occurrence": 1000,
           "from": "HOME_NET",
           "to": "ANY",
