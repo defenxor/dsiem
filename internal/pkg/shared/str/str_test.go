@@ -244,3 +244,23 @@ func sameStringSlice(x, y []string) bool {
 	}
 	return len(diff) == 0
 }
+
+func TestTrimLeftChar(t *testing.T) {
+	type s1 struct {
+		text     string
+		expected string
+	}
+	tbl1 := []s1{
+		{"test string", "est string"},
+		{"TEST", "EST"},
+		{"", ""},
+	}
+
+	for _, tt := range tbl1 {
+		actual := TrimLeftChar(tt.text)
+		if actual != tt.expected {
+			t.Errorf("TrimLeftChar: text %v, expected %v, actual %v",
+				tt.text, tt.expected, actual)
+		}
+	}
+}
