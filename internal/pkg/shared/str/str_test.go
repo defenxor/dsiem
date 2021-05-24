@@ -118,6 +118,7 @@ func TestRefToDigit(t *testing.T) {
 		{"", 0, false},
 		{":1", 1, true},
 		{":123", 123, true},
+		{"!:123", -123, true},
 	}
 
 	for _, tt := range tbl1 {
@@ -261,6 +262,25 @@ func TestTrimLeftChar(t *testing.T) {
 		if actual != tt.expected {
 			t.Errorf("TrimLeftChar: text %v, expected %v, actual %v",
 				tt.text, tt.expected, actual)
+		}
+	}
+}
+
+func TestNegateValue(t *testing.T) {
+	type testCandidate struct {
+		value    string
+		expected string
+	}
+
+	candidates := []testCandidate{
+		{"foo", "!foo"},
+		{"!foo", "foo"},
+	}
+
+	for _, c := range candidates {
+		result := NegateValue(c.value)
+		if result != c.expected {
+			t.Errorf("expected negation of value %s to be %s but got %s", c.value, c.expected, result)
 		}
 	}
 }
