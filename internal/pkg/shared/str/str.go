@@ -17,6 +17,7 @@
 package str
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -65,10 +66,21 @@ func RefToDigit(v string) (ret int64, ok bool) {
 	if i == -1 {
 		return
 	}
-	v = strings.Trim(v, ":")
+	var negate bool
+	if strings.HasPrefix(v, "!:") {
+		v = strings.Trim(v, "!:")
+		negate = true
+	} else {
+		v = strings.Trim(v, ":")
+	}
+
 	ret, err := strconv.ParseInt(v, 10, 64)
 	if err == nil {
 		ok = true
+
+		if negate {
+			ret = -ret
+		}
 	}
 	return
 }
@@ -128,4 +140,12 @@ func TrimLeftChar(s string) string {
 		}
 	}
 	return s[:0]
+}
+
+func NegateValue(val string) string {
+	if strings.HasPrefix(val, "!") {
+		return strings.Trim(val, "!")
+	}
+
+	return fmt.Sprintf("!%s", val)
 }
