@@ -372,62 +372,105 @@ func initBackLogRules(d *Directive, e event.NormalizedEvent) {
 		// :ref
 		r := d.Rules[i].From
 		if v, ok := str.RefToDigit(r); ok {
-			vmin1 := v - 1
+			negate, vmin1 := vmin1(v)
 			ref := d.Rules[vmin1].From
 			if ref != "ANY" && ref != "HOME_NET" && ref != "!HOME_NET" {
 				d.Rules[i].From = ref
 			} else {
 				d.Rules[i].From = e.SrcIP
 			}
+
+			if negate {
+				d.Rules[i].From = str.NegateValue(d.Rules[i].From)
+			}
 		}
 
 		r = d.Rules[i].To
 		if v, ok := str.RefToDigit(r); ok {
-			vmin1 := v - 1
+			negate, vmin1 := vmin1(v)
 			ref := d.Rules[vmin1].To
 			if ref != "ANY" && ref != "HOME_NET" && ref != "!HOME_NET" {
 				d.Rules[i].To = ref
 			} else {
 				d.Rules[i].To = e.DstIP
 			}
+
+			if negate {
+				d.Rules[i].To = str.NegateValue(d.Rules[i].To)
+			}
 		}
 
 		r = d.Rules[i].PortFrom
 		if v, ok := str.RefToDigit(r); ok {
-			vmin1 := v - 1
+			negate, vmin1 := vmin1(v)
 			ref := d.Rules[vmin1].PortFrom
 			if ref != "ANY" {
 				d.Rules[i].PortFrom = ref
 			} else {
 				d.Rules[i].PortFrom = strconv.Itoa(e.SrcPort)
 			}
+
+			if negate {
+				d.Rules[i].PortFrom = str.NegateValue(d.Rules[i].PortFrom)
+			}
 		}
 
 		r = d.Rules[i].PortTo
 		if v, ok := str.RefToDigit(r); ok {
-			vmin1 := v - 1
+			negate, vmin1 := vmin1(v)
 			ref := d.Rules[vmin1].PortTo
 			if ref != "ANY" {
 				d.Rules[i].PortTo = ref
 			} else {
 				d.Rules[i].PortTo = strconv.Itoa(e.DstPort)
 			}
+
+			if negate {
+				d.Rules[i].PortTo = str.NegateValue(d.Rules[i].PortTo)
+			}
 		}
 
 		// add reference for custom datas.
 		r = d.Rules[i].CustomData1
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData1 = d.Rules[v-1].CustomData1
+			negate, vmin1 := vmin1(v)
+			d.Rules[i].CustomData1 = d.Rules[vmin1].CustomData1
+
+			if negate {
+				d.Rules[i].CustomData1 = str.NegateValue(d.Rules[i].CustomData1)
+			}
 		}
 
 		r = d.Rules[i].CustomData2
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData2 = d.Rules[v-1].CustomData2
+			negate, vmin1 := vmin1(v)
+			d.Rules[i].CustomData2 = d.Rules[vmin1].CustomData2
+
+			if negate {
+				d.Rules[i].CustomData2 = str.NegateValue(d.Rules[i].CustomData2)
+			}
 		}
 
 		r = d.Rules[i].CustomData3
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData3 = d.Rules[v-1].CustomData3
+			negate, vmin1 := vmin1(v)
+			d.Rules[i].CustomData3 = d.Rules[vmin1].CustomData3
+
+			if negate {
+				d.Rules[i].CustomData3 = str.NegateValue(d.Rules[i].CustomData3)
+			}
 		}
 	}
+}
+
+func vmin1(v int64) (negate bool, vmin1 int64) {
+	if v == 0 {
+		return false, 0
+	}
+
+	if v < 0 {
+		return true, (v * -1) - 1
+	}
+
+	return false, v - 1
 }
