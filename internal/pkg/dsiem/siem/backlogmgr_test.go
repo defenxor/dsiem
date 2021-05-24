@@ -295,3 +295,179 @@ func verifyFuncOutput(t *testing.T, f func(), expected string, expectMatch bool)
 		fmt.Println("OK")
 	}
 }
+
+func TestInitBacklogRules(t *testing.T) {
+	setTestDir(t)
+
+	filename := "directive5"
+	fileDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	dirs, _, err := LoadDirectivesFromFile(path.Join(fileDir, filename), directiveFileGlob, false)
+	if err != nil {
+		t.Fatalf("error loading directives from %s, %s", filename, err.Error())
+	}
+
+	if len(dirs.Dirs) <= 0 {
+		t.Fatal("expected more than 1 directives, but got 0")
+	}
+
+	subject := dirs.Dirs[0]
+	e := event.NormalizedEvent{
+		EventID:     "1",
+		Sensor:      "sensor1",
+		SrcIP:       "10.0.0.1",
+		DstIP:       "8.8.8.8",
+		SrcPort:     123,
+		DstPort:     456,
+		Title:       "ICMP Ping",
+		Protocol:    "ICMP",
+		ConnID:      1,
+		PluginID:    subject.Rules[0].PluginID,
+		PluginSID:   2100384,
+		CustomData1: "test-1",
+		CustomData2: "test-2",
+		CustomData3: "test-3",
+	}
+
+	initBackLogRules(&subject, e)
+
+	// rule0 := subject.Rules[0]
+	rule1 := subject.Rules[1]
+	rule2 := subject.Rules[2]
+	rule3 := subject.Rules[3]
+
+	// Second Rule
+	expected := fmt.Sprintf("!%s", e.SrcIP)
+	if rule1.From != expected {
+		t.Errorf("expected value of From (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.DstIP)
+	if rule1.To != expected {
+		t.Errorf("expected value of To (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	expected = fmt.Sprintf("!%d", e.SrcPort)
+	if rule1.PortFrom != expected {
+		t.Errorf("expected value of PortFrom (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	expected = fmt.Sprintf("!%d", e.DstPort)
+	if rule1.PortTo != expected {
+		t.Errorf("expected value of PortFrom (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.CustomData1)
+	if rule1.CustomData1 != expected {
+		t.Errorf("expected value of CustomData1 (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.CustomData2)
+	if rule1.CustomData2 != expected {
+		t.Errorf("expected value of CustomData2 (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.CustomData3)
+	if rule1.CustomData3 != expected {
+		t.Errorf("expected value of CustomData3 (second rule) to be %s, but got %s", expected, rule1.From)
+	}
+
+	// Third Rule
+	expected = fmt.Sprintf("!%s", e.SrcIP)
+	if rule2.From != expected {
+		t.Errorf("expected value of From (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.DstIP)
+	if rule2.To != expected {
+		t.Errorf("expected value of To (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	expected = fmt.Sprintf("!%d", e.SrcPort)
+	if rule2.PortFrom != expected {
+		t.Errorf("expected value of PortFrom (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	expected = fmt.Sprintf("!%d", e.DstPort)
+	if rule2.PortTo != expected {
+		t.Errorf("expected value of PortFrom (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.CustomData1)
+	if rule2.CustomData1 != expected {
+		t.Errorf("expected value of CustomData1 (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.CustomData2)
+	if rule2.CustomData2 != expected {
+		t.Errorf("expected value of CustomData2 (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	expected = fmt.Sprintf("!%s", e.CustomData3)
+	if rule2.CustomData3 != expected {
+		t.Errorf("expected value of CustomData3 (third rule) to be %s, but got %s", expected, rule2.From)
+	}
+
+	// Fourth Rule
+	expected = e.SrcIP
+	if rule3.From != expected {
+		t.Errorf("expected value of From (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+	expected = e.DstIP
+	if rule3.To != expected {
+		t.Errorf("expected value of To (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+	expected = fmt.Sprintf("%d", e.SrcPort)
+	if rule3.PortFrom != expected {
+		t.Errorf("expected value of PortFrom (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+	expected = fmt.Sprintf("%d", e.DstPort)
+	if rule3.PortTo != expected {
+		t.Errorf("expected value of PortFrom (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+	expected = e.CustomData1
+	if rule3.CustomData1 != expected {
+		t.Errorf("expected value of CustomData1 (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+	expected = e.CustomData2
+	if rule3.CustomData2 != expected {
+		t.Errorf("expected value of CustomData2 (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+	expected = e.CustomData3
+	if rule3.CustomData3 != expected {
+		t.Errorf("expected value of CustomData3 (fourth rule) to be %s, but got %s", expected, rule3.From)
+	}
+
+}
+
+func TestVMin1(t *testing.T) {
+	type testCandidate struct {
+		v      int64
+		negate bool
+		vmin1  int64
+	}
+
+	candidates := []testCandidate{
+		{123, false, 122},
+		{-123, true, 122},
+		{0, false, 0},
+		{-1, true, 0},
+		{1, false, 0},
+	}
+
+	for _, c := range candidates {
+		negate, vmin1 := vmin1(c.v)
+		if vmin1 != c.vmin1 {
+			t.Errorf("expected vmin1 of %d to be %d but got %d", c.v, c.vmin1, vmin1)
+		}
+
+		if negate != c.negate {
+			t.Errorf("expected negate to be %t but got %t", c.negate, negate)
+		}
+	}
+}
