@@ -1,0 +1,103 @@
+{
+  "directives": [
+    {
+      "name": "Testing Reference Negation, Attack from SRC_IP to DST_IP",
+      "kingdom": "Reconnaissance & Probing",
+      "category": "Misc Activity",
+      "id": 1,
+      "priority": 3,
+      "rules": [
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1001,
+          "plugin_sid": [2100384],
+          "occurrence": 1,
+          "from": "HOME_NET",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ICMP",
+          "reliability": 1,
+          "timeout": 0,
+          "custom_data1": "test-1",
+          "custom_data2": "test-2",
+          "custom_data3": "test-3"
+        },
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 2,
+          "plugin_id": 1001,
+          "plugin_sid": [2100384],
+          "occurrence": 3,
+          "from": "!:1",
+          "to": "!:1",
+          "port_from": "!:1",
+          "port_to": "!:1",
+          "protocol": "ICMP",
+          "reliability": 6,
+          "timeout": 10,
+          "custom_data1": "!:1",
+          "custom_data2": "!:1",
+          "custom_data3": "!:1"
+        },
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 3,
+          "plugin_id": 1001,
+          "plugin_sid": [2100384],
+          "occurrence": 10000,
+          "from": ":2",
+          "to": ":2",
+          "port_from": ":2",
+          "port_to": ":2",
+          "protocol": "TCP",
+          "reliability": 10,
+          "timeout": 3600,
+          "custom_data1": ":2",
+          "custom_data2": ":2",
+          "custom_data3": ":2"
+        },
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 4,
+          "plugin_id": 1001,
+          "plugin_sid": [2100384],
+          "occurrence": 10000,
+          "from": "!:3",
+          "to": "!:3",
+          "port_from": "!:3",
+          "port_to": "!:3",
+          "protocol": "TCP",
+          "reliability": 10,
+          "timeout": 3600,
+          "custom_data1": "!:3",
+          "custom_data2": "!:3",
+          "custom_data3": "!:3"
+        },
+        {
+          "name": "ICMP Ping",
+          "type": "PluginRule",
+          "stage": 5,
+          "plugin_id": 1001,
+          "plugin_sid": [2100384],
+          "occurrence": 10000,
+          "from": ":3",
+          "to": ":3",
+          "port_from": ":3",
+          "port_to": ":3",
+          "protocol": "TCP",
+          "reliability": 10,
+          "timeout": 3600,
+          "custom_data1": ":3",
+          "custom_data2": ":3",
+          "custom_data3": ":3"
+        }
+      ]
+    }
+  ]
+}
