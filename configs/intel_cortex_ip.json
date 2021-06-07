@@ -1,0 +1,11 @@
+{
+  "intel_sources": [
+    {
+      "name": "CortexIP",
+      "plugin": "CortexIP",
+      "type": "IP",
+      "enabled": true,
+      "config": "{ \"url\": \"http://localhost:9001\", \"apikey\" : \"K+ff+u6HRbYupz0QS5QZFnsoaopN7GMY\", \"skip_error\": true, \"max_wait_minutes\": 1, \"analyzers\" : [ \"Threatcrowd_1_0\",\"OTXQuery_2_0\",\"VirusTotal_GetReport_3_0\",\"MaxMind_GeoIP_4_0\", \"TorProject_1_0\" ] }"
+    }
+  ]
+}
