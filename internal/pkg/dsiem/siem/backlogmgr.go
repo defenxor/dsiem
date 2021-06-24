@@ -417,17 +417,35 @@ func initBackLogRules(d *Directive, e event.NormalizedEvent) {
 		// add reference for custom datas.
 		r = d.Rules[i].CustomData1
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData1 = d.Rules[v-1].CustomData1
+			vmin1 := v - 1
+			ref := d.Rules[vmin1].CustomData1
+			if ref != "ANY" {
+				d.Rules[i].CustomData1 = ref
+			} else {
+				d.Rules[i].CustomData1 = e.CustomData1
+			}
 		}
 
 		r = d.Rules[i].CustomData2
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData2 = d.Rules[v-1].CustomData2
+			vmin1 := v - 1
+			ref := d.Rules[vmin1].CustomData2
+			if ref != "ANY" {
+				d.Rules[i].CustomData2 = ref
+			} else {
+				d.Rules[i].CustomData2 = e.CustomData2
+			}
 		}
 
 		r = d.Rules[i].CustomData3
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData3 = d.Rules[v-1].CustomData3
+			vmin1 := v - 1
+			ref := d.Rules[vmin1].CustomData3
+			if ref != "ANY" {
+				d.Rules[i].CustomData3 = ref
+			} else {
+				d.Rules[i].CustomData3 = e.CustomData3
+			}
 		}
 	}
 }
