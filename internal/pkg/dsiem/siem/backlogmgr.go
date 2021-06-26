@@ -42,6 +42,9 @@ type backlogs struct {
 }
 
 var (
+	// protects allBacklogs
+	allBacklogsMu sync.RWMutex
+
 	allBacklogs []backlogs
 	fWriter     fs.FileWriter
 )
@@ -107,6 +110,9 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 }
 
 func merge() <-chan bool {
+	allBacklogsMu.RLock()
+	defer allBacklogsMu.RUnlock()
+
 	out := make(chan bool)
 	for _, v := range allBacklogs {
 		go func(ch chan bool) {
@@ -121,6 +127,9 @@ func merge() <-chan bool {
 
 // CountBackLogs returns the number of active backlogs
 func CountBackLogs() (sum int, activeDirectives int, ttlDirectives int) {
+	allBacklogsMu.RLock()
+	defer allBacklogsMu.RUnlock()
+
 	ttlDirectives = len(allBacklogs)
 	for i := range allBacklogs {
 		l := allBacklogs[i].RLock()
