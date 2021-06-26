@@ -127,8 +127,6 @@ func merge() <-chan bool {
 
 // CountBackLogs returns the number of active backlogs
 func CountBackLogs() (sum int, activeDirectives int, ttlDirectives int) {
-	allBacklogsMu.RLock()
-	defer allBacklogsMu.RUnlock()
 
 	ttlDirectives = len(allBacklogs)
 	for i := range allBacklogs {
