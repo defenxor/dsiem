@@ -49,7 +49,9 @@ func TestBacklogMgr(t *testing.T) {
 
 	fmt.Println("Starting TestBackLogMgr.")
 
+	allBacklogsMu.Lock()
 	allBacklogs = []backlogs{}
+	allBacklogsMu.Unlock()
 
 	setTestDir(t)
 	t.Logf("Using base dir %s", testDir)
@@ -294,4 +296,230 @@ func verifyFuncOutput(t *testing.T, f func(), expected string, expectMatch bool)
 	} else {
 		fmt.Println("OK")
 	}
+}
+
+func TestBacklogManagerCustomData(t *testing.T) {
+	fmt.Println("Starting TestBackLogMgr.")
+	allBacklogsMu.Lock()
+	allBacklogs = make([]backlogs, 0)
+	allBacklogsMu.Unlock()
+	setTestDir(t)
+
+	t.Logf("Using base dir %s", testDir)
+	if !log.TestMode {
+		t.Logf("Enabling log test mode")
+		log.EnableTestingMode()
+	}
+
+	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	apm.Enable(true)
+
+	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
+	fWriter.Init(tmpLog, 10)
+
+	cleanUp := func() {
+		_ = os.Remove(tmpLog)
+	}
+
+	defer cleanUp()
+	initAlarm(t)
+	initAsset(t)
+
+	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive5"), directiveFileGlob, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(dirs.Dirs) != 1 {
+		t.Fatalf("expected only 1 directive to be loaded, but got %d", len(dirs.Dirs))
+	}
+
+	testDirective := dirs.Dirs[0]
+	testEvent := event.NormalizedEvent{
+		EventID:      "1",
+		ConnID:       1,
+		Sensor:       "test-sensor",
+		SrcIP:        "1.1.1.1",
+		DstIP:        "2.2.2.2",
+		Title:        "Test Event",
+		Protocol:     "TEST",
+		PluginID:     1337,
+		PluginSID:    1,
+		CustomLabel1: "fsoo",
+		CustomData1:  "bar",
+		Timestamp:    time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339),
+	}
+
+	input := make(chan event.NormalizedEvent)
+	blogs := &backlogs{
+		DRWMutex: drwmutex.New(),
+		id:       1,
+		bpCh:     make(chan bool),
+		bl:       make(map[string]*backLog),
+	}
+
+	bpChOutput := make(chan bool)
+	go func() {
+		for {
+			bpFlag := <-bpChOutput
+			log.Info(log.M{Msg: "simulated server received backpressure data: " + strconv.FormatBool(bpFlag)})
+		}
+	}()
+
+	go blogs.manager(testDirective, input, 0)
+	holdSecDuration := 4
+	if err = InitBackLogManager(tmpLog, bpChOutput, holdSecDuration); err != nil {
+		t.Fatal(err)
+	}
+
+	// first event
+	input <- testEvent
+	time.Sleep(time.Second)
+
+	testBl, err := verifyGetNthBacklog(blogs, 1, 1)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 2); err != nil {
+		t.Error(err.Error())
+	}
+
+	// 2nd event
+	testEvent.ConnID = 2
+	testEvent.EventID = "2"
+	testEvent.CustomLabel2 = "foo2"
+	testEvent.CustomData2 = "bar2"
+
+	input <- testEvent
+	time.Sleep(time.Second)
+
+	testBl, err = verifyGetNthBacklog(blogs, 1, 1)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 2); err != nil {
+		t.Error(err.Error())
+	}
+
+	// 3rd event
+	testEvent.ConnID = 3
+	testEvent.EventID = "3"
+
+	input <- testEvent
+	time.Sleep(time.Second)
+
+	testBl, err = verifyGetNthBacklog(blogs, 1, 1)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 3); err != nil {
+		t.Error(err.Error())
+	}
+
+	// 4th event
+	testEvent.ConnID = 4
+	testEvent.EventID = "4"
+	testEvent.CustomLabel3 = "foo3"
+	testEvent.CustomData3 = "bar3"
+
+	input <- testEvent
+	time.Sleep(time.Second)
+
+	testBl, err = verifyGetNthBacklog(blogs, 1, 1)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 3); err != nil {
+		t.Error(err.Error())
+	}
+
+	// 5th event -> different custom data, creates a new backlog
+	testEvent2 := testEvent
+	testEvent2.ConnID = 5
+	testEvent2.EventID = "5"
+	testEvent2.CustomLabel1 = "aaa"
+	testEvent2.CustomData1 = "bbb"
+
+	input <- testEvent2
+	time.Sleep(time.Second)
+
+	// expected 2 backlogs now
+	testBl, err = verifyGetNthBacklog(blogs, 2, 2)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 2); err != nil {
+		t.Error(err.Error())
+	}
+
+	// 6th event
+	testEvent2.ConnID = 6
+	testEvent2.EventID = "6"
+
+	input <- testEvent2
+	time.Sleep(time.Second)
+
+	testBl, err = verifyGetNthBacklog(blogs, 2, 2)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 2); err != nil {
+		t.Error(err.Error())
+	}
+
+	// 7th event -> stage increased for second backlog
+	testEvent2.ConnID = 7
+	testEvent2.EventID = "7"
+
+	input <- testEvent2
+	time.Sleep(time.Second)
+
+	testBl, err = verifyGetNthBacklog(blogs, 2, 2)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := verifyBacklogState(testBl, 3); err != nil {
+		t.Error(err.Error())
+	}
+
+}
+
+func verifyGetNthBacklog(bls *backlogs, blLength, n int) (*backLog, error) {
+	bls.Lock()
+	defer bls.Unlock()
+	if len(bls.bl) != blLength {
+		return nil, fmt.Errorf("expected %d backlogs, but got %d", blLength, len(bls.bl))
+	}
+
+	counter := 1
+	for _, v := range bls.bl {
+		if counter == n {
+			return v, nil
+		}
+		counter++
+	}
+
+	return nil, fmt.Errorf("nth(%d) backlog not found", n)
+}
+
+func verifyBacklogState(bl *backLog, stage int) error {
+	if bl == nil {
+		return fmt.Errorf("nil backlog")
+	}
+	bl.Lock()
+	defer bl.Unlock()
+
+	currentStage := bl.CurrentStage
+	if currentStage != stage {
+		return fmt.Errorf("expected current stage to be %d but got %d", stage, currentStage)
+	}
+
+	return nil
 }
