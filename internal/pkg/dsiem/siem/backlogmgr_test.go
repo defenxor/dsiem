@@ -376,15 +376,24 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	input <- testEvent
 	time.Sleep(time.Second)
 
-	testBl, err := verifyGetNthBacklog(blogs, 1, 1)
-	if err != nil {
-		t.Error(err.Error())
+	var testBl *backLog
+	blogs.Lock()
+	if len(blogs.bl) != 1 {
+		blogs.Unlock()
+		t.Fatalf("expected 1 backlog, but got %d", len(blogs.bl))
 	}
 
-	if err := verifyBacklogState(testBl, 2); err != nil {
-		t.Error(err.Error())
+	for _, v := range blogs.bl {
+		testBl = v
+		break
 	}
+	blogs.Unlock()
 
+	testBl.Lock()
+	if testBl.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl.CurrentStage)
+	}
+	testBl.Unlock()
 	// 2nd event
 	testEvent.ConnID = 2
 	testEvent.EventID = "2"
@@ -394,14 +403,11 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	input <- testEvent
 	time.Sleep(time.Second)
 
-	testBl, err = verifyGetNthBacklog(blogs, 1, 1)
-	if err != nil {
-		t.Error(err.Error())
+	testBl.Lock()
+	if testBl.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl.CurrentStage)
 	}
-
-	if err := verifyBacklogState(testBl, 2); err != nil {
-		t.Error(err.Error())
-	}
+	testBl.Unlock()
 
 	// 3rd event
 	testEvent.ConnID = 3
@@ -410,14 +416,11 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	input <- testEvent
 	time.Sleep(time.Second)
 
-	testBl, err = verifyGetNthBacklog(blogs, 1, 1)
-	if err != nil {
-		t.Error(err.Error())
+	testBl.Lock()
+	if testBl.CurrentStage != 3 {
+		t.Errorf("expected current stage to be 3 but got %d", testBl.CurrentStage)
 	}
-
-	if err := verifyBacklogState(testBl, 3); err != nil {
-		t.Error(err.Error())
-	}
+	testBl.Unlock()
 
 	// 4th event
 	testEvent.ConnID = 4
@@ -428,14 +431,11 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	input <- testEvent
 	time.Sleep(time.Second)
 
-	testBl, err = verifyGetNthBacklog(blogs, 1, 1)
-	if err != nil {
-		t.Error(err.Error())
+	testBl.Lock()
+	if testBl.CurrentStage != 3 {
+		t.Errorf("expected current stage to be 3 but got %d", testBl.CurrentStage)
 	}
-
-	if err := verifyBacklogState(testBl, 3); err != nil {
-		t.Error(err.Error())
-	}
+	testBl.Unlock()
 
 	// 5th event -> different custom data, creates a new backlog
 	testEvent2 := testEvent
@@ -448,14 +448,28 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// expected 2 backlogs now
-	testBl, err = verifyGetNthBacklog(blogs, 2, 2)
-	if err != nil {
-		t.Error(err.Error())
+	var testBl2 *backLog
+	blogs.Lock()
+	if len(blogs.bl) != 2 {
+		blogs.Unlock()
+		t.Fatalf("expected 2 backlog, but got %d", len(blogs.bl))
 	}
 
-	if err := verifyBacklogState(testBl, 2); err != nil {
-		t.Error(err.Error())
+	for _, v := range blogs.bl {
+		if testBl == v {
+			continue
+		}
+
+		testBl2 = v
+		break
 	}
+	blogs.Unlock()
+
+	testBl2.Lock()
+	if testBl2.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl2.CurrentStage)
+	}
+	testBl2.Unlock()
 
 	// 6th event
 	testEvent2.ConnID = 6
@@ -464,14 +478,11 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	input <- testEvent2
 	time.Sleep(time.Second)
 
-	testBl, err = verifyGetNthBacklog(blogs, 2, 2)
-	if err != nil {
-		t.Error(err.Error())
+	testBl2.Lock()
+	if testBl2.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl2.CurrentStage)
 	}
-
-	if err := verifyBacklogState(testBl, 2); err != nil {
-		t.Error(err.Error())
-	}
+	testBl2.Unlock()
 
 	// 7th event -> stage increased for second backlog
 	testEvent2.ConnID = 7
@@ -480,46 +491,10 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	input <- testEvent2
 	time.Sleep(time.Second)
 
-	testBl, err = verifyGetNthBacklog(blogs, 2, 2)
-	if err != nil {
-		t.Error(err.Error())
+	testBl2.Lock()
+	if testBl2.CurrentStage != 3 {
+		t.Errorf("expected current stage to be 3 but got %d", testBl2.CurrentStage)
 	}
+	testBl2.Unlock()
 
-	if err := verifyBacklogState(testBl, 3); err != nil {
-		t.Error(err.Error())
-	}
-
-}
-
-func verifyGetNthBacklog(bls *backlogs, blLength, n int) (*backLog, error) {
-	bls.Lock()
-	defer bls.Unlock()
-	if len(bls.bl) != blLength {
-		return nil, fmt.Errorf("expected %d backlogs, but got %d", blLength, len(bls.bl))
-	}
-
-	counter := 1
-	for _, v := range bls.bl {
-		if counter == n {
-			return v, nil
-		}
-		counter++
-	}
-
-	return nil, fmt.Errorf("nth(%d) backlog not found", n)
-}
-
-func verifyBacklogState(bl *backLog, stage int) error {
-	if bl == nil {
-		return fmt.Errorf("nil backlog")
-	}
-	bl.Lock()
-	defer bl.Unlock()
-
-	currentStage := bl.CurrentStage
-	if currentStage != stage {
-		return fmt.Errorf("expected current stage to be %d but got %d", stage, currentStage)
-	}
-
-	return nil
 }
