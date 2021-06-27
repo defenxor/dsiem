@@ -37,7 +37,7 @@ var (
 	IntelEnabled            bool
 	intelCache              *cache.Cache
 	intelFileGlob           = "intel_*.json"
-	maxSecondToWaitForIntel = time.Duration(5)
+	maxSecondToWaitForIntel = time.Duration(60)
 	intels                  IntelSources
 	intelPlugins            = intel.Checkers
 	checkers                = []intelCheckers{}
