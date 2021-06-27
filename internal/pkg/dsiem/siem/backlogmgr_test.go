@@ -358,17 +358,9 @@ func TestBacklogManagerCustomData(t *testing.T) {
 		bl:       make(map[string]*backLog),
 	}
 
-	bpChOutput := make(chan bool)
-	go func() {
-		for {
-			bpFlag := <-bpChOutput
-			log.Info(log.M{Msg: "simulated server received backpressure data: " + strconv.FormatBool(bpFlag)})
-		}
-	}()
-
 	go blogs.manager(testDirective, input, 0)
-	holdSecDuration := 4
-	if err = InitBackLogManager(tmpLog, bpChOutput, holdSecDuration); err != nil {
+
+	if err = InitBackLogManager(tmpLog, nil, 4); err != nil {
 		t.Fatal(err)
 	}
 
