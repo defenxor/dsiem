@@ -18,6 +18,7 @@ package siem
 
 import (
 	"strconv"
+	"sync/atomic"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
@@ -42,6 +43,9 @@ type backlogs struct {
 }
 
 var (
+	// protects allBacklogs
+	allBacklogsMu sync.RWMutex
+
 	allBacklogs []backlogs
 	fWriter     fs.FileWriter
 )
@@ -107,6 +111,9 @@ func initBpTicker(bpChan chan<- bool, holdDuration int) {
 }
 
 func merge() <-chan bool {
+	allBacklogsMu.RLock()
+	defer allBacklogsMu.RUnlock()
+
 	out := make(chan bool)
 	for _, v := range allBacklogs {
 		go func(ch chan bool) {
@@ -121,6 +128,7 @@ func merge() <-chan bool {
 
 // CountBackLogs returns the number of active backlogs
 func CountBackLogs() (sum int, activeDirectives int, ttlDirectives int) {
+
 	ttlDirectives = len(allBacklogs)
 	for i := range allBacklogs {
 		l := allBacklogs[i].RLock()
@@ -184,7 +192,9 @@ mainLoop:
 			}
 		}
 
-		found := false
+		// found := false
+		// zero means false
+		var found uint32
 		l := blogs.RLock() // to prevent concurrent r/w with delete()
 
 		wg := &sync.WaitGroup{}
@@ -212,7 +222,8 @@ mainLoop:
 					// wait for the result
 					case f := <-blogs.bl[k].chFound:
 						if f {
-							found = true
+							// found = true
+							atomic.AddUint32(&found, 1)
 						}
 					}
 				}
@@ -222,7 +233,7 @@ mainLoop:
 		wg.Wait()
 		l.Unlock()
 
-		if found {
+		if found > 0 {
 			if apm.Enabled() && tx != nil {
 				tx.Result("Event consumed by backlog")
 				tx.End()
@@ -417,17 +428,35 @@ func initBackLogRules(d *Directive, e event.NormalizedEvent) {
 		// add reference for custom datas.
 		r = d.Rules[i].CustomData1
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData1 = d.Rules[v-1].CustomData1
+			vmin1 := v - 1
+			ref := d.Rules[vmin1].CustomData1
+			if ref != "ANY" {
+				d.Rules[i].CustomData1 = ref
+			} else {
+				d.Rules[i].CustomData1 = e.CustomData1
+			}
 		}
 
 		r = d.Rules[i].CustomData2
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData2 = d.Rules[v-1].CustomData2
+			vmin1 := v - 1
+			ref := d.Rules[vmin1].CustomData2
+			if ref != "ANY" {
+				d.Rules[i].CustomData2 = ref
+			} else {
+				d.Rules[i].CustomData2 = e.CustomData2
+			}
 		}
 
 		r = d.Rules[i].CustomData3
 		if v, ok := str.RefToDigit(r); ok {
-			d.Rules[i].CustomData3 = d.Rules[v-1].CustomData3
+			vmin1 := v - 1
+			ref := d.Rules[vmin1].CustomData3
+			if ref != "ANY" {
+				d.Rules[i].CustomData3 = ref
+			} else {
+				d.Rules[i].CustomData3 = e.CustomData3
+			}
 		}
 	}
 }

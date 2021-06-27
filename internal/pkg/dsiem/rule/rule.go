@@ -180,13 +180,13 @@ func taxonomyRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffDa
 func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) (ret bool) {
 
 	var r1, r2, r3 = true, true, true
-	if r.CustomData1 != "" {
+	if r.CustomData1 != "" && r.CustomData1 != "ANY" {
 		r1 = isStrMatchCSVRule(r.CustomData1, e.CustomData1, false)
 	}
-	if r.CustomData2 != "" {
+	if r.CustomData2 != "" && r.CustomData2 != "ANY" {
 		r2 = isStrMatchCSVRule(r.CustomData2, e.CustomData2, false)
 	}
-	if r.CustomData3 != "" {
+	if r.CustomData3 != "" && r.CustomData3 != "ANY" {
 		r3 = isStrMatchCSVRule(r.CustomData3, e.CustomData3, false)
 	}
 	switch {

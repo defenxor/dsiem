@@ -1,0 +1,101 @@
+{
+  "directives": [
+    {
+      "id": 1,
+      "name": "Valid directive, testing custom data with ANY and reference",
+      "category": "foo",
+      "kingdom": "Environmental Awareness",
+      "priority": 3,
+      "all_rules_always_active": false,
+      "disabled": false,
+      "rules": [
+        {
+          "name": "test-custom-data",
+          "type": "PluginRule",
+          "stage": 1,
+          "plugin_id": 1337,
+          "plugin_sid": [1],
+          "occurrence": 1,
+          "from": "ANY",
+          "to": "ANY",
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "protocol": "ANY",
+          "reliability": 1,
+          "timeout": 0,
+          "custom_label1": "ANY",
+          "custom_data1": "ANY"
+        },
+        {
+          "stage": 2,
+          "occurrence": 2,
+          "reliability": 1,
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "timeout": 3600,
+          "name": "test-custom-data",
+          "type": "PluginRule",
+          "from": "ANY",
+          "to": ":1",
+          "protocol": "ANY",
+          "plugin_id": 1337,
+          "custom_label1": ":1",
+          "custom_data1": ":1",
+          "custom_label2": "ANY",
+          "custom_data2": "ANY",
+          "custom_label3": "ANY",
+          "custom_data3": "ANY",
+          "plugin_sid": [
+            1
+          ]
+        },
+        {
+          "stage": 3,
+          "occurrence": 3,
+          "reliability": 10,
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "timeout": 21600,
+          "name": "test-custom-data",
+          "type": "PluginRule",
+          "from": "ANY",
+          "to": ":1",
+          "protocol": "ANY",
+          "plugin_id": 1337,
+          "custom_data1": ":1",
+          "custom_label1": ":1",
+          "custom_label2": ":2",
+          "custom_data2": ":2",
+          "custom_label3": ":2",
+          "custom_data3": ":2",
+          "plugin_sid": [
+            1
+          ]
+        },
+        {
+          "stage": 4,
+          "occurrence": 100,
+          "reliability": 10,
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "timeout": 21600,
+          "name": "test-custom-data",
+          "type": "PluginRule",
+          "from": "ANY",
+          "to": ":1",
+          "protocol": "ANY",
+          "plugin_id": 1337,
+          "custom_data1": ":1",
+          "custom_label1": ":1",
+          "custom_label2": ":2",
+          "custom_data2": ":2",
+          "custom_label3": ":2",
+          "custom_data3": ":2",
+          "plugin_sid": [
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -49,7 +49,9 @@ func TestBacklogMgr(t *testing.T) {
 
 	fmt.Println("Starting TestBackLogMgr.")
 
+	allBacklogsMu.Lock()
 	allBacklogs = []backlogs{}
+	allBacklogsMu.Unlock()
 
 	setTestDir(t)
 	t.Logf("Using base dir %s", testDir)
@@ -294,4 +296,283 @@ func verifyFuncOutput(t *testing.T, f func(), expected string, expectMatch bool)
 	} else {
 		fmt.Println("OK")
 	}
+}
+
+func TestBacklogManagerCustomData(t *testing.T) {
+	waitTime := 100 * time.Millisecond
+	fmt.Println("Starting TestBackLogMgr.")
+	allBacklogsMu.Lock()
+	allBacklogs = make([]backlogs, 0)
+	allBacklogsMu.Unlock()
+	setTestDir(t)
+
+	t.Logf("Using base dir %s", testDir)
+	if !log.TestMode {
+		t.Logf("Enabling log test mode")
+		log.EnableTestingMode()
+	}
+
+	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	apm.Enable(true)
+
+	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
+	fWriter.Init(tmpLog, 10)
+
+	cleanUp := func() {
+		_ = os.Remove(tmpLog)
+	}
+
+	defer cleanUp()
+	initAlarm(t)
+	initAsset(t)
+
+	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive5"), directiveFileGlob, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(dirs.Dirs) != 1 {
+		t.Fatalf("expected only 1 directive to be loaded, but got %d", len(dirs.Dirs))
+	}
+
+	blogs := &backlogs{
+		DRWMutex: drwmutex.New(),
+		id:       1,
+		bpCh:     make(chan bool),
+		bl:       make(map[string]*backLog),
+	}
+
+	if err = InitBackLogManager(tmpLog, nil, 4); err != nil {
+		t.Fatal(err)
+	}
+
+	testDirective := dirs.Dirs[0]
+	testEvent := event.NormalizedEvent{
+		EventID:      "1",
+		ConnID:       1,
+		Sensor:       "test-sensor",
+		SrcIP:        "1.1.1.1",
+		DstIP:        "2.2.2.2",
+		Title:        "Test Event",
+		Protocol:     "TEST",
+		PluginID:     1337,
+		PluginSID:    1,
+		CustomLabel1: "fsoo",
+		CustomData1:  "bar",
+		Timestamp:    time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339),
+	}
+
+	input := make(chan event.NormalizedEvent)
+	go blogs.manager(testDirective, input, 0)
+
+	// first event
+	input <- testEvent
+	time.Sleep(waitTime)
+
+	var testBl *backLog
+	blogs.Lock()
+	if len(blogs.bl) != 1 {
+		t.Fatalf("expected 1 backlog, but got %d", len(blogs.bl))
+		blogs.Unlock()
+	}
+
+	for _, v := range blogs.bl {
+		testBl = v
+		break
+	}
+	blogs.Unlock()
+
+	testBl.Lock()
+	if testBl.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl.CurrentStage)
+	}
+	testBl.Unlock()
+	// 2nd event
+	testEvent.ConnID = 2
+	testEvent.EventID = "2"
+	testEvent.CustomLabel2 = "foo2"
+	testEvent.CustomData2 = "bar2"
+
+	input <- testEvent
+	time.Sleep(waitTime)
+
+	testBl.Lock()
+	if testBl.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl.CurrentStage)
+	}
+	testBl.Unlock()
+
+	// 3rd event
+	testEvent.ConnID = 3
+	testEvent.EventID = "3"
+
+	input <- testEvent
+	time.Sleep(waitTime)
+
+	testBl.Lock()
+	if testBl.CurrentStage != 3 {
+		t.Errorf("expected current stage to be 3 but got %d", testBl.CurrentStage)
+	}
+	testBl.Unlock()
+
+	// 4th event
+	testEvent.ConnID = 4
+	testEvent.EventID = "4"
+
+	testEvent.CustomData3 = "bar3"
+
+	input <- testEvent
+	time.Sleep(waitTime)
+
+	testBl.Lock()
+	if testBl.CurrentStage != 3 {
+		t.Errorf("expected current stage to be 3 but got %d", testBl.CurrentStage)
+	}
+	testBl.Unlock()
+
+	// 5th event -> different custom data, creates a new backlog
+	testEvent2 := testEvent
+	testEvent2.ConnID = 5
+	testEvent2.EventID = "5"
+	testEvent2.CustomLabel1 = "aaa"
+	testEvent2.CustomData1 = "bbb"
+
+	input <- testEvent2
+	time.Sleep(waitTime)
+
+	// expected 2 backlogs now
+	var testBl2 *backLog
+	blogs.Lock()
+	if len(blogs.bl) != 2 {
+		blogs.Unlock()
+		t.Fatalf("expected 2 backlog, but got %d", len(blogs.bl))
+
+	}
+
+	for _, v := range blogs.bl {
+		if testBl == v {
+			continue
+		}
+
+		testBl2 = v
+		break
+	}
+	blogs.Unlock()
+
+	testBl2.Lock()
+	if testBl2.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl2.CurrentStage)
+	}
+	testBl2.Unlock()
+
+	// 6th event
+	testEvent2.ConnID = 6
+	testEvent2.EventID = "6"
+
+	input <- testEvent2
+	time.Sleep(waitTime)
+
+	testBl2.Lock()
+	if testBl2.CurrentStage != 2 {
+		t.Errorf("expected current stage to be 2 but got %d", testBl2.CurrentStage)
+	}
+	testBl2.Unlock()
+
+	// 7th event -> stage increased for second backlog
+	testEvent2.ConnID = 7
+	testEvent2.EventID = "7"
+
+	input <- testEvent2
+	time.Sleep(waitTime)
+
+	testBl2.Lock()
+	if testBl2.CurrentStage != 3 {
+		t.Errorf("expected current stage to be 3 but got %d", testBl2.CurrentStage)
+	}
+	testBl2.Unlock()
+
+	// 8th event -> this event has no custom data, therefore new backlog should created
+	testEvent3 := event.NormalizedEvent{
+		EventID:      "8",
+		ConnID:       8,
+		Sensor:       "test-sensor",
+		SrcIP:        "1.1.1.1",
+		DstIP:        "2.2.2.2",
+		Title:        "Test Event",
+		Protocol:     "TEST",
+		PluginID:     1337,
+		PluginSID:    1,
+		CustomLabel1: "",
+		CustomData1:  "",
+		Timestamp:    time.Now().Add(time.Second * -300).UTC().Format(time.RFC3339),
+	}
+
+	input <- testEvent3
+	time.Sleep(waitTime)
+
+	var testBl3 *backLog
+	blogs.Lock()
+	if len(blogs.bl) != 3 {
+		blogs.Unlock()
+		t.Fatalf("expected 3 backlog, but got %d", len(blogs.bl))
+	}
+
+	for _, blog := range blogs.bl {
+		if testBl == blog || testBl2 == blog {
+			continue
+		}
+
+		testBl3 = blog
+		break
+	}
+	blogs.Unlock()
+
+	if testBl3 == nil {
+		t.Fatal("expected third backlog to exist")
+	}
+
+	testBl3.Lock()
+	if testBl3.CurrentStage != 2 {
+		t.Errorf("expected current stage of third backlog to be 2 but got %d", testBl3.CurrentStage)
+	}
+
+	if testBl3.LastEvent.EventID != testEvent3.EventID {
+		t.Errorf("expected last event id for third backlog to be %s but got %s", testEvent3.EventID, testBl3.LastEvent.EventID)
+	}
+	testBl3.Unlock()
+
+	testEvent3.EventID = "9"
+	testEvent3.ConnID = 9
+
+	input <- testEvent3
+	time.Sleep(waitTime)
+
+	testBl3.Lock()
+	if testBl3.CurrentStage != 2 {
+		t.Errorf("expected current stage of third backlog to be 2 but got %d", testBl3.CurrentStage)
+	}
+
+	if testBl3.LastEvent.EventID != testEvent3.EventID {
+		t.Errorf("expected last event id for third backlog to be %s but got %s", testEvent3.EventID, testBl3.LastEvent.EventID)
+	}
+	testBl3.Unlock()
+
+	// 10th event, identical to 5th event, should increase second backlog stage instead of the third one
+	testEvent5 := testEvent2
+	testEvent5.EventID = "10"
+	testEvent5.ConnID = 10
+
+	input <- testEvent5
+	time.Sleep(waitTime)
+
+	testBl2.Lock()
+	if testBl2.CurrentStage != 3 {
+		t.Errorf("expected current stage of third backlog to be 3 but got %d", testBl2.CurrentStage)
+	}
+
+	if testBl2.LastEvent.EventID != testEvent5.EventID {
+		t.Errorf("expected last event id for third backlog to be %s but got %s", testEvent5.EventID, testBl2.LastEvent.EventID)
+	}
+	testBl2.Unlock()
+
 }
