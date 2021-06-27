@@ -51,6 +51,29 @@
         },
         {
           "stage": 3,
+          "occurrence": 3,
+          "reliability": 10,
+          "port_from": "ANY",
+          "port_to": "ANY",
+          "timeout": 21600,
+          "name": "test-custom-data",
+          "type": "PluginRule",
+          "from": "ANY",
+          "to": ":1",
+          "protocol": "ANY",
+          "plugin_id": 1337,
+          "custom_data1": ":1",
+          "custom_label1": ":1",
+          "custom_label2": ":2",
+          "custom_data2": ":2",
+          "custom_label3": ":2",
+          "custom_data3": ":2",
+          "plugin_sid": [
+            1
+          ]
+        },
+        {
+          "stage": 4,
           "occurrence": 100,
           "reliability": 10,
           "port_from": "ANY",
