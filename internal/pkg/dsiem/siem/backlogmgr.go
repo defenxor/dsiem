@@ -18,6 +18,7 @@ package siem
 
 import (
 	"strconv"
+	"sync/atomic"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/alarm"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
@@ -191,7 +192,9 @@ mainLoop:
 			}
 		}
 
-		found := false
+		// found := false
+		// zero means false
+		var found uint32
 		l := blogs.RLock() // to prevent concurrent r/w with delete()
 
 		wg := &sync.WaitGroup{}
@@ -219,7 +222,8 @@ mainLoop:
 					// wait for the result
 					case f := <-blogs.bl[k].chFound:
 						if f {
-							found = true
+							// found = true
+							atomic.AddUint32(&found, 1)
 						}
 					}
 				}
@@ -229,7 +233,7 @@ mainLoop:
 		wg.Wait()
 		l.Unlock()
 
-		if found {
+		if found > 0 {
 			if apm.Enabled() && tx != nil {
 				tx.Result("Event consumed by backlog")
 				tx.End()
