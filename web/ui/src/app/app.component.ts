@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import {Component, OnInit} from '@angular/core';
-import { FormControl } from '@angular/forms';
+import { FormControl, Validators } from '@angular/forms';
 import { DsiemService } from './dsiem.service';
 
 import { AUTH_ERROR } from './errors';
@@ -36,8 +36,8 @@ export class AppComponent implements OnInit {
   public init_status: number = this.status_init_waiting;
   public init_error:string = ""
 
-  public username = new FormControl('')
-  public password = new FormControl('')
+  public username = new FormControl('', [Validators.required])
+  public password = new FormControl('', [Validators.required])
 
   constructor(private dsiem: DsiemService) {}
 
