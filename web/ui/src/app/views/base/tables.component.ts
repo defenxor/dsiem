@@ -127,7 +127,6 @@ export class TablesComponent {
       return true;
     } catch (err) {
       this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch + ': ' + err, 'danger', true);
-      
      }
     return false;
   }

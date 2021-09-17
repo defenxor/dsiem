@@ -83,7 +83,6 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       return true;
     } catch (err) {
       this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch + ': ' + err, 'danger', true);
-      
      }
     return false;
   }

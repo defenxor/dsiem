@@ -3,9 +3,9 @@ import { Injectable } from '@angular/core';
 import { ElasticsearchService } from './elasticsearch.service';
 import { url2obj } from './utilities';
 
-const CONFIG_PATH = './assets/config/esconfig.json'
+const CONFIG_PATH = './assets/config/esconfig.json';
 
-type configuration = {
+interface Configuration {
     elasticsearch: string;
     kibana: string;
 }
@@ -22,23 +22,23 @@ export class DsiemService {
         try {
             const escfg = await this.loadCredential(CONFIG_PATH);
             await this.es.initClient(escfg.elasticsearch, escfg.kibana);
-        } catch(err) {
+        } catch (err) {
             this.handleCaughtEror(err);
         }
     }
 
-    public async initWithCredentials(username:string, password:string): Promise<void> {
+    public async initWithCredentials(username: string, password: string): Promise<void> {
         try {
-            const escfg = await this.loadCredential(CONFIG_PATH)
+            const escfg = await this.loadCredential(CONFIG_PATH);
             const { protocol, host } = url2obj(escfg.elasticsearch);
             await this.es.initClient(`${protocol}://${username}:${password}@${host}`, escfg.kibana);
-        } catch(err) {
+        } catch (err) {
             this.handleCaughtEror(err);
         }
     }
 
-    private loadCredential(path: string): Promise<configuration> {
-        return this.http.get<configuration>(path).toPromise();
+    private loadCredential(path: string): Promise<Configuration> {
+        return this.http.get<Configuration>(path).toPromise();
     }
 
     private handleCaughtEror(err: any) {

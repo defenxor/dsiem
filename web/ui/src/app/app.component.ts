@@ -34,10 +34,10 @@ export class AppComponent implements OnInit {
   public readonly status_init_auth_error = 3;
 
   public init_status: number = this.status_init_waiting;
-  public init_error:string = ""
+  public init_error = '';
 
-  public username = new FormControl('', [Validators.required])
-  public password = new FormControl('', [Validators.required])
+  public username = new FormControl('', [Validators.required]);
+  public password = new FormControl('', [Validators.required]);
 
   constructor(private dsiem: DsiemService) {}
 
@@ -48,15 +48,15 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.dsiem.init()
       .then(() => this.init_status = this.status_init_success)
-      .catch((err) => this.handleInitError(err))
+      .catch((err) => this.handleInitError(err));
   }
 
   private handleInitError(err: any) {
-    if(err === AUTH_ERROR) {
+    if (err === AUTH_ERROR) {
       this.init_status = this.status_init_auth_error;
     } else {
       this.init_status = this.status_init_fail;
-      this.init_error = err
+      this.init_error = err;
     }
   }
 
@@ -66,7 +66,7 @@ export class AppComponent implements OnInit {
 
     this.dsiem.initWithCredentials(username, password)
     .then(() => this.init_status = this.status_init_success)
-    .catch((err) => this.handleInitError(err))
+    .catch((err) => this.handleInitError(err));
   }
 }
 

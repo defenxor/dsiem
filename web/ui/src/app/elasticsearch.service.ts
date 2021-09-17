@@ -48,22 +48,22 @@ export class ElasticsearchService {
     };
   }
 
-  public async initClient(server:string, kibana:string): Promise<void> {
+  public async initClient(server: string, kibana: string): Promise<void> {
     const escfg = {
       host: server,
       log: 'info'
-    }
+    };
 
     this.client = new Client(escfg);
     this.setInfo(server, kibana);
     try {
       this.docType = await this.getDocType();
-    } catch(err) {
+    } catch (err) {
       throw err;
     }
   }
 
-  private setInfo(server:string, kibana:string) {
+  private setInfo(server: string, kibana: string) {
     const {protocol, host, user} = url2obj(server);
     this.server = `${protocol}://${host}`;
     this.user = user;
@@ -71,20 +71,20 @@ export class ElasticsearchService {
     this.kibana = kibana;
   }
 
-  private is401Error(err:any) {
-    const {status, displayName} = err
-    return (status && status === 401) && (displayName && displayName === "AuthenticationException")
+  private is401Error(err: any) {
+    const {status, displayName} = err;
+    return (status && status === 401) && (displayName && displayName === 'AuthenticationException');
   }
 
   async getDocType(): Promise<string> {
     try {
       const res = await this.client.info();
-      return doctype(res.version.number || "0");
-    } catch(err) {
-      if(this.is401Error(err)) {
-        throw AUTH_ERROR
+      return doctype(res.version.number || '0');
+    } catch (err) {
+      if (this.is401Error(err)) {
+        throw AUTH_ERROR;
       } else {
-        throw err
+        throw err;
       }
     }
   }
@@ -196,11 +196,11 @@ export class ElasticsearchService {
 
   countEvents(_index, alarmId, stage): any {
     const b = `{
-      "query": {
-        "bool": {
-          "must": [
-            { "term": { "stage": "${stage}" }},
-            { "term": { "alarm_id.keyword": "${alarmId}" }}
+      'query': {
+        'bool': {
+          'must': [
+            { 'term': { 'stage': '${stage}' }},
+            { 'term': { 'alarm_id.keyword': '${alarmId}' }}
           ]
         }
       }

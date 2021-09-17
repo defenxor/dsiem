@@ -44,7 +44,7 @@ export function isEmptyOrUndefined(v): boolean {
 }
 
 const urlPatternRe = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
-export function url2obj(url:string) {
+export function url2obj(url: string) {
     const matches = url.match(urlPatternRe);
 
     return {
@@ -58,7 +58,7 @@ export function url2obj(url:string) {
   }
 
 const majorVersionRe = new RegExp(/^\d+/);
-export function doctype(ver:string):string {
+export function doctype(ver: string): string {
   if (parseInt(majorVersionRe.exec(ver)[0], 10) >= 7) {
     return '_doc';
   }
