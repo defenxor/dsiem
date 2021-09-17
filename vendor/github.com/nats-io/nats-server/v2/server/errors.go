@@ -1,4 +1,4 @@
-// Copyright 2012-2019 The NATS Authors
+// Copyright 2012-2020 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -43,6 +43,12 @@ var (
 	// ErrBadPublishSubject represents an error condition for an invalid publish subject.
 	ErrBadPublishSubject = errors.New("invalid publish subject")
 
+	// ErrBadSubject represents an error condition for an invalid subject.
+	ErrBadSubject = errors.New("invalid subject")
+
+	// ErrBadQualifier is used to error on a bad qualifier for a transform.
+	ErrBadQualifier = errors.New("bad qualifier")
+
 	// ErrBadClientProtocol signals a client requested an invalid client protocol.
 	ErrBadClientProtocol = errors.New("invalid client protocol")
 
@@ -65,6 +71,10 @@ var (
 	// ErrClientConnectedToLeafNodePort represents an error condition when a client
 	// attempted to connect to the leaf node listen port.
 	ErrClientConnectedToLeafNodePort = errors.New("attempted to connect to leaf node port")
+
+	// ErrConnectedToWrongPort represents an error condition when a connection is attempted
+	// to the wrong listen port (for instance a LeafNode to a client port, etc...)
+	ErrConnectedToWrongPort = errors.New("attempted to connect to wrong port")
 
 	// ErrAccountExists is returned when an account is attempted to be registered
 	// but already exists.
@@ -106,8 +116,20 @@ var (
 	// ErrStreamImportAuthorization is returned when a stream import is not authorized.
 	ErrStreamImportAuthorization = errors.New("stream import not authorized")
 
+	// ErrStreamImportBadPrefix is returned when a stream import prefix contains wildcards.
+	ErrStreamImportBadPrefix = errors.New("stream import prefix can not contain wildcard tokens")
+
+	// ErrStreamImportDuplicate is returned when a stream import is a duplicate of one that already exists.
+	ErrStreamImportDuplicate = errors.New("stream import already exists")
+
 	// ErrServiceImportAuthorization is returned when a service import is not authorized.
 	ErrServiceImportAuthorization = errors.New("service import not authorized")
+
+	// ErrImportFormsCycle is returned when an import would form a cycle.
+	ErrImportFormsCycle = errors.New("import forms a cycle")
+
+	// ErrCycleSearchDepth is returned when we have exceeded our maximum search depth..
+	ErrCycleSearchDepth = errors.New("search cycle depth exhausted")
 
 	// ErrClientOrRouteConnectedToGatewayPort represents an error condition when
 	// a client or route attempted to connect to the Gateway port.
@@ -125,8 +147,58 @@ var (
 	// ErrRevocation is returned when a credential has been revoked.
 	ErrRevocation = errors.New("credentials have been revoked")
 
-	// Used to signal an error that a server is not running.
+	// ErrServerNotRunning is used to signal an error that a server is not running.
 	ErrServerNotRunning = errors.New("server is not running")
+
+	// ErrBadMsgHeader signals the parser detected a bad message header
+	ErrBadMsgHeader = errors.New("bad message header detected")
+
+	// ErrMsgHeadersNotSupported signals the parser detected a message header
+	// but they are not supported on this server.
+	ErrMsgHeadersNotSupported = errors.New("message headers not supported")
+
+	// ErrNoRespondersRequiresHeaders signals that a client needs to have headers
+	// on if they want no responders behavior.
+	ErrNoRespondersRequiresHeaders = errors.New("no responders requires headers support")
+
+	// ErrClusterNameConfigConflict signals that the options for cluster name in cluster and gateway are in conflict.
+	ErrClusterNameConfigConflict = errors.New("cluster name conflicts between cluster and gateway definitions")
+
+	// ErrClusterNameRemoteConflict signals that a remote server has a different cluster name.
+	ErrClusterNameRemoteConflict = errors.New("cluster name from remote server conflicts")
+
+	// ErrMalformedSubject is returned when a subscription is made with a subject that does not conform to subject rules.
+	ErrMalformedSubject = errors.New("malformed subject")
+
+	// ErrSubscribePermissionViolation is returned when processing of a subscription fails due to permissions.
+	ErrSubscribePermissionViolation = errors.New("subscribe permission viloation")
+
+	// ErrNoTransforms signals no subject transforms are available to map this subject.
+	ErrNoTransforms = errors.New("no matching transforms available")
+
+	// ErrJetStreamNotEnabled is returned when JetStream is not enabled.
+	ErrJetStreamNotEnabled = errors.New("jetstream not enabled")
+
+	// ErrJetStreamStreamNotFound is returned when a stream can not be found.
+	ErrJetStreamStreamNotFound = errors.New("stream not found")
+
+	// ErrJetStreamStreamAlreadyUsed is returned when a stream name has already been taken.
+	ErrJetStreamStreamAlreadyUsed = errors.New("stream name already in use")
+
+	// ErrJetStreamConsumerAlreadyUsed is returned when a consumer name has already been taken.
+	ErrJetStreamConsumerAlreadyUsed = errors.New("consumer name already in use")
+
+	// ErrJetStreamNotEnabledForAccount is returned JetStream is not enabled for this account.
+	ErrJetStreamNotEnabledForAccount = errors.New("jetstream not enabled for account")
+
+	// ErrJetStreamNotLeader is returned when issuing commands to a cluster on the wrong server.
+	ErrJetStreamNotLeader = errors.New("jetstream cluster can not handle request")
+
+	// ErrJetStreamNotAssigned is returned when the resource (stream or consumer) is not assigned.
+	ErrJetStreamNotAssigned = errors.New("jetstream cluster not assigned to this server")
+
+	// ErrJetStreamNotClustered is returned when a call requires clustering and we are not.
+	ErrJetStreamNotClustered = errors.New("jetstream not in clustered mode")
 )
 
 // configErr is a configuration error.
@@ -197,4 +269,79 @@ func (e *processConfigErr) Warnings() []error {
 // Errors returns the list of errors.
 func (e *processConfigErr) Errors() []error {
 	return e.errors
+}
+
+// errCtx wraps an error and stores additional ctx information for tracing.
+// Does not print or return it unless explicitly requested.
+type errCtx struct {
+	error
+	ctx string
+}
+
+func NewErrorCtx(err error, format string, args ...interface{}) error {
+	return &errCtx{err, fmt.Sprintf(format, args...)}
+}
+
+// implement to work with errors.Is and errors.As
+func (e *errCtx) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.error
+}
+
+// Context for error
+func (e *errCtx) Context() string {
+	if e == nil {
+		return ""
+	}
+	return e.ctx
+}
+
+// Return Error or, if type is right error and context
+func UnpackIfErrorCtx(err error) string {
+	if e, ok := err.(*errCtx); ok {
+		if _, ok := e.error.(*errCtx); ok {
+			return fmt.Sprint(UnpackIfErrorCtx(e.error), ": ", e.Context())
+		}
+		return fmt.Sprint(e.Error(), ": ", e.Context())
+	}
+	return err.Error()
+}
+
+// implements: go 1.13 errors.Unwrap(err error) error
+// TODO replace with native code once we no longer support go1.12
+func errorsUnwrap(err error) error {
+	u, ok := err.(interface {
+		Unwrap() error
+	})
+	if !ok {
+		return nil
+	}
+	return u.Unwrap()
+}
+
+// implements: go 1.13 errors.Is(err, target error) bool
+// TODO replace with native code once we no longer support go1.12
+func ErrorIs(err, target error) bool {
+	// this is an outright copy of go 1.13 errors.Is(err, target error) bool
+	// removed isComparable
+	if err == nil || target == nil {
+		return err == target
+	}
+
+	for {
+		if err == target {
+			return true
+		}
+		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
+			return true
+		}
+		// TODO: consider supporing target.Is(err). This would allow
+		// user-definable predicates, but also may allow for coping with sloppy
+		// APIs, thereby making it easier to get away with them.
+		if err = errorsUnwrap(err); err == nil {
+			return false
+		}
+	}
 }
