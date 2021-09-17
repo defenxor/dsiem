@@ -3,7 +3,8 @@ A [Go](http://golang.org) client for the [NATS messaging system](https://nats.io
 
 [![License Apache 2](https://img.shields.io/badge/License-Apache2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnats-io%2Fgo-nats.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnats-io%2Fgo-nats?ref=badge_shield)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nats-io/nats.go)](https://goreportcard.com/report/github.com/nats-io/nats.go) [![Build Status](https://travis-ci.org/nats-io/nats.go.svg?branch=master)](http://travis-ci.org/nats-io/nats.go) [![GoDoc](https://godoc.org/github.com/nats-io/nats.go?status.svg)](http://godoc.org/github.com/nats-io/nats.go) [![Coverage Status](https://coveralls.io/repos/nats-io/nats.go/badge.svg?branch=master)](https://coveralls.io/r/nats-io/nats.go?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nats-io/nats.go)](https://goreportcard.com/report/github.com/nats-io/nats.go) [![Build Status](https://travis-ci.com/nats-io/nats.go.svg?branch=master)](http://travis-ci.com/nats-io/nats.go) [![GoDoc](https://img.shields.io/badge/GoDoc-reference-007d9c)](https://pkg.go.dev/github.com/nats-io/nats.go)
+ [![Coverage Status](https://coveralls.io/repos/nats-io/nats.go/badge.svg?branch=master)](https://coveralls.io/r/nats-io/nats.go?branch=master)
 
 ## Installation
 
@@ -13,6 +14,20 @@ go get github.com/nats-io/nats.go/
 
 # Server
 go get github.com/nats-io/nats-server
+```
+
+When using or transitioning to Go modules support:
+
+```bash
+# Go client latest or explicit version
+go get github.com/nats-io/nats.go/@latest
+go get github.com/nats-io/nats.go/@v1.10.0
+
+# For latest NATS Server, add /v2 at the end
+go get github.com/nats-io/nats-server/v2
+
+# NATS Server v1 is installed otherwise
+# go get github.com/nats-io/nats-server
 ```
 
 ## Basic Usage
@@ -33,7 +48,7 @@ nc.Subscribe("foo", func(m *nats.Msg) {
 
 // Responding to a request message
 nc.Subscribe("request", func(m *nats.Msg) {
-    m.Respond([]byte("answer is 42")
+    m.Respond([]byte("answer is 42"))
 })
 
 // Simple Sync Subscriber
@@ -55,7 +70,7 @@ sub.Drain()
 msg, err := nc.Request("help", []byte("help me"), 10*time.Millisecond)
 
 // Replies
-nc.Subscribe("help", func(m *Msg) {
+nc.Subscribe("help", func(m *nats.Msg) {
     nc.Publish(m.Reply, []byte("I can help!"))
 })
 
@@ -102,12 +117,12 @@ c.Publish("hello", me)
 
 // Unsubscribe
 sub, err := c.Subscribe("foo", nil)
-...
+// ...
 sub.Unsubscribe()
 
 // Requests
 var response string
-err := c.Request("help", "help me", &response, 10*time.Millisecond)
+err = c.Request("help", "help me", &response, 10*time.Millisecond)
 if err != nil {
     fmt.Printf("Request failed: %v\n", err)
 }
@@ -127,7 +142,7 @@ This requires server with version >= 2.0.0
 NATS servers have a new security and authentication mechanism to authenticate with user credentials and Nkeys.
 The simplest form is to use the helper method UserCredentials(credsFilepath).
 ```go
-nc, err := nats.Connect(url, UserCredentials("user.creds"))
+nc, err := nats.Connect(url, nats.UserCredentials("user.creds"))
 ```
 
 The helper methods creates two callback handlers to present the user JWT and sign the nonce challenge from the server.
@@ -136,12 +151,12 @@ The helper will load and wipe and erase memory it uses for each connect or recon
 
 The helper also can take two entries, one for the JWT and one for the NKey seed file.
 ```go
-nc, err := nats.Connect(url, UserCredentials("user.jwt", "user.nk"))
+nc, err := nats.Connect(url, nats.UserCredentials("user.jwt", "user.nk"))
 ```
 
 You can also set the callback handlers directly and manage challenge signing directly.
 ```go
-nc, err := nats.Connect(url, UserJWT(jwtCB, sigCB))
+nc, err := nats.Connect(url, nats.UserJWT(jwtCB, sigCB))
 ```
 
 Bare Nkeys are also supported. The nkey seed should be in a read only file, e.g. seed.txt
@@ -160,7 +175,7 @@ opt, err := nats.NkeyOptionFromSeed("seed.txt")
 nc, err := nats.Connect(serverUrl, opt)
 
 // Direct
-nc, err := nats.Connect(serverUrl, Nkey(pubNkey, sigCB))
+nc, err := nats.Connect(serverUrl, nats.Nkey(pubNkey, sigCB))
 ```
 
 ## TLS
@@ -270,6 +285,21 @@ nc.QueueSubscribe("foo", "job_workers", func(_ *Msg) {
 
 ```go
 
+// Normally, the library will return an error when trying to connect and
+// there is no server running. The RetryOnFailedConnect option will set
+// the connection in reconnecting state if it failed to connect right away.
+nc, err := nats.Connect(nats.DefaultURL,
+    nats.RetryOnFailedConnect(true),
+    nats.MaxReconnects(10),
+    nats.ReconnectWait(time.Second),
+    nats.ReconnectHandler(func(_ *nats.Conn) {
+        // Note that this will be invoked for the first asynchronous connect.
+    }))
+if err != nil {
+    // Should not return an error even if it can't connect, but you still
+    // need to check in case there are some configuration errors.
+}
+
 // Flush connection to server, returns when all messages have been processed.
 nc.Flush()
 fmt.Println("All clear!")
@@ -310,6 +340,18 @@ nc, err := nats.Connect(servers)
 // Optionally set ReconnectWait and MaxReconnect attempts.
 // This example means 10 seconds total per backend.
 nc, err = nats.Connect(servers, nats.MaxReconnects(5), nats.ReconnectWait(2 * time.Second))
+
+// You can also add some jitter for the reconnection.
+// This call will add up to 500 milliseconds for non TLS connections and 2 seconds for TLS connections.
+// If not specified, the library defaults to 100 milliseconds and 1 second, respectively.
+nc, err = nats.Connect(servers, nats.ReconnectJitter(500*time.Millisecond, 2*time.Second))
+
+// You can also specify a custom reconnect delay handler. If set, the library will invoke it when it has tried
+// all URLs in its list. The value returned will be used as the total sleep time, so add your own jitter.
+// The library will pass the number of times it went through the whole list.
+nc, err = nats.Connect(servers, nats.CustomReconnectDelay(func(attempts int) time.Duration {
+    return someBackoffFunction(attempts)
+}))
 
 // Optionally disable randomization of the server pool
 nc, err = nats.Connect(servers, nats.DontRandomize())
