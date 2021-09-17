@@ -15,13 +15,57 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
-import {Component} from '@angular/core';
-import {Router} from '@angular/router';
+import {Component, OnInit} from '@angular/core';
+import { FormControl } from '@angular/forms';
+import { DsiemService } from './dsiem.service';
+
+import { AUTH_ERROR } from './errors';
 
 @Component({
   selector: 'app-dsiem-ui',
-  template: '<router-outlet></router-outlet>'
+  templateUrl: './app.component.html'
 })
-export class AppComponent {
-  constructor(private router: Router) {}
+
+export class AppComponent implements OnInit {
+  public readonly status_init_waiting = 0;
+  public readonly status_init_success = 1;
+  public readonly status_init_fail = 2;
+  public readonly status_init_auth_error = 3;
+
+  public init_status: number = this.status_init_waiting;
+  public init_error:string = ""
+
+  public username = new FormControl('')
+  public password = new FormControl('')
+
+  constructor(private dsiem: DsiemService) {}
+
+  get initialized(): boolean {
+    return this.init_status === this.status_init_success;
+  }
+
+  ngOnInit() {
+    this.dsiem.init()
+      .then(() => this.init_status = this.status_init_success)
+      .catch((err) => this.handleInitError(err))
+  }
+
+  private handleInitError(err: any) {
+    if(err === AUTH_ERROR) {
+      this.init_status = this.status_init_auth_error;
+    } else {
+      this.init_status = this.status_init_fail;
+      this.init_error = err
+    }
+  }
+
+  public submit() {
+    const username = this.username.value;
+    const password = this.password.value;
+
+    this.dsiem.initWithCredentials(username, password)
+    .then(() => this.init_status = this.status_init_success)
+    .catch((err) => this.handleInitError(err))
+  }
 }
+
