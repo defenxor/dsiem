@@ -20,7 +20,7 @@ export class DsiemService {
 
     public async init(): Promise<void> {
         try {
-            const escfg = await this.loadConfig(CONFIG_PATH);
+            const escfg = await this.loadCredential(CONFIG_PATH);
             await this.es.initClient(escfg.elasticsearch, escfg.kibana);
         } catch(err) {
             this.handleCaughtEror(err);
@@ -29,7 +29,7 @@ export class DsiemService {
 
     public async initWithCredentials(username:string, password:string): Promise<void> {
         try {
-            const escfg = await this.loadConfig(CONFIG_PATH)
+            const escfg = await this.loadCredential(CONFIG_PATH)
             const { protocol, host } = url2obj(escfg.elasticsearch);
             await this.es.initClient(`${protocol}://${username}:${password}@${host}`, escfg.kibana);
         } catch(err) {
@@ -37,7 +37,7 @@ export class DsiemService {
         }
     }
 
-    private loadConfig(path: string): Promise<configuration> {
+    private loadCredential(path: string): Promise<configuration> {
         return this.http.get<configuration>(path).toPromise();
     }
 
