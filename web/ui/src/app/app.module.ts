@@ -49,6 +49,7 @@ import {
 
 // Import routing module
 import { AppRoutingModule } from './app.routing';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 
 @NgModule({
@@ -61,7 +62,9 @@ import { AppRoutingModule } from './app.routing';
     AppHeaderModule,
     AppSidebarModule,
     PerfectScrollbarModule,
-    HttpClientModule
+    HttpClientModule,
+    FormsModule,
+    ReactiveFormsModule,
   ],
   declarations: [
     AppComponent,
