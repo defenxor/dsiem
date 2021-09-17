@@ -17,9 +17,9 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
-import { HttpClient } from '@angular/common/http';
-import { map } from 'rxjs/operators';
-import { url2obj } from './utilities';
+
+import { url2obj, doctype } from './utilities';
+import { AUTH_ERROR } from './errors';
 
 @Injectable({
   providedIn: 'root'
@@ -29,8 +29,9 @@ export class ElasticsearchService {
   server: string;
   kibana: string;
   user: string;
-  esType = 'doc'; // default to ES6
-  initialized: boolean;
+
+  docType = 'doc'; // default elasticsearch v6.x doctype
+
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndex = 'siem_alarms';
   esIndexEvent = 'siem_events-*';
@@ -47,62 +48,45 @@ export class ElasticsearchService {
     };
   }
 
-  constructor(private http: HttpClient) {}
-
-  loadConfig() {
-    return this.http.get('./assets/config/esconfig.json').toPromise();
-  }
-
-  reset() {
-    this.initialized = false;
-  }
-
-  async init() {
-    const ret = {
-      initialized: this.initialized,
-      errMsg: ''
-    };
-    if (ret.initialized) {
-      return ret;
+  public async initClient(server:string, kibana:string): Promise<void> {
+    const escfg = {
+      host: server,
+      log: 'info'
     }
-    this.initialized = false;
+
+    this.client = new Client(escfg);
+    this.setInfo(server, kibana);
     try {
-      const res = await this.loadConfig();
-      this.kibana = res['kibana'];
-      const rgxp = url2obj(res['elasticsearch']);
-      this.server = rgxp.protocol + '://' + rgxp.host;
-      this.user = rgxp.user;
-      this.initialized = true;
-      this.client = new Client({
-        host: res['elasticsearch'],
-        log: 'info'
-      });
-    } catch (err) {
-      ret.errMsg = err;
+      this.docType = await this.getDocType();
+    } catch(err) {
+      throw err;
     }
-    ret.initialized = this.initialized;
-    if (this.initialized) {
-      this.esType = await this.getESType();
-    }
-    return ret;
   }
 
-  async getESType() {
+  private setInfo(server:string, kibana:string) {
+    const {protocol, host, user} = url2obj(server);
+    this.server = `${protocol}://${host}`;
+    this.user = user;
+
+    this.kibana = kibana;
+  }
+
+  private is401Error(err:any) {
+    const {status, displayName} = err
+    return (status && status === 401) && (displayName && displayName === "AuthenticationException")
+  }
+
+  async getDocType(): Promise<string> {
     try {
       const res = await this.client.info();
-      const fullVer = res.version.number;
-      // disable type if es major version >= 7
-      const re = new RegExp(/^\d+/);
-      const reVer = re.exec(fullVer);
-      if (parseInt(reVer[0], 10) >= 7) {
-        return '_doc';
+      return doctype(res.version.number || "0");
+    } catch(err) {
+      if(this.is401Error(err)) {
+        throw AUTH_ERROR
+      } else {
+        throw err
       }
-      return 'doc';
-    } catch (err) {
-      console.log('err', err);
     }
-    // default to ES6
-    return 'doc';
   }
 
   buildQueryAlarmEvents(alarmId, stage) {
@@ -207,7 +191,7 @@ export class ElasticsearchService {
   }
 
   getType(): string {
-    return this.esType;
+    return this.docType;
   }
 
   countEvents(_index, alarmId, stage): any {
