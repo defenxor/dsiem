@@ -1,0 +1,44 @@
+<ng-container *ngIf="!initialized; else router">
+    <ng-container [ngSwitch]="init_status">
+
+        <ng-container *ngSwitchCase="status_init_waiting">
+            <ng-container *ngTemplateOutlet="init"></ng-container>
+        </ng-container>
+        <ng-container *ngSwitchCase="status_init_auth_error">
+            <ng-container *ngTemplateOutlet="auth"></ng-container>
+        </ng-container>
+        <ng-container *ngSwitchCase="status_init_fail">
+           <ng-container *ngTemplateOutlet="error"></ng-container>
+        </ng-container>
+
+    </ng-container>
+</ng-container>
+
+<ng-template #router>
+    <router-outlet></router-outlet>
+</ng-template>
+
+<ng-template #auth>
+    <div class="message">authorization failed, enter elasticsearch credential</div>
+    <div class="form">
+        <div class="form-item">
+            <label for="username">username</label>
+            <input type="text" id="username" [formControl]="username">
+        </div>
+        <div class="form-item">
+            <label for="password">password</label>
+            <input type="password" id="password" [formControl]="password">
+        </div>
+        <div class="form-item">
+            <button (click)="submit()">submit</button>
+        </div>
+    </div>
+</ng-template>
+
+<ng-template #init>
+    initializing
+</ng-template>
+
+<ng-template #error>
+    error: {{ init_error }}
+</ng-template>
