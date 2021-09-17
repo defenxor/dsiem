@@ -73,14 +73,6 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   async checkES(): Promise<boolean> {
 
-    let esStatus = await this.es.init();
-    while (esStatus.initialized === false) {
-      this.alertBox.showAlert('Fail to read or parse esconfig.json: ' +
-        esStatus.errMsg + '. Will retry every 10s ..', 'danger', true);
-      await sleep(10000);
-      esStatus = await this.es.init();
-    }
-
     this.elasticsearch = this.es.getServer();
     this.kibanaUrl = this.es.kibana;
     const esUser = this.es.getUser();
@@ -91,7 +83,7 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
       return true;
     } catch (err) {
       this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch + ': ' + err, 'danger', true);
-      this.es.reset();
+      
      }
     return false;
   }

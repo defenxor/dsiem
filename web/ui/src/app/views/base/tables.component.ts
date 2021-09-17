@@ -118,14 +118,6 @@ export class TablesComponent {
 
   async checkES(): Promise<boolean> {
 
-    let esStatus = await this.es.init();
-    while (esStatus.initialized === false) {
-      this.alertBox.showAlert('Fail to read or parse esconfig.json: ' +
-        esStatus.errMsg + '. Will retry every 5s ..', 'danger', true);
-      await sleep(10000);
-      esStatus = await this.es.init();
-    }
-
     this.elasticsearch = this.es.getServer();
     const esUser = this.es.getUser();
     const label = esUser ? this.elasticsearch + ' as ' + esUser : this.elasticsearch;
@@ -135,7 +127,7 @@ export class TablesComponent {
       return true;
     } catch (err) {
       this.alertBox.showAlert('Disconnected from ES ' + this.elasticsearch + ': ' + err, 'danger', true);
-      this.es.reset();
+      
      }
     return false;
   }
