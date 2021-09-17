@@ -19,18 +19,22 @@
 </ng-template>
 
 <ng-template #auth>
-    <div class="message">authorization failed, enter elasticsearch credential</div>
-    <div class="form">
-        <div class="form-item">
-            <label for="username">username</label>
-            <input type="text" id="username" [formControl]="username">
-        </div>
-        <div class="form-item">
-            <label for="password">password</label>
-            <input type="password" id="password" [formControl]="password">
-        </div>
-        <div class="form-item">
-            <button (click)="submit()">submit</button>
+    <div class="container">
+        <div class="center-container">
+            <div class="message">authorization failed, enter elasticsearch credential</div>
+            <form>
+                <div class="form-group">
+                    <label for="username">username</label>
+                    <input type="text" id="username" class="form-control" [formControl]="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">password</label>
+                    <input type="password" id="password" class="form-control" [formControl]="password">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary"(click)="submit()">submit</button>
+                </div>
+            </form>
         </div>
     </div>
 </ng-template>

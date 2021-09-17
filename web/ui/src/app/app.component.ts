@@ -23,7 +23,8 @@ import { AUTH_ERROR } from './errors';
 
 @Component({
   selector: 'app-dsiem-ui',
-  templateUrl: './app.component.html'
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
 })
 
 export class AppComponent implements OnInit {
