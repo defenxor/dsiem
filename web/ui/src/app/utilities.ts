@@ -43,9 +43,9 @@ export function isEmptyOrUndefined(v): boolean {
   if (v === '' || v === 0 || v === undefined) { return true; }
 }
 
-export function url2obj(url) {
-    const pattern = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
-    const matches = url.match(pattern);
+const urlPatternRe = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
+export function url2obj(url:string) {
+    const matches = url.match(urlPatternRe);
 
     return {
       protocol: matches[1],
@@ -56,3 +56,11 @@ export function url2obj(url) {
       port: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
     };
   }
+
+const majorVersionRe = new RegExp(/^\d+/);
+export function doctype(ver:string):string {
+  if (parseInt(majorVersionRe.exec(ver)[0], 10) >= 7) {
+    return '_doc';
+  }
+  return 'doc';
+}
