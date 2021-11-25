@@ -9,14 +9,346 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 )
 
-type testCommand struct {
-	nextBoolResponse bool
+func TestMerger(t *testing.T) {
+	for _, c := range []struct {
+		description    string
+		existing       siem.Directives
+		target         siem.Directives
+		expected       siem.Directives
+		promptAnswer   bool
+		promptExpected bool
+	}{
+		{
+			description: "two different directive set",
+			existing: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			target: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			expected: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+		},
+		{
+			description: "two directive set, with one exactly same directive",
+			existing: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       3,
+						Name:     "directive-3",
+						Priority: 3,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			target: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			expected: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       3,
+						Name:     "directive-3",
+						Priority: 3,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+		},
+		{
+			description:    "two directive set, with one conflicting directive, with merge",
+			promptExpected: true,
+			promptAnswer:   true,
+			existing: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       3,
+						Name:     "directive-3",
+						Priority: 3,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			target: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1-foo",
+						Priority: 1,
+						Kingdom:  "test-foo",
+						Category: "test-foo",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			expected: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1-foo",
+						Priority: 1,
+						Kingdom:  "test-foo",
+						Category: "test-foo",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       3,
+						Name:     "directive-3",
+						Priority: 3,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+		},
+		{
+			description:    "two directive set, with one conflicting directive, with not-merge",
+			promptExpected: true,
+			promptAnswer:   false,
+			existing: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       3,
+						Name:     "directive-3",
+						Priority: 3,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			target: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1-foo",
+						Priority: 1,
+						Kingdom:  "test-foo",
+						Category: "test-foo",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+			expected: siem.Directives{
+				Dirs: []siem.Directive{
+					{
+						ID:       1,
+						Name:     "directive-1",
+						Priority: 1,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       2,
+						Name:     "directive-2",
+						Priority: 2,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+					{
+						ID:       3,
+						Name:     "directive-3",
+						Priority: 3,
+						Kingdom:  "test",
+						Category: "test",
+						Rules:    []rule.DirectiveRule{},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(c.description, func(t *testing.T) {
+			cmd, reader, transport := &testCommand{}, &testFileReader{}, &testRoundTripper{}
+
+			b1, err := json.Marshal(c.existing)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+
+			transport.setNextGetResponse(http.StatusOK, b1, nil)
+
+			b2, err := json.Marshal(c.target)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+
+			reader.nextBytes = b2
+
+			if c.promptExpected {
+				cmd.nextBoolResponse = c.promptAnswer
+			}
+
+			cfg := MergeConfig{
+				Host:       "http://localhost:9200",
+				SourceJSON: "directive_test.json",
+				TargetJSON: "./new_directive_test.json",
+			}
+
+			err = Merge(cmd, cfg, WithCustomFileReader(reader), WithCustomTransport(transport))
+
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+
+			if c.promptExpected {
+				lastPrompt := cmd.lastPrompt
+				if lastPrompt == "" {
+					t.Errorf("expected some prompt from the command")
+				}
+			}
+
+			result := transport.PostResponse()
+
+			var dirs siem.Directives
+			if err := json.Unmarshal(result, &dirs); err != nil {
+				t.Fatalf("invalid response directives, %s", err.Error())
+			}
+
+			if err := directivesEqual(dirs, c.expected); err != nil {
+				t.Error(err.Error())
+			}
+		})
+	}
+
 }
 
-func (c *testCommand) PromptBool(string) bool {
+type testCommand struct {
+	nextBoolResponse bool
+	lastPrompt       string
+}
+
+func (c *testCommand) PromptBool(msg string) bool {
+	c.lastPrompt = msg
 	return c.nextBoolResponse
 }
 
@@ -96,59 +428,4 @@ func (t *testFileReader) Read(string) ([]byte, error) {
 	}
 
 	return t.nextBytes, nil
-}
-
-func TestMerger(t *testing.T) {
-	for _, c := range []struct {
-		description string
-		dir1        siem.Directives
-		dir2        siem.Directives
-		expected    siem.Directives
-	}{
-		// TODO: add test cases
-	} {
-		t.Run(c.description, func(t *testing.T) {
-			cmd, reader, transport := &testCommand{}, &testFileReader{}, &testRoundTripper{}
-
-			b1, err := json.Marshal(c.dir1)
-			if err != nil {
-				t.Fatal(err.Error())
-			}
-
-			transport.setNextGetResponse(http.StatusOK, b1, nil)
-
-			b2, err := json.Marshal(c.dir2)
-			if err != nil {
-				t.Fatal(err.Error())
-			}
-
-			reader.nextBytes = b2
-
-			cfg := MergeConfig{
-				// TODO: fill the config
-			}
-
-			err = Merge(cmd, cfg, WithCustomFileReader(reader), WithCustomTransport(transport))
-
-			if err != nil {
-				t.Fatal(err.Error())
-			}
-
-			result := transport.PostResponse()
-
-			var dirs siem.Directives
-			if err := json.Unmarshal(result, &dirs); err != nil {
-				t.Fatalf("invalid response directives, %s", err.Error())
-			}
-
-			if err := compareDirectives(dirs, c.expected); err != nil {
-				t.Error(err.Error())
-			}
-		})
-	}
-
-}
-
-func compareDirectives(dir1, dir2 siem.Directives) error {
-	panic("not implemented")
 }
