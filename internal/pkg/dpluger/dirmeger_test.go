@@ -309,9 +309,9 @@ func TestMerger(t *testing.T) {
 			}
 
 			cfg := MergeConfig{
-				Host:       "http://localhost:9200",
-				SourceJSON: "directive_test.json",
-				TargetJSON: "./new_directive_test.json",
+				Host:       "localhost:9200",
+				SourceJSON: "directive_test",
+				TargetJSON: "./new_directive_test",
 			}
 
 			err = Merge(cmd, cfg, WithCustomFileReader(reader), WithCustomTransport(transport))
@@ -347,7 +347,7 @@ type testCommand struct {
 	lastPrompt       string
 }
 
-func (c *testCommand) PromptBool(msg string) bool {
+func (c *testCommand) PromptBool(msg string, def bool) bool {
 	c.lastPrompt = msg
 	return c.nextBoolResponse
 }
