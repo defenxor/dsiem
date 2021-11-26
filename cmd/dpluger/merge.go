@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/defenxor/dsiem/internal/pkg/cmd"
 	"github.com/defenxor/dsiem/internal/pkg/dpluger"
@@ -13,12 +14,12 @@ var mergeCmd = &cobra.Command{
 	Short: "safely merge two directive files",
 	Long:  `Safely merge two directive files, and upload it to dsiem`,
 	Run: func(c *cobra.Command, args []string) {
-		host, err := c.Flags().GetString("frontend-host")
+		host, err := c.Flags().GetString("host")
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 
-		source, err := c.Flags().GetString("source-directive")
+		source, err := c.Flags().GetString("directive")
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -28,7 +29,7 @@ var mergeCmd = &cobra.Command{
 			log.Fatal(err.Error())
 		}
 
-		commander := cmd.NewCommand()
+		commander := cmd.NewCommand(os.Stdin, os.Stdout)
 		if err := dpluger.Merge(commander, dpluger.MergeConfig{
 			Host:       host,
 			SourceJSON: source,
@@ -41,11 +42,15 @@ var mergeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(mergeCmd)
-	mergeCmd.Flags().String("frontend-host", "http://frontend:8080", "dsiem frontend host address, default to http://frontend:8080")
-	mergeCmd.Flags().String("source-directive", "", "existing directive name to be merged with the new directive file, required.")
+	mergeCmd.Flags().String("host", "", "dsiem host address, required")
+	mergeCmd.Flags().String("directive", "", "existing directive name to be merged with the new directive file, required.")
 	mergeCmd.Flags().String("file", "", "path new directive file to be merged with the existing directive, required.")
 
-	if err := mergeCmd.MarkFlagRequired("source-directive"); err != nil {
+	if err := mergeCmd.MarkFlagRequired("host"); err != nil {
+		log.Fatal(err.Error())
+	}
+
+	if err := mergeCmd.MarkFlagRequired("directive"); err != nil {
 		log.Fatal(err.Error())
 	}
 
