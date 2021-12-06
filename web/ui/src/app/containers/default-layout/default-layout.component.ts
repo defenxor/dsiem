@@ -25,12 +25,12 @@ import { VERSION } from '../../../environments/version';
 })
 export class DefaultLayoutComponent {
   public navItems = navItems;
-  public sidebarMinimized = true;
-  private changes: MutationObserver;
   public element: HTMLElement = document.body;
+  public sidebarMinimized = true;
   public version = VERSION;
-  constructor() {
+  private changes: MutationObserver;
 
+  constructor() {
     this.changes = new MutationObserver((mutations) => {
       this.sidebarMinimized = document.body.classList.contains('sidebar-minimized');
     });

@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 
-export function sleep (ms) {
+export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -40,7 +40,9 @@ export async function parallelPromiseAllFlow(IDs: any[], func): Promise<any[]> {
 }
 
 export function isEmptyOrUndefined(v): boolean {
-  if (v === '' || v === 0 || v === undefined) { return true; }
+  if (v === '' || v === 0 || v === undefined) {
+ return true;
+}
 }
 
 export function url2obj(url) {

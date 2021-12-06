@@ -38,8 +38,8 @@ export class ElasticsearchService {
 
   queryAllDocsPaging(from, size) {
     return {
-      from: from,
-      size: size,
+      from,
+      size,
       query: {
         match_all: {}
       },
@@ -110,7 +110,7 @@ export class ElasticsearchService {
       query: {
         bool: {
           must: [
-            { term: { stage: stage } },
+            { term: { stage } },
             { term: { 'alarm_id.keyword': alarmId } }
           ]
         }
@@ -120,13 +120,13 @@ export class ElasticsearchService {
 
   buildQueryAlarmEventsPagination(alarmId, stage, from, size) {
     return {
-      from: from,
-      size: size,
+      from,
+      size,
       query: {
         bool: {
           must: [
             {
-              term: { stage: stage }
+              term: { stage }
             },
             {
               term: { 'alarm_id.keyword': alarmId }
@@ -139,7 +139,7 @@ export class ElasticsearchService {
 
   buildQueryAllAlarmEvents(alarmId, size) {
     return {
-      size: size,
+      size,
       query: {
         term: { 'alarm_id.keyword': alarmId }
       }
@@ -314,7 +314,7 @@ export class ElasticsearchService {
       id: _id,
       body: {
         doc: {
-          status: status
+          status
         }
       }
     });
@@ -327,7 +327,7 @@ export class ElasticsearchService {
       id: _id,
       body: {
         doc: {
-          tag: tag
+          tag
         }
       }
     });
@@ -446,8 +446,8 @@ export class ElasticsearchService {
   }
 
   async deleteAllAlarmEvents(alarmID: string) {
-    const arrDelete = [],
-      size = 4500;
+    const arrDelete = [];
+      const size = 4500;
     const res = await this.getAllAlarmEvents(
       this.esIndexAlarmEvent,
       alarmID,
