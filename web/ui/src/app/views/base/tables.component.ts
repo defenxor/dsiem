@@ -31,13 +31,13 @@ export class TablesComponent {
 
   @ViewChildren('pages') pages: QueryList<any>;
 
-  @ViewChild('confirmModalRemove', {static: false}) confirmModalRemove: ModalDirective;
+  @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
 
   @ViewChild('counter', {static: true}) counter: CountdownComponent;
 
-  @ViewChild(SearchboxComponent, {static: false}) private searchBox: SearchboxComponent;
+  @ViewChild(SearchboxComponent) private searchBox: SearchboxComponent;
 
-  @ViewChild(AlertboxComponent, {static: false}) private alertBox: AlertboxComponent;
+  @ViewChild(AlertboxComponent) private alertBox: AlertboxComponent;
 
   elasticsearch: string;
   tableData: object[] = [];

@@ -30,7 +30,7 @@ import { AlertboxComponent } from './alertbox.component';
 export class DetailalarmComponent implements OnInit, OnDestroy {
 
   @ViewChildren('pages') pages: QueryList<any>;
-  @ViewChild(AlertboxComponent, {static: false}) private alertBox: AlertboxComponent;
+  @ViewChild(AlertboxComponent) private alertBox: AlertboxComponent;
 
   sub: any;
   alarmID: string;
