@@ -1,6 +1,6 @@
 {
   "name": "dsiem-ui",
-  "version": "0.32.0-12-g2789a46",
+  "version": "0.32.0-14-g3e81e30",
   "description": "Dsiem Web UI",
   "author": {
     "name": "Defenxor",
@@ -24,16 +24,16 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^11.2.14",
-    "@angular/common": "^11.2.14",
-    "@angular/compiler": "^11.2.14",
-    "@angular/core": "^11.2.14",
-    "@angular/forms": "^11.2.14",
+    "@angular/animations": "^12.2.14",
+    "@angular/common": "^12.2.14",
+    "@angular/compiler": "^12.2.14",
+    "@angular/core": "^12.2.14",
+    "@angular/forms": "^12.2.14",
     "@angular/http": "^7.2.15",
-    "@angular/localize": "^11.2.14",
-    "@angular/platform-browser": "^11.2.14",
-    "@angular/platform-browser-dynamic": "^11.2.14",
-    "@angular/router": "^11.2.14",
+    "@angular/localize": "^12.2.14",
+    "@angular/platform-browser": "^12.2.14",
+    "@angular/platform-browser-dynamic": "^12.2.14",
+    "@angular/router": "^12.2.14",
     "@coreui/angular": "^2.7.0",
     "@coreui/coreui": "^2.1.16",
     "@coreui/icons": "0.3.0",
@@ -55,13 +55,13 @@
     "rxjs": "^6.5.2",
     "simple-line-icons": "^2.4.1",
     "tslib": "^2.0.0",
-    "zone.js": "~0.10.2"
+    "zone.js": "~0.11.4"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "~0.1102.15",
-    "@angular/cli": "^11.2.15",
-    "@angular/compiler-cli": "^11.2.14",
-    "@angular/language-service": "^11.2.14",
+    "@angular-devkit/build-angular": "~12.2.13",
+    "@angular/cli": "^12.2.13",
+    "@angular/compiler-cli": "^12.2.14",
+    "@angular/language-service": "^12.2.14",
     "@types/jasmine": "~3.6.0",
     "@types/jasminewd2": "^2.0.8",
     "@types/node": "^12.11.1",
@@ -83,7 +83,7 @@
     "ts-node": "^7.0.1",
     "ts-helpers": "^1.1.2",
     "tslint": "~6.1.0",
-    "typescript": "~4.0.8"
+    "typescript": "~4.3.5"
   },
   "engines": {
     "node": ">= 12.13.1",
