@@ -17,15 +17,13 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
-
-import { url2obj, doctype } from './utilities';
-import { AUTH_ERROR } from './errors';
+import { HttpClient } from '@angular/common/http';
+import { url2obj } from './utilities';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ElasticsearchService {
-  private client: Client;
   server: string;
   kibana: string;
   user: string;
@@ -35,24 +33,10 @@ export class ElasticsearchService {
   esIndexAlarmEvent = 'siem_alarm_events-*';
   esIndex = 'siem_alarms';
   esIndexEvent = 'siem_events-*';
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   readonly MAX_DOCS_RETURNED = 200;
-
-  queryAllDocsPaging(from, size) {
-    return {
-      from: from,
-      size: size,
-      query: {
-        match_all: {}
-      },
-      sort: { timestamp: 'desc' }
-    };
-  }
-
-  public async initClient(server: string, kibana: string): Promise<void> {
-    const escfg = {
-      host: server,
-      log: 'info'
-    };
+  private client: Client;
+  constructor(private http: HttpClient) {}
 
     this.client = new Client(escfg);
     this.setInfo(server, kibana);
@@ -89,12 +73,25 @@ export class ElasticsearchService {
     }
   }
 
+  queryAllDocsPaging(from, size) {
+    return {
+      from,
+      size,
+      query: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        match_all: {}
+      },
+      sort: { timestamp: 'desc' }
+    };
+  }
+
   buildQueryAlarmEvents(alarmId, stage) {
     return {
       query: {
         bool: {
           must: [
-            { term: { stage: stage } },
+            { term: { stage } },
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             { term: { 'alarm_id.keyword': alarmId } }
           ]
         }
@@ -104,15 +101,16 @@ export class ElasticsearchService {
 
   buildQueryAlarmEventsPagination(alarmId, stage, from, size) {
     return {
-      from: from,
-      size: size,
+      from,
+      size,
       query: {
         bool: {
           must: [
             {
-              term: { stage: stage }
+              term: { stage }
             },
             {
+              // eslint-disable-next-line @typescript-eslint/naming-convention
               term: { 'alarm_id.keyword': alarmId }
             }
           ]
@@ -123,8 +121,9 @@ export class ElasticsearchService {
 
   buildQueryAllAlarmEvents(alarmId, size) {
     return {
-      size: size,
+      size,
       query: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         term: { 'alarm_id.keyword': alarmId }
       }
     };
@@ -133,6 +132,7 @@ export class ElasticsearchService {
   buildQueryEvents(eventId) {
     return {
       query: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         term: { 'event_id.keyword': eventId }
       }
     };
@@ -142,6 +142,7 @@ export class ElasticsearchService {
     const k = keywords.join(',');
     return {
       query: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         terms: { 'event_id.keyword': keywords }
       },
       sort: { timestamp: 'desc' }
@@ -170,6 +171,7 @@ export class ElasticsearchService {
     return {
       size: 10000,
       query: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         term: { alarm_id: alarmId }
       }
     };
@@ -298,7 +300,7 @@ export class ElasticsearchService {
       id: _id,
       body: {
         doc: {
-          status: status
+          status
         }
       }
     });
@@ -311,7 +313,7 @@ export class ElasticsearchService {
       id: _id,
       body: {
         doc: {
-          tag: tag
+          tag
         }
       }
     });
@@ -343,9 +345,11 @@ export class ElasticsearchService {
           bool: {
             must: [
               {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 match_all: {}
               },
               {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 match_phrase: {
                   _id: {
                     query: _id
@@ -367,9 +371,11 @@ export class ElasticsearchService {
           bool: {
             must: [
               {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 match_all: {}
               },
               {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 match_phrase: {
                   _id: {
                     query: _id
@@ -391,9 +397,11 @@ export class ElasticsearchService {
           bool: {
             must: [
               {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 match_all: {}
               },
               {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 match_phrase: {
                   _id: {
                     query: _id
@@ -430,8 +438,8 @@ export class ElasticsearchService {
   }
 
   async deleteAllAlarmEvents(alarmID: string) {
-    const arrDelete = [],
-      size = 4500;
+    const arrDelete = [];
+      const size = 4500;
     const res = await this.getAllAlarmEvents(
       this.esIndexAlarmEvent,
       alarmID,

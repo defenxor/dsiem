@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 /* SystemJS module definition */
-declare var module: NodeModule;
+declare let module: NodeModule;
 interface NodeModule {
   id: string;
 }

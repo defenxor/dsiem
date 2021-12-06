@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*
 Copyright (c) 2019 PT Defender Nusa Semesta and contributors, All rights reserved.
 
@@ -31,16 +32,16 @@ export class TablesComponent {
 
   @ViewChildren('pages') pages: QueryList<any>;
 
-  @ViewChild('confirmModalRemove', {static: false}) confirmModalRemove: ModalDirective;
+  @ViewChild('confirmModalRemove') confirmModalRemove: ModalDirective;
 
   @ViewChild('counter', {static: true}) counter: CountdownComponent;
 
-  @ViewChild(SearchboxComponent, {static: false}) private searchBox: SearchboxComponent;
+  @ViewChild(SearchboxComponent) private searchBox: SearchboxComponent;
 
-  @ViewChild(AlertboxComponent, {static: false}) private alertBox: AlertboxComponent;
+  @ViewChild(AlertboxComponent) private alertBox: AlertboxComponent;
 
   elasticsearch: string;
-  tableData: object[] = [];
+  tableData: any[] = [];
   counterPreText = 'Turn-off auto-refresh (Refreshing in ';
   counterPostText = ' seconds)';
   counterPaused = false;
@@ -139,8 +140,8 @@ export class TablesComponent {
       } else {
         resp = await this.es.getAllDocumentsPaging(this.es.esIndex, 0, this.totalItems);
       }
-      let tempAlarms;
-      tempAlarms = resp.hits.hits;
+
+      const tempAlarms = resp.hits.hits;
       this.tableData = [];
       tempAlarms.forEach((a) => {
         const tempArr = {

@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
+
 import { Component, OnInit, ViewChildren, ViewChild, QueryList, OnDestroy } from '@angular/core';
 import { sleep, isEmptyOrUndefined } from '../../utilities';
 import { ActivatedRoute } from '@angular/router';
@@ -30,7 +31,7 @@ import { AlertboxComponent } from './alertbox.component';
 export class DetailalarmComponent implements OnInit, OnDestroy {
 
   @ViewChildren('pages') pages: QueryList<any>;
-  @ViewChild(AlertboxComponent, {static: false}) private alertBox: AlertboxComponent;
+  @ViewChild(AlertboxComponent) private alertBox: AlertboxComponent;
 
   sub: any;
   alarmID: string;
@@ -131,7 +132,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
     } finally {
       // this.spinner.hide();
     }
-    if (typeof tempAlarms === 'undefined') { return; }
+    if (typeof tempAlarms === 'undefined') {
+ return;
+}
     this.alarm = tempAlarms;
     this.alarm[0].id = this.alarmID;
     for (const element of tempAlarms) {
@@ -198,8 +201,12 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
   }
 
   openDropdown(key, param) {
-    if (key === 'alrm-tag-' && this.dsiemTags.length === 0) { return; }
-    if (key === 'alrm-status-' && this.dsiemStatuses.length === 0) { return; }
+    if (key === 'alrm-tag-' && this.dsiemTags.length === 0) {
+ return;
+}
+    if (key === 'alrm-status-' && this.dsiemStatuses.length === 0) {
+ return;
+}
     document.getElementById(key + param).style.display = 'block';
     document.getElementById('close-' + key + param).style.display = 'block';
   }
@@ -220,7 +227,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   async changeAlarmStatus(_id, status) {
     try {
-      if (this.alarm[0]._source.status === status) { return; }
+      if (this.alarm[0]._source.status === status) {
+ return;
+}
       this.progressLoading = true;
       const res = await this.es.updateAlarmStatusById(this.alarm[0]._source.perm_index, _id, status);
       if (res.result !== 'updated') {
@@ -245,7 +254,9 @@ export class DetailalarmComponent implements OnInit, OnDestroy {
 
   async changeAlarmTag(_id, tag) {
     try {
-      if (this.alarm[0]._source.tag === tag) { return; }
+      if (this.alarm[0]._source.tag === tag) {
+ return;
+}
       this.progressLoading = true;
       const res = await this.es.updateAlarmTagById(this.alarm[0]._source.perm_index, _id, tag);
       if (res.result !== 'updated') {

@@ -16,36 +16,32 @@ You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 
-export function sleep (ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+export const sleep =  (ms: number) =>  new Promise(resolve => setTimeout(resolve, ms));
 
-export function removeItemFromObjectArray(array: object[], field: string, id: string) {
-  const removeIndex = array
-    .map(item => item[field])
-    .indexOf(id);
-  if (removeIndex !== -1) {
-    array.splice(removeIndex, 1);
+export const removeItemFromObjectArray = (array: object[], field: string, id: string) => {
+  const idx = array.map(item => item[field]).indexOf(id);
+
+  if (idx !== -1) {
+    array.splice(idx, 1);
   }
-}
+};
 
-export async function parallelPromiseAllFlow(IDs: any[], func): Promise<any[]> {
-  const promises = IDs.map(id => func(id));
+export const parallelPromiseAllFlow = async (ids: any[], func: any): Promise<any[]> => {
+  const promises = ids.map(id => func(id));
   const results = await Promise.all(promises);
   const finalResult = [];
   for (const result of results) {
     finalResult.push(await result);
   }
+  
   return finalResult;
-}
+};
 
-export function isEmptyOrUndefined(v): boolean {
-  if (v === '' || v === 0 || v === undefined) { return true; }
-}
+export const isEmptyOrUndefined = (v: any): boolean => v === '' || v === 0 || v === undefined;
 
-const urlPatternRe = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
-export function url2obj(url: string) {
-    const matches = url.match(urlPatternRe);
+const urlRe = /^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+))?\S*$/;
+export const url2obj = (url: string) => {
+    const matches = url.match(urlRe);
 
     return {
       protocol: matches[1],
@@ -55,12 +51,15 @@ export function url2obj(url: string) {
       hostname: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[0] : undefined,
       port: matches[3] !== undefined ? matches[3].split(/:(?=\d+$)/)[1] : undefined
     };
-  }
+};
 
 const majorVersionRe = new RegExp(/^\d+/);
-export function doctype(ver: string): string {
+export const doctype = (ver: string): string => {
   if (parseInt(majorVersionRe.exec(ver)[0], 10) >= 7) {
     return '_doc';
   }
+  
   return 'doc';
-}
+};
+
+
