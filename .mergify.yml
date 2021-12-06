@@ -1,5 +1,5 @@
 queue_rules:
-  - name: maintainer
+  - name: default
     conditions:
       - status-success=build-test
   
@@ -27,7 +27,7 @@ pull_request_rules:
     actions:
       queue:
         method: squash
-        name: maintainer
+        name: default
 
   - name: automatic merge for maintainer 2
     conditions:
@@ -36,7 +36,7 @@ pull_request_rules:
     actions:
       queue:
         method: squash
-        name: maintainer
+        name: default
 
   - name: automatic merge for maintainer 3
     conditions:
@@ -54,7 +54,7 @@ pull_request_rules:
       queue:
         method: squash
         name: automatic
-        
+
   - name: delete head branch after merge
     conditions: []
     actions:
