@@ -30,6 +30,7 @@
     "@angular/core": "^9.1.13",
     "@angular/forms": "^9.1.13",
     "@angular/http": "^7.2.15",
+    "@angular/localize": "^9.1.13",
     "@angular/platform-browser": "^9.1.13",
     "@angular/platform-browser-dynamic": "^9.1.13",
     "@angular/router": "^9.1.13",
