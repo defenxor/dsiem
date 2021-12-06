@@ -33,7 +33,6 @@ export const parallelPromiseAllFlow = async (ids: any[], func: any): Promise<any
   for (const result of results) {
     finalResult.push(await result);
   }
-  
   return finalResult;
 };
 
@@ -54,12 +53,5 @@ export const url2obj = (url: string) => {
 };
 
 const majorVersionRe = new RegExp(/^\d+/);
-export const doctype = (ver: string): string => {
-  if (parseInt(majorVersionRe.exec(ver)[0], 10) >= 7) {
-    return '_doc';
-  }
-  
-  return 'doc';
-};
-
+export const doctype = (ver: string): string => parseInt(majorVersionRe.exec(ver)[0], 10) >= 7 ? '_doc' : 'doc';
 

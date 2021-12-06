@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*
 Copyright (c) 2019 PT Defender Nusa Semesta and contributors, All rights reserved.
 
@@ -51,15 +52,6 @@ export class AppComponent implements OnInit {
       .catch((err) => this.handleInitError(err));
   }
 
-  private handleInitError(err: any) {
-    if (err === AUTH_ERROR) {
-      this.init_status = this.status_init_auth_error;
-    } else {
-      this.init_status = this.status_init_fail;
-      this.init_error = err;
-    }
-  }
-
   public submit() {
     const username = this.username.value;
     const password = this.password.value;
@@ -67,6 +59,15 @@ export class AppComponent implements OnInit {
     this.dsiem.initWithCredentials(username, password)
     .then(() => this.init_status = this.status_init_success)
     .catch((err) => this.handleInitError(err));
+  }
+
+  private handleInitError(err: any) {
+    if (err === AUTH_ERROR) {
+      this.init_status = this.status_init_auth_error;
+    } else {
+      this.init_status = this.status_init_fail;
+      this.init_error = err;
+    }
   }
 }
 

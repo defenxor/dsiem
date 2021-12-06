@@ -17,8 +17,8 @@ along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
 import { Injectable } from '@angular/core';
 import { Client } from 'elasticsearch-browser';
-import { HttpClient } from '@angular/common/http';
-import { url2obj } from './utilities';
+import { url2obj, doctype } from './utilities';
+import { AUTH_ERROR } from './errors';
 
 @Injectable({
   providedIn: 'root'
@@ -36,7 +36,12 @@ export class ElasticsearchService {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   readonly MAX_DOCS_RETURNED = 200;
   private client: Client;
-  constructor(private http: HttpClient) {}
+
+  public async initClient(server: string, kibana: string): Promise<void> {
+    const escfg = {
+      host: server,
+      log: 'info'
+    };
 
     this.client = new Client(escfg);
     this.setInfo(server, kibana);
@@ -45,19 +50,6 @@ export class ElasticsearchService {
     } catch (err) {
       throw err;
     }
-  }
-
-  private setInfo(server: string, kibana: string) {
-    const {protocol, host, user} = url2obj(server);
-    this.server = `${protocol}://${host}`;
-    this.user = user;
-
-    this.kibana = kibana;
-  }
-
-  private is401Error(err: any) {
-    const {status, displayName} = err;
-    return (status && status === 401) && (displayName && displayName === 'AuthenticationException');
   }
 
   async getDocType(): Promise<string> {
@@ -468,5 +460,20 @@ export class ElasticsearchService {
     return await this.client.bulk({
       body: params
     });
+  }
+
+
+
+  private setInfo(server: string, kibana: string) {
+    const {protocol, host, user} = url2obj(server);
+    this.server = `${protocol}://${host}`;
+    this.user = user;
+
+    this.kibana = kibana;
+  }
+
+  private is401Error(err: any) {
+    const {status, displayName} = err;
+    return (status && status === 401) && (displayName && displayName === 'AuthenticationException');
   }
 }
