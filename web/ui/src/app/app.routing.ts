@@ -53,7 +53,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'data',
-        loadChildren: './views/base/base.module#BaseModule'
+        loadChildren: () => import('./views/base/base.module').then(m => m.BaseModule)
       },
     ]
   },
