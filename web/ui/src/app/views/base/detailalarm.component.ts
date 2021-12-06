@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Dsiem. If not, see <https:www.gnu.org/licenses/>.
 */
+
 import { Component, OnInit, ViewChildren, ViewChild, QueryList, OnDestroy } from '@angular/core';
 import { sleep, isEmptyOrUndefined } from '../../utilities';
 import { ActivatedRoute } from '@angular/router';
