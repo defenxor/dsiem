@@ -53,6 +53,7 @@
     "ngx-spinner": "^6.1.2",
     "rxjs": "^6.5.2",
     "simple-line-icons": "^2.4.1",
+    "tslib": "^1.14.1",
     "zone.js": "~0.9.1"
   },
   "devDependencies": {
