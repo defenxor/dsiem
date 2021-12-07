@@ -53,7 +53,9 @@ export class SearchboxComponent {
     this.resultIDs = term.replace(/\s+/g, '').split(',');
     this.resultIDs = removeDup(this.resultIDs);
     for (const id of this.resultIDs) {
-      if (id.length < this.alarmIDMinLength) { return false; }
+      if (id.length < this.alarmIDMinLength) {
+ return false;
+}
     }
     return this.resultIDs.length > 0;
   }

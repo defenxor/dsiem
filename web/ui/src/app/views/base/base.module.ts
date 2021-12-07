@@ -36,7 +36,7 @@ import { ModalModule } from 'ngx-bootstrap/modal';
 import { AlertModule } from 'ngx-bootstrap/alert';
 import { NgxSpinnerModule } from 'ngx-spinner';
 import { CountdownModule } from 'ngx-countdown';
-import { InputSearchModule } from 'ngx-input-search';
+import { NgxInputSearchModule } from 'ngx-input-search';
 @NgModule({
   imports: [
     CommonModule,
@@ -49,7 +49,7 @@ import { InputSearchModule } from 'ngx-input-search';
     AlertModule.forRoot(),
     NgxSpinnerModule,
     CountdownModule,
-    InputSearchModule
+    NgxInputSearchModule
   ],
   declarations: [
     TablesComponent,
