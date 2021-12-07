@@ -116,7 +116,7 @@ func Merge(cmd Commander, cfg MergeConfig, options ...MergeOptionFunc) error {
 
 	resultDir := mergeDirectives(cmd, dir, targetDir)
 
-	b, err = json.Marshal(resultDir)
+	b, err = json.MarshalIndent(resultDir, "", "  ")
 	if err != nil {
 		return fmt.Errorf("can not parse result JSON for '%s', %s", cfg.SourceJSON, err.Error())
 	}
@@ -140,7 +140,7 @@ func Merge(cmd Commander, cfg MergeConfig, options ...MergeOptionFunc) error {
 		return fmt.Errorf("can not apply merged directive, access denied")
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode <= 200 || res.StatusCode > 299 {
 		return fmt.Errorf("can not apply merged directive (%d)", res.StatusCode)
 	}
 
