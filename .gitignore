@@ -36,3 +36,5 @@ logs
 
 # include the demo app vscode
 !demo/frontend/web/.vscode/
+
+test_directives

@@ -211,9 +211,9 @@ var directiveCmd = &cobra.Command{
 }
 
 var splitterCmd = &cobra.Command{
-	Use: "split-directive",
+	Use:   "split-directive",
 	Short: "Split directive file",
-	Long: `Split large directive file into multiple files with certain suffix`,
+	Long:  `Split large directive file into multiple files with certain suffix`,
 	Run: func(cmd *cobra.Command, args []string) {
 		target := viper.GetString("targetFile")
 		suffix := viper.GetString("suffix")
@@ -227,9 +227,9 @@ var splitterCmd = &cobra.Command{
 		if count < 1 {
 			exit("count must be greater than 0", errors.New("wrong count"))
 		}
-		
-		if err:= dpluger.SplitDirective(target, suffix, count, delete); err != nil {
-			exit("Failed to split " + target + " file", err)
+
+		if err := dpluger.SplitDirective(target, suffix, count, delete); err != nil {
+			exit("Failed to split "+target+" file", err)
 		}
 
 		fmt.Println("File ", target, " has been splitted")
