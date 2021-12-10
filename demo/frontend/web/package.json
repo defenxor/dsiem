@@ -5,7 +5,7 @@
   "dependencies": {
     "@elastic/datemath": "^5.0.2",
     "@elastic/eui": "^14.10.0",
-    "mermaid": "^8.4.2",
+    "mermaid": "^8.11.0",
     "moment": "^2.24.0",
     "react": "^16.11.0",
     "react-dom": "^16.11.0",
