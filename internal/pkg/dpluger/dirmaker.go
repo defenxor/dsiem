@@ -17,6 +17,7 @@
 package dpluger
 
 import (
+	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +27,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
-	"github.com/dogenzaka/tsv"
 )
 
 type tsvEntries struct {
@@ -58,28 +58,35 @@ func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority, 
 func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate string, priority,
 	reliability, dirNumber int) (siem.Directives, error) {
 
-	t := tsvEntries{}
-	rec := pluginSIDRef{}
-	parser, err := tsv.NewParser(in, &rec)
-	if err != nil {
-		return dirs, err
-	}
+	entries := tsvEntries{}
+	reader := csv.NewReader(in)
+	reader.Comma = '\t'
+	reader.TrimLeadingSpace = true
+	reader.LazyQuotes = true
 
-	parser.Reader.LazyQuotes = true
-
+	first := true
 	for {
-		eof, err := parser.Next()
-		if err != nil {
-			return dirs, err
+		rec, err := reader.Read()
+		if err != io.EOF && first {
+			// skip the header
+			first = false
+			continue
 		}
-		if eof {
+
+		if err == io.EOF || len(rec) == 0 {
 			break
 		}
-		t.records = append(t.records, rec)
+
+		ref := &pluginSIDRef{}
+		if err := ref.fromStrings(kingdom, rec...); err != nil {
+			return dirs, err
+		}
+
+		entries.records = append(entries.records, *ref)
 	}
 
 	addedCount := 0
-	for _, v := range t.records {
+	for _, v := range entries.records {
 		if v.SIDTitle == "" || v.SID == 0 {
 			fmt.Println("Skipping an empty title or SID in TSV file")
 			continue
@@ -140,7 +147,7 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 		r3.Timeout = 21600
 
 		d.Priority = priority
-		d.Kingdom = kingdom
+		d.Kingdom = v.Kingdom
 		d.Category = v.Category
 		d.Rules = append(d.Rules, r1, r2, r3)
 
