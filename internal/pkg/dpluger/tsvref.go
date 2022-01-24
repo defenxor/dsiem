@@ -32,6 +32,7 @@ type pluginSIDRef struct {
 	SID      int    `tsv:"sid"`
 	SIDTitle string `tsv:"title"`
 	Category string `tsv:"category"`
+	Kingdom  string `tsv:"kingdom"`
 }
 
 type tsvRef struct {
