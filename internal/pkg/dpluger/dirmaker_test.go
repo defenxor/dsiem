@@ -52,3 +52,28 @@ suricata	9001	2009041	SQLNinja MSSQL Database User Rights Scan	Attempted Informa
 
 	_ = dirs
 }
+
+func TestOptionalKingdom(t *testing.T) {
+	log.Setup(true)
+	const (
+		kingdom       = "DEFAULT"
+		titleTemplate = "EVENT_TITLE (SRC_IP to DST_IP)"
+		priority      = 3
+		reliability   = 1
+		dirnumber     = 100000
+	)
+
+	in := strings.NewReader(`plugin	id	sid	title	category	kingdom
+suricata	9001	2011207	SaschArt SasCam Webcam Server ActiveX Control Head Method Buffer Overflow Attempt	Web Application Attack
+suricata	9001	2010943	SoftCab Sound Converter ActiveX SaveFormat File overwrite Attempt	Web Application Attack	TEST
+suricata	9001	2008791	Visagesoft eXPert PDF Viewer ActiveX Control Arbitrary File Overwrite	Web Application Attack`)
+
+	var dirs siem.Directives
+	var err error
+	dirs, err = createDirective(in, dirs, kingdom, titleTemplate, priority, reliability, dirnumber)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	_ = dirs
+}
