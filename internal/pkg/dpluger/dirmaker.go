@@ -17,8 +17,8 @@
 package dpluger
 
 import (
-	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,22 +34,41 @@ type tsvEntries struct {
 }
 
 // CreateDirective starts directive creation
-func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority,
-	reliability, dirNumber int) (err error) {
-
+func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority, reliability, dirNumber int) error {
 	f1, err := os.Open(tsvFile)
 	if err != nil {
 		return err
 	}
 	defer f1.Close()
 
+	// load existing directives first if any
+	dirs, _, err := siem.LoadDirectivesFromFile(filepath.Dir(outFile), filepath.Base(outFile), true)
+	if err != nil && err != siem.ErrNoDirectiveLoaded {
+		return err
+	}
+
+	dirs, err = createDirective(f1, dirs, kingdom, titleTemplate, priority, reliability, dirNumber)
+	if err != nil {
+		return err
+	}
+
+	return fs.OverwriteFileValueIndent(dirs, outFile)
+}
+
+func createDirective(f1 io.Reader, dirs siem.Directives, kingdom, titleTemplate string, priority,
+	reliability, dirNumber int) (siem.Directives, error) {
+
 	t := tsvEntries{}
 	rec := pluginSIDRef{}
-	parser, _ := tsv.NewParser(f1, &rec)
+	parser, err := tsv.NewParser(f1, &rec)
+	if err != nil {
+		return dirs, err
+	}
+
 	for {
 		eof, err := parser.Next()
 		if err != nil {
-			return err
+			return dirs, err
 		}
 		if eof {
 			break
@@ -57,15 +76,8 @@ func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority,
 		t.records = append(t.records, rec)
 	}
 
-	// load existing directives first if any
-	locDir := filepath.Dir(outFile)
-	locFile := filepath.Base(outFile)
-	dirs, _, _ := siem.LoadDirectivesFromFile(locDir, locFile, true)
-
 	addedCount := 0
-
 	for _, v := range t.records {
-
 		if v.SIDTitle == "" || v.SID == 0 {
 			fmt.Println("Skipping an empty title or SID in TSV file")
 			continue
@@ -141,15 +153,8 @@ func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority,
 		dirNumber = dirNumber + 1
 	}
 
-	b, err := json.MarshalIndent(dirs, "", "  ")
-	if err != nil {
-		return
-	}
-
 	fmt.Printf("Found %v new directives\n", addedCount)
-
-	err = fs.OverwriteFile(string(b), outFile)
-	return
+	return dirs, nil
 }
 
 func isDirectiveNameExist(ref siem.Directives, dir siem.Directive) bool {
