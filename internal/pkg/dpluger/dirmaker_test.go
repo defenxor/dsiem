@@ -64,9 +64,9 @@ func TestOptionalKingdom(t *testing.T) {
 	)
 
 	in := strings.NewReader(`plugin	id	sid	title	category	kingdom
-suricata	9001	2011207	SaschArt SasCam Webcam Server ActiveX Control Head Method Buffer Overflow Attempt	Web Application Attack
-suricata	9001	2010943	SoftCab Sound Converter ActiveX SaveFormat File overwrite Attempt	Web Application Attack	TEST
-suricata	9001	2008791	Visagesoft eXPert PDF Viewer ActiveX Control Arbitrary File Overwrite	Web Application Attack`)
+test	1337	1337001	Directive 1	Testing Directive
+test	1337	1337002	Directive 2 with Kingdom	Testing Directive 2	TEST
+test	1337	1337003	Directive 3	Testing Directive 3`)
 
 	var dirs siem.Directives
 	var err error
@@ -75,5 +75,115 @@ suricata	9001	2008791	Visagesoft eXPert PDF Viewer ActiveX Control Arbitrary Fil
 		t.Fatal(err.Error())
 	}
 
-	_ = dirs
+	if len(dirs.Dirs) != 3 {
+		t.Fatalf("expected 3 new directives, but got %d", len(dirs.Dirs))
+	}
+
+	dir := dirs.Dirs[0]
+	if dir.Name != "Directive 1 (SRC_IP to DST_IP)" {
+		t.Errorf("expected first directive name to be '%s' but got '%s'", "Directive 1 (SRC_IP to DST_IP)", dir.Name)
+	}
+
+	if dir.Category != "Testing Directive" {
+		t.Errorf("expected first directive name to be '%s' but got '%s'", "Testing Directive", dir.Category)
+	}
+
+	if dir.ID != 100000 {
+		t.Errorf("expected first directive ID to be %d but got %d", 100000, dir.ID)
+	}
+
+	for _, rule := range dir.Rules {
+		var foundSID bool
+		for _, id := range rule.PluginSID {
+			if id == 1337001 {
+				foundSID = true
+				break
+			}
+		}
+
+		if !foundSID {
+			t.Errorf("expected plugin rules to contain sid %d", 1337001)
+		}
+
+		if rule.PluginID != 1337 {
+			t.Errorf("expected rule plugin ID to be %d but got %d", 1337, rule.PluginID)
+		}
+	}
+
+	if dir.Kingdom != kingdom {
+		t.Errorf("expected first directive kingdom to be '%s' but got '%s'", kingdom, dir.Kingdom)
+	}
+
+	// check second rule
+	dir = dirs.Dirs[1]
+	if dir.Name != "Directive 2 with Kingdom (SRC_IP to DST_IP)" {
+		t.Errorf("expected second directive name to be '%s' but got '%s'", "Directive 2 with Kingdom (SRC_IP to DST_IP)", dir.Name)
+	}
+
+	if dir.Category != "Testing Directive 2" {
+		t.Errorf("expected second directive name to be '%s' but got '%s'", "Testing Directive 2", dir.Category)
+	}
+
+	if dir.ID != 100001 {
+		t.Errorf("expected second directive ID to be %d but got %d", 100001, dir.ID)
+	}
+
+	for _, rule := range dir.Rules {
+		var foundSID bool
+		for _, id := range rule.PluginSID {
+			if id == 1337002 {
+				foundSID = true
+				break
+			}
+		}
+
+		if !foundSID {
+			t.Errorf("expected plugin rules to contain sid %d", 1337001)
+		}
+
+		if rule.PluginID != 1337 {
+			t.Errorf("expected rule plugin ID to be %d but got %d", 1337, rule.PluginID)
+		}
+	}
+
+	if dir.Kingdom != "TEST" {
+		t.Errorf("expected second directive kingdom to be '%s' but got '%s'", "TEST", dir.Kingdom)
+	}
+
+	// check third directive
+	dir = dirs.Dirs[2]
+	if dir.Name != "Directive 3 (SRC_IP to DST_IP)" {
+		t.Errorf("expected third directive name to be '%s' but got '%s'", "Directive 3 (SRC_IP to DST_IP)", dir.Name)
+	}
+
+	if dir.Category != "Testing Directive 3" {
+		t.Errorf("expected third directive name to be '%s' but got '%s'", "Testing Directive 3", dir.Category)
+	}
+
+	if dir.ID != 100002 {
+		t.Errorf("expected third directive ID to be %d but got %d", 100000, dir.ID)
+	}
+
+	for _, rule := range dir.Rules {
+		var foundSID bool
+		for _, id := range rule.PluginSID {
+			if id == 1337003 {
+				foundSID = true
+				break
+			}
+		}
+
+		if !foundSID {
+			t.Errorf("expected plugin rules to contain sid %d", 1337003)
+		}
+
+		if rule.PluginID != 1337 {
+			t.Errorf("expected rule plugin ID to be %d but got %d", 1337, rule.PluginID)
+		}
+	}
+
+	if dir.Kingdom != kingdom {
+		t.Errorf("expected third directive kingdom to be '%s' but got '%s'", kingdom, dir.Kingdom)
+	}
+
 }
