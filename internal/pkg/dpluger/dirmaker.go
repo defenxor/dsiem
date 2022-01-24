@@ -55,15 +55,17 @@ func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority, 
 	return fs.OverwriteFileValueIndent(dirs, outFile)
 }
 
-func createDirective(f1 io.Reader, dirs siem.Directives, kingdom, titleTemplate string, priority,
+func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate string, priority,
 	reliability, dirNumber int) (siem.Directives, error) {
 
 	t := tsvEntries{}
 	rec := pluginSIDRef{}
-	parser, err := tsv.NewParser(f1, &rec)
+	parser, err := tsv.NewParser(in, &rec)
 	if err != nil {
 		return dirs, err
 	}
+
+	parser.Reader.LazyQuotes = true
 
 	for {
 		eof, err := parser.Next()
