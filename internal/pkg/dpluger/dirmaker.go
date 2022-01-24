@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
@@ -95,61 +96,68 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 		d := siem.Directive{}
 		d.Name = strings.ReplaceAll(titleTemplate, "EVENT_TITLE", v.SIDTitle)
 
-		if isDirectiveNameExist(dirs, d) {
-			fmt.Println("Skipping an existing directive " + d.Name)
+		if index, exist := isDirectiveNameExistIndex(dirs, d); exist {
+			fmt.Printf("merging plugin-sid list of an existing directive: %s\n", d.Name)
+			for i := range dirs.Dirs[index].Rules {
+				dirs.Dirs[index].Rules[i].PluginSID = mergeUniqueSort(dirs.Dirs[index].Rules[i].PluginSID, []int{v.SID})
+			}
 			continue
 		}
 
+		SIDList := []int{v.SID}
 		// fmt.Println("DEBUG:", v.Plugin, v.Title, v.ID, v.SID)
-		r1 := rule.DirectiveRule{}
-		r1.Name = v.SIDTitle
-		r1.Type = "PluginRule"
-		r1.Stage = 1
-		r1.PluginID = v.ID
-		r1.PluginSID = append(r1.PluginSID, v.SID)
-		r1.Occurrence = 1
-		r1.From = "ANY"
-		r1.To = "ANY"
-		r1.PortFrom = "ANY"
-		r1.PortTo = "ANY"
-		r1.Protocol = "ANY"
-		r1.Reliability = 1
-		r1.Timeout = 0
+		r1 := rule.DirectiveRule{
+			Name:        v.SIDTitle,
+			Type:        "PluginRule",
+			Stage:       1,
+			PluginID:    v.ID,
+			PluginSID:   SIDList,
+			Occurrence:  1,
+			From:        "ANY",
+			To:          "ANY",
+			PortFrom:    "ANY",
+			PortTo:      "ANY",
+			Protocol:    "ANY",
+			Reliability: 1,
+			Timeout:     0,
+		}
 
-		r2 := rule.DirectiveRule{}
-		r2.Name = v.SIDTitle
-		r2.Type = "PluginRule"
-		r2.Stage = 2
-		r2.PluginID = v.ID
-		r2.PluginSID = append(r2.PluginSID, v.SID)
-		r2.Occurrence = 10
-		r2.From = ":1"
-		r2.To = ":1"
-		r2.PortFrom = "ANY"
-		r2.PortTo = "ANY"
-		r2.Protocol = "ANY"
-		r2.Reliability = 5
-		r2.Timeout = 3600
+		r2 := rule.DirectiveRule{
+			Name:        v.SIDTitle,
+			Type:        "PluginRule",
+			Stage:       2,
+			PluginID:    v.ID,
+			PluginSID:   SIDList,
+			Occurrence:  10,
+			From:        ":1",
+			To:          ":1",
+			PortFrom:    "ANY",
+			PortTo:      "ANY",
+			Protocol:    "ANY",
+			Reliability: 5,
+			Timeout:     3600,
+		}
 
-		r3 := rule.DirectiveRule{}
-		r3.Name = v.SIDTitle
-		r3.Type = "PluginRule"
-		r3.Stage = 3
-		r3.PluginID = v.ID
-		r3.PluginSID = append(r3.PluginSID, v.SID)
-		r3.Occurrence = 10000
-		r3.From = ":1"
-		r3.To = ":1"
-		r3.PortFrom = "ANY"
-		r3.PortTo = "ANY"
-		r3.Protocol = "ANY"
-		r3.Reliability = 10
-		r3.Timeout = 21600
+		r3 := rule.DirectiveRule{
+			Name:        v.SIDTitle,
+			Type:        "PluginRule",
+			Stage:       3,
+			PluginID:    v.ID,
+			PluginSID:   SIDList,
+			Occurrence:  10000,
+			From:        ":1",
+			To:          ":1",
+			PortFrom:    "ANY",
+			PortTo:      "ANY",
+			Protocol:    "ANY",
+			Reliability: 10,
+			Timeout:     21600,
+		}
 
 		d.Priority = priority
 		d.Kingdom = v.Kingdom
 		d.Category = v.Category
-		d.Rules = append(d.Rules, r1, r2, r3)
+		d.Rules = []rule.DirectiveRule{r1, r2, r3}
 
 		d.ID = dirNumber
 		for isDirectiveNumberExist(dirs, d) {
@@ -166,13 +174,13 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 	return dirs, nil
 }
 
-func isDirectiveNameExist(ref siem.Directives, dir siem.Directive) bool {
-	for _, v := range ref.Dirs {
+func isDirectiveNameExistIndex(ref siem.Directives, dir siem.Directive) (int, bool) {
+	for idx, v := range ref.Dirs {
 		if v.Name == dir.Name {
-			return true
+			return idx, true
 		}
 	}
-	return false
+	return 0, false
 }
 
 func isDirectiveNumberExist(ref siem.Directives, dir siem.Directive) bool {
@@ -183,3 +191,39 @@ func isDirectiveNumberExist(ref siem.Directives, dir siem.Directive) bool {
 	}
 	return false
 }
+
+// TODO: (rkspx) move to util file for reuse
+// mergeUniqueSort merge the two slice of int, returning sorted unique slice of int
+func mergeUniqueSort(s1, s2 []int) []int {
+	m := map[int]bool{}
+	for _, z := range s2 {
+		if _, ok := m[z]; ok {
+			continue
+		} else {
+			m[z] = true
+		}
+	}
+
+	for _, s := range s1 {
+		if _, ok := m[s]; ok {
+			continue
+		} else {
+			m[s] = true
+		}
+	}
+
+	res := make([]int, 0, len(m))
+	for k := range m {
+		res = append(res, k)
+	}
+
+	sort.Sort(intlist(res))
+
+	return res
+}
+
+type intlist []int
+
+func (s intlist) Len() int           { return len(s) }
+func (s intlist) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s intlist) Less(i, j int) bool { return s[i] < s[j] }
