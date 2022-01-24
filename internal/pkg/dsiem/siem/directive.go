@@ -19,6 +19,7 @@ package siem
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -140,6 +141,10 @@ func isWhitelisted(ip string) (ret bool) {
 	return
 }
 
+var (
+	ErrNoDirectiveLoaded = errors.New("no directive loaded from the file")
+)
+
 // LoadDirectivesFromFile load directive from namePattern (glob) files in confDir
 func LoadDirectivesFromFile(confDir string, namePattern string, includeDisabled bool) (res Directives, totalFromFile int, err error) {
 	p := path.Join(confDir, namePattern)
@@ -170,17 +175,16 @@ func LoadDirectivesFromFile(confDir string, namePattern string, includeDisabled 
 			}
 			err = ValidateDirective(&d.Dirs[j], &res)
 			if err != nil {
-				log.Warn(log.M{Msg: "Skipping directive ID " +
-					strconv.Itoa(d.Dirs[j].ID) +
-					" '" + d.Dirs[j].Name + "' due to error: " + err.Error()})
+				log.Warn(log.M{Msg: fmt.Sprintf("Skipping directive ID %d '%s' due to error: %s", d.Dirs[j].ID, d.Dirs[j].Name, err.Error())})
 				continue
 			}
 			res.Dirs = append(res.Dirs, d.Dirs[j])
 		}
 	}
 	if len(res.Dirs) == 0 {
-		return res, 0, errors.New("Cannot load any directive from " + path.Join(confDir, namePattern))
+		return res, 0, ErrNoDirectiveLoaded
 	}
+
 	return
 }
 
