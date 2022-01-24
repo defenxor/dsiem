@@ -1,6 +1,7 @@
 package dpluger
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -186,4 +187,87 @@ test	1337	1337003	Directive 3	Testing Directive 3`)
 		t.Errorf("expected third directive kingdom to be '%s' but got '%s'", kingdom, dir.Kingdom)
 	}
 
+}
+
+func TestDuplicatePluginTitle(t *testing.T) {
+	log.Setup(true)
+	const (
+		kingdom       = "DEFAULT"
+		titleTemplate = "EVENT_TITLE (SRC_IP to DST_IP)"
+		priority      = 3
+		reliability   = 1
+		dirnumber     = 100000
+	)
+
+	in := strings.NewReader(`plugin	id	sid	title	category
+test-x	1337	1337001	Test Plugin	Test Category
+test-x	1337	1337002	Test Plugin	Test Category
+test-x	1337	1337003	Test Plugin X	Test Category X`)
+
+	var dirs siem.Directives
+	var err error
+	dirs, err = createDirective(in, dirs, kingdom, titleTemplate, priority, reliability, dirnumber)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if len(dirs.Dirs) != 2 {
+		t.Fatalf("expected 2 directive created, but got %d", len(dirs.Dirs))
+	}
+
+	dir := dirs.Dirs[0]
+	if dir.Name != "Test Plugin (SRC_IP to DST_IP)" {
+		t.Errorf("expected directive name to be 'Test Plugin (SRC_IP to DST_IP)' but got '%s'", dir.Name)
+	}
+
+	for _, rule := range dir.Rules {
+		var found1, found2 bool
+		for _, id := range rule.PluginSID {
+			if id == 1337001 {
+				found1 = true
+			}
+
+			if id == 1337002 {
+				found2 = true
+			}
+		}
+
+		if !found1 {
+			t.Error("expected plugin sid 1337001 to be found in rule plugin sid list")
+		}
+
+		if !found2 {
+			t.Error("expected plugin sid 1337002 to be found in rule plugin sid list")
+		}
+	}
+
+	dir = dirs.Dirs[1]
+	if dir.Name != "Test Plugin X (SRC_IP to DST_IP)" {
+		t.Errorf("expected directive name to be 'Test Plugin X (SRC_IP to DST_IP)' but got '%s'", dir.Name)
+	}
+
+	for _, rule := range dir.Rules {
+		var found1 bool
+		for _, id := range rule.PluginSID {
+			if id == 1337003 {
+				found1 = true
+			}
+		}
+
+		if !found1 {
+			t.Error("expected plugin sid 1337001 to be found in rule plugin sid list")
+		}
+	}
+}
+
+func TestMergeUnique(t *testing.T) {
+	s1 := []int{1, 2, 3}
+	s2 := []int{2, 3, 4}
+
+	s3 := mergeUniqueSort(s1, s2)
+	expected := []int{1, 2, 3, 4}
+
+	if !reflect.DeepEqual(s3, expected) {
+		t.Errorf("expected result to equal the expected, got %#v", s3)
+	}
 }
