@@ -173,6 +173,10 @@ func Start(cfg Config) (err error) {
 	cmu.Lock()
 	fServer.Handler = router.Handler
 	fServer.Name = "dsiem"
+
+	// fasthttp default is 4MB, change to 100MB since directive file can be larger than 50MB
+	fServer.MaxRequestBodySize = 100 * 1024 * 1024
+
 	cmu.Unlock()
 
 	go func() {
