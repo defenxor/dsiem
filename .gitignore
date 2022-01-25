@@ -14,6 +14,7 @@
 node_modules/
 # alienvault rules
 *.tsv
+!*plugin-sid-test.tsv
 user.xml
 user.xml.tmp
 
@@ -38,3 +39,6 @@ logs
 !demo/frontend/web/.vscode/
 
 test_directives
+dev_*
+
+.DS_STORE
