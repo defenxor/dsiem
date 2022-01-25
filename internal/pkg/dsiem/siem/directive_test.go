@@ -19,7 +19,6 @@ package siem
 import (
 	"fmt"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
@@ -46,8 +45,8 @@ func TestInitDirective(t *testing.T) {
 		t.Fatal("expected error")
 	}
 
-	if !strings.Contains(err.Error(), "Cannot load any directive from") || err != ErrNoDirectiveLoaded {
-		t.Fatalf("expected error telling no directive loaded, but got '%s'", err.Error())
+	if err != ErrNoDirectiveLoaded {
+		t.Fatalf("expected error to be '%s' but got '%s'", ErrNoDirectiveLoaded.Error(), err.Error())
 	}
 
 	err = InitDirectives(path.Join(fDir, "directive1"), evtChan, 0, 1000, 0)
