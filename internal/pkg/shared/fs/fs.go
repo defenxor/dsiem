@@ -17,6 +17,8 @@
 package fs
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"strings"
 
@@ -60,8 +62,43 @@ func OverwriteFile(s string, filename string) error {
 		return err
 	}
 	defer f.Close()
-	_, err = f.WriteString(s + "\n")
+	return Write(s, f)
+}
+
+func Write(s string, w io.StringWriter) error {
+	_, err := w.WriteString(s + "\n")
 	return err
+}
+
+// OverwriteFileBytes truncate filename and write b []bytes into it
+func OverwriteFileBytes(b []byte, filename string) error {
+	f, err := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return WriteBytes(b, f)
+}
+
+func WriteBytes(b []byte, w io.Writer) error {
+	_, err := w.Write(b)
+	return err
+}
+
+// OverwriteFileValueIndent marshall v into indented json, then truncate the file filename and write the marshalled bytes into it
+func OverwriteFileValueIndent(v interface{}, filename string) error {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+	return WriteBytes(b, f)
 }
 
 // EnsureDir creates directory if it doesnt exist

@@ -1,3 +1,25 @@
+queue_rules:
+  - name: default
+    conditions:
+      - status-success=build-test
+  - name: maintainer-1
+    conditions:
+        - status-success=build-test
+  - name: maintainer-2
+    conditions:
+        - status-success=build-test
+  - name: maintainer-3
+    conditions:
+        - status-success=build=test
+  
+  - name: automatic
+    conditions:
+      - status-success=build-test
+      - "#approved-reviews-by>=1"
+      - "#review-requested=0"
+      - "#changes-requested-reviews-by=0"
+      - "#commented-reviews-by=0"
+    
 pull_request_rules:
   - name: remove outdated reviews
     conditions:
@@ -6,36 +28,42 @@ pull_request_rules:
       dismiss_reviews:
         approved: true
         changes_requested: true
+
   - name: automatic merge for maintainer 1
     conditions:
       - author=mmta
-      - status-success=build-test
       - base=master
     actions:
-      merge:
+      queue:
         method: squash
-        strict: smart
+        name: maintainer-1
+
   - name: automatic merge for maintainer 2
     conditions:
       - author=Cempakers87
-      - status-success=build-test
       - base=master
     actions:
-      merge:
+      queue:
         method: squash
-        strict: smart
+        name: maintainer-2
+
+  - name: automatic merge for maintainer 3
+    conditions:
+      - author=rkspx
+      - base=master
+    actions:
+      queue:
+        method: squash
+        name: maintainer-3
+
   - name: automatic merge on CI success and review
     conditions:
-      - status-success=build-test
-      - "#approved-reviews-by>=1"
-      - "#review-requested=0"
-      - "#changes-requested-reviews-by=0"
-      - "#commented-reviews-by=0"
       - base=master
     actions:
-      merge:
+      queue:
         method: squash
-        strict: smart
+        name: automatic
+
   - name: delete head branch after merge
     conditions: []
     actions:

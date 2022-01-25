@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
@@ -58,7 +59,13 @@ func handler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	clientAddr := r.RemoteAddr
 	qv := r.URL.Query()
 	ip := qv.Get("ip")
+	ip = strings.Replace(ip, "\n", "", -1)
+	ip = strings.Replace(ip, "\r", "", -1)
+
 	port := qv.Get("port")
+	port = strings.Replace(port, "\n", "", -1)
+	port = strings.Replace(port, "\r", "", -1)
+
 	if ip == "" || port == "" {
 		http.Error(w, "requires ip and port parameter", 400)
 		log.Info(log.M{Msg: "returning 400-1"})

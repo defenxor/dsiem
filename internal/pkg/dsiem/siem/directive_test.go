@@ -19,7 +19,6 @@ package siem
 import (
 	"fmt"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
@@ -41,9 +40,15 @@ func TestInitDirective(t *testing.T) {
 	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
 	evtChan := make(chan event.NormalizedEvent)
 	err := InitDirectives(path.Join(fDir, "directive2"), evtChan, 0, 1000, 0)
-	if err == nil || !strings.Contains(err.Error(), "Cannot load any directive from") {
-		t.Fatal(err)
+
+	if err == nil {
+		t.Fatal("expected error")
 	}
+
+	if err != ErrNoDirectiveLoaded {
+		t.Fatalf("expected error to be '%s' but got '%s'", ErrNoDirectiveLoaded.Error(), err.Error())
+	}
+
 	err = InitDirectives(path.Join(fDir, "directive1"), evtChan, 0, 1000, 0)
 	if err != nil {
 		t.Fatal(err)
