@@ -18,6 +18,7 @@ package dpluger
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"sort"
@@ -58,13 +59,27 @@ func (ref *pluginSIDRef) fromStrings(defaultKingdom string, in ...string) error 
 		return fmt.Errorf("invalid plugin id, %s", err.Error())
 	}
 
-	ref.ID = int(num)
+	if num > 0 && num < math.MaxInt {
+		ref.ID = int(num)
+	} else if num < 0 {
+		return fmt.Errorf("plugin ID must be bigger than 0, got %d", num)
+	} else if num > math.MaxInt {
+		return fmt.Errorf("plugin ID must be less than %d, got %d", math.MaxInt, num)
+	}
+
 	num, err = strconv.ParseInt(in[2], 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid plugin sid, %s", err.Error())
 	}
 
-	ref.SID = int(num)
+	if num > 0 && num < math.MaxInt {
+		ref.SID = int(num)
+	} else if num < 0 {
+		return fmt.Errorf("plugin ID must be bigger than 0, got %d", num)
+	} else if num > math.MaxInt {
+		return fmt.Errorf("plugin ID must be less than %d, got %d", math.MaxInt, num)
+	}
+
 	return nil
 }
 
