@@ -52,35 +52,35 @@ func (ref *pluginSIDRef) fromStrings(defaultKingdom string, in ...string) error 
 		ref.Kingdom = defaultKingdom
 	}
 
-	var num int64
 	var err error
-	num, err = strconv.ParseInt(in[1], 10, 64)
+	ref.ID, err = parseInt(in[1])
 	if err != nil {
-		return fmt.Errorf("invalid plugin id, %s", err.Error())
+		return fmt.Errorf("can not parse plugin ID, %s", err.Error())
 	}
 
-	if num > 0 && num < math.MaxInt {
-		ref.ID = int(num)
-	} else if num < 0 {
-		return fmt.Errorf("plugin ID must be bigger than 0, got %d", num)
-	} else if num > math.MaxInt {
-		return fmt.Errorf("plugin ID must be less than %d, got %d", math.MaxInt, num)
-	}
-
-	num, err = strconv.ParseInt(in[2], 10, 64)
+	ref.SID, err = parseInt(in[2])
 	if err != nil {
-		return fmt.Errorf("invalid plugin sid, %s", err.Error())
-	}
-
-	if num > 0 && num < math.MaxInt {
-		ref.SID = int(num)
-	} else if num < 0 {
-		return fmt.Errorf("plugin ID must be bigger than 0, got %d", num)
-	} else if num > math.MaxInt {
-		return fmt.Errorf("plugin ID must be less than %d, got %d", math.MaxInt, num)
+		return fmt.Errorf("can not parse plugin SID, %s", err.Error())
 	}
 
 	return nil
+}
+
+func parseInt(in string) (int, error) {
+	w, err := strconv.ParseInt(in, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	if w > math.MaxInt {
+		return 0, fmt.Errorf("input can not be larger than %d", math.MaxInt)
+	}
+
+	if w < 0 {
+		return 0, fmt.Errorf("input must be greater than 0")
+	}
+
+	return int(w), nil
 }
 
 type tsvRef struct {
