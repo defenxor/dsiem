@@ -16,8 +16,9 @@ package server
 // We wrap to hold onto optional items for /connz.
 type closedClient struct {
 	ConnInfo
-	subs []string
+	subs []SubDetail
 	user string
+	acc  string
 }
 
 // Fixed sized ringbuffer for closed connections.

@@ -346,6 +346,52 @@ func TestRule(t *testing.T) {
 	e1.CustomData3 = "custom"
 	rs12.StickyDiff = "CUSTOM_DATA3"
 
+	rAny1 := r1
+	rAny1.CustomData1 = "ANY"
+
+	rAny2 := rAny1
+	rAny2.CustomData1 = ""
+
+	rAny3 := rAny1
+	rAny3.CustomData1 = "quas"
+
+	rAny4 := rAny1
+	rAny4.CustomData1 = "foo"
+
+	rAny5 := r1
+	rAny5.CustomData2 = "ANY"
+
+	rAny6 := rAny5
+	rAny6.CustomData2 = ""
+
+	rAny7 := rAny5
+	rAny7.CustomData2 = "quas"
+
+	rAny8 := rAny5
+	rAny8.CustomData2 = "bar"
+
+	rAny9 := r1
+	rAny9.CustomData3 = "ANY"
+
+	rAny10 := rAny9
+	rAny10.CustomData3 = ""
+
+	rAny11 := rAny9
+	rAny11.CustomData3 = "quas"
+
+	rAny12 := rAny9
+	rAny12.CustomData3 = "qux"
+
+	eAny1 := e1
+	eAny1.CustomData1 = "foo"
+	eAny1.CustomData2 = "bar"
+	eAny1.CustomData3 = "qux"
+
+	eAny2 := eAny1
+	eAny2.CustomData1 = ""
+	eAny2.CustomData2 = ""
+	eAny2.CustomData3 = ""
+
 	var tbl = []ruleTests{
 		{1, e1, r1, s1, true}, {2, e1, r2, s1, true}, {3, e1, r3, s1, false}, {4, e1, r4, s1, false},
 		{5, e1, r5, s1, false}, {6, e1, r6, s1, false}, {7, e1, r7, s1, true}, {8, e1, r8, s1, false},
@@ -368,12 +414,38 @@ func TestRule(t *testing.T) {
 		{106, e1, rs6, nil, true}, {107, e1, rs7, nil, true},
 		{108, e1, rs8, s3, true}, {109, e1, rs9, s3, true},
 		{110, e1, rs10, s4, true}, {111, e1, rs11, s4, true}, {112, e1, rs12, s4, false},
+
+		{113, eAny1, rAny1, nil, true},
+		{114, eAny1, rAny2, nil, true},
+		{115, eAny1, rAny3, nil, false},
+		{116, eAny1, rAny4, nil, true},
+		{117, eAny1, rAny5, nil, true},
+		{118, eAny1, rAny6, nil, true},
+		{119, eAny1, rAny7, nil, false},
+		{120, eAny1, rAny8, nil, true},
+		{121, eAny1, rAny9, nil, true},
+		{122, eAny1, rAny10, nil, true},
+		{123, eAny1, rAny11, nil, false},
+		{124, eAny1, rAny12, nil, true},
+
+		{125, eAny2, rAny1, nil, true},
+		{126, eAny2, rAny2, nil, true},
+		{127, eAny2, rAny3, nil, false},
+		{128, eAny2, rAny4, nil, false},
+		{129, eAny2, rAny5, nil, true},
+		{130, eAny2, rAny6, nil, true},
+		{131, eAny2, rAny7, nil, false},
+		{132, eAny2, rAny8, nil, false},
+		{133, eAny2, rAny9, nil, true},
+		{134, eAny2, rAny10, nil, true},
+		{135, eAny2, rAny11, nil, false},
+		{136, eAny2, rAny12, nil, false},
 	}
 
 	for _, tt := range tbl {
 		actual := DoesEventMatch(tt.e, tt.r, tt.s, 0)
 		if actual != tt.expected {
-			t.Fatalf("Rule %d actual %t != expected %t. Event: %v, Rule: %v, Sticky: %v",
+			t.Fatalf("Rule %d actual %t != expected %t. Event: %#v, Rule: %#v, Sticky: %#v",
 				tt.n, actual, tt.expected, tt.e, tt.r, tt.s)
 		}
 	}

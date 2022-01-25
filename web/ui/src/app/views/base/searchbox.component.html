@@ -1,6 +1,6 @@
 <div>
   <input id="search-box" type="text" class="form-control mt-1 mb-3 mx-auto"
     [ngClass]="{ 'is-invalid': !validInput && !isEmpty }"
-    (ngxInputSearch)="termReady($event);" debounceTime="600" [stringLength]="9" (emptyInput)="termEmpty()"
+    (ngxInputSearch)="termReady($event);" [debounceTime]="600" [stringLength]="9" (emptyInput)="termEmpty()"
     (stringTooShort)="validInput = false; isEmpty = false" placeholder="Alarm IDs (comma separated)" aria-label="alarm IDs">
 </div>

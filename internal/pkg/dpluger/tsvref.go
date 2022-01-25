@@ -17,6 +17,7 @@
 package dpluger
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"sort"
@@ -32,6 +33,36 @@ type pluginSIDRef struct {
 	SID      int    `tsv:"sid"`
 	SIDTitle string `tsv:"title"`
 	Category string `tsv:"category"`
+	Kingdom  string `tsv:"kingdom"`
+}
+
+func (ref *pluginSIDRef) fromStrings(defaultKingdom string, in ...string) error {
+	if len(in) != 5 && len(in) != 6 {
+		return fmt.Errorf("expected 5-6 inputs, but got %d", len(in))
+	}
+
+	ref.Name = in[0]
+	ref.SIDTitle = in[3]
+	ref.Category = in[4]
+
+	if len(in) == 6 {
+		ref.Kingdom = in[5]
+	} else {
+		ref.Kingdom = defaultKingdom
+	}
+
+	var err error
+	ref.ID, err = strconv.Atoi(in[1])
+	if err != nil {
+		return fmt.Errorf("can not parse plugin ID, %s", err.Error())
+	}
+
+	ref.SID, err = strconv.Atoi(in[2])
+	if err != nil {
+		return fmt.Errorf("can not parse plugin SID, %s", err.Error())
+	}
+
+	return nil
 }
 
 type tsvRef struct {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*
 Copyright (c) 2019 PT Defender Nusa Semesta and contributors, All rights reserved.
 

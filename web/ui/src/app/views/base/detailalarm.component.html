@@ -31,7 +31,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let row of alarm" [style.height]="wide == true ? '260px' : 'auto'">
+                  <tr *ngFor="let row of alarm" [style.height]="wide === true ? '260px' : 'auto'">
                     <td>
                       <label style="cursor: pointer" (click)="openDropdown('alrm-id-', row.id)"
                       tooltip="Click to search {{alarmID}} in Kibana">{{row.id}}</label>
@@ -172,7 +172,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let rule of alarmRules; let i = index" [style.height]="wideAlarmEv[i] == true ? '230px' : 'auto'">
+                  <tr *ngFor="let rule of alarmRules; let i = index" [style.height]="wideAlarmEv[i] === true ? '230px' : 'auto'">
                     <td>
                       <a  *ngIf="rule.events_count > 0" tooltip="Click to see events" style="cursor:pointer" (click)="getEventsDetail(alarmID, rule.stage, null, null, rule.events_count)">
                         <i class="fa fa-eye" ></i>
@@ -327,7 +327,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let event of events; let i=index" [style.height]="wideEv[i] == true ? '230px' : 'auto'">
+                  <tr *ngFor="let event of events; let i=index" [style.height]="wideEv[i] === true ? '230px' : 'auto'">
                     <td>
                       <label style="cursor: pointer" (click)="openDropdown('event-id-', event.event_id)"
                         tooltip="Click to search eventID {{event.event_id}} in Kibana">{{event.event_id}}</label>
