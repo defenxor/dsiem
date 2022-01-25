@@ -18,7 +18,6 @@ package dpluger
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path"
 	"sort"
@@ -53,34 +52,17 @@ func (ref *pluginSIDRef) fromStrings(defaultKingdom string, in ...string) error 
 	}
 
 	var err error
-	ref.ID, err = parseInt(in[1])
+	ref.ID, err = strconv.Atoi(in[1])
 	if err != nil {
 		return fmt.Errorf("can not parse plugin ID, %s", err.Error())
 	}
 
-	ref.SID, err = parseInt(in[2])
+	ref.SID, err = strconv.Atoi(in[2])
 	if err != nil {
 		return fmt.Errorf("can not parse plugin SID, %s", err.Error())
 	}
 
 	return nil
-}
-
-func parseInt(in string) (int, error) {
-	w, err := strconv.ParseInt(in, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-
-	if w > math.MaxInt {
-		return 0, fmt.Errorf("input can not be larger than %d", math.MaxInt)
-	}
-
-	if w < 0 {
-		return 0, fmt.Errorf("input must be greater than 0")
-	}
-
-	return int(w), nil
 }
 
 type tsvRef struct {
