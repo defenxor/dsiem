@@ -26,7 +26,14 @@ func TestCreateDirective(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	// TODO: load the created directive here and validate.
+	dirs, _, err := siem.LoadDirectivesFromFile("testdata", "dev_out-*.json", false)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if len(dirs.Dirs) != 3 {
+		t.Fatalf("expected 3 directives, but got '%d'", len(dirs.Dirs))
+	}
 }
 
 func TestDirectiveDoubleQuoteTitle(t *testing.T) {
@@ -51,7 +58,9 @@ suricata	9001	2009041	SQLNinja MSSQL Database User Rights Scan	Attempted Informa
 		t.Fatal(err.Error())
 	}
 
-	_ = dirs
+	if len(dirs.Dirs) != 3 {
+		t.Fatalf("expected 3 directives, but got %d", len(dirs.Dirs))
+	}
 }
 
 func TestOptionalKingdom(t *testing.T) {
