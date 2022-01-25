@@ -2,6 +2,15 @@ queue_rules:
   - name: default
     conditions:
       - status-success=build-test
+  - name: maintainer-1
+    conditions:
+        - status-success=build-test
+  - name: maintainer-2
+    conditions:
+        - status-success=build-test
+  - name: maintainer-3
+    conditions:
+        - status-success=build=test
   
   - name: automatic
     conditions:
@@ -27,7 +36,7 @@ pull_request_rules:
     actions:
       queue:
         method: squash
-        name: default
+        name: maintainer-1
 
   - name: automatic merge for maintainer 2
     conditions:
@@ -36,7 +45,7 @@ pull_request_rules:
     actions:
       queue:
         method: squash
-        name: default
+        name: maintainer-2
 
   - name: automatic merge for maintainer 3
     conditions:
@@ -45,7 +54,7 @@ pull_request_rules:
     actions:
       queue:
         method: squash
-        name: default
+        name: maintainer-3
 
   - name: automatic merge on CI success and review
     conditions:
