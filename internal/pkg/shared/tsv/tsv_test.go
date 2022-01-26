@@ -101,12 +101,14 @@ var dataWithHeader = []byte(`name	id	sid	title	category	kingdom
 test	1337	13370001	Some random plugin Name	Test Category
 test	1337	13370002	Another random plugin name	Test Category	Test Kingdom
 test	1337	13370003	Foo Bar Qux	Test Category	Test Kingdom
-test	1337	13370004	Foo Bar Baz	Test Category	Test Kingdom	Test Overflow 1 BOO`)
+test	1337	13370004	Foo Bar Baz	Test Category	Test Kingdom	Test Overflow 1 BOO
+`)
 
 var dataWithoutHeader = []byte(`test	1337	13370001	Some random plugin Name	Test Category
 test	1337	13370002	Another random plugin name	Test Category	Test Kingdom
 test	1337	13370003	Foo Bar Qux	Test Category	Test Kingdom
-test	1337	13370004	Foo Bar Baz	Test Category	Test Kingdom	Test Overflow 1 BOO`)
+test	1337	13370004	Foo Bar Baz	Test Category	Test Kingdom	Test Overflow 1 BOO
+`)
 
 func TestParserWithHeader(t *testing.T) {
 	b := bytes.NewReader(dataWithHeader)
