@@ -49,7 +49,8 @@ func TestDirectiveDoubleQuoteTitle(t *testing.T) {
 	in := strings.NewReader(`plugin	id	sid	title	category
 suricata	9001	2009477	SQLBrute SQL Scan Detected	Attempted Information Leak
 suricata	9001	2009040	SQLNinja MSSQL User Scan"; content:"?param=a	Attempted Information Leak
-suricata	9001	2009041	SQLNinja MSSQL Database User Rights Scan	Attempted Information Leak`)
+suricata	9001	2009041	SQLNinja MSSQL Database User Rights Scan	Attempted Information Leak
+`)
 
 	var dirs siem.Directives
 	var err error
@@ -76,7 +77,8 @@ func TestOptionalKingdom(t *testing.T) {
 	in := strings.NewReader(`plugin	id	sid	title	category	kingdom
 test	1337	1337001	Directive 1	Testing Directive
 test	1337	1337002	Directive 2 with Kingdom	Testing Directive 2	TEST
-test	1337	1337003	Directive 3	Testing Directive 3`)
+test	1337	1337003	Directive 3	Testing Directive 3
+`)
 
 	var dirs siem.Directives
 	var err error
