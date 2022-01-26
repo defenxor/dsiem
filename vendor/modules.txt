@@ -168,6 +168,9 @@ github.com/valyala/fasthttp/reuseport
 github.com/valyala/fasthttp/stackless
 # github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a
 github.com/valyala/tcplisten
+# github.com/valyala/tsvreader v1.0.0
+## explicit
+github.com/valyala/tsvreader
 # github.com/yl2chen/cidranger v0.0.0-20190806234802-fed7223fd934
 ## explicit
 github.com/yl2chen/cidranger
