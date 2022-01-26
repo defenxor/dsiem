@@ -213,7 +213,8 @@ func TestDuplicatePluginTitle(t *testing.T) {
 	in := strings.NewReader(`plugin	id	sid	title	category
 test-x	1337	1337001	Test Plugin	Test Category
 test-x	1337	1337002	Test Plugin	Test Category
-test-x	1337	1337003	Test Plugin X	Test Category X`)
+test-x	1337	1337003	Test Plugin X	Test Category X
+`)
 
 	var dirs siem.Directives
 	var err error

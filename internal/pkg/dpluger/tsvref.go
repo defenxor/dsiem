@@ -198,7 +198,7 @@ func (c tsvRef) save() error {
 		return err
 	}
 	defer f.Close()
-	if _, err := f.WriteString("plugin\tid\tsid\ttitle\tcategory\n"); err != nil {
+	if _, err := f.WriteString("plugin\tid\tsid\ttitle\tcategory\tkingdom\n"); err != nil {
 		return err
 	}
 	// use slice to get a sorted keys, ikr
@@ -209,9 +209,13 @@ func (c tsvRef) save() error {
 	sort.Ints(keys)
 	for _, k := range keys {
 		v := c.Sids[k]
-		if _, err := f.WriteString(v.Name + "\t" +
-			strconv.Itoa(v.ID) + "\t" + strconv.Itoa(v.SID) + "\t" +
-			v.SIDTitle + "\t" + v.Category + "\n"); err != nil {
+		if _, err := f.WriteString(
+			v.Name + "\t" +
+				strconv.Itoa(v.ID) + "\t" +
+				strconv.Itoa(v.SID) + "\t" +
+				v.SIDTitle + "\t" +
+				v.Category + "\t" +
+				v.Kingdom + "\n"); err != nil {
 			return err
 		}
 	}
