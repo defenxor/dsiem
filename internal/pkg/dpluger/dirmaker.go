@@ -28,6 +28,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
+	"github.com/defenxor/dsiem/internal/pkg/shared/tsv"
 )
 
 type tsvEntries struct {
@@ -59,7 +60,23 @@ func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority, 
 func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate string, priority,
 	reliability, dirNumber int) (siem.Directives, error) {
 
+	parser := tsv.NewParser(in)
+
+	defaultRef := pluginSIDRef{
+		Kingdom: kingdom,
+	}
+
 	entries := tsvEntries{}
+	for {
+		var ref pluginSIDRef
+		ok := parser.Read(&ref, defaultRef)
+		if !ok {
+			break
+		}
+
+		entries.records = append(entries.records, ref)
+	}
+
 	reader := csv.NewReader(in)
 	reader.Comma = '\t'
 	reader.TrimLeadingSpace = true

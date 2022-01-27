@@ -31,6 +31,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/valyala/fasthttp v1.5.0
+	github.com/valyala/tsvreader v1.0.0
 	github.com/yl2chen/cidranger v0.0.0-20190806234802-fed7223fd934
 	go.elastic.co/apm v1.11.0
 	go.elastic.co/apm/module/apmhttp v1.11.0

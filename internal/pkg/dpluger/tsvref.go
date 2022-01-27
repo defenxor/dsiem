@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dogenzaka/tsv"
+	"github.com/defenxor/dsiem/internal/pkg/shared/tsv"
 )
 
 type pluginSIDRef struct {
@@ -34,6 +34,63 @@ type pluginSIDRef struct {
 	SIDTitle string `tsv:"title"`
 	Category string `tsv:"category"`
 	Kingdom  string `tsv:"kingdom"`
+
+	lastIndex int
+}
+
+// Defaults is implementation of tsv.Castable
+func (p *pluginSIDRef) Defaults(in interface{}) {
+	v, ok := in.(pluginSIDRef)
+	if in == nil || !ok {
+		v = pluginSIDRef{}
+	}
+
+	if p.Name == "" {
+		p.Name = v.Name
+	}
+
+	if p.ID == 0 {
+		p.ID = v.ID
+	}
+
+	if p.SID == 0 {
+		p.SID = v.SID
+	}
+
+	if p.SIDTitle == "" {
+		p.SIDTitle = v.SIDTitle
+	}
+
+	if p.Category == "" {
+		p.Category = v.Category
+	}
+
+	if p.Kingdom == "" {
+		p.Kingdom = v.Kingdom
+	}
+}
+
+// Next is implementation of tsv.Castable
+func (p *pluginSIDRef) Next(b tsv.Castable) bool {
+	switch p.lastIndex {
+	case 0:
+		p.Name = b.String()
+	case 1:
+		p.ID = b.Int()
+	case 2:
+		p.SID = b.Int()
+	case 3:
+		p.SIDTitle = b.String()
+	case 4:
+		p.Category = b.String()
+	case 5:
+		p.Kingdom = b.String()
+	default:
+		return false
+	}
+
+	p.lastIndex++
+	return true
 }
 
 func (ref *pluginSIDRef) fromStrings(defaultKingdom string, in ...string) error {
@@ -83,18 +140,15 @@ func (c *tsvRef) init(pluginName string, confFile string) {
 		return
 	}
 	defer f.Close()
-	ref := pluginSIDRef{}
-	parser, _ := tsv.NewParser(f, &ref)
-	// parser.Reader.LazyQuotes = true
+
+	parser := tsv.NewParser(f)
 	for {
-		eof, err := parser.Next()
-		if err != nil {
-			continue
-		}
-		c.Sids[ref.SID] = ref
-		if eof {
+		var ref pluginSIDRef
+		ok := parser.Read(&ref, nil)
+		if !ok {
 			break
 		}
+		c.Sids[ref.SID] = ref
 	}
 }
 
@@ -144,7 +198,7 @@ func (c tsvRef) save() error {
 		return err
 	}
 	defer f.Close()
-	if _, err := f.WriteString("plugin\tid\tsid\ttitle\tcategory\n"); err != nil {
+	if _, err := f.WriteString("plugin\tid\tsid\ttitle\tcategory\tkingdom\n"); err != nil {
 		return err
 	}
 	// use slice to get a sorted keys, ikr
@@ -155,9 +209,13 @@ func (c tsvRef) save() error {
 	sort.Ints(keys)
 	for _, k := range keys {
 		v := c.Sids[k]
-		if _, err := f.WriteString(v.Name + "\t" +
-			strconv.Itoa(v.ID) + "\t" + strconv.Itoa(v.SID) + "\t" +
-			v.SIDTitle + "\t" + v.Category + "\n"); err != nil {
+		if _, err := f.WriteString(
+			v.Name + "\t" +
+				strconv.Itoa(v.ID) + "\t" +
+				strconv.Itoa(v.SID) + "\t" +
+				v.SIDTitle + "\t" +
+				v.Category + "\t" +
+				v.Kingdom + "\n"); err != nil {
 			return err
 		}
 	}
