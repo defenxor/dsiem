@@ -218,3 +218,49 @@ the resulting `dpluger_config.json` file would be:
 }
 ```
 Notice how `plugin_id` and `plugin_sid` keys are replaced with `product`, `category`, and `subcategory`. From here on, the steps to complete the plugin is similar with those outlined in Example 1 above.
+
+### Embed Custom Identifer block from file
+For certain use-case, you can embed identifier block config directly from a file by specifying `identifier_block_source` in the dpluger config file. This way, `dpluger` will ignore the value of `identifier_field`, `identifier_value`, and `identifier_filter`, and import the content of the file directly under the first `filter` section.
+
+For example, file `filter.conf` contain the following config:
+
+```YAML
+if [@metadata][log_type] == "sshd" and [sshd_result]
+{
+  mutate {
+    id => "tag normalizedEvent 10008"
+    add_field => {
+      "[@metadata][siem_plugin_type]" => "sshd"
+      "[@metadata][siem_data_type]" => "normalizedEvent"
+    }
+  }
+}
+```
+
+To embed this directly to the resulting logstash config, you can set the `identifier_block_source` value to the path of `filter.conf`:
+
+```JSON
+...
+"identifier_block_source": "filter.conf",
+...
+```
+
+The content of `filter.conf` will fill the `filter` block inside the 1st and 2nd step of the resulting logstash config:
+
+```YAML
+filter {
+
+# embedded from filter.conf
+
+    if [@metadata][log_type] == "sshd" and [sshd_result] {
+      mutate {
+        id => "tag normalizedEvent 10008"
+        add_field => {
+          "[@metadata][siem_plugin_type]" => "sshd"
+          "[@metadata][siem_data_type]" => "normalizedEvent"
+        }
+      }
+    }
+
+}
+```
