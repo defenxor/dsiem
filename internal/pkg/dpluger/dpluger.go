@@ -35,16 +35,18 @@ import (
 
 // Plugin defines field mapping
 type Plugin struct {
-	Name               string       `json:"name"`
-	Type               string       `json:"type"` // SID || Taxonomy
-	Output             string       `json:"output_file"`
-	Index              string       `json:"index_pattern"`
-	ES                 string       `json:"elasticsearch_address"`
-	IdentifierField    string       `json:"identifier_field"`
-	IdentifierValue    string       `json:"identifier_value"`
-	IdentifierFilter   string       `json:"identifier_filter"`
-	ESCollectionFilter string       `json:"es_collect_filter"`
-	Fields             FieldMapping `json:"field_mapping"`
+	Name                         string       `json:"name"`
+	Type                         string       `json:"type"` // SID || Taxonomy
+	Output                       string       `json:"output_file"`
+	Index                        string       `json:"index_pattern"`
+	ES                           string       `json:"elasticsearch_address"`
+	IdentifierField              string       `json:"identifier_field"`
+	IdentifierValue              string       `json:"identifier_value"`
+	IdentifierFilter             string       `json:"identifier_filter"`
+	IdentifierBlockSource        string       `json:"identifier_block_source"`
+	IdentifierBlockSourceContent string       `json:"-"`
+	ESCollectionFilter           string       `json:"es_collect_filter"`
+	Fields                       FieldMapping `json:"field_mapping"`
 }
 
 // FieldMapping defines field mapping
@@ -179,16 +181,28 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 
 	transformToLogstashField(&pt.P.Fields)
 
-	// Parse and execute the template
-	templateText := templHeader
-	if usePipeline {
-		templateText = templateText + templPipeline
-	} else {
-		templateText = templateText + templNonPipeline
-	}
-	templateText = templateText + templPluginNonCollect + templFooter
+	var identifierBlock string
 
-	t, err := template.New(plugin.Name).Parse(templateText)
+	if plugin.IdentifierBlockSource != "" {
+		b, err := os.ReadFile(plugin.IdentifierBlockSource)
+		if err != nil {
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
+		} else {
+			pt.P.IdentifierBlockSourceContent = string(b)
+			identifierBlock = templWithIdentifierBlockContent
+		}
+	} else {
+		if usePipeline {
+			identifierBlock = templPipeline
+		} else {
+			identifierBlock = templNonPipeline
+		}
+	}
+
+	// Parse and execute the template
+	templateText := templHeader + identifierBlock + templPluginNonCollect + templFooter
+
+	t, err := template.New(plugin.Name).Funcs(functions).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -260,17 +274,28 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 	transformToLogstashField(&pt.P.Fields)
 
-	// Parse and execute the template
-	templateText := templHeader
-	if usePipeline {
-		templateText = templateText + templPipeline
+	var identifierBlock string
+	if plugin.IdentifierBlockSource != "" {
+		b, err := os.ReadFile(plugin.IdentifierBlockSource)
+		if err != nil {
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
+		} else {
+			pt.P.IdentifierBlockSourceContent = string(b)
+			identifierBlock = templWithIdentifierBlockContent
+		}
 	} else {
-		templateText = templateText + templNonPipeline
+		if usePipeline {
+			identifierBlock = templPipeline
+		} else {
+			identifierBlock = templNonPipeline
+		}
 	}
-	templateText = templateText + templPluginCollect + templFooter
+
+	// Parse and execute the template
+	templateText := templHeader + identifierBlock + templPluginCollect + templFooter
 
 	// Parse and execute the template, saving result to buff
-	t, err := template.New(plugin.Name).Funcs(template.FuncMap{"counter": counter}).Parse(templateText)
+	t, err := template.New(plugin.Name).Funcs(functions).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -499,4 +524,20 @@ func getType(s string) int {
 func getStaticText(s string) string {
 	defStaticText := "INSERT_STATIC_VALUE_HERE"
 	return strings.Replace(defStaticText, "STATIC_VALUE", s, -1)
+}
+
+var functions = template.FuncMap{
+	"counter": counter,
+	"indent": func(n int, value string) string {
+		strs := strings.Split(value, "\n")
+		for idx, str := range strs {
+			if idx == 0 {
+				continue
+			}
+
+			strs[idx] = fmt.Sprintf("%s%s", strings.Repeat("\t", n), str)
+		}
+
+		return strings.Join(strs, "\n")
+	},
 }

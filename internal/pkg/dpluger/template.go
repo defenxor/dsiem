@@ -26,6 +26,16 @@ var templHeader = `
 
 `
 
+var templWithIdentifierBlockContent = `
+filter {
+
+# 1st and 2nd step provided by file {{ .P.IdentifierBlockSource }}
+
+    {{ indent 2 .P.IdentifierBlockSourceContent }}
+
+}
+`
+
 var templNonPipeline = `
 
 filter {

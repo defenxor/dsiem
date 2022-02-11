@@ -42,3 +42,4 @@ test_directives
 dev_*
 
 .DS_STORE
+*.http
