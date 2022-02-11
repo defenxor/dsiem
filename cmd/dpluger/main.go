@@ -17,14 +17,10 @@
 package main
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
-
-	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 
 	"github.com/defenxor/dsiem/internal/pkg/dpluger"
 	"github.com/defenxor/dsiem/internal/pkg/shared/fs"
@@ -43,7 +39,7 @@ var buildTime string
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(runCmd)
+
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(directiveCmd)
 	rootCmd.AddCommand(splitterCmd)
@@ -52,9 +48,7 @@ func init() {
 	createCmd.Flags().StringP("indexPattern", "i", "suricata-*", "index pattern to read fields from")
 	createCmd.Flags().StringP("name", "n", "suricata", "the name of the generated plugin")
 	createCmd.Flags().StringP("type", "t", "SID", "the type of the generated plugin, can be SID or Taxonomy")
-	runCmd.Flags().BoolP("skipTLSVerify", "s", false, "whether to skip ES server certificate verification (when using HTTPS)")
-	runCmd.Flags().BoolP("usePipeline", "p", false, "whether to generate plugin that is suitable for logstash pipeline to pipeline configuration")
-	runCmd.Flags().BoolP("validate", "v", true, "Check whether each referred ES field exists on the target index")
+
 	directiveCmd.Flags().StringP("tsvFile", "f", "", "dpluger TSV file to use")
 	directiveCmd.Flags().StringP("outFile", "o", "directives_dsiem.json", "directive file to create")
 	directiveCmd.Flags().StringP("priority", "p", "3", "default priority to use (1 - 5)")
@@ -72,9 +66,6 @@ func init() {
 	viper.BindPFlag("index", createCmd.Flags().Lookup("indexPattern"))
 	viper.BindPFlag("name", createCmd.Flags().Lookup("name"))
 	viper.BindPFlag("type", createCmd.Flags().Lookup("type"))
-	viper.BindPFlag("validate", runCmd.Flags().Lookup("validate"))
-	viper.BindPFlag("skipTLSVerify", runCmd.Flags().Lookup("skipTLSVerify"))
-	viper.BindPFlag("usePipeline", runCmd.Flags().Lookup("usePipeline"))
 	viper.BindPFlag("tsvFile", directiveCmd.Flags().Lookup("tsvFile"))
 	viper.BindPFlag("outFile", directiveCmd.Flags().Lookup("outFile"))
 	viper.BindPFlag("priority", directiveCmd.Flags().Lookup("priority"))
@@ -118,37 +109,6 @@ var versionCmd = &cobra.Command{
 	Long:  `Print the version and build date information`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version, buildTime)
-	},
-}
-
-var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Create Logstash plugin for Dsiem",
-	Long:  `Create Logstash plugin for Dsiem`,
-	Run: func(cmd *cobra.Command, args []string) {
-		config := viper.GetString("config")
-		validate := viper.GetBool("validate")
-		skipTLSVerify := viper.GetBool("skipTLSVerify")
-		usePipeline := viper.GetBool("usePipeline")
-
-		if skipTLSVerify {
-			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		}
-
-		if !fs.FileExist(config) {
-			exit("Cannot read from config file", errors.New(config+" doesn't exist"))
-		}
-		if err := log.Setup(true); err != nil {
-			exit("Cannot setup logger", err)
-		}
-		plugin, err := dpluger.Parse(config)
-		if err != nil {
-			exit("Cannot parse config file", err)
-		}
-		if err := dpluger.CreatePlugin(plugin, config, progName, validate, usePipeline); err != nil {
-			exit("Error encountered while running config file", err)
-		}
-		fmt.Println("Logstash conf file created.")
 	},
 }
 
