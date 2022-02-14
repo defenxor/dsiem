@@ -540,7 +540,11 @@ var functions = template.FuncMap{
 				continue
 			}
 
-			strs[idx] = fmt.Sprintf("%s%s", strings.Repeat("\t", n), str)
+			if strings.HasPrefix(str, "#") {
+				continue
+			} else {
+				strs[idx] = fmt.Sprintf("%s%s", strings.Repeat("  ", n), str)
+			}
 		}
 
 		return strings.Join(strs, "\n")
