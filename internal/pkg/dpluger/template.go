@@ -28,11 +28,8 @@ var templHeader = `
 
 var templWithIdentifierBlockContent = `
 filter {
-
 # embedded from {{ .P.IdentifierBlockSource }}
-
-    {{ indent 2 .P.IdentifierBlockSourceContent }}
-
+{{ indent 1 .P.IdentifierBlockSourceContent }}
 }
 `
 
