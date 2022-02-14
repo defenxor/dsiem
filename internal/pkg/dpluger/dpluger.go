@@ -187,6 +187,11 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 		b, err := os.ReadFile(plugin.IdentifierBlockSource)
 		if err != nil {
 			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
+			if usePipeline {
+				identifierBlock = templPipeline
+			} else {
+				identifierBlock = templNonPipeline
+			}
 		} else {
 			pt.P.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
