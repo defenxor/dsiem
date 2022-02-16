@@ -35,6 +35,19 @@ func (es *es7Client) Init(esURL string) (err error) {
 	return
 }
 
+func (es *es7Client) InitWithCredential(url, username, password string) error {
+	var err error
+	es.client, err = elastic7.NewSimpleClient(
+		elastic7.SetURL(url),
+		elastic7.SetBasicAuth(username, password),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
 	c.init(plugin.Name, confFile)
@@ -214,4 +227,62 @@ func (es *es7Client) IsESFieldExist(index string, field string) (exist bool, err
 		exist = true
 	}
 	return
+}
+
+func (es *es7Client) FieldType(ctx context.Context, index string, field string) (string, bool, error) {
+	m, err := elastic7.NewGetFieldMappingService(es.client).
+		Field(field).
+		Index(index).
+		Do(ctx)
+
+	if err != nil {
+		return "", false, err
+	}
+
+	var indexSettings map[string]interface{}
+	var ok bool
+	for _, v := range m {
+		indexSettings, ok = v.(map[string]interface{})
+		if ok && indexSettings != nil {
+			break
+		}
+	}
+
+	if !ok {
+		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+	}
+
+	mappings, ok := indexSettings["mappings"].(map[string]interface{})
+	if !ok || mappings == nil {
+		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+	}
+
+	f, ok := mappings[field].(map[string]interface{})
+	if !ok || f == nil {
+		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+	}
+
+	mapping, ok := f["mapping"].(map[string]interface{})[field].(map[string]interface{})
+	if !ok || mapping == nil {
+		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+	}
+
+	fieldType, ok := mapping["type"].(string)
+	if !ok {
+		return "", false, fmt.Errorf("invalid field type for '%s'", field)
+	}
+
+	var iskeyword bool
+	keyword, ok := mapping["fields"].(map[string]interface{})
+	if ok && keyword != nil {
+		kword, ok := keyword["keyword"].(map[string]interface{})
+		if ok && kword != nil {
+			ktype, ok := kword["type"].(string)
+			if ok && ktype == "keyword" {
+				iskeyword = true
+			}
+		}
+	}
+
+	return fieldType, iskeyword, nil
 }
