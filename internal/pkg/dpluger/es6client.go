@@ -245,7 +245,12 @@ func (es *es6Client) FieldType(ctx context.Context, index string, field string) 
 		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
 	}
 
-	f, ok := mappings[field].(map[string]interface{})
+	doc, ok := mappings["_doc"].(map[string]interface{})
+	if !ok || mappings == nil {
+		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+	}
+
+	f, ok := doc[field].(map[string]interface{})
 	if !ok || f == nil {
 		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
 	}
