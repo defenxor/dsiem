@@ -131,6 +131,8 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 
 		if reliability < minReliability {
 			reliability = minReliability
+		} else if reliability > maxReliability {
+			reliability = maxReliability
 		}
 
 		r1 := rule.DirectiveRule{
