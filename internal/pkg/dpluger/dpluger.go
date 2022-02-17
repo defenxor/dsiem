@@ -19,7 +19,6 @@ package dpluger
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -80,7 +79,7 @@ const (
 	ftES
 )
 
-// var esVersion int
+var esVersion int
 var collector esCollector
 
 // Parse read dpluger config from confFile and returns a Plugin
@@ -250,17 +249,13 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 	return nil
 }
 
-var (
-	ErrCollectOnNonSID = errors.New("only SID-type plugin support collect: keyword")
-)
-
 func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
 
 	// Taxonomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
 	// that requires a unique SID for each title
 	if plugin.Type != "SID" {
-		return ErrCollectOnNonSID
+		return errors.New("Only SID-type plugin support collect: keyword")
 	}
 
 	// first get the refs
@@ -410,34 +405,12 @@ func setField(f *FieldMapping, field string, value string) {
 
 func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
-
-	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, plugin.Fields.Title)
-	if err != nil {
-		return tsvRef{}, err
-	}
-
-	var titleSource string
-	if haskeyword {
-		titleSource = strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
-	} else {
-		titleSource = strings.Replace(plugin.Fields.Title, "es:", "", 1)
-	}
-
+	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
-
 	if strings.Contains(plugin.Fields.Category, "es:") {
-		_, haskeyword, err = collector.FieldType(context.Background(), plugin.Index, plugin.Fields.Category)
-		if err != nil {
-			return tsvRef{}, err
-		}
-
 		shouldCollectCategory = true
-		if haskeyword {
-			categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
-		} else {
-			categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
-		}
+		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
 	}
 
 	if validate {
@@ -466,9 +439,6 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 			if err != nil {
 				return
 			}
-
-			// TODO: check the exist
-			_ = exist
 		}
 		fmt.Println("OK")
 	}
@@ -480,34 +450,12 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, plugin.Fields.PluginSID)
-	if err != nil {
-		return tsvRef{}, err
-	}
-
-	var sidSource string
-
-	if haskeyword {
-		sidSource = strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
-	} else {
-		sidSource = strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1)
-	}
-
+	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
-
 	if strings.Contains(plugin.Fields.Category, "es:") {
-		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, plugin.Fields.PluginSID)
-		if err != nil {
-			return tsvRef{}, err
-		}
-
 		shouldCollectCategory = true
-		if haskeyword {
-			categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
-		} else {
-			categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
-		}
+		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
 	}
 
 	if validate {
@@ -523,7 +471,7 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 		}
 		if shouldCollectCategory {
 			fmt.Print("Checking the existence of field ", categorySource, "... ")
-			_, err = collector.IsESFieldExist(plugin.Index, categorySource)
+			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
 			if err != nil {
 				return
 			}
