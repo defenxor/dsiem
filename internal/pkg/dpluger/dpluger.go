@@ -409,11 +409,7 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 
 	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1)
 	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, titleSource)
-	if err != nil {
-		return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", titleSource, err.Error())
-	}
-
-	if haskeyword {
+	if err == nil && haskeyword {
 		titleSource = fmt.Sprintf("%s.keyword", titleSource)
 	}
 
@@ -424,11 +420,7 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
 
 		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, categorySource)
-		if err != nil {
-			return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", categorySource, err.Error())
-		}
-
-		if haskeyword {
+		if err == nil && haskeyword {
 			categorySource = fmt.Sprintf("%s.keyword", categorySource)
 		}
 	}
@@ -449,6 +441,7 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 		if err != nil {
 			return
 		}
+
 		if !exist {
 			err = errors.New("Plugin SID collection requires field " + titleSource + " to exist on index " + plugin.Index)
 			return
@@ -459,6 +452,8 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 			if err != nil {
 				return
 			}
+
+			_ = exist
 		}
 		fmt.Println("OK")
 	}
@@ -472,11 +467,7 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1)
 	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, sidSource)
-	if err != nil {
-		return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", sidSource, err.Error())
-	}
-
-	if haskeyword {
+	if err == nil && haskeyword {
 		sidSource = fmt.Sprintf("%s.keyword", sidSource)
 	}
 
@@ -487,11 +478,7 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
 
 		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, sidSource)
-		if err != nil {
-			return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", sidSource, err.Error())
-		}
-
-		if haskeyword {
+		if err == nil && haskeyword {
 			categorySource = fmt.Sprintf("%s.keyword", categorySource)
 		}
 	}
@@ -513,6 +500,8 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 			if err != nil {
 				return
 			}
+
+			_ = exist
 		}
 		fmt.Println("OK")
 	}
