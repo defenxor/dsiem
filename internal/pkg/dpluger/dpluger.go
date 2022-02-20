@@ -19,6 +19,7 @@ package dpluger
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -249,13 +250,15 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 	return nil
 }
 
+var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword")
+
 func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
 
 	// Taxonomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
 	// that requires a unique SID for each title
 	if plugin.Type != "SID" {
-		return errors.New("Only SID-type plugin support collect: keyword")
+		return ErrNonSIDCollect
 	}
 
 	// first get the refs
@@ -403,59 +406,95 @@ func setField(f *FieldMapping, field string, value string) {
 	}
 }
 
-func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
+func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRef, error) {
+	var (
+		ctx = context.Background()
+		c   = tsvRef{}
+		err error
+	)
+
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
-	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
+	titleSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Title, "es:", "", 1))
+	if err != nil {
+		return c, err
+	}
+
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
 	if strings.Contains(plugin.Fields.Category, "es:") {
 		shouldCollectCategory = true
-		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
+		categorySource, err = checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Category, "es:", "", 1))
+		if err != nil {
+			return c, err
+		}
 	}
 
 	if validate {
-		fmt.Print("Checking the existence of field ", sidSource, "... ")
+		fmt.Printf("Checking the existence of field '%s' ... ", sidSource)
 		var exist bool
 		exist, err = collector.IsESFieldExist(plugin.Index, sidSource)
 		if err != nil {
-			return
+			return c, err
 		}
+
 		if !exist {
-			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
-			return
+			return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", sidSource, plugin.Index)
 		}
-		fmt.Print("Checking the existence of field ", titleSource, "... ")
+
+		fmt.Println("OK")
+
+		fmt.Printf("Checking the existence of field '%s' ... ", titleSource)
 		exist, err = collector.IsESFieldExist(plugin.Index, titleSource)
 		if err != nil {
-			return
+			return c, err
 		}
+
 		if !exist {
-			err = errors.New("Plugin SID collection requires field " + titleSource + " to exist on index " + plugin.Index)
-			return
+			return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", titleSource, plugin.Index)
 		}
+
+		fmt.Println("OK")
+
 		if shouldCollectCategory {
-			fmt.Print("Checking the existence of field ", categorySource, "... ")
+			fmt.Printf("Checking the existence of field '%s' ... ", categorySource)
 			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
 			if err != nil {
-				return
+				return c, err
 			}
+
+			if !exist {
+				return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", categorySource, plugin.Index)
+			}
+
+			fmt.Println("OK")
 		}
-		fmt.Println("OK")
 	}
-	fmt.Println("Collecting unique entries for " + titleSource + " and " + sidSource + " on index " + plugin.Index + " ...")
+
+	fmt.Printf("Collecting unique entries for field '%s' and '%s' on index '%s' ... ", titleSource, sidSource, plugin.Index)
 	if esFilter != "" {
-		fmt.Println("Limiting collection with term " + esFilter)
+		fmt.Printf("Limiting collection with term '%s'\n", esFilter)
 	}
+
+	fmt.Println("OK")
+
 	return collector.CollectPair(plugin, confFile, sidSource, esFilter, titleSource, categorySource, shouldCollectCategory)
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
+	ctx := context.Background()
+	sidSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1))
+	if err != nil {
+		return c, err
+	}
+
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
 	if strings.Contains(plugin.Fields.Category, "es:") {
 		shouldCollectCategory = true
-		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
+		categorySource, err = checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Category, "es:", "", 1))
+		if err != nil {
+			return c, err
+		}
 	}
 
 	if validate {
@@ -475,6 +514,8 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 			if err != nil {
 				return
 			}
+
+			_ = exist
 		}
 		fmt.Println("OK")
 	}
@@ -485,34 +526,38 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 	return collector.Collect(plugin, confFile, sidSource, esFilter, categorySource, shouldCollectCategory)
 }
 
-func validateESField(plugin Plugin) (err error) {
+func validateESField(plugin Plugin) error {
 	s := reflect.ValueOf(&plugin.Fields).Elem()
-	// typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
+
 		// skip empty fields
 		str := f.Interface().(string)
 		if str == "" {
 			continue
 		}
+
 		// skip non-es field
 		if t := getType(str); t != ftES {
 			continue
 		}
+
 		str = strings.Replace(str, "es:", "", 1)
-		fmt.Print("Checking existence of field ", str, "... ")
+
+		fmt.Printf("Checking existence of field '%s' ... ", str)
 		exist, err := collector.IsESFieldExist(plugin.Index, str)
 		if err != nil {
 			return err
 		}
+
 		if !exist {
-			return errors.New("Cannot find any document in " + plugin.Index +
-				" that has a field named " + str)
+			return fmt.Errorf("can not find any document in '%s' that has a field named '%s'", plugin.Index, str)
 		}
+
 		fmt.Println("OK")
-		// fmt.Printf("%d: %s %s = %v\n", i, typeOfT.Field(i).Name, f.Type(), f.Interface())
 	}
-	return
+
+	return nil
 }
 
 func getType(s string) int {
@@ -549,4 +594,27 @@ var functions = template.FuncMap{
 
 		return strings.Join(strs, "\n")
 	},
+}
+
+func checkKeyword(ctx context.Context, index, field string) (string, error) {
+	fmt.Printf("Checking field '%s' mapping type ... ", field)
+	fieldType, haskeyword, err := collector.FieldType(context.Background(), index, field)
+	if err == ErrFieldMappingNotExist {
+		return "", fmt.Errorf("no mapping found for field '%s', %s", field, err.Error())
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("error while checking field mapping for '%s', %s", field, err.Error())
+	}
+
+	if fieldType != FieldTypeKeyword && haskeyword {
+		fmt.Printf("found '%s' with .keyword field available, adding .keyword\n", fieldType)
+		field = fmt.Sprintf("%s.keyword", field)
+	} else if fieldType != FieldTypeKeyword && !haskeyword {
+		fmt.Printf("found '%s' but .keyword field not available, using field-name as it is\n", fieldType)
+	} else {
+		fmt.Printf("found '%s', skipping .keyword\n", fieldType)
+	}
+
+	return field, nil
 }
