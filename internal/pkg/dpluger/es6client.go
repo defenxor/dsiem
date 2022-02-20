@@ -95,7 +95,10 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 		}
 		for _, lvl2Bucket := range subterm.Buckets {
 			sKey := lvl1Bucket.Key.(string)
-			nKey := int(lvl2Bucket.Key.(float64))
+			nKey, err := toInt(lvl2Bucket.Key)
+			if err != nil {
+				return c, fmt.Errorf("invalid sid aggregation key, %s", err.Error())
+			}
 			// fmt.Println("item1:", sKey, "item2:", nKey)
 			if shouldCollectCategory {
 				subSubTerm, found2 := lvl1Bucket.Terms("subSubTerm")
