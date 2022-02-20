@@ -250,13 +250,15 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 	return nil
 }
 
+var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword")
+
 func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
 
 	// Taxonomy type plugin doesnt need to collect title since it is relying on
 	// category field (which doesnt have to be unique per title) instead of Plugin_SID
 	// that requires a unique SID for each title
 	if plugin.Type != "SID" {
-		return errors.New("Only SID-type plugin support collect: keyword")
+		return ErrNonSIDCollect
 	}
 
 	// first get the refs
@@ -454,7 +456,7 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRe
 		fmt.Println("OK")
 
 		if shouldCollectCategory {
-			fmt.Printf("Checking the existence of field '%s' ... \t", categorySource)
+			fmt.Printf("Checking the existence of field '%s' ... ", categorySource)
 			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
 			if err != nil {
 				return c, err
@@ -524,34 +526,38 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 	return collector.Collect(plugin, confFile, sidSource, esFilter, categorySource, shouldCollectCategory)
 }
 
-func validateESField(plugin Plugin) (err error) {
+func validateESField(plugin Plugin) error {
 	s := reflect.ValueOf(&plugin.Fields).Elem()
-	// typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
+
 		// skip empty fields
 		str := f.Interface().(string)
 		if str == "" {
 			continue
 		}
+
 		// skip non-es field
 		if t := getType(str); t != ftES {
 			continue
 		}
+
 		str = strings.Replace(str, "es:", "", 1)
-		fmt.Print("Checking existence of field ", str, "... ")
+
+		fmt.Printf("Checking existence of field '%s' ... ", str)
 		exist, err := collector.IsESFieldExist(plugin.Index, str)
 		if err != nil {
 			return err
 		}
+
 		if !exist {
-			return errors.New("Cannot find any document in " + plugin.Index +
-				" that has a field named " + str)
+			return fmt.Errorf("can not find any document in '%s' that has a field named '%s'", plugin.Index, str)
 		}
+
 		fmt.Println("OK")
-		// fmt.Printf("%d: %s %s = %v\n", i, typeOfT.Field(i).Name, f.Type(), f.Interface())
 	}
-	return
+
+	return nil
 }
 
 func getType(s string) int {
