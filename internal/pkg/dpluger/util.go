@@ -252,5 +252,5 @@ func toInt(v interface{}) (int, error) {
 		return int(n), nil
 	}
 
-	return 0, ErrIntValueExceedBoundary
+	return 0, fmt.Errorf("invalid value type, %T", v)
 }

@@ -136,7 +136,7 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		for _, v := range coll {
 			s := strings.Split(v, "=")
 			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
+				err = errors.New("cannot split the ES filter term")
 				return
 			}
 			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
