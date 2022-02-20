@@ -591,6 +591,7 @@ var functions = template.FuncMap{
 }
 
 func checkKeyword(ctx context.Context, index, field string) (string, error) {
+	fmt.Printf("Checking field '%s' mapping type ... ", field)
 	fieldType, haskeyword, err := collector.FieldType(context.Background(), index, field)
 	if err == ErrFieldMappingNotExist {
 		return "", fmt.Errorf("no mapping found for field '%s', %s", field, err.Error())
@@ -601,7 +602,12 @@ func checkKeyword(ctx context.Context, index, field string) (string, error) {
 	}
 
 	if fieldType != FieldTypeKeyword && haskeyword {
+		fmt.Printf("found '%s' with .keyword field available, adding .keyword\n", fieldType)
 		field = fmt.Sprintf("%s.keyword", field)
+	} else if fieldType != FieldTypeKeyword && !haskeyword {
+		fmt.Printf("found '%s' but .keyword field not available, using field-name as it is\n", fieldType)
+	} else {
+		fmt.Printf("found '%s', skipping .keyword\n", fieldType)
 	}
 
 	return field, nil
