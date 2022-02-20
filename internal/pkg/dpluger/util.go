@@ -241,13 +241,13 @@ func toInt(v interface{}) (int, error) {
 	case int:
 		return t, nil
 	case float64:
-		if t > 0 && t < math.MaxInt32 {
+		if t >= 0 && t < math.MaxInt32 {
 			return int(t), nil
 		}
 
 		return 0, ErrIntValueExceedBoundary
 	case int64:
-		if t > 0 && t < math.MaxInt32 {
+		if t >= 0 && t < math.MaxInt32 {
 			return int(t), nil
 		}
 
@@ -258,7 +258,7 @@ func toInt(v interface{}) (int, error) {
 			return 0, err
 		}
 
-		if n > 0 && n < math.MaxInt32 {
+		if n >= 0 && n < math.MaxInt32 {
 			return int(n), nil
 		}
 
