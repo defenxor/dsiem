@@ -404,8 +404,13 @@ func setField(f *FieldMapping, field string, value string) {
 	}
 }
 
-func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	ctx := context.Background()
+func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRef, error) {
+	var (
+		ctx = context.Background()
+		c   = tsvRef{}
+		err error
+	)
+
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
 	titleSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Title, "es:", "", 1))
 	if err != nil {
@@ -423,41 +428,53 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 	}
 
 	if validate {
-		fmt.Print("Checking the existence of field ", sidSource, "... ")
+		fmt.Printf("Checking the existence of field '%s' ... ", sidSource)
 		var exist bool
 		exist, err = collector.IsESFieldExist(plugin.Index, sidSource)
 		if err != nil {
-			return
+			return c, err
 		}
+
 		if !exist {
-			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
-			return
+			return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", sidSource, plugin.Index)
 		}
-		fmt.Print("Checking the existence of field ", titleSource, "... ")
+
+		fmt.Println("OK")
+
+		fmt.Printf("Checking the existence of field '%s' ... ", titleSource)
 		exist, err = collector.IsESFieldExist(plugin.Index, titleSource)
 		if err != nil {
-			return
+			return c, err
 		}
 
 		if !exist {
-			err = errors.New("Plugin SID collection requires field " + titleSource + " to exist on index " + plugin.Index)
-			return
+			return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", titleSource, plugin.Index)
 		}
+
+		fmt.Println("OK")
+
 		if shouldCollectCategory {
-			fmt.Print("Checking the existence of field ", categorySource, "... ")
+			fmt.Printf("Checking the existence of field '%s' ... \t", categorySource)
 			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
 			if err != nil {
-				return
+				return c, err
 			}
 
-			_ = exist
+			if !exist {
+				return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", categorySource, plugin.Index)
+			}
+
+			fmt.Println("OK")
 		}
-		fmt.Println("OK")
 	}
-	fmt.Println("Collecting unique entries for " + titleSource + " and " + sidSource + " on index " + plugin.Index + " ...")
+
+	fmt.Printf("Collecting unique entries for field '%s' and '%s' on index '%s' ... ", titleSource, sidSource, plugin.Index)
 	if esFilter != "" {
-		fmt.Println("Limiting collection with term " + esFilter)
+		fmt.Printf("Limiting collection with term '%s'\n", esFilter)
 	}
+
+	fmt.Println("OK")
+
 	return collector.CollectPair(plugin, confFile, sidSource, esFilter, titleSource, categorySource, shouldCollectCategory)
 }
 
