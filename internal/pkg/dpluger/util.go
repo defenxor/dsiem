@@ -1,13 +1,23 @@
 package dpluger
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/rule"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 )
+
+const (
+	FieldTypeText    = "text"
+	FieldTypeKeyword = "keyword"
+)
+
+var ErrFieldMappingNotExist = errors.New("field mapping does not exist")
 
 func directivesEqual(dir1, dir2 siem.Directives) error {
 	for _, directive := range dir2.Dirs {
@@ -215,4 +225,45 @@ func ruleEqual(rule1, rule2 rule.DirectiveRule) []error {
 	}
 
 	return errors
+}
+
+var (
+	ErrIntValueExceedBoundary = errors.New("integer value exceeds maximum value boundary")
+)
+
+// toInt safely convert interface into int.
+func toInt(v interface{}) (int, error) {
+	if v == nil {
+		return 0, nil
+	}
+
+	switch t := v.(type) {
+	case int:
+		return t, nil
+	case float64:
+		if t >= 0 && t < math.MaxInt32 {
+			return int(t), nil
+		}
+
+		return 0, ErrIntValueExceedBoundary
+	case int64:
+		if t >= 0 && t < math.MaxInt32 {
+			return int(t), nil
+		}
+
+		return 0, ErrIntValueExceedBoundary
+	case string:
+		n, err := strconv.ParseInt(t, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+
+		if n >= 0 && n < math.MaxInt32 {
+			return int(n), nil
+		}
+
+		return 0, ErrIntValueExceedBoundary
+	}
+
+	return 0, fmt.Errorf("invalid value type, %T", v)
 }

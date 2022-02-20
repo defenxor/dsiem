@@ -94,7 +94,10 @@ func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 		}
 		for _, lvl2Bucket := range subterm.Buckets {
 			sKey := lvl1Bucket.Key.(string)
-			nKey := int(lvl2Bucket.Key.(float64))
+			nKey, err := toInt(lvl2Bucket.Key)
+			if err != nil {
+				return c, fmt.Errorf("invalid sid aggregation key, %s", err.Error())
+			}
 			// fmt.Println("item1:", sKey, "item2:", nKey)
 			if shouldCollectCategory {
 				subSubTerm, found2 := lvl1Bucket.Terms("subSubTerm")
@@ -214,4 +217,74 @@ func (es *es5Client) IsESFieldExist(index string, field string) (exist bool, err
 		exist = true
 	}
 	return
+}
+
+func (es *es5Client) FieldType(ctx context.Context, index string, field string) (string, bool, error) {
+	m, err := elastic5.NewGetFieldMappingService(es.client).
+		Field(field).
+		Index(index).
+		Type("_doc").
+		Do(ctx)
+
+	if err != nil {
+		return "", false, err
+	}
+
+	var indexSettings map[string]interface{}
+	var ok bool
+	for _, v := range m {
+		indexSettings, ok = v.(map[string]interface{})
+		if ok && indexSettings != nil {
+			break
+		}
+	}
+
+	if !ok {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	mappings, ok := indexSettings["mappings"].(map[string]interface{})
+	if !ok || mappings == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	doc, ok := mappings["_doc"].(map[string]interface{})
+	if !ok || mappings == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	f, ok := doc[field].(map[string]interface{})
+	if !ok || f == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+	if !ok || f == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	levels := strings.Split(field, ".")
+	level := levels[len(levels)-1]
+
+	mapping, ok := f["mapping"].(map[string]interface{})[level].(map[string]interface{})
+	if !ok || mapping == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	fieldType, ok := mapping["type"].(string)
+	if !ok {
+		return "", false, fmt.Errorf("invalid field type for '%s'", field)
+	}
+
+	var iskeyword bool
+	keyword, ok := mapping["fields"].(map[string]interface{})
+	if ok && keyword != nil {
+		kword, ok := keyword["keyword"].(map[string]interface{})
+		if ok && kword != nil {
+			ktype, ok := kword["type"].(string)
+			if ok && ktype == "keyword" {
+				iskeyword = true
+			}
+		}
+	}
+
+	return fieldType, iskeyword, nil
 }
