@@ -19,6 +19,7 @@ package dpluger
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -405,12 +406,31 @@ func setField(f *FieldMapping, field string, value string) {
 
 func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
-	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1) + ".keyword"
+
+	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1)
+	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, titleSource)
+	if err != nil {
+		return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", titleSource, err.Error())
+	}
+
+	if haskeyword {
+		titleSource = fmt.Sprintf("%s.keyword", titleSource)
+	}
+
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
 	if strings.Contains(plugin.Fields.Category, "es:") {
 		shouldCollectCategory = true
-		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
+		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
+
+		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, categorySource)
+		if err != nil {
+			return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", categorySource, err.Error())
+		}
+
+		if haskeyword {
+			categorySource = fmt.Sprintf("%s.keyword", categorySource)
+		}
 	}
 
 	if validate {
@@ -450,12 +470,30 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1) + ".keyword"
+	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1)
+	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, sidSource)
+	if err != nil {
+		return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", sidSource, err.Error())
+	}
+
+	if haskeyword {
+		sidSource = fmt.Sprintf("%s.keyword", sidSource)
+	}
+
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
 	if strings.Contains(plugin.Fields.Category, "es:") {
 		shouldCollectCategory = true
-		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1) + ".keyword"
+		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
+
+		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, sidSource)
+		if err != nil {
+			return c, fmt.Errorf("error checking .keyword sub-field for field '%s', %s", sidSource, err.Error())
+		}
+
+		if haskeyword {
+			categorySource = fmt.Sprintf("%s.keyword", categorySource)
+		}
 	}
 
 	if validate {
