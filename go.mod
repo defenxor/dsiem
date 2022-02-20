@@ -13,8 +13,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
-	github.com/nats-io/nats-server/v2 v2.2.0
-	github.com/nats-io/nats.go v1.10.1-0.20210228004050-ed743748acac
+	github.com/nats-io/nats-server/v2 v2.7.2
+	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
 	github.com/olivere/elastic v6.2.25+incompatible
 	github.com/olivere/elastic/v7 v7.0.8
 	github.com/paulbellamy/ratecounter v0.2.0
@@ -37,7 +37,7 @@ require (
 	go.elastic.co/apm/module/apmhttp v1.11.0
 	go.uber.org/multierr v1.2.0 // indirect
 	go.uber.org/zap v1.10.0
-	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
+	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11
 	gopkg.in/olivere/elastic.v5 v5.0.82
 )
 

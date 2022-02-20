@@ -50,6 +50,9 @@ type option interface {
 	// IsAuthChange indicates if this option requires reloading authorization.
 	IsAuthChange() bool
 
+	// IsTLSChange indicates if this option requires reloading TLS.
+	IsTLSChange() bool
+
 	// IsClusterPermsChange indicates if this option requires reloading
 	// cluster permissions.
 	IsClusterPermsChange() bool
@@ -71,6 +74,10 @@ func (n noopOption) IsTraceLevelChange() bool {
 }
 
 func (n noopOption) IsAuthChange() bool {
+	return false
+}
+
+func (n noopOption) IsTLSChange() bool {
 	return false
 }
 
@@ -202,6 +209,10 @@ func (t *tlsOption) Apply(server *Server) {
 	server.Noticef("Reloaded: tls = %s", message)
 }
 
+func (t *tlsOption) IsTLSChange() bool {
+	return true
+}
+
 // tlsTimeoutOption implements the option interface for the tls `timeout`
 // setting.
 type tlsTimeoutOption struct {
@@ -213,6 +224,17 @@ type tlsTimeoutOption struct {
 // applied.
 func (t *tlsTimeoutOption) Apply(server *Server) {
 	server.Noticef("Reloaded: tls timeout = %v", t.newValue)
+}
+
+// tlsPinnedCertOption implements the option interface for the tls `pinned_certs` setting.
+type tlsPinnedCertOption struct {
+	noopOption
+	newValue PinnedCertSet
+}
+
+// Apply is a no-op because the pinned certs will be reloaded after options are  applied.
+func (t *tlsPinnedCertOption) Apply(server *Server) {
+	server.Noticef("Reloaded: %d pinned_certs", len(t.newValue))
 }
 
 // authOption is a base struct that provides default option behaviors.
@@ -560,6 +582,15 @@ func (jso jetStreamOption) IsJetStreamChange() bool {
 	return true
 }
 
+type ocspOption struct {
+	noopOption
+	newValue *OCSPConfig
+}
+
+func (a *ocspOption) Apply(s *Server) {
+	s.Noticef("Reloaded: OCSP")
+}
+
 // connectErrorReports implements the option interface for the `connect_error_reports`
 // setting.
 type connectErrorReports struct {
@@ -617,10 +648,82 @@ func (o *mqttMaxAckPendingReload) Apply(s *Server) {
 	s.Noticef("Reloaded: MQTT max_ack_pending = %v", o.newValue)
 }
 
-// Reload reads the current configuration file and applies any supported
-// changes. This returns an error if the server was not started with a config
-// file or an option which doesn't support hot-swapping was changed.
+// Compares options and disconnects clients that are no longer listed in pinned certs. Lock must not be held.
+func (s *Server) recheckPinnedCerts(curOpts *Options, newOpts *Options) {
+	s.mu.Lock()
+	disconnectClients := []*client{}
+	protoToPinned := map[int]PinnedCertSet{}
+	if !reflect.DeepEqual(newOpts.TLSPinnedCerts, curOpts.TLSPinnedCerts) {
+		protoToPinned[NATS] = curOpts.TLSPinnedCerts
+	}
+	if !reflect.DeepEqual(newOpts.MQTT.TLSPinnedCerts, curOpts.MQTT.TLSPinnedCerts) {
+		protoToPinned[MQTT] = curOpts.MQTT.TLSPinnedCerts
+	}
+	if !reflect.DeepEqual(newOpts.Websocket.TLSPinnedCerts, curOpts.Websocket.TLSPinnedCerts) {
+		protoToPinned[WS] = curOpts.Websocket.TLSPinnedCerts
+	}
+	for _, c := range s.clients {
+		if c.kind != CLIENT {
+			continue
+		}
+		if pinned, ok := protoToPinned[c.clientType()]; ok {
+			if !c.matchesPinnedCert(pinned) {
+				disconnectClients = append(disconnectClients, c)
+			}
+		}
+	}
+	checkClients := func(kind int, clients map[uint64]*client, set PinnedCertSet) {
+		for _, c := range clients {
+			if c.kind == kind && !c.matchesPinnedCert(set) {
+				disconnectClients = append(disconnectClients, c)
+			}
+		}
+	}
+	if !reflect.DeepEqual(newOpts.LeafNode.TLSPinnedCerts, curOpts.LeafNode.TLSPinnedCerts) {
+		checkClients(LEAF, s.leafs, newOpts.LeafNode.TLSPinnedCerts)
+	}
+	if !reflect.DeepEqual(newOpts.Cluster.TLSPinnedCerts, curOpts.Cluster.TLSPinnedCerts) {
+		checkClients(ROUTER, s.routes, newOpts.Cluster.TLSPinnedCerts)
+	}
+	if reflect.DeepEqual(newOpts.Gateway.TLSPinnedCerts, curOpts.Gateway.TLSPinnedCerts) {
+		for _, c := range s.remotes {
+			if !c.matchesPinnedCert(newOpts.Gateway.TLSPinnedCerts) {
+				disconnectClients = append(disconnectClients, c)
+			}
+		}
+	}
+	s.mu.Unlock()
+	if len(disconnectClients) > 0 {
+		s.Noticef("Disconnect %d clients due to pinned certs reload", len(disconnectClients))
+		for _, c := range disconnectClients {
+			c.closeConnection(TLSHandshakeError)
+		}
+	}
+}
+
+// Reload reads the current configuration file and calls out to ReloadOptions
+// to apply the changes. This returns an error if the server was not started
+// with a config file or an option which doesn't support hot-swapping was changed.
 func (s *Server) Reload() error {
+	s.mu.Lock()
+	configFile := s.configFile
+	s.mu.Unlock()
+	if configFile == "" {
+		return errors.New("can only reload config when a file is provided using -c or --config")
+	}
+
+	newOpts, err := ProcessConfigFile(configFile)
+	if err != nil {
+		// TODO: Dump previous good config to a .bak file?
+		return err
+	}
+	return s.ReloadOptions(newOpts)
+}
+
+// ReloadOptions applies any supported options from the provided Option
+// type. This returns an error if an option which doesn't support
+// hot-swapping was changed.
+func (s *Server) ReloadOptions(newOpts *Options) error {
 	s.mu.Lock()
 
 	s.reloading = true
@@ -629,18 +732,6 @@ func (s *Server) Reload() error {
 		s.reloading = false
 		s.mu.Unlock()
 	}()
-
-	if s.configFile == "" {
-		s.mu.Unlock()
-		return errors.New("can only reload config when a file is provided using -c or --config")
-	}
-
-	newOpts, err := ProcessConfigFile(s.configFile)
-	if err != nil {
-		s.mu.Unlock()
-		// TODO: Dump previous good config to a .bak file?
-		return err
-	}
 
 	curOpts := s.getOpts()
 
@@ -694,13 +785,15 @@ func (s *Server) Reload() error {
 	if err := s.reloadOptions(curOpts, newOpts); err != nil {
 		return err
 	}
+
+	s.recheckPinnedCerts(curOpts, newOpts)
+
 	s.mu.Lock()
 	s.configTime = time.Now().UTC()
 	s.updateVarzConfigReloadableFields(s.varz)
 	s.mu.Unlock()
 	return nil
 }
-
 func applyBoolFlags(newOpts, flagOpts *Options) {
 	// Reset fields that may have been set to `true` in
 	// MergeOptions() when some of the flags default to `true`
@@ -790,8 +883,9 @@ func imposeOrder(value interface{}) error {
 		})
 	case WebsocketOpts:
 		sort.Strings(value.AllowedOrigins)
-	case string, bool, int, int32, int64, time.Duration, float64, nil, LeafNodeOpts, ClusterOpts, *tls.Config,
-		*URLAccResolver, *MemAccResolver, *DirAccResolver, *CacheDirAccResolver, Authentication, MQTTOpts, jwt.TagList:
+	case string, bool, uint8, int, int32, int64, time.Duration, float64, nil, LeafNodeOpts, ClusterOpts, *tls.Config, PinnedCertSet,
+		*URLAccResolver, *MemAccResolver, *DirAccResolver, *CacheDirAccResolver, Authentication, MQTTOpts, jwt.TagList,
+		*OCSPConfig, map[string]string:
 		// explicitly skipped types
 	default:
 		// this will fail during unit tests
@@ -864,6 +958,8 @@ func (s *Server) diffOptions(newOpts *Options) ([]option, error) {
 			diffOpts = append(diffOpts, &tlsOption{newValue: newValue.(*tls.Config)})
 		case "tlstimeout":
 			diffOpts = append(diffOpts, &tlsTimeoutOption{newValue: newValue.(float64)})
+		case "tlspinnedcerts":
+			diffOpts = append(diffOpts, &tlsPinnedCertOption{newValue: newValue.(PinnedCertSet)})
 		case "username":
 			diffOpts = append(diffOpts, &usernameOption{})
 		case "password":
@@ -933,6 +1029,8 @@ func (s *Server) diffOptions(newOpts *Options) ([]option, error) {
 			tmpNew := newValue.(GatewayOpts)
 			tmpOld.TLSConfig = nil
 			tmpNew.TLSConfig = nil
+			tmpOld.tlsConfigOpts = nil
+			tmpNew.tlsConfigOpts = nil
 
 			// Need to do the same for remote gateways' TLS configs.
 			// But we can't just set remotes' TLSConfig to nil otherwise this
@@ -952,12 +1050,14 @@ func (s *Server) diffOptions(newOpts *Options) ([]option, error) {
 			tmpNew := newValue.(LeafNodeOpts)
 			tmpOld.TLSConfig = nil
 			tmpNew.TLSConfig = nil
+			tmpOld.tlsConfigOpts = nil
+			tmpNew.tlsConfigOpts = nil
 
 			// Need to do the same for remote leafnodes' TLS configs.
 			// But we can't just set remotes' TLSConfig to nil otherwise this
 			// would lose the real TLS configuration.
-			tmpOld.Remotes = copyRemoteLNConfigWithoutTLSConfig(tmpOld.Remotes)
-			tmpNew.Remotes = copyRemoteLNConfigWithoutTLSConfig(tmpNew.Remotes)
+			tmpOld.Remotes = copyRemoteLNConfigForReloadCompare(tmpOld.Remotes)
+			tmpNew.Remotes = copyRemoteLNConfigForReloadCompare(tmpNew.Remotes)
 
 			// Special check for leafnode remotes changes which are not supported right now.
 			leafRemotesChanged := func(a, b LeafNodeOpts) bool {
@@ -968,6 +1068,10 @@ func (s *Server) diffOptions(newOpts *Options) ([]option, error) {
 				// Check whether all remotes URLs are still the same.
 				for _, oldRemote := range tmpOld.Remotes {
 					var found bool
+
+					if oldRemote.LocalAccount == _EMPTY_ {
+						oldRemote.LocalAccount = globalAccountName
+					}
 
 					for _, newRemote := range tmpNew.Remotes {
 						// Bind to global account in case not defined.
@@ -1124,6 +1228,8 @@ func (s *Server) diffOptions(newOpts *Options) ([]option, error) {
 				return nil, fmt.Errorf("config reload not supported for %s: old=%v, new=%v",
 					field.Name, oldValue, newValue)
 			}
+		case "ocspconfig":
+			diffOpts = append(diffOpts, &ocspOption{newValue: newValue.(*OCSPConfig)})
 		default:
 			// TODO(ik): Implement String() on those options to have a nice print.
 			// %v is difficult to figure what's what, %+v print private fields and
@@ -1158,12 +1264,13 @@ func copyRemoteGWConfigsWithoutTLSConfig(current []*RemoteGatewayOpts) []*Remote
 	for _, rcfg := range current {
 		cp := *rcfg
 		cp.TLSConfig = nil
+		cp.tlsConfigOpts = nil
 		rgws = append(rgws, &cp)
 	}
 	return rgws
 }
 
-func copyRemoteLNConfigWithoutTLSConfig(current []*RemoteLeafOpts) []*RemoteLeafOpts {
+func copyRemoteLNConfigForReloadCompare(current []*RemoteLeafOpts) []*RemoteLeafOpts {
 	l := len(current)
 	if l == 0 {
 		return nil
@@ -1172,9 +1279,13 @@ func copyRemoteLNConfigWithoutTLSConfig(current []*RemoteLeafOpts) []*RemoteLeaf
 	for _, rcfg := range current {
 		cp := *rcfg
 		cp.TLSConfig = nil
+		cp.tlsConfigOpts = nil
 		// This is set only when processing a CONNECT, so reset here so that we
 		// don't fail the DeepEqual comparison.
 		cp.TLS = false
+		// For now, remove DenyImports/Exports since those get modified at runtime
+		// to add JS APIs.
+		cp.DenyImports, cp.DenyExports = nil, nil
 		rlns = append(rlns, &cp)
 	}
 	return rlns
@@ -1188,6 +1299,7 @@ func (s *Server) applyOptions(ctx *reloadContext, opts []option) {
 		reloadClientTrcLvl = false
 		reloadJetstream    = false
 		jsEnabled          = false
+		reloadTLS          = false
 	)
 	for _, opt := range opts {
 		opt.Apply(s)
@@ -1199,6 +1311,9 @@ func (s *Server) applyOptions(ctx *reloadContext, opts []option) {
 		}
 		if opt.IsAuthChange() {
 			reloadAuth = true
+		}
+		if opt.IsTLSChange() {
+			reloadTLS = true
 		}
 		if opt.IsClusterPermsChange() {
 			reloadClusterPerms = true
@@ -1230,6 +1345,9 @@ func (s *Server) applyOptions(ctx *reloadContext, opts []option) {
 				s.Warnf("Can't start JetStream: %v", err)
 			}
 		}
+		// Make sure to reset the internal loop's version of JS.
+		s.resetInternalLoopInfo()
+		s.sendStatszUpdate()
 	}
 
 	// For remote gateways and leafnodes, make sure that their TLS configuration
@@ -1243,7 +1361,29 @@ func (s *Server) applyOptions(ctx *reloadContext, opts []option) {
 		s.updateRemoteLeafNodesTLSConfig(newOpts)
 	}
 
+	if reloadTLS {
+		// Restart OCSP monitoring.
+		if err := s.reloadOCSP(); err != nil {
+			s.Warnf("Can't restart OCSP Stapling: %v", err)
+		}
+	}
+
 	s.Noticef("Reloaded server configuration")
+}
+
+// This will send a reset to the internal send loop.
+func (s *Server) resetInternalLoopInfo() {
+	var resetCh chan struct{}
+	s.mu.Lock()
+	if s.sys != nil {
+		// can't hold the lock as go routine reading it may be waiting for lock as well
+		resetCh = s.sys.resetCh
+	}
+	s.mu.Unlock()
+
+	if resetCh != nil {
+		resetCh <- struct{}{}
+	}
 }
 
 // Update all cached debug and trace settings for every client
@@ -1371,8 +1511,6 @@ func (s *Server) reloadAuthorization() {
 			s.accounts.Store(s.sys.account.Name, s.sys.account)
 		}
 		// Double check any JetStream configs.
-		// For now, seems like JS as a whole cannot be enabled/disabled with
-		// config reload, so check only if was started with JS enabled.
 		checkJetStream = s.js != nil
 	} else if s.opts.AccountResolver != nil {
 		s.configureResolver()
@@ -1393,8 +1531,7 @@ func (s *Server) reloadAuthorization() {
 				s.mu.Unlock()
 				accClaims, claimJWT, _ := s.fetchAccountClaims(accName)
 				if accClaims != nil {
-					err := s.updateAccountWithClaimJWT(acc, claimJWT)
-					if err != nil && err != ErrAccountResolverSameClaims {
+					if err := s.updateAccountWithClaimJWT(acc, claimJWT); err != nil {
 						s.Noticef("Reloaded: deleting account [bad claims]: %q", accName)
 						s.accounts.Delete(k)
 					}
@@ -1471,22 +1608,15 @@ func (s *Server) reloadAuthorization() {
 		}
 	}
 
-	// We will double check all JetStream configs on a reload.
-	if checkJetStream {
-		var err error
-		s.getJetStream().clearResources()
-		if s.globalAccountOnly() {
-			err = s.GlobalAccount().EnableJetStream(nil)
-		} else {
-			err = s.configAllJetStreamAccounts()
-		}
-		if err != nil {
-			s.Errorf(err.Error())
-		}
-	}
-
 	if res := s.AccountResolver(); res != nil {
 		res.Reload()
+	}
+
+	// We will double check all JetStream configs on a reload.
+	if checkJetStream {
+		if err := s.enableJetStreamAccounts(); err != nil {
+			s.Errorf(err.Error())
+		}
 	}
 }
 
@@ -1591,7 +1721,7 @@ func (s *Server) reloadClusterPermissions(oldPerms *RoutePermissions) {
 		deleteRoutedSubs []*subscription
 	)
 	// FIXME(dlc) - Change for accounts.
-	gacc.sl.localSubs(&localSubs)
+	gacc.sl.localSubs(&localSubs, false)
 
 	// Go through all local subscriptions
 	for _, sub := range localSubs {

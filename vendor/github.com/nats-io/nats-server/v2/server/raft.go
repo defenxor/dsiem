@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"hash"
 	"io/ioutil"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -35,6 +36,7 @@ import (
 
 type RaftNode interface {
 	Propose(entry []byte) error
+	ProposeDirect(entries []*Entry) error
 	ForwardProposal(entry []byte) error
 	InstallSnapshot(snap []byte) error
 	SendSnapshot(snap []byte) error
@@ -48,6 +50,7 @@ type RaftNode interface {
 	Quorum() bool
 	Current() bool
 	GroupLeader() string
+	HadPreviousLeader() bool
 	StepDown(preferred ...string) error
 	Campaign() error
 	ID() string
@@ -55,7 +58,10 @@ type RaftNode interface {
 	Peers() []*Peer
 	ProposeAddPeer(peer string) error
 	ProposeRemovePeer(peer string) error
-	ApplyC() <-chan *CommittedEntry
+	AdjustClusterSize(csz int) error
+	AdjustBootClusterSize(csz int) error
+	ClusterSize() int
+	ApplyQ() *ipQueue // of *CommittedEntry
 	PauseApply()
 	ResumeApply()
 	LeadChangeC() <-chan bool
@@ -66,6 +72,7 @@ type RaftNode interface {
 }
 
 type WAL interface {
+	Type() StorageType
 	StoreMsg(subj string, hdr, msg []byte) (uint64, int64, error)
 	LoadMsg(index uint64) (subj string, hdr, msg []byte, ts int64, err error)
 	RemoveMsg(index uint64) (bool, error)
@@ -76,11 +83,6 @@ type WAL interface {
 	FastState(*StreamState)
 	Stop() error
 	Delete() error
-}
-
-type LeadChange struct {
-	Leader   bool
-	Previous string
 }
 
 type Peer struct {
@@ -124,6 +126,8 @@ type raft struct {
 	sd       string
 	id       string
 	wal      WAL
+	wtype    StorageType
+	track    bool
 	werr     error
 	state    RaftState
 	hh       hash.Hash64
@@ -131,6 +135,7 @@ type raft struct {
 	csz      int
 	qn       int
 	peers    map[string]*lps
+	removed  map[string]string
 	acks     map[uint64]map[string]struct{}
 	pae      map[uint64]*appendEntry
 	elect    *time.Timer
@@ -146,7 +151,11 @@ type raft struct {
 	hash     string
 	s        *Server
 	c        *client
+	js       *jetStream
 	dflag    bool
+	pleader  bool
+	observer bool
+	extSt    extensionState
 
 	// Subjects for votes, updates, replays.
 	psubj  string
@@ -172,22 +181,22 @@ type raft struct {
 	catchup *catchupState
 
 	// For leader or server catching up a follower.
-	progress map[string]chan uint64
+	progress map[string]*ipQueue // of uint64
 
 	// For when we have paused our applyC.
 	paused  bool
 	hcommit uint64
 
-	// Channels
-	propc    chan *Entry
-	entryc   chan *appendEntry
-	respc    chan *appendEntryResponse
-	applyc   chan *CommittedEntry
-	quit     chan struct{}
-	reqs     chan *voteRequest
-	votes    chan *voteResponse
+	// Queues and Channels
+	prop     *ipQueue // of *Entry
+	entry    *ipQueue // of *appendEntry
+	resp     *ipQueue // of *appendEntryResponse
+	apply    *ipQueue // of *CommittedEntry
+	reqs     *ipQueue // of *voteRequest
+	votes    *ipQueue // of *voteResponse
+	stepdown *ipQueue // of string
 	leadc    chan bool
-	stepdown chan string
+	quit     chan struct{}
 }
 
 // cacthupState structure that holds our subscription, and catchup term and index
@@ -208,36 +217,50 @@ type lps struct {
 }
 
 const (
-	minElectionTimeout = 1000 * time.Millisecond
-	maxElectionTimeout = 5 * minElectionTimeout
-	minCampaignTimeout = 100 * time.Millisecond
-	maxCampaignTimeout = 4 * minCampaignTimeout
-	hbInterval         = 500 * time.Millisecond
-	lostQuorumInterval = hbInterval * 5
+	minElectionTimeoutDefault = 2 * time.Second
+	maxElectionTimeoutDefault = 5 * time.Second
+	minCampaignTimeoutDefault = 100 * time.Millisecond
+	maxCampaignTimeoutDefault = 4 * minCampaignTimeoutDefault
+	hbIntervalDefault         = 500 * time.Millisecond
+	lostQuorumIntervalDefault = hbIntervalDefault * 5
+)
+
+var (
+	minElectionTimeout = minElectionTimeoutDefault
+	maxElectionTimeout = maxElectionTimeoutDefault
+	minCampaignTimeout = minCampaignTimeoutDefault
+	maxCampaignTimeout = maxCampaignTimeoutDefault
+	hbInterval         = hbIntervalDefault
+	lostQuorumInterval = lostQuorumIntervalDefault
 )
 
 type RaftConfig struct {
-	Name  string
-	Store string
-	Log   WAL
+	Name     string
+	Store    string
+	Log      WAL
+	Track    bool
+	Observer bool
 }
 
 var (
-	errProposalFailed  = errors.New("raft: proposal failed")
-	errNotLeader       = errors.New("raft: not leader")
-	errAlreadyLeader   = errors.New("raft: already leader")
-	errNilCfg          = errors.New("raft: no config given")
-	errUnknownPeer     = errors.New("raft: unknown peer")
-	errCorruptPeers    = errors.New("raft: corrupt peer state")
-	errStepdownFailed  = errors.New("raft: stepdown failed")
-	errEntryLoadFailed = errors.New("raft: could not load entry from WAL")
-	errNodeClosed      = errors.New("raft: node is closed")
-	errBadSnapName     = errors.New("raft: snapshot name could not be parsed")
-	errNoSnapAvailable = errors.New("raft: no snapshot available")
-	errCatchupsRunning = errors.New("raft: snapshot can not be installed while catchups running")
-	errSnapshotCorrupt = errors.New("raft: snapshot corrupt")
-	errTooManyPrefs    = errors.New("raft: stepdown requires at most one preferred new leader")
-	errStepdownNoPeer  = errors.New("raft: stepdown failed, could not match new leader")
+	errNotLeader         = errors.New("raft: not leader")
+	errAlreadyLeader     = errors.New("raft: already leader")
+	errNilCfg            = errors.New("raft: no config given")
+	errCorruptPeers      = errors.New("raft: corrupt peer state")
+	errEntryLoadFailed   = errors.New("raft: could not load entry from WAL")
+	errEntryStoreFailed  = errors.New("raft: could not storeentry to WAL")
+	errNodeClosed        = errors.New("raft: node is closed")
+	errBadSnapName       = errors.New("raft: snapshot name could not be parsed")
+	errNoSnapAvailable   = errors.New("raft: no snapshot available")
+	errCatchupsRunning   = errors.New("raft: snapshot can not be installed while catchups running")
+	errSnapshotCorrupt   = errors.New("raft: snapshot corrupt")
+	errTooManyPrefs      = errors.New("raft: stepdown requires at most one preferred new leader")
+	errStepdownNoPeer    = errors.New("raft: stepdown failed, could not match new leader")
+	errNoPeerState       = errors.New("raft: no peerstate")
+	errAdjustBootCluster = errors.New("raft: can not adjust boot peer size on established group")
+	errLeaderLen         = fmt.Errorf("raft: leader should be exactly %d bytes", idLen)
+	errTooManyEntries    = errors.New("raft: append entry can contain a max of 64k entries")
+	errBadAppendEntry    = errors.New("raft: append entry corrupt")
 )
 
 // This will bootstrap a raftNode by writing its config into the store directory.
@@ -298,9 +321,10 @@ func (s *Server) bootstrapRaftNode(cfg *RaftConfig, knownPeers []string, allPeer
 	if err != nil {
 		return fmt.Errorf("raft: storage directory is not writable")
 	}
+	tmpfile.Close()
 	os.Remove(tmpfile.Name())
 
-	return writePeerState(cfg.Store, &peerState{knownPeers, expected})
+	return writePeerState(cfg.Store, &peerState{knownPeers, expected, extUndetermined})
 }
 
 // startRaftNode will start the raft node.
@@ -323,15 +347,18 @@ func (s *Server) startRaftNode(cfg *RaftConfig) (RaftNode, error) {
 		return nil, err
 	}
 	if ps == nil {
-		return nil, errors.New("raft: no peerstate")
+		return nil, errNoPeerState
 	}
 
+	qpfx := fmt.Sprintf("RAFT [%s - %s] ", hash[:idLen], cfg.Name)
 	n := &raft{
 		created:  time.Now(),
 		id:       hash[:idLen],
 		group:    cfg.Name,
 		sd:       cfg.Store,
 		wal:      cfg.Log,
+		wtype:    cfg.Log.Type(),
+		track:    cfg.Track,
 		state:    Follower,
 		csz:      ps.clusterSize,
 		qn:       ps.clusterSize/2 + 1,
@@ -341,18 +368,21 @@ func (s *Server) startRaftNode(cfg *RaftConfig) (RaftNode, error) {
 		pae:      make(map[uint64]*appendEntry),
 		s:        s,
 		c:        s.createInternalSystemClient(),
+		js:       s.getJetStream(),
 		sq:       sq,
 		quit:     make(chan struct{}),
 		wtvch:    make(chan struct{}, 1),
 		wpsch:    make(chan struct{}, 1),
-		reqs:     make(chan *voteRequest, 8),
-		votes:    make(chan *voteResponse, 32),
-		propc:    make(chan *Entry, 8192),
-		entryc:   make(chan *appendEntry, 32768),
-		respc:    make(chan *appendEntryResponse, 32768),
-		applyc:   make(chan *CommittedEntry, 8192),
-		leadc:    make(chan bool, 8),
-		stepdown: make(chan string, 8),
+		reqs:     newIPQueue(),                                                     // of *voteRequest
+		votes:    newIPQueue(),                                                     // of *voteResponse
+		prop:     newIPQueue(ipQueue_Logger(qpfx+"Entry", s.ipqLog)),               // of *Entry
+		entry:    newIPQueue(ipQueue_Logger(qpfx+"AppendEntry", s.ipqLog)),         // of *appendEntry
+		resp:     newIPQueue(ipQueue_Logger(qpfx+"AppendEntryResponse", s.ipqLog)), // of *appendEntryResponse
+		apply:    newIPQueue(ipQueue_Logger(qpfx+"CommittedEntry", s.ipqLog)),      // of *CommittedEntry
+		stepdown: newIPQueue(),                                                     // of string
+		leadc:    make(chan bool, 1),
+		observer: cfg.Observer,
+		extSt:    ps.domainExt,
 	}
 	n.c.registerWithAccount(sacc)
 
@@ -363,19 +393,18 @@ func (s *Server) startRaftNode(cfg *RaftConfig) (RaftNode, error) {
 	key := sha256.Sum256([]byte(n.group))
 	n.hh, _ = highwayhash.New64(key[:])
 
-	if term, vote, err := n.readTermVote(); err != nil && term > 0 {
+	if term, vote, err := n.readTermVote(); err == nil && term > 0 {
 		n.term = term
 		n.vote = vote
 	}
 
-	if err := os.MkdirAll(path.Join(cfg.Store, snapshotsDir), 0750); err != nil {
+	if err := os.MkdirAll(path.Join(n.sd, snapshotsDir), 0750); err != nil {
 		return nil, fmt.Errorf("could not create snapshots directory - %v", err)
 	}
 
 	// Can't recover snapshots if memory based.
 	if _, ok := n.wal.(*memStore); ok {
-		snapDir := path.Join(n.sd, snapshotsDir, "*")
-		os.RemoveAll(snapDir)
+		os.Remove(path.Join(n.sd, snapshotsDir, "*"))
 	} else {
 		// See if we have any snapshots and if so load and process on startup.
 		n.setupLastSnapshot()
@@ -392,21 +421,20 @@ func (s *Server) startRaftNode(cfg *RaftConfig) (RaftNode, error) {
 			}
 		}
 
-		// Replay the log.
-		// Since doing this in place we need to make sure we have enough room on the applyc.
-		needed := state.Msgs + 1 // 1 is for nil to mark end of replay.
-		if uint64(cap(n.applyc)) < needed {
-			n.applyc = make(chan *CommittedEntry, needed)
-		}
-
 		for index := state.FirstSeq; index <= state.LastSeq; index++ {
 			ae, err := n.loadEntry(index)
 			if err != nil {
-				panic("err loading entry from WAL")
+				n.warn("Could not load %d from WAL [%+v]: %v", index, state, err)
+				if err := n.wal.Truncate(index); err != nil {
+					n.setWriteErrLocked(err)
+				}
+				break
 			}
 			if ae.pindex != index-1 {
-				n.warn("Corrupt WAL, truncating and fixing")
-				n.truncateWal(ae)
+				n.warn("Corrupt WAL, will truncate")
+				if err := n.wal.Truncate(index); err != nil {
+					n.setWriteErrLocked(err)
+				}
 				break
 			}
 			n.processAppendEntry(ae, nil)
@@ -414,7 +442,7 @@ func (s *Server) startRaftNode(cfg *RaftConfig) (RaftNode, error) {
 	}
 
 	// Send nil entry to signal the upper layers we are done doing replay/restore.
-	n.applyc <- nil
+	n.apply.push(nil)
 
 	// Setup our internal subscriptions.
 	if err := n.createInternalSubs(); err != nil {
@@ -444,6 +472,15 @@ func (s *Server) startRaftNode(cfg *RaftConfig) (RaftNode, error) {
 	s.startGoRoutine(n.fileWriter)
 
 	return n, nil
+}
+
+// outOfResources checks to see if we are out of resources.
+func (n *raft) outOfResources() bool {
+	js := n.js
+	if !n.track || js == nil {
+		return false
+	}
+	return js.limitsExceeded(n.wtype)
 }
 
 // Maps node names back to server names.
@@ -567,12 +604,30 @@ func (n *raft) Propose(data []byte) error {
 		n.RUnlock()
 		return werr
 	}
-	propc := n.propc
+	prop := n.prop
 	n.RUnlock()
 
-	// For entering and exiting the system, proposals and apply we
-	// will block.
-	propc <- &Entry{EntryNormal, data}
+	prop.push(&Entry{EntryNormal, data})
+	return nil
+}
+
+// ProposeDirect will propose entries directly.
+// This should only be called on the leader.
+func (n *raft) ProposeDirect(entries []*Entry) error {
+	n.RLock()
+	if n.state != Leader {
+		n.RUnlock()
+		n.debug("Proposal ignored, not leader")
+		return errNotLeader
+	}
+	// Error if we had a previous write error.
+	if werr := n.werr; werr != nil {
+		n.RUnlock()
+		return werr
+	}
+	n.RUnlock()
+
+	n.sendAppendEntry(entries)
 	return nil
 }
 
@@ -601,39 +656,83 @@ func (n *raft) ProposeAddPeer(peer string) error {
 		n.RUnlock()
 		return werr
 	}
-	propc := n.propc
+	prop := n.prop
 	n.RUnlock()
 
-	select {
-	case propc <- &Entry{EntryAddPeer, []byte(peer)}:
-	default:
-		return errProposalFailed
-	}
+	prop.push(&Entry{EntryAddPeer, []byte(peer)})
 	return nil
 }
 
 // ProposeRemovePeer is called to remove a peer from the group.
 func (n *raft) ProposeRemovePeer(peer string) error {
 	n.RLock()
-	propc, subj := n.propc, n.rpsubj
-	isUs, isLeader := peer == n.id, n.state == Leader
+	prop, subj := n.prop, n.rpsubj
+	isLeader := n.state == Leader
+	werr := n.werr
 	n.RUnlock()
 
+	// Error if we had a previous write error.
+	if werr != nil {
+		return werr
+	}
+
 	if isLeader {
-		if isUs {
-			n.StepDown()
-		} else {
-			select {
-			case propc <- &Entry{EntryRemovePeer, []byte(peer)}:
-			default:
-				return errProposalFailed
-			}
-		}
+		prop.push(&Entry{EntryRemovePeer, []byte(peer)})
 		return nil
 	}
 
 	// Need to forward.
 	n.sendRPC(subj, _EMPTY_, []byte(peer))
+	return nil
+}
+
+// ClusterSize reports back the total cluster size.
+// This effects quorum etc.
+func (n *raft) ClusterSize() int {
+	n.Lock()
+	defer n.Unlock()
+	return n.csz
+}
+
+// AdjustBootClusterSize can be called to adjust the boot cluster size.
+// Will error if called on a group with a leader or a previous leader.
+// This can be helpful in mixed mode.
+func (n *raft) AdjustBootClusterSize(csz int) error {
+	n.Lock()
+	defer n.Unlock()
+
+	if n.leader != noLeader || n.pleader {
+		return errAdjustBootCluster
+	}
+	// Same floor as bootstrap.
+	if csz < 2 {
+		csz = 2
+	}
+	// Adjust.
+	n.csz = csz
+	n.qn = n.csz/2 + 1
+
+	return nil
+}
+
+// AdjustClusterSize will change the cluster set size.
+// Must be the leader.
+func (n *raft) AdjustClusterSize(csz int) error {
+	n.Lock()
+	if n.state != Leader {
+		n.Unlock()
+		return errNotLeader
+	}
+	// Same floor as bootstrap.
+	if csz < 2 {
+		csz = 2
+	}
+	// Adjust.
+	n.csz = csz
+	n.qn = n.csz/2 + 1
+	n.Unlock()
+
+	n.sendPeerState()
 	return nil
 }
 
@@ -696,7 +795,9 @@ func (n *raft) Applied(index uint64) (entries uint64, bytes uint64) {
 	}
 	var state StreamState
 	n.wal.FastState(&state)
-	entries = n.applied - state.FirstSeq
+	if n.applied > state.FirstSeq {
+		entries = n.applied - state.FirstSeq
+	}
 	if state.Msgs > 0 {
 		bytes = entries * state.Bytes / state.Msgs
 	}
@@ -745,7 +846,7 @@ func (n *raft) encodeSnapshot(snap *snapshot) []byte {
 // Should only be used when the upper layers know this is most recent.
 // Used when restoring streams etc.
 func (n *raft) SendSnapshot(data []byte) error {
-	n.sendAppendEntry([]*Entry{&Entry{EntrySnapshot, data}})
+	n.sendAppendEntry([]*Entry{{EntrySnapshot, data}})
 	return nil
 }
 
@@ -771,7 +872,8 @@ func (n *raft) InstallSnapshot(data []byte) error {
 
 	var state StreamState
 	n.wal.FastState(&state)
-	if state.FirstSeq >= n.applied {
+
+	if n.snapfile != _EMPTY_ && state.FirstSeq >= n.applied {
 		n.Unlock()
 		return nil
 	}
@@ -790,7 +892,7 @@ func (n *raft) InstallSnapshot(data []byte) error {
 	snap := &snapshot{
 		lastTerm:  term,
 		lastIndex: n.applied,
-		peerstate: encodePeerState(&peerState{n.peerNames(), n.csz}),
+		peerstate: encodePeerState(&peerState{n.peerNames(), n.csz, n.extSt}),
 		data:      data,
 	}
 
@@ -806,11 +908,12 @@ func (n *raft) InstallSnapshot(data []byte) error {
 		return err
 	}
 
-	if _, err := n.wal.Compact(snap.lastIndex + 1); err != nil {
+	if _, err := n.wal.Compact(snap.lastIndex); err != nil {
 		n.Unlock()
 		n.setWriteErr(err)
 		return err
 	}
+
 	n.Unlock()
 
 	psnaps, _ := ioutil.ReadDir(snapDir)
@@ -902,7 +1005,8 @@ func (n *raft) setupLastSnapshot() {
 		n.pindex = snap.lastIndex
 		n.pterm = snap.lastTerm
 		n.commit = snap.lastIndex
-		n.applyc <- &CommittedEntry{n.commit, []*Entry{&Entry{EntrySnapshot, snap.data}}}
+		n.applied = snap.lastIndex
+		n.apply.push(&CommittedEntry{n.commit, []*Entry{{EntrySnapshot, snap.data}}})
 		if _, err := n.wal.Compact(snap.lastIndex + 1); err != nil {
 			n.setWriteErrLocked(err)
 		}
@@ -983,7 +1087,7 @@ func (n *raft) isCurrent() bool {
 
 	// Check to see that we have heard from the current leader lately.
 	if n.leader != noLeader && n.leader != n.id && n.catchup == nil {
-		const okInterval = int64(hbInterval) * 2
+		okInterval := int64(hbInterval) * 2
 		ts := time.Now().UnixNano()
 		if ps := n.peers[n.leader]; ps != nil && ps.ts > 0 && (ts-ps.ts) <= okInterval {
 			return true
@@ -1006,6 +1110,13 @@ func (n *raft) Current() bool {
 	return n.isCurrent()
 }
 
+// HadPreviousLeader indicates if this group ever had a leader.
+func (n *raft) HadPreviousLeader() bool {
+	n.RLock()
+	defer n.RUnlock()
+	return n.pleader
+}
+
 // GroupLeader returns the current leader of the group.
 func (n *raft) GroupLeader() string {
 	if n == nil {
@@ -1014,6 +1125,19 @@ func (n *raft) GroupLeader() string {
 	n.RLock()
 	defer n.RUnlock()
 	return n.leader
+}
+
+// Guess the best next leader. Stepdown will check more thoroughly.
+func (n *raft) selectNextLeader() string {
+	nextLeader, hli := noLeader, uint64(0)
+	for peer, ps := range n.peers {
+		if peer == n.id || ps.li <= hli {
+			continue
+		}
+		hli = ps.li
+		nextLeader = peer
+	}
+	return nextLeader
 }
 
 // StepDown will have a leader stepdown and optionally do a leader transfer.
@@ -1061,14 +1185,10 @@ func (n *raft) StepDown(preferred ...string) error {
 
 	if maybeLeader != noLeader {
 		n.debug("Stepping down, selected %q for new leader", maybeLeader)
-		n.sendAppendEntry([]*Entry{&Entry{EntryLeaderTransfer, []byte(maybeLeader)}})
+		n.sendAppendEntry([]*Entry{{EntryLeaderTransfer, []byte(maybeLeader)}})
 	}
 	// Force us to stepdown here.
-	select {
-	case stepdown <- noLeader:
-	default:
-		return errStepdownFailed
-	}
+	stepdown.push(noLeader)
 	return nil
 }
 
@@ -1140,20 +1260,24 @@ func (n *raft) Peers() []*Peer {
 
 	var peers []*Peer
 	for id, ps := range n.peers {
+		var lag uint64
+		if n.commit > ps.li {
+			lag = n.commit - ps.li
+		}
 		p := &Peer{
 			ID:      id,
 			Current: id == n.leader || ps.li >= n.applied,
 			Last:    time.Unix(0, ps.ts),
-			Lag:     n.commit - ps.li,
+			Lag:     lag,
 		}
 		peers = append(peers, p)
 	}
 	return peers
 }
 
-func (n *raft) ApplyC() <-chan *CommittedEntry { return n.applyc }
-func (n *raft) LeadChangeC() <-chan bool       { return n.leadc }
-func (n *raft) QuitC() <-chan struct{}         { return n.quit }
+func (n *raft) ApplyQ() *ipQueue         { return n.apply } // queue of *CommittedEntry
+func (n *raft) LeadChangeC() <-chan bool { return n.leadc }
+func (n *raft) QuitC() <-chan struct{}   { return n.quit }
 
 func (n *raft) Created() time.Time {
 	n.RLock()
@@ -1225,6 +1349,7 @@ func (n *raft) newInbox() string {
 }
 
 const (
+	raftAllSubj        = "$NRG.>"
 	raftVoteSubj       = "$NRG.V.%s"
 	raftAppendSubj     = "$NRG.AE.%s"
 	raftPropSubj       = "$NRG.P.%s"
@@ -1340,24 +1465,77 @@ func (n *raft) electTimer() *time.Timer {
 	return n.elect
 }
 
+func (n *raft) isObserver() bool {
+	n.RLock()
+	defer n.RUnlock()
+	return n.observer
+}
+
+func (n *raft) setObserver(isObserver bool, extSt extensionState) {
+	n.Lock()
+	defer n.Unlock()
+	n.observer = isObserver
+	n.extSt = extSt
+}
+
+// Invoked when being notified that there is something in the entryc's queue
+func (n *raft) processAppendEntries() {
+	aes := n.entry.pop()
+	for _, aei := range aes {
+		ae := aei.(*appendEntry)
+		n.processAppendEntry(ae, ae.sub)
+	}
+	n.entry.recycle(&aes)
+}
+
+func convertVoteRequest(i interface{}) *voteRequest {
+	if i == nil {
+		return nil
+	}
+	return i.(*voteRequest)
+}
+
+func convertVoteResponse(i interface{}) *voteResponse {
+	if i == nil {
+		return nil
+	}
+	return i.(*voteResponse)
+}
+
 func (n *raft) runAsFollower() {
 	for {
 		elect := n.electTimer()
 		select {
-		case ae := <-n.entryc:
-			n.processAppendEntry(ae, ae.sub)
+		case <-n.entry.ch:
+			n.processAppendEntries()
 		case <-n.s.quitCh:
+			n.shutdown(false)
 			return
 		case <-n.quit:
 			return
 		case <-elect.C:
-			n.switchToCandidate()
-			return
-		case <-n.respc:
+			// If we are out of resources we just want to stay in this state for the moment.
+			if n.outOfResources() {
+				n.resetElectionTimeout()
+				n.debug("Not switching to candidate, no resources")
+			} else if n.isObserver() {
+				n.resetElect(48 * time.Hour)
+				n.debug("Not switching to candidate, observer only")
+			} else {
+				n.switchToCandidate()
+				return
+			}
+		case <-n.votes.ch:
+			n.debug("Ignoring old vote response, we have stepped down")
+			n.votes.popOne()
+		case <-n.resp.ch:
 			// Ignore
-		case vreq := <-n.reqs:
-			n.processVoteRequest(vreq)
-		case newLeader := <-n.stepdown:
+			n.resp.popOne()
+		case <-n.reqs.ch:
+			// Because of drain() it is possible that we get nil from popOne().
+			n.processVoteRequest(convertVoteRequest(n.reqs.popOne()))
+		case <-n.stepdown.ch:
+			newLeader := n.stepdown.popOne().(string)
 			n.switchToFollower(newLeader)
 			return
 		}
@@ -1370,6 +1548,7 @@ type CommittedEntry struct {
 	Entries []*Entry
 }
 
+// appendEntry is the main struct that is used to sync raft peers.
 type appendEntry struct {
 	leader  string
 	term    uint64
@@ -1427,13 +1606,28 @@ func (ae *appendEntry) String() string {
 
 const appendEntryBaseLen = idLen + 4*8 + 2
 
-func (ae *appendEntry) encode() []byte {
+func (ae *appendEntry) encode(b []byte) ([]byte, error) {
+	if ll := len(ae.leader); ll != idLen && ll != 0 {
+		return nil, errLeaderLen
+	}
+	if len(ae.entries) > math.MaxUint16 {
+		return nil, errTooManyEntries
+	}
+
 	var elen int
 	for _, e := range ae.entries {
 		elen += len(e.Data) + 1 + 4 // 1 is type, 4 is for size.
 	}
+	tlen := appendEntryBaseLen + elen + 1
+
+	var buf []byte
+	if cap(b) >= tlen {
+		buf = b[:tlen]
+	} else {
+		buf = make([]byte, tlen)
+	}
+
 	var le = binary.LittleEndian
-	buf := make([]byte, appendEntryBaseLen+elen)
 	copy(buf[:idLen], ae.leader)
 	le.PutUint64(buf[8:], ae.term)
 	le.PutUint64(buf[16:], ae.commit)
@@ -1449,13 +1643,13 @@ func (ae *appendEntry) encode() []byte {
 		copy(buf[wi:], e.Data)
 		wi += len(e.Data)
 	}
-	return buf[:wi]
+	return buf[:wi], nil
 }
 
 // This can not be used post the wire level callback since we do not copy.
-func (n *raft) decodeAppendEntry(msg []byte, sub *subscription, reply string) *appendEntry {
+func (n *raft) decodeAppendEntry(msg []byte, sub *subscription, reply string) (*appendEntry, error) {
 	if len(msg) < appendEntryBaseLen {
-		return nil
+		return nil, errBadAppendEntry
 	}
 
 	var le = binary.LittleEndian
@@ -1468,17 +1662,23 @@ func (n *raft) decodeAppendEntry(msg []byte, sub *subscription, reply string) *a
 	}
 	// Decode Entries.
 	ne, ri := int(le.Uint16(msg[40:])), 42
-	for i := 0; i < ne; i++ {
+	for i, max := 0, len(msg); i < ne; i++ {
+		if ri >= max-1 {
+			return nil, errBadAppendEntry
+		}
 		le := int(le.Uint32(msg[ri:]))
 		ri += 4
+		if le <= 0 || ri+le > max {
+			return nil, errBadAppendEntry
+		}
 		etype := EntryType(msg[ri])
 		ae.entries = append(ae.entries, &Entry{etype, msg[ri+1 : ri+le]})
-		ri += int(le)
+		ri += le
 	}
 	ae.reply = reply
 	ae.sub = sub
 	ae.buf = msg
-	return ae
+	return ae, nil
 }
 
 // appendEntryResponse is our response to a received appendEntry.
@@ -1495,13 +1695,17 @@ type appendEntryResponse struct {
 const idLen = 8
 const appendEntryResponseLen = 24 + 1
 
-func (ar *appendEntryResponse) encode() []byte {
-	var buf [appendEntryResponseLen]byte
+func (ar *appendEntryResponse) encode(b []byte) []byte {
+	var buf []byte
+	if cap(b) >= appendEntryResponseLen {
+		buf = b[:appendEntryResponseLen]
+	} else {
+		buf = make([]byte, appendEntryResponseLen)
+	}
 	var le = binary.LittleEndian
 	le.PutUint64(buf[0:], ar.term)
 	le.PutUint64(buf[8:], ar.index)
-	copy(buf[16:], ar.peer)
-
+	copy(buf[16:16+idLen], ar.peer)
 	if ar.success {
 		buf[24] = 1
 	} else {
@@ -1525,7 +1729,7 @@ func (n *raft) decodeAppendEntryResponse(msg []byte) *appendEntryResponse {
 }
 
 // Called when a remove peer proposal has been forwarded
-func (n *raft) handleForwardedRemovePeerProposal(sub *subscription, c *client, _, reply string, msg []byte) {
+func (n *raft) handleForwardedRemovePeerProposal(sub *subscription, c *client, _ *Account, _, reply string, msg []byte) {
 	n.debug("Received forwarded remove peer proposal: %q", msg)
 
 	if !n.Leader() {
@@ -1537,30 +1741,39 @@ func (n *raft) handleForwardedRemovePeerProposal(sub *subscription, c *client, _
 		return
 	}
 	// Need to copy since this is underlying client/route buffer.
-	peer := string(append(msg[:0:0], msg...))
+	peer := string(copyBytes(msg))
 
 	n.RLock()
-	propc := n.propc
+	prop, werr := n.prop, n.werr
 	n.RUnlock()
 
-	select {
-	case propc <- &Entry{EntryRemovePeer, []byte(peer)}:
-	default:
-		n.warn("Failed to place peer removal proposal onto propose channel")
+	// Ignore if we have had a write error previous.
+	if werr != nil {
+		return
 	}
+
+	prop.push(&Entry{EntryRemovePeer, []byte(peer)})
 }
 
 // Called when a peer has forwarded a proposal.
-func (n *raft) handleForwardedProposal(sub *subscription, c *client, _, reply string, msg []byte) {
+func (n *raft) handleForwardedProposal(sub *subscription, c *client, _ *Account, _, reply string, msg []byte) {
 	if !n.Leader() {
 		n.debug("Ignoring forwarded proposal, not leader")
 		return
 	}
 	// Need to copy since this is underlying client/route buffer.
-	msg = append(msg[:0:0], msg...)
-	if err := n.Propose(msg); err != nil {
-		n.warn("Got error processing forwarded proposal: %v", err)
+	msg = copyBytes(msg)
+
+	n.RLock()
+	prop, werr := n.prop, n.werr
+	n.RUnlock()
+
+	// Ignore if we have had a write error previous.
+	if werr != nil {
+		return
 	}
+
+	prop.push(&Entry{EntryNormal, msg})
 }
 
 func (n *raft) runAsLeader() {
@@ -1600,27 +1813,36 @@ func (n *raft) runAsLeader() {
 	for {
 		select {
 		case <-n.s.quitCh:
+			n.shutdown(false)
 			return
 		case <-n.quit:
 			return
-		case ar := <-n.respc:
-			n.processAppendEntryResponse(ar)
-		case b := <-n.propc:
-			entries := []*Entry{b}
-			if b.Type == EntryNormal {
-				const maxBatch = 256 * 1024
-			gather:
-				for sz := 0; sz < maxBatch; {
-					select {
-					case e := <-n.propc:
-						entries = append(entries, e)
-						sz += len(e.Data) + 1
-					default:
-						break gather
-					}
-				}
+		case <-n.resp.ch:
+			ars := n.resp.pop()
+			for _, ari := range ars {
+				ar := ari.(*appendEntryResponse)
+				n.processAppendEntryResponse(ar)
 			}
-			n.sendAppendEntry(entries)
+			n.resp.recycle(&ars)
+		case <-n.prop.ch:
+			const maxBatch = 256 * 1024
+			var entries []*Entry
+
+			es := n.prop.pop()
+			sz := 0
+			for i, bi := range es {
+				b := bi.(*Entry)
+				entries = append(entries, b)
+				sz += len(b.Data) + 1
+				if i != len(es)-1 && sz < maxBatch && len(entries) < math.MaxUint16 {
+					continue
+				}
+				n.sendAppendEntry(entries)
+				// We need to re-craete `entries` because there is a reference
+				// to it in the node's pae map.
+				entries = nil
+			}
+			n.prop.recycle(&es)
 		case <-hb.C:
 			if n.notActive() {
 				n.sendHeartbeat()
@@ -1629,19 +1851,26 @@ func (n *raft) runAsLeader() {
 				n.switchToFollower(noLeader)
 				return
 			}
-		case vresp := <-n.votes:
+		case <-n.votes.ch:
+			// Because of drain() it is possible that we get nil from popOne().
+			vresp := convertVoteResponse(n.votes.popOne())
+			if vresp == nil {
+				continue
+			}
 			if vresp.term > n.currentTerm() {
 				n.switchToFollower(noLeader)
 				return
 			}
 			n.trackPeer(vresp.peer)
-		case vreq := <-n.reqs:
-			n.processVoteRequest(vreq)
-		case newLeader := <-n.stepdown:
+		case <-n.reqs.ch:
+			// Because of drain() it is possible that we get nil from popOne().
+			n.processVoteRequest(convertVoteRequest(n.reqs.popOne()))
+		case <-n.stepdown.ch:
+			newLeader := n.stepdown.popOne().(string)
 			n.switchToFollower(newLeader)
 			return
-		case ae := <-n.entryc:
-			n.processAppendEntry(ae, ae.sub)
+		case <-n.entry.ch:
+			n.processAppendEntries()
 		}
 	}
 }
@@ -1704,7 +1933,7 @@ func (n *raft) loadFirstEntry() (ae *appendEntry, err error) {
 	return n.loadEntry(state.FirstSeq)
 }
 
-func (n *raft) runCatchup(ar *appendEntryResponse, indexUpdatesC <-chan uint64) {
+func (n *raft) runCatchup(ar *appendEntryResponse, indexUpdatesQ *ipQueue /* of uint64 */) {
 	n.RLock()
 	s, reply := n.s, n.areply
 	peer, subj, last := ar.peer, ar.reply, n.pindex
@@ -1764,6 +1993,7 @@ func (n *raft) runCatchup(ar *appendEntryResponse, indexUpdatesC <-chan uint64) 
 	for n.Leader() {
 		select {
 		case <-n.s.quitCh:
+			n.shutdown(false)
 			return
 		case <-n.quit:
 			return
@@ -1775,7 +2005,8 @@ func (n *raft) runCatchup(ar *appendEntryResponse, indexUpdatesC <-chan uint64) 
 		case <-timeout.C:
 			n.debug("Catching up for %q stalled", peer)
 			return
-		case index := <-indexUpdatesC:
+		case <-indexUpdatesQ.ch:
+			index := indexUpdatesQ.popOne().(uint64)
 			// Update our activity timer.
 			timeout.Reset(activityInterval)
 			// Update outstanding total.
@@ -1783,10 +2014,7 @@ func (n *raft) runCatchup(ar *appendEntryResponse, indexUpdatesC <-chan uint64) 
 			delete(om, index)
 			if next == 0 {
 				next = index
-			} else {
-				next++
 			}
-
 			// Check if we are done.
 			if index > last || sendNext() {
 				n.debug("Finished catching up")
@@ -1801,19 +2029,23 @@ func (n *raft) sendSnapshotToFollower(subject string) (uint64, error) {
 	snap, err := n.loadLastSnapshot()
 	if err != nil {
 		// We need to stepdown here when this happens.
-		n.attemptStepDown(noLeader)
+		n.stepdown.push(noLeader)
 		return 0, err
 	}
 	// Go ahead and send the snapshot and peerstate here as first append entry to the catchup follower.
-	ae := n.buildAppendEntry([]*Entry{&Entry{EntrySnapshot, snap.data}, &Entry{EntryPeerState, snap.peerstate}})
+	ae := n.buildAppendEntry([]*Entry{{EntrySnapshot, snap.data}, {EntryPeerState, snap.peerstate}})
 	ae.pterm, ae.pindex = snap.lastTerm, snap.lastIndex
 	var state StreamState
 	n.wal.FastState(&state)
-	if snap.lastIndex+1 != state.FirstSeq && state.FirstSeq != 0 {
-		snap.lastIndex = state.FirstSeq - 1
+	if snap.lastIndex < state.FirstSeq && state.FirstSeq != 0 {
+		snap.lastIndex = state.FirstSeq
 		ae.pindex = snap.lastIndex
 	}
-	n.sendRPC(subject, n.areply, ae.encode())
+	encoding, err := ae.encode(nil)
+	if err != nil {
+		return 0, err
+	}
+	n.sendRPC(subject, n.areply, encoding)
 	return snap.lastIndex, nil
 }
 
@@ -1821,31 +2053,30 @@ func (n *raft) catchupFollower(ar *appendEntryResponse) {
 	n.debug("Being asked to catch up follower: %q", ar.peer)
 	n.Lock()
 	if n.progress == nil {
-		n.progress = make(map[string]chan uint64)
-	}
-
-	if ch, ok := n.progress[ar.peer]; ok {
+		n.progress = make(map[string]*ipQueue)
+	} else if q, ok := n.progress[ar.peer]; ok {
 		n.debug("Will cancel existing entry for catching up %q", ar.peer)
 		delete(n.progress, ar.peer)
-		// Try to pop them out but make sure to not block.
-		select {
-		case ch <- n.pindex:
-		default:
-		}
+		q.push(n.pindex)
 	}
 	// Check to make sure we have this entry.
 	start := ar.index + 1
 	var state StreamState
 	n.wal.FastState(&state)
 
-	if start < state.FirstSeq {
+	if start < state.FirstSeq || state.Msgs == 0 && start <= state.LastSeq {
 		n.debug("Need to send snapshot to follower")
 		if lastIndex, err := n.sendSnapshotToFollower(ar.reply); err != nil {
 			n.error("Error sending snapshot to follower [%s]: %v", ar.peer, err)
-			n.attemptStepDown(noLeader)
 			n.Unlock()
 			return
 		} else {
+			// If no other entries can just return here.
+			if state.Msgs == 0 {
+				n.debug("Finished catching up")
+				n.Unlock()
+				return
+			}
 			n.debug("Snapshot sent, reset first entry to %d", lastIndex)
 			start = lastIndex
 		}
@@ -1863,13 +2094,10 @@ func (n *raft) catchupFollower(ar *appendEntryResponse) {
 	if ae.pindex != ar.index || ae.pterm != ar.term {
 		n.debug("Our first entry does not match request from follower")
 	}
-	// Create a chan for delivering updates from responses.
-	isz := 64
-	if ae.pindex > ar.index && ae.pindex-ar.index > uint64(isz) {
-		isz = int(ae.pindex - ar.index)
-	}
-	indexUpdates := make(chan uint64, isz)
-	indexUpdates <- ae.pindex
+	// Create a queue for delivering updates from responses.
+	qname := fmt.Sprintf("RAFT [%s - %s] Index updates", n.id, n.group)
+	indexUpdates := newIPQueue(ipQueue_Logger(qname, n.s.ipqLog)) // of uint64
+	indexUpdates.push(ae.pindex)
 	n.progress[ar.peer] = indexUpdates
 	n.Unlock()
 
@@ -1881,7 +2109,7 @@ func (n *raft) loadEntry(index uint64) (*appendEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return n.decodeAppendEntry(msg, nil, _EMPTY_), nil
+	return n.decodeAppendEntry(msg, nil, _EMPTY_)
 }
 
 // applyCommit will update our commit index and apply the entry to the apply chan.
@@ -1946,6 +2174,12 @@ func (n *raft) applyCommit(index uint64) error {
 		case EntryAddPeer:
 			newPeer := string(e.Data)
 			n.debug("Added peer %q", newPeer)
+
+			// If we were on the removed list reverse that here.
+			if n.removed != nil {
+				delete(n.removed, newPeer)
+			}
+
 			if _, ok := n.peers[newPeer]; !ok {
 				// We are not tracking this one automatically so we need to bump cluster size.
 				n.peers[newPeer] = &lps{time.Now().UnixNano(), 0}
@@ -1955,22 +2189,36 @@ func (n *raft) applyCommit(index uint64) error {
 					n.qn = n.csz/2 + 1
 				}
 			}
-			n.writePeerState(&peerState{n.peerNames(), n.csz})
+			n.writePeerState(&peerState{n.peerNames(), n.csz, n.extSt})
+			// We pass these up as well.
+			committed = append(committed, e)
 		case EntryRemovePeer:
-			oldPeer := string(e.Data)
-			n.debug("Removing peer %q", oldPeer)
+			peer := string(e.Data)
+			n.debug("Removing peer %q", peer)
 
-			// FIXME(dlc) - Check if this is us??
-			if _, ok := n.peers[oldPeer]; ok {
+			// Make sure we have our removed map.
+			if n.removed == nil {
+				n.removed = make(map[string]string)
+			}
+			n.removed[peer] = peer
+
+			if _, ok := n.peers[peer]; ok {
 				// We should decrease our cluster size since we are tracking this peer.
-				delete(n.peers, oldPeer)
+				delete(n.peers, peer)
 				if n.csz != len(n.peers) {
 					n.debug("Decreasing our clustersize: %d -> %d", n.csz, len(n.peers))
 					n.csz = len(n.peers)
 					n.qn = n.csz/2 + 1
 				}
 			}
-			n.writePeerState(&peerState{n.peerNames(), n.csz})
+
+			// If this is us and we are the leader we should attempt to stepdown.
+			if peer == n.id && n.state == Leader {
+				n.stepdown.push(n.selectNextLeader())
+			}
+
+			// Write out our new state.
+			n.writePeerState(&peerState{n.peerNames(), n.csz, n.extSt})
 			// We pass these up as well.
 			committed = append(committed, e)
 		}
@@ -1980,14 +2228,7 @@ func (n *raft) applyCommit(index uint64) error {
 		if fpae {
 			delete(n.pae, index)
 		}
-		// For entering and exiting the system, proposals and apply we
-		// will block.
-		closed := n.state == Closed
-		n.Unlock()
-		if !closed {
-			n.applyc <- &CommittedEntry{index, committed}
-		}
-		n.Lock()
+		n.apply.push(&CommittedEntry{index, committed})
 	} else {
 		// If we processed inline update our applied index.
 		n.applied = index
@@ -2005,12 +2246,8 @@ func (n *raft) trackResponse(ar *appendEntryResponse) {
 	}
 
 	// If we are tracking this peer as a catchup follower, update that here.
-	if indexUpdateC := n.progress[ar.peer]; indexUpdateC != nil {
-		select {
-		case indexUpdateC <- ar.index:
-		default:
-			n.warn("TrackResponse failed to place progress update on internal channel")
-		}
+	if indexUpdateQ := n.progress[ar.peer]; indexUpdateQ != nil {
+		indexUpdateQ.push(ar.index)
 	}
 
 	// Ignore items already committed.
@@ -2031,7 +2268,7 @@ func (n *raft) trackResponse(ar *appendEntryResponse) {
 					break
 				}
 			}
-			sendHB = len(n.propc) == 0
+			sendHB = n.prop.len() == 0
 		}
 	}
 
@@ -2045,21 +2282,21 @@ func (n *raft) trackResponse(ar *appendEntryResponse) {
 // Track interactions with this peer.
 func (n *raft) trackPeer(peer string) error {
 	n.Lock()
-	var needPeerUpdate bool
+	var needPeerUpdate, isRemoved bool
+	if n.removed != nil {
+		_, isRemoved = n.removed[peer]
+	}
 	if n.state == Leader {
 		if _, ok := n.peers[peer]; !ok {
-			// This is someone new, if we have registered all of the peers already
-			// this is an error.
-			if len(n.peers) >= n.csz {
-				n.Unlock()
-				return errUnknownPeer
+			// Check if this peer had been removed previously.
+			if !isRemoved {
+				needPeerUpdate = true
 			}
-			needPeerUpdate = true
 		}
 	}
 	if ps := n.peers[peer]; ps != nil {
 		ps.ts = time.Now().UnixNano()
-	} else {
+	} else if !isRemoved {
 		n.peers[peer] = &lps{time.Now().UnixNano(), 0}
 	}
 	n.Unlock()
@@ -2089,9 +2326,7 @@ func (n *raft) numActivePeers() int {
 func (n *raft) runAsCandidate() {
 	n.Lock()
 	// Drain old responses.
-	for len(n.votes) > 0 {
-		<-n.votes
-	}
+	n.votes.drain()
 	n.Unlock()
 
 	// Send out our request for votes.
@@ -2104,11 +2339,13 @@ func (n *raft) runAsCandidate() {
 	for {
 		elect := n.electTimer()
 		select {
-		case ae := <-n.entryc:
-			n.processAppendEntry(ae, ae.sub)
-		case <-n.respc:
+		case <-n.entry.ch:
+			n.processAppendEntries()
+		case <-n.resp.ch:
 			// Ignore
+			n.resp.popOne()
 		case <-n.s.quitCh:
+			n.shutdown(false)
 			return
 		case <-n.quit:
 			return
@@ -2120,13 +2357,22 @@ func (n *raft) runAsCandidate() {
 				n.switchToCandidate()
 			}
 			return
-		case vresp := <-n.votes:
-			if vresp.granted && n.term >= vresp.term {
+		case <-n.votes.ch:
+			// Because of drain() it is possible that we get nil from popOne().
+			vresp := convertVoteResponse(n.votes.popOne())
+			if vresp == nil {
+				continue
+			}
+			n.RLock()
+			nterm, lxfer := n.term, n.lxfer
+			n.RUnlock()
+
+			if vresp.granted && nterm >= vresp.term {
 				// only track peers that would be our followers
 				n.trackPeer(vresp.peer)
 				votes++
 				if n.wonElection(votes) {
-					if votes == n.numActivePeers() || n.lxfer {
+					if votes == n.numActivePeers() || lxfer {
 						// Become LEADER if we have won and gotten a quorum with everyone we should hear from.
 						n.switchToLeader()
 						return
@@ -2139,19 +2385,23 @@ func (n *raft) runAsCandidate() {
 						won = true
 					}
 				}
-			} else if vresp.term > n.term {
+			} else if vresp.term > nterm {
 				// if we observe a bigger term, we should start over again or risk forming a quorum fully knowing
 				// someone with a better term exists. This is even the right thing to do if won == true.
+				n.Lock()
 				n.term = vresp.term
 				n.vote = noVote
 				n.writeTermVote()
 				n.debug("Stepping down from candidate, detected higher term: %d vs %d", vresp.term, n.term)
-				n.attemptStepDown(noLeader)
+				n.stepdown.push(noLeader)
+				n.Unlock()
 				return
 			}
-		case vreq := <-n.reqs:
-			n.processVoteRequest(vreq)
-		case newLeader := <-n.stepdown:
+		case <-n.reqs.ch:
+			// Because of drain() it is possible that we get nil from popOne().
+			n.processVoteRequest(convertVoteRequest(n.reqs.popOne()))
+		case <-n.stepdown.ch:
+			newLeader := n.stepdown.popOne().(string)
 			n.switchToFollower(newLeader)
 			return
 		}
@@ -2159,14 +2409,17 @@ func (n *raft) runAsCandidate() {
 }
 
 // handleAppendEntry handles an append entry from the wire.
-func (n *raft) handleAppendEntry(sub *subscription, c *client, subject, reply string, msg []byte) {
-	msg = append(msg[:0:0], msg...)
-	if ae := n.decodeAppendEntry(msg, sub, reply); ae != nil {
-		select {
-		case n.entryc <- ae:
-		default:
-			n.warn("AppendEntry failed to be placed on internal channel")
-		}
+func (n *raft) handleAppendEntry(sub *subscription, c *client, _ *Account, subject, reply string, msg []byte) {
+	if n.outOfResources() {
+		n.debug("AppendEntry not processing inbound, no resources")
+		return
+	}
+
+	msg = copyBytes(msg)
+	if ae, err := n.decodeAppendEntry(msg, sub, reply); err == nil {
+		n.entry.push(ae)
+	} else {
+		n.warn("AppendEntry failed to be placed on internal channel: corrupt entry")
 	}
 }
 
@@ -2215,24 +2468,21 @@ func (n *raft) createCatchup(ae *appendEntry) string {
 	return inbox
 }
 
-// Attempt to stepdown, lock should be held.
-func (n *raft) attemptStepDown(newLeader string) {
-	select {
-	case n.stepdown <- newLeader:
-	default:
-		n.debug("Failed to place stepdown for new leader %q for %q", newLeader, n.group)
+// Truncate our WAL and reset.
+func (n *raft) truncateWAL(pterm, pindex uint64) {
+	n.debug("Truncating and repairing WAL")
+	n.pterm, n.pindex = pterm, pindex
+	if err := n.wal.Truncate(pindex); err != nil {
+		n.setWriteErrLocked(err)
 	}
 }
 
-func (n *raft) truncateWal(ae *appendEntry) {
-	n.debug("Truncating and repairing WAL")
-
-	if err := n.wal.Truncate(ae.pindex); err != nil {
-		n.setWriteErrLocked(err)
-		return
+// Lock should be held
+func (n *raft) updateLeader(newLeader string) {
+	n.leader = newLeader
+	if !n.pleader && newLeader != noLeader {
+		n.pleader = true
 	}
-	n.pindex = ae.pindex
-	n.pterm = ae.term
 }
 
 // processAppendEntry will process an appendEntry.
@@ -2245,6 +2495,10 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 		return
 	}
 
+	// Scratch buffer for responses.
+	var scratch [appendEntryResponseLen]byte
+	arbuf := scratch[:]
+
 	// Are we receiving from another leader.
 	if n.state == Leader {
 		if ae.term > n.term {
@@ -2252,13 +2506,13 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			n.vote = noVote
 			n.writeTermVote()
 			n.debug("Received append entry from another leader, stepping down to %q", ae.leader)
-			n.attemptStepDown(ae.leader)
+			n.stepdown.push(ae.leader)
 		} else {
 			// Let them know we are the leader.
 			ar := &appendEntryResponse{n.term, n.pindex, n.id, false, _EMPTY_}
 			n.Unlock()
 			n.debug("AppendEntry ignoring old term from another leader")
-			n.sendRPC(ae.reply, _EMPTY_, ar.encode())
+			n.sendRPC(ae.reply, _EMPTY_, ar.encode(arbuf))
 			return
 		}
 	}
@@ -2271,7 +2525,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			n.vote = noVote
 			n.writeTermVote()
 		}
-		n.attemptStepDown(ae.leader)
+		n.stepdown.push(ae.leader)
 	}
 
 	n.resetElectionTimeout()
@@ -2295,7 +2549,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 		ar := &appendEntryResponse{n.term, n.pindex, n.id, false, _EMPTY_}
 		n.Unlock()
 		n.debug("AppendEntry ignoring old term")
-		n.sendRPC(ae.reply, _EMPTY_, ar.encode())
+		n.sendRPC(ae.reply, _EMPTY_, ar.encode(arbuf))
 		return
 	}
 
@@ -2323,7 +2577,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			}
 			n.Unlock()
 			if ar != nil {
-				n.sendRPC(ae.reply, inbox, ar.encode())
+				n.sendRPC(ae.reply, inbox, ar.encode(arbuf))
 			}
 			// Ignore new while catching up or replaying.
 			return
@@ -2339,26 +2593,26 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 		}
 		if n.state != Follower {
 			n.debug("Term higher than ours and we are not a follower: %v, stepping down to %q", n.state, ae.leader)
-			n.attemptStepDown(ae.leader)
+			n.stepdown.push(ae.leader)
 		}
 	}
 
 	if isNew && n.leader != ae.leader && n.state == Follower {
 		n.debug("AppendEntry updating leader to %q", ae.leader)
-		n.leader = ae.leader
+		n.updateLeader(ae.leader)
 		n.writeTermVote()
 		n.resetElectionTimeout()
 		n.updateLeadChange(false)
 	}
 
 	if ae.pterm != n.pterm || ae.pindex != n.pindex {
-		// If this is a lower index than what we were expecting.
+		// Check if this is a lower index than what we were expecting.
 		if ae.pindex < n.pindex {
 			var ar *appendEntryResponse
 			if eae, err := n.loadEntry(ae.pindex); err == nil && eae != nil {
 				// If terms mismatched, delete that entry and all others past it.
 				if ae.pterm > eae.pterm {
-					n.truncateWal(ae)
+					n.truncateWAL(ae.pterm, ae.pindex)
 					ar = &appendEntryResponse{n.pterm, n.pindex, n.id, false, _EMPTY_}
 				} else {
 					ar = &appendEntryResponse{ae.pterm, ae.pindex, n.id, true, _EMPTY_}
@@ -2366,7 +2620,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			}
 			n.Unlock()
 			if ar != nil {
-				n.sendRPC(ae.reply, _EMPTY_, ar.encode())
+				n.sendRPC(ae.reply, _EMPTY_, ar.encode(arbuf))
 			}
 			return
 		}
@@ -2377,7 +2631,9 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 		if catchingUp {
 			// Check if only our terms do not match here.
 			if ae.pindex == n.pindex {
-				n.truncateWal(ae)
+				// Make sure pterms match and we take on the leader's.
+				// This prevents constant spinning.
+				n.truncateWAL(ae.pterm, ae.pindex)
 				n.cancelCatchup()
 				n.Unlock()
 				return
@@ -2393,7 +2649,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			if ps, err := decodePeerState(ae.entries[1].Data); err == nil {
 				n.processPeerState(ps)
 				// Also need to copy from client's buffer.
-				ae.entries[0].Data = append(ae.entries[0].Data[:0:0], ae.entries[0].Data...)
+				ae.entries[0].Data = copyBytes(ae.entries[0].Data)
 			} else {
 				n.warn("Could not parse snapshot peerstate correctly")
 				n.cancelCatchup()
@@ -2411,12 +2667,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			}
 
 			// Now send snapshot to upper levels. Only send the snapshot, not the peerstate entry.
-			select {
-			case n.applyc <- &CommittedEntry{n.commit, ae.entries[:1]}:
-			default:
-				n.debug("Failed to place snapshot entry onto our apply channel")
-				n.commit--
-			}
+			n.apply.push(&CommittedEntry{n.commit, ae.entries[:1]})
 			n.Unlock()
 			return
 
@@ -2429,17 +2680,14 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 				inbox := n.createCatchup(ae)
 				ar := &appendEntryResponse{n.pterm, n.pindex, n.id, false, _EMPTY_}
 				n.Unlock()
-				n.sendRPC(ae.reply, inbox, ar.encode())
+				n.sendRPC(ae.reply, inbox, ar.encode(arbuf))
 				return
 			}
 		}
 	}
 
-	// Heartbeat or do we have entries.
-	isHeartbeat := len(ae.entries) == 0
-
 	// Save to our WAL if we have entries.
-	if !isHeartbeat {
+	if len(ae.entries) > 0 {
 		// Only store if an original which will have sub != nil
 		if sub != nil {
 			if err := n.storeToWAL(ae); err != nil {
@@ -2451,7 +2699,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 			}
 			// Save in memory for faster processing during applyCommit.
 			n.pae[n.pindex] = ae
-			if len(n.pae) > paeWarnThreshold {
+			if l := len(n.pae); l > paeWarnThreshold && l%1000 == 0 {
 				n.warn("%d append entries pending", len(n.pae))
 			}
 
@@ -2502,7 +2750,7 @@ func (n *raft) processAppendEntry(ae *appendEntry, sub *subscription) {
 	n.Unlock()
 
 	// Success. Send our response.
-	n.sendRPC(ae.reply, _EMPTY_, ar.encode())
+	n.sendRPC(ae.reply, _EMPTY_, ar.encode(arbuf))
 }
 
 // Lock should be held.
@@ -2528,32 +2776,23 @@ func (n *raft) processAppendEntryResponse(ar *appendEntryResponse) {
 
 	if ar.success {
 		n.trackResponse(ar)
-	} else {
+	} else if ar.term > n.term {
 		// False here, check to make sure they do not have a higher term.
-		if ar.term > n.term {
-			n.term = ar.term
-			n.vote = noVote
-			n.writeTermVote()
-			n.Lock()
-			n.attemptStepDown(noLeader)
-			n.Unlock()
-		} else if ar.reply != _EMPTY_ {
-			n.catchupFollower(ar)
-		}
+		n.term = ar.term
+		n.vote = noVote
+		n.writeTermVote()
+		n.stepdown.push(noLeader)
+	} else if ar.reply != _EMPTY_ {
+		n.catchupFollower(ar)
 	}
 }
 
 // handleAppendEntryResponse processes responses to append entries.
-func (n *raft) handleAppendEntryResponse(sub *subscription, c *client, subject, reply string, msg []byte) {
-	msg = append(msg[:0:0], msg...)
+func (n *raft) handleAppendEntryResponse(sub *subscription, c *client, _ *Account, subject, reply string, msg []byte) {
+	msg = copyBytes(msg)
 	ar := n.decodeAppendEntryResponse(msg)
 	ar.reply = reply
-
-	select {
-	case n.respc <- ar:
-	default:
-		n.warn("AppendEntryResponse failed to be placed on internal channel")
-	}
+	n.resp.push(ar)
 }
 
 func (n *raft) buildAppendEntry(entries []*Entry) *appendEntry {
@@ -2576,9 +2815,23 @@ func (n *raft) storeToWAL(ae *appendEntry) error {
 	}
 
 	// Sanity checking for now.
-	if ae.pindex != seq-1 {
-		n.Unlock()
-		panic(fmt.Sprintf("[%s-%s] Placed an entry at the wrong index, ae is %+v, seq is %d, n.pindex is %d\n\n", n.s, n.group, ae, seq, n.pindex))
+	if index := ae.pindex + 1; index != seq {
+		// We are missing store state from our state.
+		if index > seq {
+			// Reset to last before this one.
+			if ae, err := n.loadEntry(seq - 1); err == nil && ae != nil {
+				n.truncateWAL(ae.pterm, ae.pindex)
+				if n.state == Leader {
+					n.stepdown.push(n.selectNextLeader())
+				}
+			} else {
+				panic(fmt.Sprintf("[%s | %s] Wrong index, ae is %+v, seq is %d, n.pindex is %d\n\n", n.s, n.group, ae, seq, n.pindex))
+			}
+		} else {
+			// Truncate back to our last known.
+			n.truncateWAL(n.pterm, n.pindex)
+		}
+		return errEntryStoreFailed
 	}
 
 	n.pterm = ae.term
@@ -2592,33 +2845,48 @@ func (n *raft) sendAppendEntry(entries []*Entry) {
 	n.Lock()
 	defer n.Unlock()
 	ae := n.buildAppendEntry(entries)
-	ae.buf = ae.encode()
+
+	var err error
+	var scratch [1024]byte
+	ae.buf, err = ae.encode(scratch[:])
+	if err != nil {
+		return
+	}
+
 	// If we have entries store this in our wal.
 	if len(entries) > 0 {
 		if err := n.storeToWAL(ae); err != nil {
-			n.setWriteErrLocked(err)
 			return
 		}
 		// We count ourselves.
-		n.acks[n.pindex] = map[string]struct{}{n.id: struct{}{}}
+		n.acks[n.pindex] = map[string]struct{}{n.id: {}}
 		n.active = time.Now()
 
 		// Save in memory for faster processing during applyCommit.
 		n.pae[n.pindex] = ae
-		if len(n.pae) > paeWarnThreshold {
+		if l := len(n.pae); l > paeWarnThreshold && l%1000 == 0 {
 			n.warn("%d append entries pending", len(n.pae))
 		}
 	}
 	n.sendRPC(n.asubj, n.areply, ae.buf)
 }
 
+type extensionState uint16
+
+const (
+	extUndetermined = extensionState(iota)
+	extExtended
+	extNotExtended
+)
+
 type peerState struct {
 	knownPeers  []string
 	clusterSize int
+	domainExt   extensionState
 }
 
 func peerStateBufSize(ps *peerState) int {
-	return 4 + 4 + (8 * len(ps.knownPeers))
+	return 4 + 4 + (idLen * len(ps.knownPeers)) + 2
 }
 
 func encodePeerState(ps *peerState) []byte {
@@ -2631,6 +2899,7 @@ func encodePeerState(ps *peerState) []byte {
 		copy(buf[wi:], peer)
 		wi += idLen
 	}
+	le.PutUint16(buf[wi:], uint16(ps.domainExt))
 	return buf
 }
 
@@ -2642,12 +2911,16 @@ func decodePeerState(buf []byte) (*peerState, error) {
 	ps := &peerState{clusterSize: int(le.Uint32(buf[0:]))}
 	expectedPeers := int(le.Uint32(buf[4:]))
 	buf = buf[8:]
-	for i, ri, n := 0, 0, expectedPeers; i < n && ri < len(buf); i++ {
+	ri := 0
+	for i, n := 0, expectedPeers; i < n && ri < len(buf); i++ {
 		ps.knownPeers = append(ps.knownPeers, string(buf[ri:ri+idLen]))
 		ri += idLen
 	}
 	if len(ps.knownPeers) != expectedPeers {
 		return nil, errCorruptPeers
+	}
+	if len(buf[ri:]) >= 2 {
+		ps.domainExt = extensionState(le.Uint16(buf[ri:]))
 	}
 	return ps, nil
 }
@@ -2663,14 +2936,14 @@ func (n *raft) peerNames() []string {
 
 func (n *raft) currentPeerState() *peerState {
 	n.RLock()
-	ps := &peerState{n.peerNames(), n.csz}
+	ps := &peerState{n.peerNames(), n.csz, n.extSt}
 	n.RUnlock()
 	return ps
 }
 
 // sendPeerState will send our current peer state to the cluster.
 func (n *raft) sendPeerState() {
-	n.sendAppendEntry([]*Entry{&Entry{EntryPeerState, encodePeerState(n.currentPeerState())}})
+	n.sendAppendEntry([]*Entry{{EntryPeerState, encodePeerState(n.currentPeerState())}})
 }
 
 func (n *raft) sendHeartbeat() {
@@ -2704,7 +2977,7 @@ func (n *raft) decodeVoteRequest(msg []byte, reply string) *voteRequest {
 		return nil
 	}
 	// Need to copy for now b/c of candidate.
-	msg = append(msg[:0:0], msg...)
+	msg = copyBytes(msg)
 
 	var le = binary.LittleEndian
 	return &voteRequest{
@@ -2773,18 +3046,26 @@ func (n *raft) readTermVote() (term uint64, voted string, err error) {
 
 // Lock should be held.
 func (n *raft) setWriteErrLocked(err error) {
+	// Ignore if already set.
+	if n.werr == err {
+		return
+	}
 	// Ignore non-write errors.
 	if err != nil {
 		if err == ErrStoreClosed || err == ErrStoreEOF || err == ErrInvalidSequence || err == ErrStoreMsgNotFound || err == errNoPending {
 			return
 		}
+		// If this is a not found report but do not disable.
+		if os.IsNotExist(err) {
+			n.error("Resource not found: %v", err)
+			return
+		}
+		n.error("Critical write error: %v", err)
 	}
 	n.werr = err
 
 	// For now since this can be happening all under the covers, we will call up and disable JetStream.
-	n.Unlock()
-	n.s.handleOutOfSpace("")
-	n.Lock()
+	go n.s.handleOutOfSpace(nil)
 }
 
 // Capture our write error if any and hold.
@@ -2812,15 +3093,23 @@ func (n *raft) fileWriter() {
 			n.RLock()
 			copy(buf[0:], n.wtv)
 			n.RUnlock()
-			if err := ioutil.WriteFile(tvf, buf[:], 0640); err != nil {
+			<-dios
+			err := ioutil.WriteFile(tvf, buf[:], 0640)
+			dios <- struct{}{}
+			if err != nil {
 				n.setWriteErr(err)
+				n.warn("Error writing term and vote file for %q: %v", n.group, err)
 			}
 		case <-n.wpsch:
 			n.RLock()
-			buf := append(n.wps[:0:0], n.wps...)
+			buf := copyBytes(n.wps)
 			n.RUnlock()
-			if err := ioutil.WriteFile(psf, buf, 0640); err != nil {
+			<-dios
+			err := ioutil.WriteFile(psf, buf, 0640)
+			dios <- struct{}{}
+			if err != nil {
 				n.setWriteErr(err)
+				n.warn("Error writing peer state file for %q: %v", n.group, err)
 			}
 		}
 	}
@@ -2879,27 +3168,28 @@ func (n *raft) decodeVoteResponse(msg []byte) *voteResponse {
 	return vr
 }
 
-func (n *raft) handleVoteResponse(sub *subscription, c *client, _, reply string, msg []byte) {
+func (n *raft) handleVoteResponse(sub *subscription, c *client, _ *Account, _, reply string, msg []byte) {
 	vr := n.decodeVoteResponse(msg)
 	n.debug("Received a voteResponse %+v", vr)
 	if vr == nil {
 		n.error("Received malformed vote response for %q", n.group)
 		return
 	}
+
 	if state := n.State(); state != Candidate && state != Leader {
 		n.debug("Ignoring old vote response, we have stepped down")
 		return
 	}
 
-	select {
-	case n.votes <- vr:
-	default:
-		// FIXME(dlc)
-		n.error("Failed to place vote response on chan for %q", n.group)
-	}
+	n.votes.push(vr)
 }
 
 func (n *raft) processVoteRequest(vr *voteRequest) error {
+	// To simplify calling code, we can possibly pass `nil` to this function.
+	// If that is the case, does not consider it an error.
+	if vr == nil {
+		return nil
+	}
 	n.debug("Received a voteRequest %+v", vr)
 
 	if err := n.trackPeer(vr.candidate); err != nil {
@@ -2923,7 +3213,7 @@ func (n *raft) processVoteRequest(vr *voteRequest) error {
 	if vr.term > n.term {
 		if n.state != Follower {
 			n.debug("Stepping down from candidate, detected higher term: %d vs %d", vr.term, n.term)
-			n.attemptStepDown(noLeader)
+			n.stepdown.push(noLeader)
 		}
 		n.term = vr.term
 		n.vote = noVote
@@ -2944,17 +3234,13 @@ func (n *raft) processVoteRequest(vr *voteRequest) error {
 	return nil
 }
 
-func (n *raft) handleVoteRequest(sub *subscription, c *client, subject, reply string, msg []byte) {
+func (n *raft) handleVoteRequest(sub *subscription, c *client, _ *Account, subject, reply string, msg []byte) {
 	vr := n.decodeVoteRequest(msg, reply)
 	if vr == nil {
 		n.error("Received malformed vote request for %q", n.group)
 		return
 	}
-	select {
-	case n.reqs <- vr:
-	default:
-		n.error("Failed to place vote request on chan for %q", n.group)
-	}
+	n.reqs.push(vr)
 }
 
 func (n *raft) requestVote() {
@@ -2976,11 +3262,15 @@ func (n *raft) requestVote() {
 }
 
 func (n *raft) sendRPC(subject, reply string, msg []byte) {
-	n.sq.send(subject, reply, nil, msg)
+	if n.sq != nil {
+		n.sq.send(subject, reply, nil, msg)
+	}
 }
 
 func (n *raft) sendReply(subject string, msg []byte) {
-	n.sq.send(subject, _EMPTY_, nil, msg)
+	if n.sq != nil {
+		n.sq.send(subject, _EMPTY_, nil, msg)
+	}
 }
 
 func (n *raft) wonElection(votes int) bool {
@@ -2997,14 +3287,19 @@ func (n *raft) quorumNeeded() int {
 
 // Lock should be held.
 func (n *raft) updateLeadChange(isLeader bool) {
-	select {
-	case n.leadc <- isLeader:
-	case <-n.leadc:
-		// We had an old value not consumed.
+	// We don't care about values that have not been consumed (transitory states),
+	// so we dequeue any state that is pending and push the new one.
+	for {
 		select {
 		case n.leadc <- isLeader:
+			return
 		default:
-			n.error("Failed to post lead change to %v for %q", isLeader, n.group)
+			select {
+			case <-n.leadc:
+			default:
+				// May have been consumed by the "reader" go routine, so go back
+				// to the top of the loop and try to send again.
+			}
 		}
 	}
 }
@@ -3020,6 +3315,8 @@ func (n *raft) switchState(state RaftState) {
 
 	if n.state == Leader && state != Leader {
 		n.updateLeadChange(false)
+		// Drain the response queue.
+		n.resp.drain()
 	} else if state == Leader && n.state != Leader {
 		if len(n.pae) > 0 {
 			n.pae = make(map[uint64]*appendEntry)
@@ -3044,7 +3341,7 @@ func (n *raft) switchToFollower(leader string) {
 	}
 	n.debug("Switching to follower")
 	n.lxfer = false
-	n.leader = leader
+	n.updateLeader(leader)
 	n.switchState(Follower)
 }
 
@@ -3067,7 +3364,7 @@ func (n *raft) switchToCandidate() {
 	// Increment the term.
 	n.term++
 	// Clear current Leader.
-	n.leader = noLeader
+	n.updateLeader(noLeader)
 	n.switchState(Candidate)
 }
 
@@ -3078,7 +3375,7 @@ func (n *raft) switchToLeader() {
 		return
 	}
 	n.debug("Switching to leader")
-	n.leader = n.id
+	n.updateLeader(n.id)
 	n.lxfer = false
 	n.switchState(Leader)
 }
