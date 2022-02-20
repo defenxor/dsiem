@@ -1,4 +1,4 @@
-// Copyright 2018-2019 The NATS Authors
+// Copyright 2018-2022 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,15 +17,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
 )
-
-var nscDecoratedRe = regexp.MustCompile(`\s*(?:(?:[-]{3,}[^\n]*[-]{3,}\n)(.+)(?:\n\s*[-]{3,}[^\n]*[-]{3,}[\n]*))`)
 
 // All JWTs once encoded start with this
 const jwtPrefix = "eyJ"
@@ -48,17 +45,9 @@ func readOperatorJWT(jwtfile string) (string, *jwt.OperatorClaims, error) {
 	}
 	defer wipeSlice(contents)
 
-	var theJWT string
-	items := nscDecoratedRe.FindAllSubmatch(contents, -1)
-	if len(items) == 0 {
-		theJWT = string(contents)
-	} else {
-		// First result should be the JWT.
-		// We copy here so that if the file contained a seed file too we wipe appropriately.
-		raw := items[0][1]
-		tmp := make([]byte, len(raw))
-		copy(tmp, raw)
-		theJWT = string(tmp)
+	theJWT, err := jwt.ParseDecoratedJWT(contents)
+	if err != nil {
+		return "", nil, err
 	}
 	opc, err := jwt.DecodeOperatorClaims(theJWT)
 	if err != nil {
@@ -81,9 +70,6 @@ func validateTrustedOperators(o *Options) error {
 	if len(o.TrustedOperators) == 0 {
 		return nil
 	}
-	if o.AllowNewAccounts {
-		return fmt.Errorf("operators do not allow dynamic creation of new accounts")
-	}
 	if o.AccountResolver == nil {
 		return fmt.Errorf("operators require an account resolver to be configured")
 	}
@@ -96,11 +82,11 @@ func validateTrustedOperators(o *Options) error {
 	if len(o.TrustedOperators) > 0 && len(o.TrustedKeys) > 0 {
 		return fmt.Errorf("conflicting options for 'TrustedKeys' and 'TrustedOperators'")
 	}
-	if o.SystemAccount != "" {
+	if o.SystemAccount != _EMPTY_ {
 		foundSys := false
 		foundNonEmpty := false
 		for _, op := range o.TrustedOperators {
-			if op.SystemAccount != "" {
+			if op.SystemAccount != _EMPTY_ {
 				foundNonEmpty = true
 			}
 			if op.SystemAccount == o.SystemAccount {
@@ -111,8 +97,16 @@ func validateTrustedOperators(o *Options) error {
 		if foundNonEmpty && !foundSys {
 			return fmt.Errorf("system_account in config and operator JWT must be identical")
 		}
+	} else if o.TrustedOperators[0].SystemAccount == _EMPTY_ {
+		// In case the system account is neither defined in config nor in the first operator.
+		// If it would be needed due to the nats account resolver, raise an error.
+		switch o.AccountResolver.(type) {
+		case *DirAccResolver, *CacheDirAccResolver:
+			return fmt.Errorf("using nats based account resolver - the system account needs to be specified in configuration or the operator jwt")
+		}
 	}
-	srvMajor, srvMinor, srvUpdate, _ := jwt.ParseServerVersion(strings.Split(VERSION, "-")[0])
+	ver := strings.Split(strings.Split(strings.Split(VERSION, "-")[0], ".RC")[0], ".beta")[0]
+	srvMajor, srvMinor, srvUpdate, _ := jwt.ParseServerVersion(ver)
 	for _, opc := range o.TrustedOperators {
 		if major, minor, update, err := jwt.ParseServerVersion(opc.AssertServerVersion); err != nil {
 			return fmt.Errorf("operator %s expects version %s got error instead: %s",
@@ -145,6 +139,17 @@ func validateTrustedOperators(o *Options) error {
 	for _, key := range o.TrustedKeys {
 		if !nkeys.IsValidPublicOperatorKey(key) {
 			return fmt.Errorf("trusted Keys %q are required to be a valid public operator nkey", key)
+		}
+	}
+	if len(o.resolverPinnedAccounts) > 0 {
+		for key := range o.resolverPinnedAccounts {
+			if !nkeys.IsValidPublicAccountKey(key) {
+				return fmt.Errorf("pinned account key %q is not a valid public account nkey", key)
+			}
+		}
+		// ensure the system account (belonging to the operator can always connect)
+		if o.SystemAccount != _EMPTY_ {
+			o.resolverPinnedAccounts[o.SystemAccount] = struct{}{}
 		}
 	}
 	return nil

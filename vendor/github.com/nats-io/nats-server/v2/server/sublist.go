@@ -29,7 +29,9 @@ import (
 // Common byte variables for wildcards and token separator.
 const (
 	pwc   = '*'
+	pwcs  = "*"
 	fwc   = '>'
+	fwcs  = ">"
 	tsep  = "."
 	btsep = '.'
 )
@@ -136,13 +138,21 @@ func (s *Sublist) CacheEnabled() bool {
 }
 
 // RegisterNotification will register for notifications when interest for the given
-// subject changes. The subject must be a literal publish type subject. The
-// notification is true for when the first interest for a subject is inserted,
+// subject changes. The subject must be a literal publish type subject.
+// The notification is true for when the first interest for a subject is inserted,
 // and false when all interest in the subject is removed. Note that this interest
 // needs to be exact and that wildcards will not trigger the notifications. The sublist
 // will not block when trying to send the notification. Its up to the caller to make
 // sure the channel send will not block.
 func (s *Sublist) RegisterNotification(subject string, notify chan<- bool) error {
+	return s.registerNotification(subject, _EMPTY_, notify)
+}
+
+func (s *Sublist) RegisterQueueNotification(subject, queue string, notify chan<- bool) error {
+	return s.registerNotification(subject, queue, notify)
+}
+
+func (s *Sublist) registerNotification(subject, queue string, notify chan<- bool) error {
 	if subjectHasWildcard(subject) {
 		return ErrInvalidSubject
 	}
@@ -154,20 +164,26 @@ func (s *Sublist) RegisterNotification(subject string, notify chan<- bool) error
 	r := s.Match(subject)
 
 	if len(r.psubs)+len(r.qsubs) > 0 {
-		for _, sub := range r.psubs {
-			if string(sub.subject) == subject {
-				hasInterest = true
-				break
+		if queue == _EMPTY_ {
+			for _, sub := range r.psubs {
+				if string(sub.subject) == subject {
+					hasInterest = true
+					break
+				}
 			}
-		}
-		for _, qsub := range r.qsubs {
-			qs := qsub[0]
-			if string(qs.subject) == subject {
-				hasInterest = true
-				break
+		} else {
+			for _, qsub := range r.qsubs {
+				qs := qsub[0]
+				if string(qs.subject) == subject && string(qs.queue) == queue {
+					hasInterest = true
+					break
+				}
 			}
 		}
 	}
+
+	key := keyFromSubjectAndQueue(subject, queue)
+	var err error
 
 	s.Lock()
 	if s.notify == nil {
@@ -176,14 +192,14 @@ func (s *Sublist) RegisterNotification(subject string, notify chan<- bool) error
 			remove: make(map[string][]chan<- bool),
 		}
 	}
-
-	var err error
+	// Check which list to add us to.
 	if hasInterest {
-		err = s.addRemoveNotify(subject, notify)
+		err = s.addRemoveNotify(key, notify)
 	} else {
-		err = s.addInsertNotify(subject, notify)
+		err = s.addInsertNotify(key, notify)
 	}
 	s.Unlock()
+
 	if err == nil {
 		sendNotification(notify, hasInterest)
 	}
@@ -191,14 +207,14 @@ func (s *Sublist) RegisterNotification(subject string, notify chan<- bool) error
 }
 
 // Lock should be held.
-func chkAndRemove(subject string, notify chan<- bool, ms map[string][]chan<- bool) bool {
-	chs := ms[subject]
+func chkAndRemove(key string, notify chan<- bool, ms map[string][]chan<- bool) bool {
+	chs := ms[key]
 	for i, ch := range chs {
 		if ch == notify {
 			chs[i] = chs[len(chs)-1]
 			chs = chs[:len(chs)-1]
 			if len(chs) == 0 {
-				delete(ms, subject)
+				delete(ms, key)
 			}
 			return true
 		}
@@ -207,14 +223,23 @@ func chkAndRemove(subject string, notify chan<- bool, ms map[string][]chan<- boo
 }
 
 func (s *Sublist) ClearNotification(subject string, notify chan<- bool) bool {
+	return s.clearNotification(subject, _EMPTY_, notify)
+}
+
+func (s *Sublist) ClearQueueNotification(subject, queue string, notify chan<- bool) bool {
+	return s.clearNotification(subject, queue, notify)
+}
+
+func (s *Sublist) clearNotification(subject, queue string, notify chan<- bool) bool {
 	s.Lock()
 	if s.notify == nil {
 		s.Unlock()
 		return false
 	}
+	key := keyFromSubjectAndQueue(subject, queue)
 	// Check both, start with remove.
-	didRemove := chkAndRemove(subject, notify, s.notify.remove)
-	didRemove = didRemove || chkAndRemove(subject, notify, s.notify.insert)
+	didRemove := chkAndRemove(key, notify, s.notify.remove)
+	didRemove = didRemove || chkAndRemove(key, notify, s.notify.insert)
 	// Check if everything is gone
 	if len(s.notify.remove)+len(s.notify.insert) == 0 {
 		s.notify = nil
@@ -259,40 +284,58 @@ func (s *Sublist) addNotify(m map[string][]chan<- bool, subject string, notify c
 	return nil
 }
 
+// To generate a key from subject and queue. We just add spc.
+func keyFromSubjectAndQueue(subject, queue string) string {
+	if len(queue) == 0 {
+		return subject
+	}
+	var sb strings.Builder
+	sb.WriteString(subject)
+	sb.WriteString(" ")
+	sb.WriteString(queue)
+	return sb.String()
+}
+
 // chkForInsertNotification will check to see if we need to notify on this subject.
 // Write lock should be held.
-func (s *Sublist) chkForInsertNotification(subject string) {
+func (s *Sublist) chkForInsertNotification(subject, queue string) {
+	key := keyFromSubjectAndQueue(subject, queue)
+
 	// All notify subjects are also literal so just do a hash lookup here.
-	if chs := s.notify.insert[subject]; len(chs) > 0 {
+	if chs := s.notify.insert[key]; len(chs) > 0 {
 		for _, ch := range chs {
 			sendNotification(ch, true)
 		}
 		// Move from the insert map to the remove map.
-		s.notify.remove[subject] = append(s.notify.remove[subject], chs...)
-		delete(s.notify.insert, subject)
+		s.notify.remove[key] = append(s.notify.remove[key], chs...)
+		delete(s.notify.insert, key)
 	}
 }
 
 // chkForRemoveNotification will check to see if we need to notify on this subject.
 // Write lock should be held.
-func (s *Sublist) chkForRemoveNotification(subject string) {
-	if chs := s.notify.remove[subject]; len(chs) > 0 {
+func (s *Sublist) chkForRemoveNotification(subject, queue string) {
+	key := keyFromSubjectAndQueue(subject, queue)
+	if chs := s.notify.remove[key]; len(chs) > 0 {
 		// We need to always check that we have no interest anymore.
 		var hasInterest bool
 		r := s.matchNoLock(subject)
 
 		if len(r.psubs)+len(r.qsubs) > 0 {
-			for _, sub := range r.psubs {
-				if string(sub.subject) == subject {
-					hasInterest = true
-					break
+			if queue == _EMPTY_ {
+				for _, sub := range r.psubs {
+					if string(sub.subject) == subject {
+						hasInterest = true
+						break
+					}
 				}
-			}
-			for _, qsub := range r.qsubs {
-				qs := qsub[0]
-				if string(qs.subject) == subject {
-					hasInterest = true
-					break
+			} else {
+				for _, qsub := range r.qsubs {
+					qs := qsub[0]
+					if string(qs.subject) == subject && string(qs.queue) == queue {
+						hasInterest = true
+						break
+					}
 				}
 			}
 		}
@@ -301,8 +344,8 @@ func (s *Sublist) chkForRemoveNotification(subject string) {
 				sendNotification(ch, false)
 			}
 			// Move from the remove map to the insert map.
-			s.notify.insert[subject] = append(s.notify.insert[subject], chs...)
-			delete(s.notify.remove, subject)
+			s.notify.insert[key] = append(s.notify.insert[key], chs...)
+			delete(s.notify.remove, key)
 		}
 	}
 }
@@ -403,7 +446,7 @@ func (s *Sublist) Insert(sub *subscription) error {
 	atomic.AddUint64(&s.genid, 1)
 
 	if s.notify != nil && isnew && !haswc && len(s.notify.insert) > 0 {
-		s.chkForInsertNotification(subject)
+		s.chkForInsertNotification(subject, string(sub.queue))
 	}
 	s.Unlock()
 
@@ -750,7 +793,7 @@ func (s *Sublist) remove(sub *subscription, shouldLock bool, doCacheUpdates bool
 	}
 
 	if s.notify != nil && last && !haswc && len(s.notify.remove) > 0 {
-		s.chkForRemoveNotification(subject)
+		s.chkForRemoveNotification(subject, string(sub.queue))
 	}
 
 	return nil
@@ -1012,7 +1055,7 @@ func IsValidPublishSubject(subject string) bool {
 
 // IsValidSubject returns true if a subject is valid, false otherwise
 func IsValidSubject(subject string) bool {
-	if subject == "" {
+	if subject == _EMPTY_ {
 		return false
 	}
 	sfwc := false
@@ -1022,11 +1065,16 @@ func IsValidSubject(subject string) bool {
 			return false
 		}
 		if len(t) > 1 {
+			if strings.ContainsAny(t, "\t\n\f\r ") {
+				return false
+			}
 			continue
 		}
 		switch t[0] {
 		case fwc:
 			sfwc = true
+		case ' ', '\t', '\n', '\r', '\f':
+			return false
 		}
 	}
 	return true
@@ -1180,10 +1228,8 @@ func tokenAt(subject string, index uint8) string {
 	return _EMPTY_
 }
 
-// Calls into the function isSubsetMatch()
-func subjectIsSubsetMatch(subject, test string) bool {
-	tsa := [32]string{}
-	tts := tsa[:0]
+// use similar to append. meaning, the updated slice will be returned
+func tokenizeSubjectIntoSlice(tts []string, subject string) []string {
 	start := 0
 	for i := 0; i < len(subject); i++ {
 		if subject[i] == btsep {
@@ -1192,27 +1238,31 @@ func subjectIsSubsetMatch(subject, test string) bool {
 		}
 	}
 	tts = append(tts, subject[start:])
+	return tts
+}
+
+// Calls into the function isSubsetMatch()
+func subjectIsSubsetMatch(subject, test string) bool {
+	tsa := [32]string{}
+	tts := tokenizeSubjectIntoSlice(tsa[:0], subject)
 	return isSubsetMatch(tts, test)
 }
 
 // This will test a subject as an array of tokens against a test subject
+// Calls into the function isSubsetMatchTokenized
+func isSubsetMatch(tokens []string, test string) bool {
+	tsa := [32]string{}
+	tts := tokenizeSubjectIntoSlice(tsa[:0], test)
+	return isSubsetMatchTokenized(tokens, tts)
+}
+
+// This will test a subject as an array of tokens against a test subject (also encoded as array of tokens)
 // and determine if the tokens are matched. Both test subject and tokens
 // may contain wildcards. So foo.* is a subset match of [">", "*.*", "foo.*"],
 // but not of foo.bar, etc.
-func isSubsetMatch(tokens []string, test string) bool {
-	tsa := [32]string{}
-	tts := tsa[:0]
-	start := 0
-	for i := 0; i < len(test); i++ {
-		if test[i] == btsep {
-			tts = append(tts, test[start:i])
-			start = i + 1
-		}
-	}
-	tts = append(tts, test[start:])
-
+func isSubsetMatchTokenized(tokens, test []string) bool {
 	// Walk the target tokens
-	for i, t2 := range tts {
+	for i, t2 := range test {
 		if i >= len(tokens) {
 			return false
 		}
@@ -1235,7 +1285,7 @@ func isSubsetMatch(tokens []string, test string) bool {
 			if !m {
 				return false
 			}
-			if i >= len(tts) {
+			if i >= len(test) {
 				return true
 			}
 			continue
@@ -1244,7 +1294,7 @@ func isSubsetMatch(tokens []string, test string) bool {
 			return false
 		}
 	}
-	return len(tokens) == len(tts)
+	return len(tokens) == len(test)
 }
 
 // matchLiteral is used to test literal subjects, those that do not have any
@@ -1318,51 +1368,54 @@ func matchLiteral(literal, subject string) bool {
 	return li >= ll
 }
 
-func addLocalSub(sub *subscription, subs *[]*subscription) {
-	if sub != nil && sub.client != nil &&
-		(sub.client.kind == CLIENT || sub.client.kind == SYSTEM || sub.client.kind == JETSTREAM || sub.client.kind == ACCOUNT) && sub.im == nil {
-		*subs = append(*subs, sub)
+func addLocalSub(sub *subscription, subs *[]*subscription, includeLeafHubs bool) {
+	if sub != nil && sub.client != nil && sub.im == nil {
+		kind := sub.client.kind
+		if kind == CLIENT || kind == SYSTEM || kind == JETSTREAM || kind == ACCOUNT ||
+			(includeLeafHubs && sub.client.isHubLeafNode() /* implied kind==LEAF */) {
+			*subs = append(*subs, sub)
+		}
 	}
 }
 
-func (s *Sublist) addNodeToSubs(n *node, subs *[]*subscription) {
+func (s *Sublist) addNodeToSubs(n *node, subs *[]*subscription, includeLeafHubs bool) {
 	// Normal subscriptions
 	if n.plist != nil {
 		for _, sub := range n.plist {
-			addLocalSub(sub, subs)
+			addLocalSub(sub, subs, includeLeafHubs)
 		}
 	} else {
 		for _, sub := range n.psubs {
-			addLocalSub(sub, subs)
+			addLocalSub(sub, subs, includeLeafHubs)
 		}
 	}
 	// Queue subscriptions
 	for _, qr := range n.qsubs {
 		for _, sub := range qr {
-			addLocalSub(sub, subs)
+			addLocalSub(sub, subs, includeLeafHubs)
 		}
 	}
 }
 
-func (s *Sublist) collectLocalSubs(l *level, subs *[]*subscription) {
+func (s *Sublist) collectLocalSubs(l *level, subs *[]*subscription, includeLeafHubs bool) {
 	for _, n := range l.nodes {
-		s.addNodeToSubs(n, subs)
-		s.collectLocalSubs(n.next, subs)
+		s.addNodeToSubs(n, subs, includeLeafHubs)
+		s.collectLocalSubs(n.next, subs, includeLeafHubs)
 	}
 	if l.pwc != nil {
-		s.addNodeToSubs(l.pwc, subs)
-		s.collectLocalSubs(l.pwc.next, subs)
+		s.addNodeToSubs(l.pwc, subs, includeLeafHubs)
+		s.collectLocalSubs(l.pwc.next, subs, includeLeafHubs)
 	}
 	if l.fwc != nil {
-		s.addNodeToSubs(l.fwc, subs)
-		s.collectLocalSubs(l.fwc.next, subs)
+		s.addNodeToSubs(l.fwc, subs, includeLeafHubs)
+		s.collectLocalSubs(l.fwc.next, subs, includeLeafHubs)
 	}
 }
 
 // Return all local client subscriptions. Use the supplied slice.
-func (s *Sublist) localSubs(subs *[]*subscription) {
+func (s *Sublist) localSubs(subs *[]*subscription, includeLeafHubs bool) {
 	s.RLock()
-	s.collectLocalSubs(s.root, subs)
+	s.collectLocalSubs(s.root, subs, includeLeafHubs)
 	s.RUnlock()
 }
 
@@ -1438,10 +1491,10 @@ func (s *Sublist) ReverseMatch(subject string) *SublistResult {
 }
 
 func reverseMatchLevel(l *level, toks []string, n *node, results *SublistResult) {
+	if l == nil {
+		return
+	}
 	for i, t := range toks {
-		if l == nil {
-			return
-		}
 		if len(t) == 1 {
 			if t[0] == fwc {
 				getAllNodes(l, results)
@@ -1467,6 +1520,12 @@ func reverseMatchLevel(l *level, toks []string, n *node, results *SublistResult)
 func getAllNodes(l *level, results *SublistResult) {
 	if l == nil {
 		return
+	}
+	if l.pwc != nil {
+		addNodeToResults(l.pwc, results)
+	}
+	if l.fwc != nil {
+		addNodeToResults(l.fwc, results)
 	}
 	for _, n := range l.nodes {
 		addNodeToResults(n, results)

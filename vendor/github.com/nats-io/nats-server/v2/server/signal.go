@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows
 // +build !windows
 
 package server
@@ -59,7 +60,7 @@ func (s *Server) handleSignals() {
 
 					if !ldm {
 						s.Shutdown()
-						os.Exit(0)
+						os.Exit(1)
 					}
 				case syscall.SIGUSR1:
 					// File log re-open for rotating file logs.
