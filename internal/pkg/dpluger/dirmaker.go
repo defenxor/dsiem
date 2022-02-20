@@ -17,7 +17,6 @@
 package dpluger
 
 import (
-	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
@@ -57,6 +56,11 @@ func CreateDirective(tsvFile, outFile, kingdom, titleTemplate string, priority, 
 	return fs.OverwriteFileValueIndent(dirs, outFile)
 }
 
+const (
+	maxReliability = 10
+	minReliability = 1
+)
+
 func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate string, priority,
 	reliability, dirNumber int) (siem.Directives, error) {
 
@@ -75,32 +79,6 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 		}
 
 		entries.records = append(entries.records, ref)
-	}
-
-	reader := csv.NewReader(in)
-	reader.Comma = '\t'
-	reader.TrimLeadingSpace = true
-	reader.LazyQuotes = true
-
-	first := true
-	for {
-		rec, err := reader.Read()
-		if err != io.EOF && first {
-			// skip the header
-			first = false
-			continue
-		}
-
-		if err == io.EOF || len(rec) == 0 {
-			break
-		}
-
-		ref := &pluginSIDRef{}
-		if err := ref.fromStrings(kingdom, rec...); err != nil {
-			return dirs, err
-		}
-
-		entries.records = append(entries.records, *ref)
 	}
 
 	addedCount := 0
@@ -123,6 +101,13 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 
 		SIDList := []int{v.SID}
 		// fmt.Println("DEBUG:", v.Plugin, v.Title, v.ID, v.SID)
+
+		if reliability < minReliability {
+			reliability = minReliability
+		} else if reliability > maxReliability {
+			reliability = maxReliability
+		}
+
 		r1 := rule.DirectiveRule{
 			Name:        v.SIDTitle,
 			Type:        "PluginRule",
@@ -135,8 +120,13 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 			PortFrom:    "ANY",
 			PortTo:      "ANY",
 			Protocol:    "ANY",
-			Reliability: 1,
+			Reliability: reliability,
 			Timeout:     0,
+		}
+
+		nextReliability := reliability + 4
+		if nextReliability > maxReliability {
+			nextReliability = maxReliability
 		}
 
 		r2 := rule.DirectiveRule{
@@ -151,23 +141,25 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 			PortFrom:    "ANY",
 			PortTo:      "ANY",
 			Protocol:    "ANY",
-			Reliability: 5,
+			Reliability: nextReliability,
 			Timeout:     3600,
 		}
 
 		r3 := rule.DirectiveRule{
-			Name:        v.SIDTitle,
-			Type:        "PluginRule",
-			Stage:       3,
-			PluginID:    v.ID,
-			PluginSID:   SIDList,
-			Occurrence:  10000,
-			From:        ":1",
-			To:          ":1",
-			PortFrom:    "ANY",
-			PortTo:      "ANY",
-			Protocol:    "ANY",
-			Reliability: 10,
+			Name:       v.SIDTitle,
+			Type:       "PluginRule",
+			Stage:      3,
+			PluginID:   v.ID,
+			PluginSID:  SIDList,
+			Occurrence: 10000,
+			From:       ":1",
+			To:         ":1",
+			PortFrom:   "ANY",
+			PortTo:     "ANY",
+			Protocol:   "ANY",
+
+			// Stage #3 rule always have maximum reliability
+			Reliability: maxReliability,
 			Timeout:     21600,
 		}
 

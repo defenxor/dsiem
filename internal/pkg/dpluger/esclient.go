@@ -17,6 +17,7 @@
 package dpluger
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -32,6 +33,7 @@ type esCollector interface {
 	CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error)
 	ValidateIndex(index string) (err error)
 	IsESFieldExist(index string, field string) (exist bool, err error)
+	FieldType(ctx context.Context, index, field string) (fieldType string, hasKeyword bool, err error)
 }
 
 func newESCollector(esURL string) (collector esCollector, err error) {

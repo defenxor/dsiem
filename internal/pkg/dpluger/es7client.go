@@ -95,8 +95,11 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 		}
 		for _, lvl2Bucket := range subterm.Buckets {
 			sKey := lvl1Bucket.Key.(string)
-			nKey := int(lvl2Bucket.Key.(float64))
-			// fmt.Println("item1:", sKey, "item2:", nKey)
+			nKey, err := toInt(lvl2Bucket.Key)
+			if err != nil {
+				return c, fmt.Errorf("invalid sid aggregation key, %s", err.Error())
+			}
+
 			if shouldCollectCategory {
 				subSubTerm, found2 := lvl1Bucket.Terms("subSubTerm")
 				if !found2 {
@@ -133,7 +136,7 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		for _, v := range coll {
 			s := strings.Split(v, "=")
 			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
+				err = errors.New("cannot split the ES filter term")
 				return
 			}
 			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
@@ -214,4 +217,65 @@ func (es *es7Client) IsESFieldExist(index string, field string) (exist bool, err
 		exist = true
 	}
 	return
+}
+
+func (es *es7Client) FieldType(ctx context.Context, index string, field string) (string, bool, error) {
+	m, err := elastic7.NewGetFieldMappingService(es.client).
+		Field(field).
+		Index(index).
+		Do(ctx)
+
+	if err != nil {
+		return "", false, err
+	}
+
+	var indexSettings map[string]interface{}
+	var ok bool
+	for _, v := range m {
+		indexSettings, ok = v.(map[string]interface{})
+		if ok && indexSettings != nil {
+			break
+		}
+	}
+
+	if !ok {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	mappings, ok := indexSettings["mappings"].(map[string]interface{})
+	if !ok || mappings == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	f, ok := mappings[field].(map[string]interface{})
+	if !ok || f == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	levels := strings.Split(field, ".")
+	level := levels[len(levels)-1]
+
+	mapping, ok := f["mapping"].(map[string]interface{})[level].(map[string]interface{})
+	if !ok || mapping == nil {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	fieldType, ok := mapping["type"].(string)
+	if !ok {
+		return "", false, ErrFieldMappingNotExist
+	}
+
+	var iskeyword bool
+	keyword, ok := mapping["fields"].(map[string]interface{})
+	if ok && keyword != nil {
+		kword, ok := keyword["keyword"].(map[string]interface{})
+		if ok && kword != nil {
+			ktype, ok := kword["type"].(string)
+			if ok && ktype == "keyword" {
+				iskeyword = true
+			}
+		}
+	}
+
+	return fieldType, iskeyword, nil
 }
