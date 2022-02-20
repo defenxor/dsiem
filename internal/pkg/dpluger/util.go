@@ -1,6 +1,7 @@
 package dpluger
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -219,6 +220,10 @@ func ruleEqual(rule1, rule2 rule.DirectiveRule) []error {
 	return errors
 }
 
+var (
+	ErrIntValueExceedBoundary = errors.New("integer value exceeds maximum value boundary")
+)
+
 // toInt safely convert interface into int.
 func toInt(v interface{}) (int, error) {
 	if v == nil {
@@ -230,7 +235,7 @@ func toInt(v interface{}) (int, error) {
 		return t, nil
 	case float64:
 		if t > math.MaxInt {
-			return 0, fmt.Errorf("value is larger than %d", math.MaxInt)
+			return 0, ErrIntValueExceedBoundary
 		}
 
 		return int(t), nil
@@ -241,11 +246,11 @@ func toInt(v interface{}) (int, error) {
 		}
 
 		if n > math.MaxInt {
-			return 0, fmt.Errorf("value is larger than %d", math.MaxInt)
+			return 0, ErrIntValueExceedBoundary
 		}
 
 		return int(n), nil
 	}
 
-	return 0, fmt.Errorf("unknown value type, %T", v)
+	return 0, ErrIntValueExceedBoundary
 }
