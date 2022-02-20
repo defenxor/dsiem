@@ -218,6 +218,7 @@ func (es *es7Client) IsESFieldExist(index string, field string) (exist bool, err
 	}
 	return
 }
+
 func (es *es7Client) FieldType(ctx context.Context, index string, field string) (string, bool, error) {
 	m, err := elastic7.NewGetFieldMappingService(es.client).
 		Field(field).
@@ -238,27 +239,30 @@ func (es *es7Client) FieldType(ctx context.Context, index string, field string) 
 	}
 
 	if !ok {
-		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+		return "", false, ErrFieldMappingNotExist
 	}
 
 	mappings, ok := indexSettings["mappings"].(map[string]interface{})
 	if !ok || mappings == nil {
-		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+		return "", false, ErrFieldMappingNotExist
 	}
 
 	f, ok := mappings[field].(map[string]interface{})
 	if !ok || f == nil {
-		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+		return "", false, ErrFieldMappingNotExist
 	}
 
-	mapping, ok := f["mapping"].(map[string]interface{})[field].(map[string]interface{})
+	levels := strings.Split(field, ".")
+	level := levels[len(levels)-1]
+
+	mapping, ok := f["mapping"].(map[string]interface{})[level].(map[string]interface{})
 	if !ok || mapping == nil {
-		return "", false, fmt.Errorf("no mappings found for field '%s'", field)
+		return "", false, ErrFieldMappingNotExist
 	}
 
 	fieldType, ok := mapping["type"].(string)
 	if !ok {
-		return "", false, fmt.Errorf("invalid field type for '%s'", field)
+		return "", false, ErrFieldMappingNotExist
 	}
 
 	var iskeyword bool
