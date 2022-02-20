@@ -17,7 +17,6 @@
 package dpluger
 
 import (
-	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
@@ -80,32 +79,6 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 		}
 
 		entries.records = append(entries.records, ref)
-	}
-
-	reader := csv.NewReader(in)
-	reader.Comma = '\t'
-	reader.TrimLeadingSpace = true
-	reader.LazyQuotes = true
-
-	first := true
-	for {
-		rec, err := reader.Read()
-		if err != io.EOF && first {
-			// skip the header
-			first = false
-			continue
-		}
-
-		if err == io.EOF || len(rec) == 0 {
-			break
-		}
-
-		ref := &pluginSIDRef{}
-		if err := ref.fromStrings(kingdom, rec...); err != nil {
-			return dirs, err
-		}
-
-		entries.records = append(entries.records, *ref)
 	}
 
 	addedCount := 0
