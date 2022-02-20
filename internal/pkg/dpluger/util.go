@@ -12,6 +12,13 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/siem"
 )
 
+const (
+	FieldTypeText    = "text"
+	FieldTypeKeyword = "keyword"
+)
+
+var ErrFieldMappingNotExist = errors.New("field mapping does not exist")
+
 func directivesEqual(dir1, dir2 siem.Directives) error {
 	for _, directive := range dir2.Dirs {
 		var found bool
