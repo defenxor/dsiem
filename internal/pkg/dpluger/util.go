@@ -234,22 +234,28 @@ func toInt(v interface{}) (int, error) {
 	case int:
 		return t, nil
 	case float64:
-		if t > math.MaxInt {
-			return 0, ErrIntValueExceedBoundary
+		if t > 0 && t < math.MaxInt32 {
+			return int(t), nil
 		}
 
-		return int(t), nil
+		return 0, ErrIntValueExceedBoundary
+	case int64:
+		if t > 0 && t < math.MaxInt32 {
+			return int(t), nil
+		}
+
+		return 0, ErrIntValueExceedBoundary
 	case string:
 		n, err := strconv.ParseInt(t, 10, 64)
 		if err != nil {
 			return 0, err
 		}
 
-		if n > math.MaxInt {
-			return 0, ErrIntValueExceedBoundary
+		if n > 0 && n < math.MaxInt32 {
+			return int(n), nil
 		}
 
-		return int(n), nil
+		return 0, ErrIntValueExceedBoundary
 	}
 
 	return 0, fmt.Errorf("invalid value type, %T", v)
