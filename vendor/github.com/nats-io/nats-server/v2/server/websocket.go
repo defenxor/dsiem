@@ -58,6 +58,8 @@ const (
 	wsMaxFrameHeaderSize    = 14 // Since LeafNode may need to behave as a client
 	wsMaxControlPayloadSize = 125
 	wsFrameSizeForBrowsers  = 4096 // From experiment, webrowsers behave better with limited frame size
+	wsCompressThreshold     = 64   // Don't compress for small buffer(s)
+	wsCloseSatusSize        = 2
 
 	// From https://tools.ietf.org/html/rfc6455#section-11.7
 	wsCloseStatusNormalClosure      = 1000
@@ -75,7 +77,6 @@ const (
 	wsFirstFrame        = true
 	wsContFrame         = false
 	wsFinalFrame        = true
-	wsCompressedFrame   = true
 	wsUncompressedFrame = false
 
 	wsSchemePrefix    = "ws"
@@ -83,15 +84,20 @@ const (
 
 	wsNoMaskingHeader       = "Nats-No-Masking"
 	wsNoMaskingValue        = "true"
+	wsXForwardedForHeader   = "X-Forwarded-For"
 	wsNoMaskingFullResponse = wsNoMaskingHeader + ": " + wsNoMaskingValue + CR_LF
 	wsPMCExtension          = "permessage-deflate" // per-message compression
 	wsPMCSrvNoCtx           = "server_no_context_takeover"
 	wsPMCCliNoCtx           = "client_no_context_takeover"
 	wsPMCReqHeaderValue     = wsPMCExtension + "; " + wsPMCSrvNoCtx + "; " + wsPMCCliNoCtx
 	wsPMCFullResponse       = "Sec-WebSocket-Extensions: " + wsPMCExtension + "; " + wsPMCSrvNoCtx + "; " + wsPMCCliNoCtx + _CRLF_
+	wsSecProto              = "Sec-Websocket-Protocol"
+	wsMQTTSecProtoVal       = "mqtt"
+	wsMQTTSecProto          = wsSecProto + ": " + wsMQTTSecProtoVal + CR_LF
 )
 
 var decompressorPool sync.Pool
+var compressLastBlock = []byte{0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff}
 
 // From https://tools.ietf.org/html/rfc6455#section-1.3
 var wsGUID = []byte("258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
@@ -106,16 +112,19 @@ type websocket struct {
 	compress   bool
 	closeSent  bool
 	browser    bool
+	nocompfrag bool // No fragment for compressed frames
 	maskread   bool
 	maskwrite  bool
 	compressor *flate.Writer
 	cookieJwt  string
+	clientIP   string
 }
 
 type srvWebsocket struct {
 	mu             sync.RWMutex
 	server         *http.Server
 	listener       net.Listener
+	listenerErr    error
 	tls            bool
 	allowedOrigins map[string]*allowedOrigin // host will be the key
 	sameOrigin     bool
@@ -143,7 +152,8 @@ type wsReadInfo struct {
 	mask  bool // Incoming leafnode connections may not have masking.
 	mkpos byte
 	mkey  [4]byte
-	buf   []byte
+	cbufs [][]byte
+	coff  int
 }
 
 func (r *wsReadInfo) init() {
@@ -291,40 +301,116 @@ func (c *client) wsRead(r *wsReadInfo, ior io.Reader, buf []byte) ([][]byte, err
 			b = buf[pos : pos+n]
 			pos += n
 			r.rem -= n
-			if r.fc {
-				r.buf = append(r.buf, b...)
-				b = r.buf
+			// If needed, unmask the buffer
+			if r.mask {
+				r.unmask(b)
 			}
-			if !r.fc || r.rem == 0 {
-				if r.mask {
-					r.unmask(b)
-				}
-				if r.fc {
-					// As per https://tools.ietf.org/html/rfc7692#section-7.2.2
-					// add 0x00, 0x00, 0xff, 0xff and then a final block so that flate reader
-					// does not report unexpected EOF.
-					b = append(b, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff)
-					br := bytes.NewBuffer(b)
-					d, _ := decompressorPool.Get().(io.ReadCloser)
-					if d == nil {
-						d = flate.NewReader(br)
-					} else {
-						d.(flate.Resetter).Reset(br, nil)
-					}
-					b, err = ioutil.ReadAll(d)
-					decompressorPool.Put(d)
+			addToBufs := true
+			// Handle compressed message
+			if r.fc {
+				// Assume that we may have continuation frames or not the full payload.
+				addToBufs = false
+				// Make a copy of the buffer before adding it to the list
+				// of compressed fragments.
+				r.cbufs = append(r.cbufs, append([]byte(nil), b...))
+				// When we have the final frame and we have read the full payload,
+				// we can decompress it.
+				if r.ff && r.rem == 0 {
+					b, err = r.decompress()
 					if err != nil {
 						return bufs, err
 					}
+					r.fc = false
+					// Now we can add to `bufs`
+					addToBufs = true
 				}
+			}
+			// For non compressed frames, or when we have decompressed the
+			// whole message.
+			if addToBufs {
 				bufs = append(bufs, b)
-				if r.rem == 0 {
-					r.fs, r.fc, r.buf = true, false, nil
-				}
+			}
+			// If payload has been fully read, then indicate that next
+			// is the start of a frame.
+			if r.rem == 0 {
+				r.fs = true
 			}
 		}
 	}
 	return bufs, nil
+}
+
+func (r *wsReadInfo) Read(dst []byte) (int, error) {
+	if len(dst) == 0 {
+		return 0, nil
+	}
+	if len(r.cbufs) == 0 {
+		return 0, io.EOF
+	}
+	copied := 0
+	rem := len(dst)
+	for buf := r.cbufs[0]; buf != nil && rem > 0; {
+		n := len(buf[r.coff:])
+		if n > rem {
+			n = rem
+		}
+		copy(dst[copied:], buf[r.coff:r.coff+n])
+		copied += n
+		rem -= n
+		r.coff += n
+		buf = r.nextCBuf()
+	}
+	return copied, nil
+}
+
+func (r *wsReadInfo) nextCBuf() []byte {
+	// We still have remaining data in the first buffer
+	if r.coff != len(r.cbufs[0]) {
+		return r.cbufs[0]
+	}
+	// We read the full first buffer. Reset offset.
+	r.coff = 0
+	// We were at the last buffer, so we are done.
+	if len(r.cbufs) == 1 {
+		r.cbufs = nil
+		return nil
+	}
+	// Here we move to the next buffer.
+	r.cbufs = r.cbufs[1:]
+	return r.cbufs[0]
+}
+
+func (r *wsReadInfo) ReadByte() (byte, error) {
+	if len(r.cbufs) == 0 {
+		return 0, io.EOF
+	}
+	b := r.cbufs[0][r.coff]
+	r.coff++
+	r.nextCBuf()
+	return b, nil
+}
+
+func (r *wsReadInfo) decompress() ([]byte, error) {
+	r.coff = 0
+	// As per https://tools.ietf.org/html/rfc7692#section-7.2.2
+	// add 0x00, 0x00, 0xff, 0xff and then a final block so that flate reader
+	// does not report unexpected EOF.
+	r.cbufs = append(r.cbufs, compressLastBlock)
+	// Get a decompressor from the pool and bind it to this object (wsReadInfo)
+	// that provides Read() and ReadByte() APIs that will consume the compressed
+	// buffers (r.cbufs).
+	d, _ := decompressorPool.Get().(io.ReadCloser)
+	if d == nil {
+		d = flate.NewReader(r)
+	} else {
+		d.(flate.Resetter).Reset(r, nil)
+	}
+	// This will do the decompression.
+	b, err := ioutil.ReadAll(d)
+	decompressorPool.Put(d)
+	// Now reset the compressed buffers list.
+	r.cbufs = nil
+	return b, err
 }
 
 // Handles the PING, PONG and CLOSE websocket control frames.
@@ -334,7 +420,6 @@ func (c *client) wsHandleControlFrame(r *wsReadInfo, frameType wsOpCode, nc io.R
 	var payload []byte
 	var err error
 
-	statusPos := pos
 	if r.rem > 0 {
 		payload, pos, err = wsGet(nc, buf, pos, r.rem)
 		if err != nil {
@@ -348,17 +433,24 @@ func (c *client) wsHandleControlFrame(r *wsReadInfo, frameType wsOpCode, nc io.R
 	switch frameType {
 	case wsCloseMessage:
 		status := wsCloseStatusNoStatusReceived
-		body := ""
-		// If there is a payload, it should contain 2 unsigned bytes
-		// that represent the status code and then optional payload.
-		if len(payload) >= 2 {
-			status = int(binary.BigEndian.Uint16(buf[statusPos : statusPos+2]))
-			body = string(buf[statusPos+2 : statusPos+len(payload)])
-			if body != "" && !utf8.ValidString(body) {
-				// https://tools.ietf.org/html/rfc6455#section-5.5.1
-				// If body is present, it must be a valid utf8
-				status = wsCloseStatusInvalidPayloadData
-				body = "invalid utf8 body in close frame"
+		var body string
+		lp := len(payload)
+		// If there is a payload, the status is represented as a 2-byte
+		// unsigned integer (in network byte order). Then, there may be an
+		// optional body.
+		hasStatus, hasBody := lp >= wsCloseSatusSize, lp > wsCloseSatusSize
+		if hasStatus {
+			// Decode the status
+			status = int(binary.BigEndian.Uint16(payload[:wsCloseSatusSize]))
+			// Now if there is a body, capture it and make sure this is a valid UTF-8.
+			if hasBody {
+				body = string(payload[wsCloseSatusSize:])
+				if !utf8.ValidString(body) {
+					// https://tools.ietf.org/html/rfc6455#section-5.5.1
+					// If body is present, it must be a valid utf8
+					status = wsCloseStatusInvalidPayloadData
+					body = "invalid utf8 body in close frame"
+				}
 			}
 		}
 		c.wsEnqueueControlMessage(wsCloseMessage, wsCreateCloseMessage(status, body))
@@ -597,6 +689,8 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 		ep := r.URL.EscapedPath()
 		if strings.HasPrefix(ep, leafNodeWSPath) {
 			kind = LEAF
+		} else if strings.HasPrefix(ep, mqttWSPath) {
+			kind = MQTT
 		}
 	}
 
@@ -605,33 +699,33 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 	// From https://tools.ietf.org/html/rfc6455#section-4.2.1
 	// Point 1.
 	if r.Method != "GET" {
-		return nil, wsReturnHTTPError(w, http.StatusMethodNotAllowed, "request method must be GET")
+		return nil, wsReturnHTTPError(w, r, http.StatusMethodNotAllowed, "request method must be GET")
 	}
 	// Point 2.
-	if r.Host == "" {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "'Host' missing in request")
+	if r.Host == _EMPTY_ {
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "'Host' missing in request")
 	}
 	// Point 3.
 	if !wsHeaderContains(r.Header, "Upgrade", "websocket") {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "invalid value for header 'Upgrade'")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "invalid value for header 'Upgrade'")
 	}
 	// Point 4.
 	if !wsHeaderContains(r.Header, "Connection", "Upgrade") {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "invalid value for header 'Connection'")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "invalid value for header 'Connection'")
 	}
 	// Point 5.
 	key := r.Header.Get("Sec-Websocket-Key")
-	if key == "" {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "key missing")
+	if key == _EMPTY_ {
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "key missing")
 	}
 	// Point 6.
 	if !wsHeaderContains(r.Header, "Sec-Websocket-Version", "13") {
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "invalid version")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "invalid version")
 	}
 	// Others are optional
 	// Point 7.
 	if err := s.websocket.checkOrigin(r); err != nil {
-		return nil, wsReturnHTTPError(w, http.StatusForbidden, fmt.Sprintf("origin not allowed: %v", err))
+		return nil, wsReturnHTTPError(w, r, http.StatusForbidden, fmt.Sprintf("origin not allowed: %v", err))
 	}
 	// Point 8.
 	// We don't have protocols, so ignore.
@@ -651,11 +745,11 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 		if conn != nil {
 			conn.Close()
 		}
-		return nil, wsReturnHTTPError(w, http.StatusInternalServerError, err.Error())
+		return nil, wsReturnHTTPError(w, r, http.StatusInternalServerError, err.Error())
 	}
 	if brw.Reader.Buffered() > 0 {
 		conn.Close()
-		return nil, wsReturnHTTPError(w, http.StatusBadRequest, "client sent data before handshake is complete")
+		return nil, wsReturnHTTPError(w, r, http.StatusBadRequest, "client sent data before handshake is complete")
 	}
 
 	var buf [1024]byte
@@ -671,6 +765,9 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 	if noMasking {
 		p = append(p, wsNoMaskingFullResponse...)
 	}
+	if kind == MQTT {
+		p = append(p, wsMQTTSecProto...)
+	}
 	p = append(p, _CRLF_...)
 
 	if _, err = conn.Write(p); err != nil {
@@ -684,12 +781,27 @@ func (s *Server) wsUpgrade(w http.ResponseWriter, r *http.Request) (*wsUpgradeRe
 	// Server always expect "clients" to send masked payload, unless the option
 	// "no-masking" has been enabled.
 	ws := &websocket{compress: compress, maskread: !noMasking}
-	if kind == CLIENT {
-		// Indicate if this is likely coming from a browser.
-		if ua := r.Header.Get("User-Agent"); ua != "" && strings.HasPrefix(ua, "Mozilla/") {
-			ws.browser = true
+
+	// Check for X-Forwarded-For header
+	if cips, ok := r.Header[wsXForwardedForHeader]; ok {
+		cip := cips[0]
+		if net.ParseIP(cip) != nil {
+			ws.clientIP = cip
 		}
-		if opts.Websocket.JWTCookie != "" {
+	}
+
+	if kind == CLIENT || kind == MQTT {
+		// Indicate if this is likely coming from a browser.
+		if ua := r.Header.Get("User-Agent"); ua != _EMPTY_ && strings.HasPrefix(ua, "Mozilla/") {
+			ws.browser = true
+			// Disable fragmentation of compressed frames for Safari browsers.
+			// Unfortunately, you could be running Chrome on macOS and this
+			// string will contain "Safari/" (along "Chrome/"). However, what
+			// I have found is that actual Safari browser also have "Version/".
+			// So make the combination of the two.
+			ws.nocompfrag = ws.compress && strings.Contains(ua, "Version/") && strings.Contains(ua, "Safari/")
+		}
+		if opts.Websocket.JWTCookie != _EMPTY_ {
 			if c, err := r.Cookie(opts.Websocket.JWTCookie); err == nil && c != nil {
 				ws.cookieJwt = c.Value
 			}
@@ -748,16 +860,17 @@ func wsPMCExtensionSupport(header http.Header, checkPMCOnly bool) (bool, bool) {
 
 // Send an HTTP error with the given `status`` to the given http response writer `w`.
 // Return an error created based on the `reason` string.
-func wsReturnHTTPError(w http.ResponseWriter, status int, reason string) error {
-	err := fmt.Errorf("websocket handshake error: %s", reason)
+func wsReturnHTTPError(w http.ResponseWriter, r *http.Request, status int, reason string) error {
+	err := fmt.Errorf("%s - websocket handshake error: %s", r.RemoteAddr, reason)
 	w.Header().Set("Sec-Websocket-Version", "13")
 	http.Error(w, http.StatusText(status), status)
 	return err
 }
 
 // If the server is configured to accept any origin, then this function returns
-// `nil` without checking if the Origin is present and valid.
-// Otherwise, this will check that the Origin matches the same origine or
+// `nil` without checking if the Origin is present and valid. This is also
+// the case if the request does not have the Origin header.
+// Otherwise, this will check that the Origin matches the same origin or
 // any origin in the allowed list.
 func (w *srvWebsocket) checkOrigin(r *http.Request) error {
 	w.mu.RLock()
@@ -768,11 +881,16 @@ func (w *srvWebsocket) checkOrigin(r *http.Request) error {
 		return nil
 	}
 	origin := r.Header.Get("Origin")
-	if origin == "" {
+	if origin == _EMPTY_ {
 		origin = r.Header.Get("Sec-Websocket-Origin")
 	}
-	if origin == "" {
-		return errors.New("origin not provided")
+	// If the header is not present, we will accept.
+	// From https://datatracker.ietf.org/doc/html/rfc6455#section-1.6
+	// "Naturally, when the WebSocket Protocol is used by a dedicated client
+	// directly (i.e., not from a web page through a web browser), the origin
+	// model is not useful, as the client can provide any arbitrary origin string."
+	if origin == _EMPTY_ {
+		return nil
 	}
 	u, err := url.ParseRequestURI(origin)
 	if err != nil {
@@ -835,7 +953,7 @@ func wsAcceptKey(key string) string {
 func wsMakeChallengeKey() (string, error) {
 	p := make([]byte, 16)
 	if _, err := io.ReadFull(rand.Reader, p); err != nil {
-		return "", err
+		return _EMPTY_, err
 	}
 	return base64.StdEncoding.EncodeToString(p), nil
 }
@@ -874,10 +992,13 @@ func validateWebsocketOptions(o *Options) error {
 		}
 	}
 	// Using JWT requires Trusted Keys
-	if wo.JWTCookie != "" {
+	if wo.JWTCookie != _EMPTY_ {
 		if len(o.TrustedOperators) == 0 && len(o.TrustedKeys) == 0 {
 			return fmt.Errorf("trusted operators or trusted keys configuration is required for JWT authentication via cookie %q", wo.JWTCookie)
 		}
+	}
+	if err := validatePinnedCerts(wo.TLSPinnedCerts); err != nil {
+		return fmt.Errorf("websocket: %v", err)
 	}
 	return nil
 }
@@ -955,25 +1076,27 @@ func (s *Server) startWebsocketServer() {
 	if o.TLSConfig != nil {
 		proto = wsSchemePrefixTLS
 		config := o.TLSConfig.Clone()
+		config.GetConfigForClient = s.wsGetTLSConfig
 		hl, err = tls.Listen("tcp", hp, config)
 	} else {
 		proto = wsSchemePrefix
 		hl, err = net.Listen("tcp", hp)
 	}
+	s.websocket.listenerErr = err
 	if err != nil {
 		s.mu.Unlock()
 		s.Fatalf("Unable to listen for websocket connections: %v", err)
 		return
 	}
-	s.Noticef("Listening for websocket clients on %s://%s:%d", proto, o.Host, port)
+	if port == 0 {
+		o.Port = hl.Addr().(*net.TCPAddr).Port
+	}
+	s.Noticef("Listening for websocket clients on %s://%s:%d", proto, o.Host, o.Port)
 	if proto == wsSchemePrefix {
 		s.Warnf("Websocket not configured with TLS. DO NOT USE IN PRODUCTION!")
 	}
 
 	s.websocket.tls = proto == "wss"
-	if port == 0 {
-		s.opts.Websocket.Port = hl.Addr().(*net.TCPAddr).Port
-	}
 	s.websocket.connectURLs, err = s.getConnectURLs(o.Advertise, o.Host, o.Port)
 	if err != nil {
 		s.Fatalf("Unable to get websocket connect URLs: %v", err)
@@ -992,6 +1115,8 @@ func (s *Server) startWebsocketServer() {
 		switch res.kind {
 		case CLIENT:
 			s.createWSClient(res.conn, res.ws)
+		case MQTT:
+			s.createMQTTClient(res.conn, res.ws)
 		case LEAF:
 			if !hasLeaf {
 				s.Errorf("Not configured to accept leaf node connections")
@@ -1008,7 +1133,7 @@ func (s *Server) startWebsocketServer() {
 		Addr:        hp,
 		Handler:     mux,
 		ReadTimeout: o.HandshakeTimeout,
-		ErrorLog:    log.New(&wsCaptureHTTPServerLog{s}, "", 0),
+		ErrorLog:    log.New(&captureHTTPServerLog{s, "websocket: "}, _EMPTY_, 0),
 	}
 	s.websocket.server = hs
 	s.websocket.listener = hl
@@ -1026,6 +1151,17 @@ func (s *Server) startWebsocketServer() {
 		s.done <- true
 	}()
 	s.mu.Unlock()
+}
+
+// The TLS configuration is passed to the listener when the websocket
+// "server" is setup. That prevents TLS configuration updates on reload
+// from being used. By setting this function in tls.Config.GetConfigForClient
+// we instruct the TLS handshake to ask for the tls configuration to be
+// used for a specific client. We don't care which client, we always use
+// the same TLS configuration.
+func (s *Server) wsGetTLSConfig(_ *tls.ClientHelloInfo) (*tls.Config, error) {
+	opts := s.getOpts()
+	return opts.Websocket.TLSConfig, nil
 }
 
 // This is similar to createClient() but has some modifications
@@ -1124,28 +1260,10 @@ func (s *Server) createWSClient(conn net.Conn, ws *websocket) *client {
 	return c
 }
 
-type wsCaptureHTTPServerLog struct {
-	s *Server
-}
-
-func (cl *wsCaptureHTTPServerLog) Write(p []byte) (int, error) {
-	var buf [128]byte
-	var b = buf[:0]
-
-	copy(b, []byte("websocket :"))
-	offset := 0
-	if bytes.HasPrefix(p, []byte("http:")) {
-		offset = 6
-	}
-	b = append(b, p[offset:]...)
-	cl.s.Errorf(string(b))
-	return len(p), nil
-}
-
 func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 	var nb net.Buffers
-	var total = 0
-	var mfs = 0
+	var mfs int
+	var usz int
 	if c.ws.browser {
 		mfs = wsFrameSizeForBrowsers
 	}
@@ -1160,7 +1278,21 @@ func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 	// Start with possible already framed buffers (that we could have
 	// got from partials or control messages such as ws pings or pongs).
 	bufs := c.ws.frames
-	if c.ws.compress && len(nb) > 0 {
+	compress := c.ws.compress
+	if compress && len(nb) > 0 {
+		// First, make sure we don't compress for very small cumulative buffers.
+		for _, b := range nb {
+			usz += len(b)
+		}
+		if usz <= wsCompressThreshold {
+			compress = false
+		}
+	}
+	if compress && len(nb) > 0 {
+		// Overwrite mfs if this connection does not support fragmented compressed frames.
+		if mfs > 0 && c.ws.nocompfrag {
+			mfs = 0
+		}
 		buf := &bytes.Buffer{}
 
 		cp := c.ws.compressor
@@ -1170,13 +1302,15 @@ func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 		} else {
 			cp.Reset(buf)
 		}
-		var usz int
 		var csz int
 		for _, b := range nb {
-			usz += len(b)
 			cp.Write(b)
 		}
-		cp.Close()
+		if err := cp.Flush(); err != nil {
+			c.Errorf("Error during compression: %v", err)
+			c.markConnAsClosed(WriteError)
+			return nil, 0
+		}
 		b := buf.Bytes()
 		p := b[:len(b)-4]
 		if mfs > 0 && len(p) > mfs {
@@ -1188,7 +1322,9 @@ func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 					final = true
 				}
 				fh := make([]byte, wsMaxFrameHeaderSize)
-				n, key := wsFillFrameHeader(fh, mask, first, final, wsCompressedFrame, wsBinaryMessage, lp)
+				// Only the first frame should be marked as compressed, so pass
+				// `first` for the compressed boolean.
+				n, key := wsFillFrameHeader(fh, mask, first, final, first, wsBinaryMessage, lp)
 				if mask {
 					wsMaskBuf(key, p[:lp])
 				}
@@ -1210,6 +1346,7 @@ func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 		c.out.pb += int64(csz) - int64(usz)
 		c.ws.fs += int64(csz)
 	} else if len(nb) > 0 {
+		var total int
 		if mfs > 0 {
 			// We are limiting the frame size.
 			startFrame := func() int {
@@ -1235,12 +1372,17 @@ func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 					continue
 				}
 				for len(b) > 0 {
-					endFrame(fhIdx, total)
+					endStart := total != 0
+					if endStart {
+						endFrame(fhIdx, total)
+					}
 					total = len(b)
 					if total >= mfs {
 						total = mfs
 					}
-					fhIdx = startFrame()
+					if endStart {
+						fhIdx = startFrame()
+					}
 					bufs = append(bufs, b[:total])
 					b = b[total:]
 				}
@@ -1276,4 +1418,8 @@ func (c *client) wsCollapsePtoNB() (net.Buffers, int64) {
 
 func isWSURL(u *url.URL) bool {
 	return strings.HasPrefix(strings.ToLower(u.Scheme), wsSchemePrefix)
+}
+
+func isWSSURL(u *url.URL) bool {
+	return strings.HasPrefix(strings.ToLower(u.Scheme), wsSchemePrefixTLS)
 }
