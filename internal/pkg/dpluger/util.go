@@ -246,7 +246,7 @@ func toInt(v interface{}) (int, error) {
 		}
 
 		if n > math.MaxInt {
-			return 0, fmt.Errorf("value is larger than %d", math.MaxInt)
+			return 0, ErrIntValueExceedBoundary
 		}
 
 		return int(n), nil
