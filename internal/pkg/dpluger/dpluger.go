@@ -405,23 +405,20 @@ func setField(f *FieldMapping, field string, value string) {
 }
 
 func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
+	ctx := context.Background()
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
-
-	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1)
-	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, titleSource)
-	if err == nil && haskeyword {
-		titleSource = fmt.Sprintf("%s.keyword", titleSource)
+	titleSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Title, "es:", "", 1))
+	if err != nil {
+		return c, err
 	}
 
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
 	if strings.Contains(plugin.Fields.Category, "es:") {
 		shouldCollectCategory = true
-		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
-
-		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, categorySource)
-		if err == nil && haskeyword {
-			categorySource = fmt.Sprintf("%s.keyword", categorySource)
+		categorySource, err = checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Category, "es:", "", 1))
+		if err != nil {
+			return c, err
 		}
 	}
 
@@ -465,21 +462,19 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (c tsv
 }
 
 func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1)
-	_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, sidSource)
-	if err == nil && haskeyword {
-		sidSource = fmt.Sprintf("%s.keyword", sidSource)
+	ctx := context.Background()
+	sidSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1))
+	if err != nil {
+		return c, err
 	}
 
 	shouldCollectCategory := false
 	categorySource := plugin.Fields.Category
 	if strings.Contains(plugin.Fields.Category, "es:") {
 		shouldCollectCategory = true
-		categorySource = strings.Replace(plugin.Fields.Category, "es:", "", 1)
-
-		_, haskeyword, err := collector.FieldType(context.Background(), plugin.Index, sidSource)
-		if err == nil && haskeyword {
-			categorySource = fmt.Sprintf("%s.keyword", categorySource)
+		categorySource, err = checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Category, "es:", "", 1))
+		if err != nil {
+			return c, err
 		}
 	}
 
@@ -576,4 +571,21 @@ var functions = template.FuncMap{
 
 		return strings.Join(strs, "\n")
 	},
+}
+
+func checkKeyword(ctx context.Context, index, field string) (string, error) {
+	fieldType, haskeyword, err := collector.FieldType(context.Background(), index, field)
+	if err == ErrFieldMappingNotExist {
+		return "", fmt.Errorf("no mapping found for field '%s', %s", field, err.Error())
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("error while checking field mapping for '%s', %s", field, err.Error())
+	}
+
+	if fieldType != FieldTypeKeyword && haskeyword {
+		field = fmt.Sprintf("%s.keyword", field)
+	}
+
+	return field, nil
 }
