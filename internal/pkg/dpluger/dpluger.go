@@ -176,11 +176,11 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 
 	// Prepare the struct to be used with the template
 	pt := pluginTemplate{}
-	pt.P = plugin
+	pt.Plugin = plugin
 	pt.Creator = creator
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 
-	FieldMappingToLogstashField(&pt.P.Fields)
+	FieldMappingToLogstashField(&pt.Plugin.Fields)
 
 	var identifierBlock string
 
@@ -194,7 +194,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 				identifierBlock = templNonPipeline
 			}
 		} else {
-			pt.P.IdentifierBlockSourceContent = string(b)
+			pt.Plugin.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
 		}
 	} else {
@@ -271,16 +271,17 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	}
 
 	// Prepare the struct to be used with template
-	pt := pluginTemplate{}
-	pt.P = plugin
-	pt.R = ref
-	pt.Creator = creator
-	pt.SIDField = LogstashFieldNotation(
-		strings.Replace(plugin.Fields.Title, "collect:", "", 1))
-	pt.SIDFieldPlain = pt.SIDField
-	pt.SIDField = "%{" + pt.SIDField + "}"
-	pt.CreateDate = time.Now().Format(time.RFC3339)
-	FieldMappingToLogstashField(&pt.P.Fields)
+	SIDField := LogstashFieldNotation(strings.Replace(plugin.Fields.Title, "collect:", "", 1))
+	pt := pluginTemplate{
+		Plugin:        plugin,
+		Ref:           ref,
+		Creator:       creator,
+		SIDField:      "%{" + SIDField + "}",
+		SIDFieldPlain: SIDField,
+		CreateDate:    time.Now().Format(time.RFC3339),
+	}
+
+	FieldMappingToLogstashField(&pt.Plugin.Fields)
 
 	var identifierBlock string
 	if plugin.IdentifierBlockSource != "" {
@@ -288,7 +289,7 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 		if err != nil {
 			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
 		} else {
-			pt.P.IdentifierBlockSourceContent = string(b)
+			pt.Plugin.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
 		}
 	} else {
@@ -307,8 +308,9 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	if err != nil {
 		return err
 	}
+
 	var buf bytes.Buffer
-	w := bufio.NewWriter(&buf)
+	w := bufio.NewWriter(bytes.NewBuffer([]byte{}))
 	err = t.Execute(w, pt)
 	w.Flush()
 	if err != nil {
@@ -328,8 +330,8 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	if err != nil {
 		return err
 	}
-	return nil
 
+	return nil
 }
 
 func counter() func() int {
