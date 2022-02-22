@@ -25,6 +25,7 @@ type pluginTemplate struct {
 	Ref           tsvRef
 	SIDField      string
 	SIDFieldPlain string
+	SIDListGroup  []PluginSIDWithCustomDataGroup
 }
 
 func (pt pluginTemplate) IsPluginRule() bool {
