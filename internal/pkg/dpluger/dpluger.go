@@ -175,15 +175,15 @@ func CreatePlugin(plugin Plugin, confFile, creator string, validate, usePipeline
 func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
 
 	// Prepare the struct to be used with the template
-	pt := pluginTemplate{}
-	pt.Plugin = plugin
-	pt.Creator = creator
-	pt.CreateDate = time.Now().Format(time.RFC3339)
+	pt := pluginTemplate{
+		Plugin:     plugin,
+		Creator:    creator,
+		CreateDate: time.Now().Format(time.RFC3339),
+	}
 
 	FieldMappingToLogstashField(&pt.Plugin.Fields)
 
 	var identifierBlock string
-
 	if plugin.IdentifierBlockSource != "" {
 		b, err := os.ReadFile(plugin.IdentifierBlockSource)
 		if err != nil {
