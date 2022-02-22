@@ -80,7 +80,6 @@ const (
 	ftES
 )
 
-var esVersion int
 var collector esCollector
 
 // Parse read dpluger config from confFile and returns a Plugin
@@ -149,27 +148,39 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	return err
 }
 
+type CreatePluginConfig struct {
+	Plugin      Plugin
+	ConfigFile  string
+	Creator     string
+	Validate    bool
+	UsePipeline bool
+	SIDListFile string
+}
+
 // CreatePlugin starts plugin creation
-func CreatePlugin(plugin Plugin, confFile, creator string, validate, usePipeline bool) (err error) {
-	fmt.Print("Creating plugin (logstash config) for ", plugin.Name,
-		", using ES: ", plugin.ES, " and index pattern: ", plugin.Index, "\n")
+func CreatePlugin(cfg CreatePluginConfig) error {
+	fmt.Printf("Creating plugin (logstash config) for %s using ES: %s and index pattern: %s\n", cfg.Plugin.Name, cfg.Plugin.ES, cfg.Plugin.Index)
 
-	if collector, err = newESCollector(plugin.ES); err != nil {
-		return
+	var err error
+	if collector, err = newESCollector(cfg.Plugin.ES); err != nil {
+		return err
 	}
 
-	if validate {
-		if err = collector.ValidateIndex(plugin.Index); err != nil {
-			return
+	if cfg.Validate {
+		if err := collector.ValidateIndex(cfg.Plugin.Index); err != nil {
+			return err
 		}
-		if err = validateESField(plugin); err != nil {
-			return
+
+		if err := validateESField(cfg.Plugin); err != nil {
+			return err
 		}
 	}
-	if getType(plugin.Fields.PluginSID) == ftCollect {
-		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
+
+	if getType(cfg.Plugin.Fields.PluginSID) == ftCollect {
+		return createPluginCollect(cfg.Plugin, cfg.ConfigFile, cfg.Creator, cfg.Plugin.ESCollectionFilter, cfg.Validate, cfg.UsePipeline)
 	}
-	return createPluginNonCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
+
+	return createPluginNonCollect(cfg.Plugin, cfg.ConfigFile, cfg.Creator, cfg.Plugin.ESCollectionFilter, cfg.Validate, cfg.UsePipeline)
 }
 
 func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
