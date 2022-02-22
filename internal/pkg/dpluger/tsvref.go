@@ -93,19 +93,19 @@ func (p *PluginSID) Next(b tsv.Castable) bool {
 }
 
 type tsvRef struct {
-	Sids  map[int]PluginSID
-	fname string
+	SIDs     map[int]PluginSID
+	filename string
 }
 
 func (c *tsvRef) setFilename(pluginName string, confFile string) {
 	dir := path.Dir(confFile)
-	c.fname = path.Join(dir, pluginName+"_plugin-sids.tsv")
+	c.filename = path.Join(dir, pluginName+"_plugin-sids.tsv")
 }
 
 func (c *tsvRef) init(pluginName string, confFile string) {
-	c.Sids = make(map[int]PluginSID)
+	c.SIDs = make(map[int]PluginSID)
 	c.setFilename(pluginName, confFile)
-	f, err := os.OpenFile(c.fname, os.O_RDONLY, 0600)
+	f, err := os.OpenFile(c.filename, os.O_RDONLY, 0600)
 	if err != nil {
 		return
 	}
@@ -118,7 +118,7 @@ func (c *tsvRef) init(pluginName string, confFile string) {
 		if !ok {
 			break
 		}
-		c.Sids[ref.SID] = ref
+		c.SIDs[ref.SID] = ref
 	}
 }
 
@@ -131,7 +131,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 
 	// First check the title, exit if already exist
 	tKey := 0
-	for k, v := range c.Sids {
+	for k, v := range c.SIDs {
 		if v.SIDTitle == sidTitle {
 			tKey = k
 			break
@@ -145,7 +145,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 
 	// first find available SID
 	for {
-		_, used := c.Sids[*pluginSID]
+		_, used := c.SIDs[*pluginSID]
 		if !used {
 			break
 		}
@@ -158,12 +158,12 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 		SIDTitle: sidTitle,
 		Category: category,
 	}
-	c.Sids[*pluginSID] = r
+	c.SIDs[*pluginSID] = r
 	return true
 }
 
 func (c tsvRef) save() error {
-	f, err := os.OpenFile(c.fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(c.filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -173,12 +173,12 @@ func (c tsvRef) save() error {
 	}
 	// use slice to get a sorted keys, ikr
 	var keys []int
-	for k := range c.Sids {
+	for k := range c.SIDs {
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		v := c.Sids[k]
+		v := c.SIDs[k]
 		if _, err := f.WriteString(
 			v.Name + "\t" +
 				strconv.Itoa(v.ID) + "\t" +
