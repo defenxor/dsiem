@@ -16,6 +16,12 @@
 
 package dpluger
 
+import (
+	"fmt"
+	"strings"
+	"text/template"
+)
+
 var templHeader = `
 ###############################################################################
 # Dsiem {{.P.Name}} Plugin
@@ -32,6 +38,19 @@ filter {
 {{ indent 1 .P.IdentifierBlockSourceContent }}
 }
 `
+
+var templGroupByCustomData = `
+{{ range $i, $g := . }}  if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
+    mutate { {{ if $g.CustomData.CustomLabel1 }}
+      "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
+      "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
+      "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
+      "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
+      "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
+      "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+    }
+  }
+{{ end }}`
 
 var templNonPipeline = `
 
@@ -263,3 +282,29 @@ var templFooter = `
   }
 }
 `
+
+var templateFunctions = template.FuncMap{
+	"counter": counter,
+	"indent": func(n int, value string) string {
+		strs := strings.Split(value, "\n")
+		for idx, str := range strs {
+			if idx == 0 {
+				continue
+			}
+
+			if strings.HasPrefix(str, "#") {
+				continue
+			} else {
+				strs[idx] = fmt.Sprintf("%s%s", strings.Repeat("  ", n), str)
+			}
+		}
+
+		return strings.Join(strs, "\n")
+	},
+	"transform": func(data string, separator string) string {
+		data = strings.Replace(data, ".", "][", -1)
+		data = strings.Replace(data, data, "["+data, 1)
+		data = strings.Replace(data, data, data+"]", 1)
+		return "%{" + data + "}"
+	},
+}
