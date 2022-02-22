@@ -3,7 +3,7 @@ package dpluger
 import "sort"
 
 type PluginSIDWithCustomData struct {
-	PluginSIDRef
+	PluginSID
 	CustomDataSet
 }
 

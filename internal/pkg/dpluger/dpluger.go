@@ -180,7 +180,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 	pt.Creator = creator
 	pt.CreateDate = time.Now().Format(time.RFC3339)
 
-	transformToLogstashField(&pt.P.Fields)
+	FieldMappingToLogstashField(&pt.P.Fields)
 
 	var identifierBlock string
 
@@ -208,7 +208,7 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 	// Parse and execute the template
 	templateText := templHeader + identifierBlock + templPluginNonCollect + templFooter
 
-	t, err := template.New(plugin.Name).Funcs(functions).Parse(templateText)
+	t, err := template.New(plugin.Name).Funcs(templateFunctions).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -275,12 +275,12 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	pt.P = plugin
 	pt.R = ref
 	pt.Creator = creator
-	pt.SIDField = getLogstashFieldNotation(
+	pt.SIDField = LogstashFieldNotation(
 		strings.Replace(plugin.Fields.Title, "collect:", "", 1))
 	pt.SIDFieldPlain = pt.SIDField
 	pt.SIDField = "%{" + pt.SIDField + "}"
 	pt.CreateDate = time.Now().Format(time.RFC3339)
-	transformToLogstashField(&pt.P.Fields)
+	FieldMappingToLogstashField(&pt.P.Fields)
 
 	var identifierBlock string
 	if plugin.IdentifierBlockSource != "" {
@@ -303,7 +303,7 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	templateText := templHeader + identifierBlock + templPluginCollect + templFooter
 
 	// Parse and execute the template, saving result to buff
-	t, err := template.New(plugin.Name).Funcs(functions).Parse(templateText)
+	t, err := template.New(plugin.Name).Funcs(templateFunctions).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -338,44 +338,6 @@ func counter() func() int {
 		i++
 		return i
 	}
-}
-
-func transformToLogstashField(fields *FieldMapping) {
-	// iterate over fields to change them to logstash notation
-	s := reflect.ValueOf(fields).Elem()
-	typeOfT := s.Type()
-	for i := 0; i < s.NumField(); i++ {
-		f := s.Field(i)
-		// skip empty fields
-		str := f.Interface().(string)
-		if str == "" {
-			continue
-		}
-		var v string
-		if t := getType(str); t == ftES {
-			// convert to logstash [field][subfield] notation
-			v = getLogstashFieldNotation(str)
-			// do this except for timestamp, as it is only used in date filter
-			if typeOfT.Field(i).Name != "Timestamp" {
-				v = "%{" + v + "}"
-			}
-		} else {
-			v = str
-		}
-		// set it
-		setField(fields, typeOfT.Field(i).Name, v)
-		// fmt.Printf("%d: %s %s = %v\n", i, typeOfT.Field(i).Name, f.Type(), f.Interface())
-	}
-}
-
-func getLogstashFieldNotation(src string) (res string) {
-	s := strings.Replace(src, "es:", "", 1)
-	s = strings.Replace(s, "collect:", "", 1)
-	s = strings.Replace(s, ".", "][", -1)
-	s = strings.Replace(s, s, "["+s, 1)
-	s = strings.Replace(s, s, s+"]", 1)
-	res = s
-	return
 }
 
 func removeEmptyLines(input io.Reader, output io.Writer) (err error) {
@@ -574,26 +536,6 @@ func getType(s string) int {
 func getStaticText(s string) string {
 	defStaticText := "INSERT_STATIC_VALUE_HERE"
 	return strings.Replace(defStaticText, "STATIC_VALUE", s, -1)
-}
-
-var functions = template.FuncMap{
-	"counter": counter,
-	"indent": func(n int, value string) string {
-		strs := strings.Split(value, "\n")
-		for idx, str := range strs {
-			if idx == 0 {
-				continue
-			}
-
-			if strings.HasPrefix(str, "#") {
-				continue
-			} else {
-				strs[idx] = fmt.Sprintf("%s%s", strings.Repeat("  ", n), str)
-			}
-		}
-
-		return strings.Join(strs, "\n")
-	},
 }
 
 func checkKeyword(ctx context.Context, index, field string) (string, error) {

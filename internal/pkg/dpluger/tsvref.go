@@ -26,7 +26,7 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/tsv"
 )
 
-type pluginSIDRef struct {
+type PluginSID struct {
 	Name     string `tsv:"plugin"`
 	ID       int    `tsv:"id"`
 	SID      int    `tsv:"sid"`
@@ -38,10 +38,10 @@ type pluginSIDRef struct {
 }
 
 // Defaults is implementation of tsv.Castable
-func (p *pluginSIDRef) Defaults(in interface{}) {
-	v, ok := in.(pluginSIDRef)
+func (p *PluginSID) Defaults(in interface{}) {
+	v, ok := in.(PluginSID)
 	if in == nil || !ok {
-		v = pluginSIDRef{}
+		v = PluginSID{}
 	}
 
 	if p.Name == "" {
@@ -70,7 +70,7 @@ func (p *pluginSIDRef) Defaults(in interface{}) {
 }
 
 // Next is implementation of tsv.Castable
-func (p *pluginSIDRef) Next(b tsv.Castable) bool {
+func (p *PluginSID) Next(b tsv.Castable) bool {
 	switch p.lastIndex {
 	case 0:
 		p.Name = b.String()
@@ -93,7 +93,7 @@ func (p *pluginSIDRef) Next(b tsv.Castable) bool {
 }
 
 type tsvRef struct {
-	Sids  map[int]pluginSIDRef
+	Sids  map[int]PluginSID
 	fname string
 }
 
@@ -103,7 +103,7 @@ func (c *tsvRef) setFilename(pluginName string, confFile string) {
 }
 
 func (c *tsvRef) init(pluginName string, confFile string) {
-	c.Sids = make(map[int]pluginSIDRef)
+	c.Sids = make(map[int]PluginSID)
 	c.setFilename(pluginName, confFile)
 	f, err := os.OpenFile(c.fname, os.O_RDONLY, 0600)
 	if err != nil {
@@ -113,7 +113,7 @@ func (c *tsvRef) init(pluginName string, confFile string) {
 
 	parser := tsv.NewParser(f)
 	for {
-		var ref pluginSIDRef
+		var ref PluginSID
 		ok := parser.Read(&ref, nil)
 		if !ok {
 			break
@@ -151,7 +151,7 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 		}
 		*pluginSID++
 	}
-	r := pluginSIDRef{
+	r := PluginSID{
 		Name:     pluginName,
 		SID:      *pluginSID,
 		ID:       pluginID,
