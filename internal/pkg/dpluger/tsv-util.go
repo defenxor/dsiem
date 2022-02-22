@@ -30,12 +30,12 @@ type PluginSIDWithCustomDataGroup struct {
 }
 
 type CustomDataSet struct {
-	CustomLabel1 string `json:"custom_label_1" tsv:"custom_label_1" csv:"custom_label_1"`
-	CustomData1  string `json:"custom_data_1" tsv:"custom_data_1" csv:"custom_data_1"`
-	CustomLabel2 string `json:"custom_label_2" tsv:"custom_label_2" csv:"custom_label_2"`
-	CustomData2  string `json:"custom_data_2" tsv:"custom_data_2" csv:"custom_data_2"`
-	CustomLabel3 string `json:"custom_label_3" tsv:"custom_label_3" csv:"custom_label_3"`
-	CustomData3  string `json:"custom_data_3" tsv:"custom_data_3" csv:"custom_data_3"`
+	CustomLabel1 string `json:"custom_label1,omitempty" tsv:"custom_label1" csv:"custom_label1"`
+	CustomData1  string `json:"custom_data1,omitempty" tsv:"custom_data1" csv:"custom_data1"`
+	CustomLabel2 string `json:"custom_label2,omitempty" tsv:"custom_label2" csv:"custom_label2"`
+	CustomData2  string `json:"custom_data2,omitempty" tsv:"custom_data2" csv:"custom_data2"`
+	CustomLabel3 string `json:"custom_label3,omitempty" tsv:"custom_label3" csv:"custom_label3"`
+	CustomData3  string `json:"custom_data3,omitempty" tsv:"custom_data3" csv:"custom_data3"`
 }
 
 type PluginSIDSet []PluginSIDWithCustomData
