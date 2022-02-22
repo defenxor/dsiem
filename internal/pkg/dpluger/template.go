@@ -32,6 +32,7 @@ var templHeader = `
 
 `
 
+// templWithIdentifierBlockContent is template for embedding block-source from other file, uses PluginTemplate as input.
 var templWithIdentifierBlockContent = `
 filter {
 # embedded from {{ .Plugin.IdentifierBlockSource }}
@@ -39,6 +40,7 @@ filter {
 }
 `
 
+// templGroupByCustomData is template for creating logstash config with a tsv-file, uses []PluginSIDWithCustomDataGroup as input.
 var templGroupByCustomData = `
 {{ range $i, $g := . }}  if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
     mutate { {{ if $g.CustomData.CustomLabel1 }}
@@ -52,6 +54,7 @@ var templGroupByCustomData = `
   }
 {{ end }}`
 
+// templNonPipeline is template for creating logstash config with use-pipeline option set to false, uses PluginTemplate as input.
 var templNonPipeline = `
 
 filter {
@@ -81,6 +84,7 @@ filter {
 }
 `
 
+// templPipeline is template for creating logstash config with use-pipeline option set to true, uses PluginTemplate as input.
 var templPipeline = `
 
 # The filters below assumes that we'll run on a dedicated pipeline for dsiem event normalization.
@@ -108,6 +112,7 @@ filter {
 }
 `
 
+// templPluginCollect is template for creating collect-type logstash config, uses PluginTemplate as input.
 var templPluginCollect = `
 
 # 3rd step: the actual event normalization so that it matches the format that dsiem expect.
@@ -180,6 +185,8 @@ filter {
         {{if .IsFieldActive "CustomData3" }}"custom_data3" => "{{.Plugin.Fields.CustomData3}}"{{end}}
       }
     }
+
+
     {{if .IsIntegerMutationRequired}}
     mutate {
       id => "integer fields {{.Plugin.Fields.PluginID}}"
@@ -193,6 +200,7 @@ filter {
     {{end}}
 `
 
+// templPluginNonCollect is template for creating es-type logstash config, uses PluginTemplate as input.
 var templPluginNonCollect = `
 
 # 3rd step: the actual event normalization so that it matches the format that dsiem expect.
@@ -266,6 +274,7 @@ filter {
     {{end}}
 `
 
+// templFooter is template appended to every logstash plugin creation, uses PluginTemplate as input.s
 var templFooter = `
 
     {{if .IsFieldActive "CustomData1" }}if [custom_data1] == "{{.Plugin.Fields.CustomData1}}" { mutate { remove_field => [ "custom_label1", "custom_data1" ]}}{{end}}
