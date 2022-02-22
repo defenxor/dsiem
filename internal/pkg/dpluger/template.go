@@ -40,20 +40,6 @@ filter {
 }
 `
 
-// templGroupByCustomData is template for creating logstash config with a tsv-file, uses []PluginSIDWithCustomDataGroup as input.
-var templGroupByCustomData = `
-{{ range $i, $g := . }}  if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
-    mutate { {{ if $g.CustomData.CustomLabel1 }}
-      "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
-      "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
-      "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
-      "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
-      "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
-      "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
-    }
-  }
-{{ end }}`
-
 // templNonPipeline is template for creating logstash config with use-pipeline option set to false, uses PluginTemplate as input.
 var templNonPipeline = `
 
@@ -186,6 +172,16 @@ filter {
       }
     }
 
+    {{ if .SIDListGroup }}{{ range $i, $g := .SIDListGroup }}if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
+      mutate { {{ if $g.CustomData.CustomLabel1 }}
+        "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
+        "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
+        "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
+        "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
+        "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
+        "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+      }
+    }{{ end }}{{ end }}
 
     {{if .IsIntegerMutationRequired}}
     mutate {
@@ -260,6 +256,17 @@ filter {
         {{if .IsFieldActive "CustomData3" }}"custom_data3" => "{{.Plugin.Fields.CustomData3}}"{{end}}
       }
     }
+
+    {{ if .SIDListGroup }}{{ range $i, $g := .SIDListGroup }}if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
+      mutate { {{ if $g.CustomData.CustomLabel1 }}
+        "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
+        "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
+        "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
+        "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
+        "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
+        "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+      }
+    }{{ end }}{{ end }}
 
     {{if .IsIntegerMutationRequired}}
     mutate {
