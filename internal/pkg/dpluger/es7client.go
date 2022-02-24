@@ -229,33 +229,29 @@ func (es *es7Client) FieldType(ctx context.Context, index string, field string) 
 		return "", false, err
 	}
 
-	var indexSettings map[string]interface{}
+	var fiedMapping map[string]interface{}
 	var ok bool
 	for _, v := range m {
-		indexSettings, ok = v.(map[string]interface{})
-		if ok && indexSettings != nil {
+		fm, exist := v.(map[string]interface{})["mappings"].(map[string]interface{})[field]
+		if !exist {
+			continue
+		}
+
+		fiedMapping, ok = fm.(map[string]interface{})
+		if ok {
 			break
 		}
+
 	}
 
-	if !ok {
-		return "", false, ErrFieldMappingNotExist
-	}
-
-	mappings, ok := indexSettings["mappings"].(map[string]interface{})
-	if !ok || mappings == nil {
-		return "", false, ErrFieldMappingNotExist
-	}
-
-	f, ok := mappings[field].(map[string]interface{})
-	if !ok || f == nil {
+	if !ok || fiedMapping == nil {
 		return "", false, ErrFieldMappingNotExist
 	}
 
 	levels := strings.Split(field, ".")
 	level := levels[len(levels)-1]
 
-	mapping, ok := f["mapping"].(map[string]interface{})[level].(map[string]interface{})
+	mapping, ok := fiedMapping["mapping"].(map[string]interface{})[level].(map[string]interface{})
 	if !ok || mapping == nil {
 		return "", false, ErrFieldMappingNotExist
 	}
