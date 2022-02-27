@@ -238,48 +238,6 @@ func (c *tsvRef) upsert(pluginName string, pluginID int,
 	return true
 }
 
-// upsertOld store the plugin to the TSV reference if the plugin with the same title doesn't exist yet.
-// exist as reference for future updates.
-func (c *tsvRef) upsertOld(pluginName string, pluginID int,
-	pluginSID *int, category, sidTitle string) (shouldIncreaseID bool) {
-
-	// replace " character in title and category, if any
-	sidTitle = strings.ReplaceAll(sidTitle, "\"", "'")
-	category = strings.ReplaceAll(category, "\"", "'")
-
-	// First check the title, exit if already exist
-	tKey := 0
-	for k, v := range c.SIDs {
-		if v.SIDTitle == sidTitle {
-			tKey = k
-			break
-		}
-	}
-	if tKey != 0 {
-		// should increase new SID number if tKey == pluginSID by coincidence
-		return tKey == *pluginSID
-	}
-	// here title doesnt yet exist so we add it
-
-	// first find available SID
-	for {
-		_, used := c.SIDs[*pluginSID]
-		if !used {
-			break
-		}
-		*pluginSID++
-	}
-	r := PluginSID{
-		Name:     pluginName,
-		SID:      *pluginSID,
-		ID:       pluginID,
-		SIDTitle: sidTitle,
-		Category: category,
-	}
-	c.SIDs[*pluginSID] = r
-	return true
-}
-
 func (c tsvRef) save() error {
 	f, err := os.OpenFile(c.filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
