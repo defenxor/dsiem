@@ -460,8 +460,13 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRe
 	return collector.CollectPair(plugin, confFile, sidSource, esFilter, titleSource, categorySource, shouldCollectCategory)
 }
 
-func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	ctx := context.Background()
+func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (tsvRef, error) {
+	var (
+		ctx = context.Background()
+		c   tsvRef
+		err error
+	)
+
 	sidSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1))
 	if err != nil {
 		return c, err
@@ -478,35 +483,37 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 	}
 
 	if validate {
-		fmt.Print("Checking the existence of field ", sidSource, "... ")
+		fmt.Printf("Checking the existence of field '%s' ... ", sidSource)
 
-		var exist bool
-		exist, err = collector.IsESFieldExist(plugin.Index, sidSource)
+		exist, err := collector.IsESFieldExist(plugin.Index, sidSource)
 		if err != nil {
-			return
+			return c, err
 		}
 
 		if !exist {
-			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
-			return
+			return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", sidSource, plugin.Index)
 		}
 
 		if shouldCollectCategory {
-			fmt.Print("Checking the existence of field ", categorySource, "... ")
-			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
+			fmt.Printf("Checking the existence of field '%s' .... ", categorySource)
+			exist, err := collector.IsESFieldExist(plugin.Index, categorySource)
 			if err != nil {
-				return
+				return c, err
 			}
 
-			_ = exist
+			if !exist {
+				return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", categorySource, plugin.Index)
+			}
 		}
 
 		fmt.Println("OK")
 	}
-	fmt.Println("Collecting unique entries from " + sidSource + " on index " + plugin.Index + " to create Plugin SIDs ...")
+
+	fmt.Printf("Collecting unique entries from '%s' on index '%s' to create Plugin SIDs ... \n", sidSource, plugin.Index)
 	if esFilter != "" {
-		fmt.Println("Limiting collection with term " + esFilter)
+		fmt.Printf("Limitting collection with term '%s'\n", esFilter)
 	}
+
 	return collector.Collect(plugin, confFile, sidSource, esFilter, categorySource, shouldCollectCategory)
 }
 
