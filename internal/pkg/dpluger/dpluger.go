@@ -157,6 +157,10 @@ type CreatePluginConfig struct {
 	SIDListFile string
 }
 
+func (cfg CreatePluginConfig) isCollect() bool {
+	return getType(cfg.Plugin.Fields.PluginSID) == ftCollect
+}
+
 // CreatePlugin starts plugin creation
 func CreatePlugin(cfg CreatePluginConfig) error {
 	fmt.Printf("Creating plugin (logstash config) for %s using ES: %s and index pattern: %s\n", cfg.Plugin.Name, cfg.Plugin.ES, cfg.Plugin.Index)
@@ -176,7 +180,7 @@ func CreatePlugin(cfg CreatePluginConfig) error {
 		}
 	}
 
-	if getType(cfg.Plugin.Fields.PluginSID) == ftCollect {
+	if cfg.isCollect() {
 		return createPluginCollect(cfg.Plugin, cfg.ConfigFile, cfg.Creator, cfg.Plugin.ESCollectionFilter, cfg.Validate, cfg.UsePipeline)
 	}
 
@@ -184,7 +188,6 @@ func CreatePlugin(cfg CreatePluginConfig) error {
 }
 
 func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
-
 	// Prepare the struct to be used with the template
 	pt := pluginTemplate{
 		Plugin:     plugin,
@@ -197,18 +200,15 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 	var identifierBlock string
 	if plugin.IdentifierBlockSource != "" {
 		b, err := os.ReadFile(plugin.IdentifierBlockSource)
-		if err != nil {
-			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
-			if usePipeline {
-				identifierBlock = templPipeline
-			} else {
-				identifierBlock = templNonPipeline
-			}
-		} else {
+		if err == nil {
 			pt.Plugin.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
+		} else {
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
 		}
-	} else {
+	}
+
+	if identifierBlock == "" {
 		if usePipeline {
 			identifierBlock = templPipeline
 		} else {
@@ -231,13 +231,14 @@ func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, v
 		return err
 	}
 
-	// Prepare plugin output file
+	// [repare plugin output file
 	dir := path.Dir(confFile)
 	fname := path.Join(dir, plugin.Output)
 	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
+
 	defer f.Close()
 
 	err = removeEmptyLines(&buf, f)
@@ -277,12 +278,14 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	if err != nil {
 		return err
 	}
+
 	if err := ref.save(); err != nil {
 		return err
 	}
 
 	// Prepare the struct to be used with template
 	SIDField := LogstashFieldNotation(strings.Replace(plugin.Fields.Title, "collect:", "", 1))
+
 	pt := pluginTemplate{
 		Plugin:        plugin,
 		Ref:           ref,
@@ -297,13 +300,15 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	var identifierBlock string
 	if plugin.IdentifierBlockSource != "" {
 		b, err := os.ReadFile(plugin.IdentifierBlockSource)
-		if err != nil {
-			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
-		} else {
+		if err == nil {
 			pt.Plugin.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
+		} else {
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
 		}
-	} else {
+	}
+
+	if identifierBlock == "" {
 		if usePipeline {
 			identifierBlock = templPipeline
 		} else {
@@ -474,15 +479,18 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 
 	if validate {
 		fmt.Print("Checking the existence of field ", sidSource, "... ")
+
 		var exist bool
 		exist, err = collector.IsESFieldExist(plugin.Index, sidSource)
 		if err != nil {
 			return
 		}
+
 		if !exist {
 			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
 			return
 		}
+
 		if shouldCollectCategory {
 			fmt.Print("Checking the existence of field ", categorySource, "... ")
 			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
@@ -492,6 +500,7 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 
 			_ = exist
 		}
+
 		fmt.Println("OK")
 	}
 	fmt.Println("Collecting unique entries from " + sidSource + " on index " + plugin.Index + " to create Plugin SIDs ...")
