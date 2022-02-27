@@ -186,7 +186,7 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		return ref, fmt.Errorf("can not find matching entry in field '%s' on index '%s'", sidSource, plugin.Index)
 	}
 
-	fmt.Printf("Found %d unique %s.", count, sidSource)
+	fmt.Printf("Found %d unique %s.\n", count, sidSource)
 
 	// initial Signature ID number, we increase if needed.
 	sid := 1

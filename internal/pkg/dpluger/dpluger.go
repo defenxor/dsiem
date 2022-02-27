@@ -302,12 +302,30 @@ var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword
 
 func createPluginCollect(cfg CreatePluginConfig) error {
 
+	// Taxonomy type plugin doesnt need to collect title since it is relying on
+	// category field (which doesnt have to be unique per title) instead of Plugin_SID
+	// that requires a unique SID for each title
+	if cfg.Plugin.Type != "SID" {
+		return ErrNonSIDCollect
+	}
+
+	// first get the refs
+	ref, err := collectSID(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
+	if err != nil {
+		return err
+	}
+
+	if err := ref.save(); err != nil {
+		return err
+	}
+
 	// Prepare the struct to be used with template
 	SIDField := LogstashFieldNotation(strings.Replace(cfg.Plugin.Fields.Title, "collect:", "", 1))
 
 	pt := pluginTemplate{
 		Plugin:        cfg.Plugin,
 		Creator:       cfg.Creator,
+		Ref:           ref,
 		SIDField:      "%{" + SIDField + "}",
 		SIDFieldPlain: SIDField,
 		CreateDate:    time.Now().Format(time.RFC3339),
@@ -334,26 +352,7 @@ func createPluginCollect(cfg CreatePluginConfig) error {
 		}
 	}
 
-	if cfg.SIDListFile == "" {
-		// Taxonomy type plugin doesnt need to collect title since it is relying on
-		// category field (which doesnt have to be unique per title) instead of Plugin_SID
-		// that requires a unique SID for each title
-		if cfg.Plugin.Type != "SID" {
-			return ErrNonSIDCollect
-		}
-
-		// first get the refs
-		ref, err := collectSID(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
-		if err != nil {
-			return err
-		}
-
-		if err := ref.save(); err != nil {
-			return err
-		}
-
-		pt.Ref = ref
-	} else {
+	if cfg.SIDListFile != "" {
 		sids := make([]PluginSIDWithCustomData, 0)
 		sidListFile, err := os.Open(cfg.SIDListFile)
 		if err != nil {
@@ -390,7 +389,7 @@ func createPluginCollect(cfg CreatePluginConfig) error {
 	}
 
 	var buf bytes.Buffer
-	w := bufio.NewWriter(bytes.NewBuffer([]byte{}))
+	w := bufio.NewWriter(&buf)
 	err = t.Execute(w, pt)
 	w.Flush()
 	if err != nil {
