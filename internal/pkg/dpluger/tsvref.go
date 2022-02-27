@@ -17,6 +17,8 @@
 package dpluger
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path"
 	"sort"
@@ -24,6 +26,10 @@ import (
 	"strings"
 
 	"github.com/defenxor/dsiem/internal/pkg/shared/tsv"
+)
+
+const (
+	TSVFileSuffix = "_plugin-sids.tsv"
 )
 
 type PluginSID struct {
@@ -37,11 +43,43 @@ type PluginSID struct {
 	lastIndex int
 }
 
+func (p PluginSID) IsEmpty() bool {
+	if p.Name != "" {
+		return false
+	}
+
+	if p.ID != 0 {
+		return false
+	}
+
+	if p.SID != 0 {
+		return false
+	}
+
+	if p.SIDTitle != "" {
+		return false
+	}
+
+	if p.Category != "" {
+		return false
+	}
+
+	if p.Kingdom != "" {
+		return false
+	}
+
+	return true
+}
+
 // Defaults is implementation of tsv.Castable
 func (p *PluginSID) Defaults(in interface{}) {
+	if in == nil {
+		return
+	}
+
 	v, ok := in.(PluginSID)
-	if in == nil || !ok {
-		v = PluginSID{}
+	if !ok {
+		return
 	}
 
 	if p.Name == "" {
@@ -92,37 +130,117 @@ func (p *PluginSID) Next(b tsv.Castable) bool {
 	return true
 }
 
+// tsvRef is reference to TSV file containing list of Signature IDs.
 type tsvRef struct {
 	SIDs     map[int]PluginSID
 	filename string
 }
 
-func (c *tsvRef) setFilename(pluginName string, confFile string) {
-	dir := path.Dir(confFile)
-	c.filename = path.Join(dir, pluginName+"_plugin-sids.tsv")
+func (c *tsvRef) setFilename(pluginName string, base string) {
+	c.filename = path.Join(base, fmt.Sprintf("%s%s", pluginName, TSVFileSuffix))
 }
 
-func (c *tsvRef) init(pluginName string, confFile string) {
+func (c *tsvRef) addPlugin(ref PluginSID) {
+	c.SIDs[ref.SID] = ref
+}
+
+func (c *tsvRef) initWithReader(pluginName, base string, r io.Reader) {
 	c.SIDs = make(map[int]PluginSID)
-	c.setFilename(pluginName, confFile)
+	c.setFilename(pluginName, base)
+
+	c.initSIDList(r)
+}
+
+func (c *tsvRef) initWithConfig(pluginName string, configFile string) {
+	c.SIDs = make(map[int]PluginSID)
+	c.setFilename(pluginName, path.Dir(configFile))
 	f, err := os.OpenFile(c.filename, os.O_RDONLY, 0600)
 	if err != nil {
 		return
 	}
-	defer f.Close()
 
-	parser := tsv.NewParser(f)
+	defer f.Close()
+	c.initSIDList(f)
+}
+
+func (c *tsvRef) initSIDList(ref io.Reader) {
+	parser := tsv.NewParser(ref)
 	for {
 		var ref PluginSID
 		ok := parser.Read(&ref, nil)
 		if !ok {
 			break
 		}
-		c.SIDs[ref.SID] = ref
+
+		if ref.IsEmpty() {
+			continue
+		}
+
+		c.addPlugin(ref)
 	}
 }
 
+func (c tsvRef) hasSID(sid int) bool {
+	_, ok := c.SIDs[sid]
+	return ok
+}
+
+func (c tsvRef) hasTitle(title string) (int, bool) {
+	for k, v := range c.SIDs {
+		if v.SIDTitle == title {
+			return k, true
+		}
+	}
+
+	return 0, false
+}
+
+func (c tsvRef) count() int {
+	return len(c.SIDs)
+}
+
+// upsert store the plugin to the TSV reference if the plugin with the same Title and same Signature ID doesn't exist yet.
+// returns true if the plugin is added to the end of current plugin list, means that caller should use next (incremented)
+// Signature ID (SID) for the next upsert.
 func (c *tsvRef) upsert(pluginName string, pluginID int,
+	pluginSID *int, category, sidTitle string) (lastEntry bool) {
+
+	// replace character " in title and category, if any.
+	sidTitle = strings.ReplaceAll(sidTitle, "\"", "'")
+	category = strings.ReplaceAll(category, "\"", "'")
+
+	// First check the title, exit if already exist.
+	if sid, ok := c.hasTitle(sidTitle); ok && sid != 0 {
+		// tell caller to increase SID number if there's a stored plugin with same SID and title.
+		return sid == *pluginSID
+	}
+
+	// here plugin with the same title doesn't exist yet in internal plugin list,
+	// so we add it, first find available SID number.
+	for {
+		if !c.hasSID(*pluginSID) {
+			break
+		}
+
+		*pluginSID++
+	}
+
+	// then, we add the plugin under the available SID number.
+	c.addPlugin(PluginSID{
+		Name:     pluginName,
+		SID:      *pluginSID,
+		ID:       pluginID,
+		SIDTitle: sidTitle,
+		Category: category,
+	})
+
+	// and tell the caller that we should increase the SID number.
+	return true
+}
+
+// upsertOld store the plugin to the TSV reference if the plugin with the same title doesn't exist yet.
+// exist as reference for future updates.
+func (c *tsvRef) upsertOld(pluginName string, pluginID int,
 	pluginSID *int, category, sidTitle string) (shouldIncreaseID bool) {
 
 	// replace " character in title and category, if any
