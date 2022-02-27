@@ -28,7 +28,6 @@ func TestTSVUpsert(t *testing.T) {
 			sidList: `plugin	id	sid	title	category	kingdom
 test	1337	1	test-plugin-1	test-plugin
 test	1337	2	test-plugin-2	test-plugin
-
 			`,
 			sid:            3,
 			id:             1337,
@@ -43,7 +42,6 @@ test	1337	2	test-plugin-2	test-plugin
 			sidList: `plugin	id	sid	title	category	kingdom
 test	1337	1	test-plugin-1	test-plugin
 test	1337	2	test-plugin-2	test-plugin
-
 			`,
 			sid:            1,
 			id:             1337,
@@ -58,7 +56,6 @@ test	1337	2	test-plugin-2	test-plugin
 			sidList: `plugin	id	sid	title	category	kingdom
 test	1337	1	test-plugin-1	test-plugin
 test	1337	2	test-plugin-2	test-plugin
-
 			`,
 			sid:            1,
 			id:             1337,
@@ -73,7 +70,6 @@ test	1337	2	test-plugin-2	test-plugin
 			sidList: `plugin	id	sid	title	category	kingdom
 test	1337	1	test-plugin-1	test-plugin
 test	1337	2	test-plugin-2	test-plugin
-
 			`,
 			sid:            2,
 			id:             1337,
@@ -88,7 +84,6 @@ test	1337	2	test-plugin-2	test-plugin
 			sidList: `plugin	id	sid	title	category	kingdom
 test	1337	1	test-plugin-1	test-plugin
 test	1337	2	test-plugin-2	test-plugin
-
 			`,
 			sid:            3,
 			id:             1337,
