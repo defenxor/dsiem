@@ -30,10 +30,10 @@ import (
 type esCollector interface {
 	Init(esURL string) (err error)
 
-	// Collect list of plugin SIDs from field marked as 'category' field. Returns TSV reference, and any occurred error.
+	// Collect unqiue list of plugin SIDs from field marked as 'SID' field, with optional 'Category' field. Returns TSV reference, and any occurred error.
 	Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error)
 
-	// Collect list of plugin SIDs from field marked as 'title' field and 'category' field. Returns TSV reference, and any occurred error.
+	// Collect unique list of plugin SIDs from fields marked as 'title' field and 'SID' field, with optional 'Category' field. Returns TSV reference, and any occurred error.
 	CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error)
 
 	ValidateIndex(index string) (err error)
