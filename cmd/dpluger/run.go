@@ -21,6 +21,7 @@ func init() {
 	viper.BindPFlag("validate", runCmd.Flags().Lookup("validate"))
 	viper.BindPFlag("skipTLSVerify", runCmd.Flags().Lookup("skipTLSVerify"))
 	viper.BindPFlag("usePipeline", runCmd.Flags().Lookup("usePipeline"))
+	viper.BindPFlag("sid-list", runCmd.Flags().Lookup("sid-list"))
 
 	rootCmd.AddCommand(runCmd)
 }
