@@ -1,13 +1,126 @@
 package dpluger
 
-import "sort"
+import (
+	"sort"
 
+	"github.com/defenxor/dsiem/internal/pkg/shared/tsv"
+)
+
+// PluginSIDWithCustomData is extension to original PluginSID with added custom-data set.
+// it inherits all PluginSID methods.
 type PluginSIDWithCustomData struct {
 	PluginSID
 	CustomDataSet
+
+	lastIndex int
 }
 
-func (c *PluginSIDWithCustomData) removeIncompleteCustomData() {
+func (p PluginSIDWithCustomData) IsEmpty() bool {
+	if p.PluginSID.IsEmpty() {
+		return true
+	}
+
+	if p.CustomDataSet.IsEmpty() {
+		return true
+	}
+
+	return false
+}
+
+func (p *PluginSIDWithCustomData) Next(b tsv.Castable) bool {
+	switch p.lastIndex {
+	case 0:
+		p.Name = b.String()
+	case 1:
+		p.ID = b.Int()
+	case 2:
+		p.SID = b.Int()
+	case 3:
+		p.SIDTitle = b.String()
+	case 4:
+		p.Category = b.String()
+	case 5:
+		p.Kingdom = b.String()
+	case 6:
+		p.CustomLabel1 = b.String()
+	case 7:
+		p.CustomData1 = b.String()
+	case 8:
+		p.CustomLabel2 = b.String()
+	case 9:
+		p.CustomData2 = b.String()
+	case 10:
+		p.CustomLabel3 = b.String()
+	case 11:
+		p.CustomData3 = b.String()
+	default:
+		return false
+	}
+
+	p.lastIndex++
+	return true
+}
+
+func (p *PluginSIDWithCustomData) Defaults(in interface{}) {
+	if in == nil {
+		return
+	}
+
+	v, ok := in.(PluginSIDWithCustomData)
+	if !ok {
+		return
+	}
+
+	if p.Name == "" {
+		p.Name = v.Name
+	}
+
+	if p.ID == 0 {
+		p.ID = v.ID
+	}
+
+	if p.SID == 0 {
+		p.SID = v.SID
+	}
+
+	if p.SIDTitle == "" {
+		p.SIDTitle = v.SIDTitle
+	}
+
+	if p.Category == "" {
+		p.Category = v.Category
+	}
+
+	if p.Kingdom == "" {
+		p.Kingdom = v.Kingdom
+	}
+
+	if p.CustomLabel1 == "" {
+		p.CustomLabel1 = v.CustomLabel1
+	}
+
+	if p.CustomData1 == "" {
+		p.CustomData1 = v.CustomData1
+	}
+
+	if p.CustomLabel2 == "" {
+		p.CustomLabel2 = v.CustomLabel2
+	}
+
+	if p.CustomData2 == "" {
+		p.CustomData2 = v.CustomData2
+	}
+
+	if p.CustomLabel3 == "" {
+		p.CustomLabel3 = v.CustomLabel3
+	}
+
+	if p.CustomData3 == "" {
+		p.CustomData3 = v.CustomData3
+	}
+}
+
+func (c *CustomDataSet) removeIncompleteCustomData() {
 	if !isCompletePair(c.CustomData1, c.CustomLabel1) {
 		c.CustomData1 = ""
 		c.CustomLabel1 = ""
@@ -24,6 +137,36 @@ func (c *PluginSIDWithCustomData) removeIncompleteCustomData() {
 	}
 }
 
+func (c CustomDataSet) IsEmpty() bool {
+	if c.CustomData1 != "" {
+		return false
+	}
+
+	if c.CustomLabel1 != "" {
+		return false
+	}
+
+	if c.CustomData2 != "" {
+		return false
+	}
+
+	if c.CustomLabel2 != "" {
+		return false
+	}
+
+	if c.CustomData3 != "" {
+		return false
+	}
+
+	if c.CustomLabel3 != "" {
+		return false
+	}
+
+	return true
+}
+
+// PluginSIDWithCustomDataGroup is mapping of a CustomDataSet to set of Plugin SID, used to map
+// unique custom data set to list of plugin-sid along with its custom-data.
 type PluginSIDWithCustomDataGroup struct {
 	CustomData CustomDataSet
 	Plugins    PluginSIDSet
