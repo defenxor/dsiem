@@ -35,106 +35,23 @@ func (es *es7Client) Init(esURL string) (err error) {
 	return
 }
 
-func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
-	size := 1000
-	c.initWithConfig(plugin.Name, confFile)
-	var finalAgg, subSubTerm *elastic7.TermsAggregation
-	rootTerm := elastic7.NewTermsAggregation().Field(titleSource).Size(size)
-	subTerm := elastic7.NewTermsAggregation().Field(sidSource)
-	finalAgg = rootTerm.SubAggregation("subterm", subTerm)
-	if shouldCollectCategory {
-		subSubTerm = elastic7.NewTermsAggregation().Field(categorySource)
-		finalAgg = finalAgg.SubAggregation("subSubTerm", subSubTerm)
-	}
-
-	query := elastic7.NewBoolQuery()
-	if esFilter != "" {
-		coll := strings.Split(esFilter, ";")
-		for _, v := range coll {
-			s := strings.Split(v, "=")
-			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
-				return
-			}
-			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
-		}
-	} else {
-		query = query.Must(elastic7.NewMatchAllQuery())
-	}
-
-	ctx := context.Background()
-	searchResult, err := es.client.Search().
-		Index(plugin.Index).
-		Query(query).
-		Aggregation("finalAgg", finalAgg).
-		Pretty(true).
-		Do(ctx)
-	if err != nil {
-		return
-	}
-	agg, found := searchResult.Aggregations.Terms("finalAgg")
-	if !found {
-		err = errors.New("cannot find aggregation finalAgg in ES query result")
-		return
-	}
-	count := len(agg.Buckets)
-	if count == 0 {
-		err = errors.New("cannot find matching entry in field " + sidSource + " on index " + plugin.Index)
-		return
-	}
-	fmt.Println("Found", count, "uniq "+sidSource+".")
-	nID, err := strconv.Atoi(plugin.Fields.PluginID)
-	if err != nil {
-		return
-	}
-
-	for _, lvl1Bucket := range agg.Buckets {
-		subterm, found := lvl1Bucket.Terms("subterm")
-		if !found {
-			continue
-		}
-		for _, lvl2Bucket := range subterm.Buckets {
-			sKey := lvl1Bucket.Key.(string)
-			nKey, err := toInt(lvl2Bucket.Key)
-			if err != nil {
-				return c, fmt.Errorf("invalid sid aggregation key, %s", err.Error())
-			}
-
-			if shouldCollectCategory {
-				subSubTerm, found2 := lvl1Bucket.Terms("subSubTerm")
-				if !found2 {
-					continue
-				}
-				for _, lvl3Bucket := range subSubTerm.Buckets {
-					sCat := lvl3Bucket.Key.(string)
-					_ = c.upsert(plugin.Name, nID, &nKey, sCat, sKey)
-					break
-				}
-			} else {
-				_ = c.upsert(plugin.Name, nID, &nKey, categorySource, sKey)
-			}
-			break
-		}
-	}
-	return
-}
-
-func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (tsvRef, error) {
-
+func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (tsvRef, error) {
 	var (
-		size             = 1000
-		uniqueTermAggKey = "uniqTerm"
-		subTermAggKey    = "subTerm"
-		ref              tsvRef
+		size           = 1000
+		rootAggKey     = "final"
+		sidAggKey      = "sid"
+		categoryAggKey = "category"
+		titleAgg       = elastic7.NewTermsAggregation().Field(titleSource).Size(size)
+		sidAgg         = elastic7.NewTermsAggregation().Field(sidSource)
+		rootAgg        = titleAgg.SubAggregation(sidAggKey, sidAgg)
 	)
 
+	var ref tsvRef
 	ref.initWithConfig(plugin.Name, confFile)
 
-	var subTerm *elastic7.TermsAggregation
-	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)
 	if shouldCollectCategory {
-		subTerm = elastic7.NewTermsAggregation().Field(categorySource)
-		terms = terms.SubAggregation(subTermAggKey, subTerm)
+		categoryAgg := elastic7.NewTermsAggregation().Field(categorySource)
+		rootAgg = rootAgg.SubAggregation(categoryAggKey, categoryAgg)
 	}
 
 	query := elastic7.NewBoolQuery()
@@ -156,16 +73,112 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
 		Query(query).
-		Aggregation(uniqueTermAggKey, terms).
+		Aggregation(rootAggKey, rootAgg).
 		Pretty(true).
 		Do(ctx)
 	if err != nil {
 		return ref, err
 	}
 
-	agg, found := searchResult.Aggregations.Terms(uniqueTermAggKey)
+	agg, found := searchResult.Aggregations.Terms(rootAggKey)
 	if !found {
-		return ref, fmt.Errorf("can not find '%s' aggregation in ES query result", uniqueTermAggKey)
+		return ref, fmt.Errorf("cannot find '%s' aggregation in ES query result", rootAggKey)
+	}
+
+	count := len(agg.Buckets)
+	if count == 0 {
+		return ref, fmt.Errorf("can not find matching entry in field '%s' on index '%s'", sidSource, plugin.Index)
+	}
+
+	fmt.Printf("Found %d unique %s\n", count, sidSource)
+	pluginID, err := strconv.Atoi(plugin.Fields.PluginID)
+	if err != nil {
+		return ref, err
+	}
+
+	for _, root := range agg.Buckets {
+		SIDs, SIDsFound := root.Terms(sidAggKey)
+		if !SIDsFound {
+			continue
+		}
+
+		for _, sidBucket := range SIDs.Buckets {
+			rootKey := root.Key.(string)
+			pluginSID, err := toInt(sidBucket.Key)
+			if err != nil {
+				return ref, fmt.Errorf("invalid SID aggregation key, %s", err.Error())
+			}
+
+			if shouldCollectCategory {
+				categories, categoriesFound := root.Terms(categoryAggKey)
+				if !categoriesFound {
+					continue
+				}
+
+				for _, categoryBucket := range categories.Buckets {
+					category := categoryBucket.Key.(string)
+					ref.upsert(plugin.Name, pluginID, &pluginSID, category, rootKey)
+					break
+				}
+
+			} else {
+				ref.upsert(plugin.Name, pluginID, &pluginSID, categorySource, rootKey)
+			}
+
+			break
+		}
+	}
+
+	return ref, nil
+}
+
+func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (tsvRef, error) {
+
+	var (
+		size           = 1000
+		rootAggKey     = "uniqueTerms"
+		categoryAggKey = "categories"
+		ref            tsvRef
+	)
+
+	ref.initWithConfig(plugin.Name, confFile)
+
+	var subTerm *elastic7.TermsAggregation
+	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)
+	if shouldCollectCategory {
+		subTerm = elastic7.NewTermsAggregation().Field(categorySource)
+		terms = terms.SubAggregation(categoryAggKey, subTerm)
+	}
+
+	query := elastic7.NewBoolQuery()
+	if esFilter != "" {
+		filters := strings.Split(esFilter, ";")
+		for _, filter := range filters {
+			s := strings.Split(filter, "=")
+			if len(s) != 2 {
+				return ref, fmt.Errorf("invalid ES filter term, '%s', expected pair of strings with '=' delimitier", filter)
+			}
+
+			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
+		}
+	} else {
+		query = query.Must(elastic7.NewMatchAllQuery())
+	}
+
+	ctx := context.Background()
+	searchResult, err := es.client.Search().
+		Index(plugin.Index).
+		Query(query).
+		Aggregation(rootAggKey, terms).
+		Pretty(true).
+		Do(ctx)
+	if err != nil {
+		return ref, err
+	}
+
+	agg, found := searchResult.Aggregations.Terms(rootAggKey)
+	if !found {
+		return ref, fmt.Errorf("can not find '%s' aggregation in ES query result", rootAggKey)
 	}
 
 	count := len(agg.Buckets)
@@ -174,32 +187,34 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 	}
 
 	fmt.Printf("Found %d unique %s.", count, sidSource)
-	newSID := 1
 
-	nID, err := strconv.Atoi(plugin.Fields.PluginID)
+	// initial Signature ID number, we increase if needed.
+	sid := 1
+
+	pluginID, err := strconv.Atoi(plugin.Fields.PluginID)
 	if err != nil {
-		return ref, err
+		return ref, fmt.Errorf("invalid plugin ID, %s", err.Error())
 	}
 
 	for _, titleBucket := range agg.Buckets {
-		t := titleBucket.Key.(string)
+		title := titleBucket.Key.(string)
 		if !shouldCollectCategory {
 			// increase SID counter only if the last entry
-			if shouldIncrease := ref.upsert(plugin.Name, nID, &newSID, categorySource, t); shouldIncrease {
-				newSID++
+			if shouldIncrease := ref.upsert(plugin.Name, pluginID, &sid, categorySource, title); shouldIncrease {
+				sid++
 			}
 
 		} else {
-			subterm, found := titleBucket.Terms(subTermAggKey)
-			if !found {
+			categories, categoriesFound := titleBucket.Terms(categoryAggKey)
+			if !categoriesFound {
 				continue
 			}
 
-			for _, lvl2Bucket := range subterm.Buckets {
-				sCat := lvl2Bucket.Key.(string)
+			for _, categoryBucket := range categories.Buckets {
+				category := categoryBucket.Key.(string)
 				// increase SID counter only if the last entry
-				if shouldIncrease := ref.upsert(plugin.Name, nID, &newSID, sCat, t); shouldIncrease {
-					newSID++
+				if shouldIncrease := ref.upsert(plugin.Name, pluginID, &sid, category, title); shouldIncrease {
+					sid++
 				}
 
 				break
