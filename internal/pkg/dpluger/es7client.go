@@ -119,26 +119,33 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 	return
 }
 
-func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
+func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (tsvRef, error) {
 
-	size := 1000
-	c.init(plugin.Name, confFile)
+	var (
+		size             = 1000
+		uniqueTermAggKey = "uniqTerm"
+		subTermAggKey    = "subTerm"
+		ref              tsvRef
+	)
+
+	ref.init(plugin.Name, confFile)
+
 	var subTerm *elastic7.TermsAggregation
 	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)
 	if shouldCollectCategory {
 		subTerm = elastic7.NewTermsAggregation().Field(categorySource)
-		terms = terms.SubAggregation("subTerm", subTerm)
+		terms = terms.SubAggregation(subTermAggKey, subTerm)
 	}
 
 	query := elastic7.NewBoolQuery()
 	if esFilter != "" {
-		coll := strings.Split(esFilter, ";")
-		for _, v := range coll {
-			s := strings.Split(v, "=")
+		filters := strings.Split(esFilter, ";")
+		for _, filter := range filters {
+			s := strings.Split(filter, "=")
 			if len(s) != 2 {
-				err = errors.New("cannot split the ES filter term")
-				return
+				return ref, fmt.Errorf("invalid ES filter term, '%s', expected pair of strings with '=' delimitier", filter)
 			}
+
 			query = query.Must(elastic7.NewTermQuery(s[0], s[1]))
 		}
 	} else {
@@ -149,51 +156,58 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 	searchResult, err := es.client.Search().
 		Index(plugin.Index).
 		Query(query).
-		Aggregation("uniqTerm", terms).
+		Aggregation(uniqueTermAggKey, terms).
 		Pretty(true).
 		Do(ctx)
 	if err != nil {
-		return
+		return ref, err
 	}
-	agg, found := searchResult.Aggregations.Terms("uniqTerm")
+
+	agg, found := searchResult.Aggregations.Terms(uniqueTermAggKey)
 	if !found {
-		err = errors.New("cannot find aggregation uniqTerm in ES query result")
-		return
+		return ref, fmt.Errorf("can not find '%s' aggregation in ES query result", uniqueTermAggKey)
 	}
+
 	count := len(agg.Buckets)
 	if count == 0 {
-		err = errors.New("cannot find matching entry in field " + sidSource + " on index " + plugin.Index)
-		return
+		return ref, fmt.Errorf("can not find matching entry in field '%s' on index '%s'", sidSource, plugin.Index)
 	}
-	fmt.Println("Found", count, "uniq "+sidSource+".")
+
+	fmt.Printf("Found %d unique %s.", count, sidSource)
 	newSID := 1
+
 	nID, err := strconv.Atoi(plugin.Fields.PluginID)
 	if err != nil {
-		return
+		return ref, err
 	}
+
 	for _, titleBucket := range agg.Buckets {
 		t := titleBucket.Key.(string)
 		if !shouldCollectCategory {
 			// increase SID counter only if the last entry
-			if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, categorySource, t); shouldIncrease {
+			if shouldIncrease := ref.upsert(plugin.Name, nID, &newSID, categorySource, t); shouldIncrease {
 				newSID++
 			}
+
 		} else {
-			subterm, found := titleBucket.Terms("subTerm")
+			subterm, found := titleBucket.Terms(subTermAggKey)
 			if !found {
 				continue
 			}
+
 			for _, lvl2Bucket := range subterm.Buckets {
 				sCat := lvl2Bucket.Key.(string)
 				// increase SID counter only if the last entry
-				if shouldIncrease := c.upsert(plugin.Name, nID, &newSID, sCat, t); shouldIncrease {
+				if shouldIncrease := ref.upsert(plugin.Name, nID, &newSID, sCat, t); shouldIncrease {
 					newSID++
 				}
+
 				break
 			}
 		}
 	}
-	return
+
+	return ref, nil
 }
 
 func (es *es7Client) ValidateIndex(index string) (err error) {
