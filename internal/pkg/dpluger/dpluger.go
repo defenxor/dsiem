@@ -183,7 +183,7 @@ func CreatePlugin(cfg CreatePluginConfig) error {
 	}
 
 	if cfg.isCollect() {
-		return createPluginCollect(cfg.Plugin, cfg.ConfigFile, cfg.Creator, cfg.Plugin.ESCollectionFilter, cfg.Validate, cfg.UsePipeline)
+		return createPluginCollect(cfg)
 	}
 
 	return createPluginNonCollect(cfg)
@@ -281,7 +281,7 @@ func createPluginNonCollect(cfg CreatePluginConfig) error {
 	}
 
 	if cfg.SIDListFile != "" {
-		fmt.Println("Done creating plugin, since dpluger already supplied with a TSV file")
+		fmt.Println("Done creating plugin, no TSV file created, since dpluger already supplied with a TSV file")
 		return nil
 	}
 
@@ -300,32 +300,14 @@ func createPluginNonCollect(cfg CreatePluginConfig) error {
 
 var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword")
 
-func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
-
-	// Taxonomy type plugin doesnt need to collect title since it is relying on
-	// category field (which doesnt have to be unique per title) instead of Plugin_SID
-	// that requires a unique SID for each title
-	if plugin.Type != "SID" {
-		return ErrNonSIDCollect
-	}
-
-	// first get the refs
-	ref, err := collectSID(plugin, confFile, esFilter, validate)
-	if err != nil {
-		return err
-	}
-
-	if err := ref.save(); err != nil {
-		return err
-	}
+func createPluginCollect(cfg CreatePluginConfig) error {
 
 	// Prepare the struct to be used with template
-	SIDField := LogstashFieldNotation(strings.Replace(plugin.Fields.Title, "collect:", "", 1))
+	SIDField := LogstashFieldNotation(strings.Replace(cfg.Plugin.Fields.Title, "collect:", "", 1))
 
 	pt := pluginTemplate{
-		Plugin:        plugin,
-		Ref:           ref,
-		Creator:       creator,
+		Plugin:        cfg.Plugin,
+		Creator:       cfg.Creator,
 		SIDField:      "%{" + SIDField + "}",
 		SIDFieldPlain: SIDField,
 		CreateDate:    time.Now().Format(time.RFC3339),
@@ -334,29 +316,75 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	FieldMappingToLogstashField(&pt.Plugin.Fields)
 
 	var identifierBlock string
-	if plugin.IdentifierBlockSource != "" {
-		b, err := os.ReadFile(plugin.IdentifierBlockSource)
+	if cfg.Plugin.IdentifierBlockSource != "" {
+		b, err := os.ReadFile(cfg.Plugin.IdentifierBlockSource)
 		if err == nil {
 			pt.Plugin.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
 		} else {
-			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", cfg.Plugin.IdentifierBlockSource, err.Error())
 		}
 	}
 
 	if identifierBlock == "" {
-		if usePipeline {
+		if cfg.UsePipeline {
 			identifierBlock = templPipeline
 		} else {
 			identifierBlock = templNonPipeline
 		}
 	}
 
+	if cfg.SIDListFile == "" {
+		// Taxonomy type plugin doesnt need to collect title since it is relying on
+		// category field (which doesnt have to be unique per title) instead of Plugin_SID
+		// that requires a unique SID for each title
+		if cfg.Plugin.Type != "SID" {
+			return ErrNonSIDCollect
+		}
+
+		// first get the refs
+		ref, err := collectSID(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
+		if err != nil {
+			return err
+		}
+
+		if err := ref.save(); err != nil {
+			return err
+		}
+
+		pt.Ref = ref
+	} else {
+		sids := make([]PluginSIDWithCustomData, 0)
+		sidListFile, err := os.Open(cfg.SIDListFile)
+		if err != nil {
+			return fmt.Errorf("can not open sid list file, %s", err.Error())
+		}
+
+		defer sidListFile.Close()
+
+		parser := tsv.NewParser(sidListFile)
+		for {
+			var ref PluginSIDWithCustomData
+			ok := parser.Read(&ref, nil)
+			if !ok {
+				break
+			}
+
+			if ref.IsEmpty() {
+				continue
+			}
+
+			sids = append(sids, ref)
+		}
+
+		pt.SIDListGroup = GroupByCustomData(sids)
+	}
+
 	// Parse and execute the template
 	templateText := templHeader + identifierBlock + templPluginCollect + templFooter
 
 	// Parse and execute the template, saving result to buff
-	t, err := template.New(plugin.Name).Funcs(templateFunctions).Parse(templateText)
+	t, err := template.New(cfg.Plugin.Name).Funcs(templateFunctions).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -370,8 +398,8 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	}
 
 	// prepare plugin output file
-	dir := path.Dir(confFile)
-	fname := path.Join(dir, plugin.Output)
+	dir := path.Dir(cfg.ConfigFile)
+	fname := path.Join(dir, cfg.Plugin.Output)
 	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
