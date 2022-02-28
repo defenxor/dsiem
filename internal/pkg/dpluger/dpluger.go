@@ -32,8 +32,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/defenxor/dsiem/internal/pkg/shared/tsv"
 )
 
 // Plugin defines field mapping
@@ -220,30 +218,11 @@ func createPluginNonCollect(cfg CreatePluginConfig) error {
 	}
 
 	if cfg.SIDListFile != "" {
-		sids := make([]PluginSIDWithCustomData, 0)
-		sidListFile, err := os.Open(cfg.SIDListFile)
-		if err != nil {
-			return fmt.Errorf("can not open sid list file, %s", err.Error())
-		}
+		var ref tsvRef
+		ref.initWithConfig(cfg.Plugin.Name, cfg.SIDListFile)
 
-		defer sidListFile.Close()
-
-		parser := tsv.NewParser(sidListFile)
-		for {
-			var ref PluginSIDWithCustomData
-			ok := parser.Read(&ref, nil)
-			if !ok {
-				break
-			}
-
-			if ref.IsEmpty() {
-				continue
-			}
-
-			sids = append(sids, ref)
-		}
-
-		pt.SIDListGroup = GroupByCustomData(sids)
+		pt.Ref = ref
+		pt.SIDListGroup = ref.GroupByCustomData()
 	}
 
 	// Parse and execute the template
@@ -302,37 +281,45 @@ var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword
 
 func createPluginCollect(cfg CreatePluginConfig) error {
 
-	// Taxonomy type plugin doesnt need to collect title since it is relying on
-	// category field (which doesnt have to be unique per title) instead of Plugin_SID
-	// that requires a unique SID for each title
-	if cfg.Plugin.Type != "SID" {
-		return ErrNonSIDCollect
-	}
-
-	// first get the refs
-	ref, err := collectSID(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
-	if err != nil {
-		return err
-	}
-
-	if err := ref.save(); err != nil {
-		return err
-	}
-
 	// Prepare the struct to be used with template
 	SIDField := LogstashFieldNotation(strings.Replace(cfg.Plugin.Fields.Title, "collect:", "", 1))
 
 	pt := pluginTemplate{
 		Plugin:        cfg.Plugin,
 		Creator:       cfg.Creator,
-		Ref:           ref,
 		SIDField:      "%{" + SIDField + "}",
 		SIDFieldPlain: SIDField,
 		CreateDate:    time.Now().Format(time.RFC3339),
 	}
 
-	FieldMappingToLogstashField(&pt.Plugin.Fields)
+	if cfg.SIDListFile == "" {
+		// Taxonomy type plugin doesnt need to collect title since it is relying on
+		// category field (which doesnt have to be unique per title) instead of Plugin_SID
+		// that requires a unique SID for each title
+		if cfg.Plugin.Type != "SID" {
+			return ErrNonSIDCollect
+		}
 
+		// first get the refs
+		ref, err := collectSID(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
+		if err != nil {
+			return err
+		}
+
+		if err := ref.save(); err != nil {
+			return err
+		}
+
+		pt.Ref = ref
+	} else {
+		var ref tsvRef
+		ref.initWithConfig(cfg.Plugin.Name, cfg.SIDListFile)
+
+		pt.Ref = ref
+		pt.SIDListGroup = ref.GroupByCustomData()
+	}
+
+	FieldMappingToLogstashField(&pt.Plugin.Fields)
 	var identifierBlock string
 	if cfg.Plugin.IdentifierBlockSource != "" {
 		b, err := os.ReadFile(cfg.Plugin.IdentifierBlockSource)
@@ -350,33 +337,6 @@ func createPluginCollect(cfg CreatePluginConfig) error {
 		} else {
 			identifierBlock = templNonPipeline
 		}
-	}
-
-	if cfg.SIDListFile != "" {
-		sids := make([]PluginSIDWithCustomData, 0)
-		sidListFile, err := os.Open(cfg.SIDListFile)
-		if err != nil {
-			return fmt.Errorf("can not open sid list file, %s", err.Error())
-		}
-
-		defer sidListFile.Close()
-
-		parser := tsv.NewParser(sidListFile)
-		for {
-			var ref PluginSIDWithCustomData
-			ok := parser.Read(&ref, nil)
-			if !ok {
-				break
-			}
-
-			if ref.IsEmpty() {
-				continue
-			}
-
-			sids = append(sids, ref)
-		}
-
-		pt.SIDListGroup = GroupByCustomData(sids)
 	}
 
 	// Parse and execute the template
