@@ -31,7 +31,7 @@ import (
 )
 
 type tsvEntries struct {
-	records []pluginSIDRef
+	records []PluginSID
 }
 
 // CreateDirective starts directive creation
@@ -66,13 +66,13 @@ func createDirective(in io.Reader, dirs siem.Directives, kingdom, titleTemplate 
 
 	parser := tsv.NewParser(in)
 
-	defaultRef := pluginSIDRef{
+	defaultRef := PluginSID{
 		Kingdom: kingdom,
 	}
 
 	entries := tsvEntries{}
 	for {
-		var ref pluginSIDRef
+		var ref PluginSID
 		ok := parser.Read(&ref, defaultRef)
 		if !ok {
 			break

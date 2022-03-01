@@ -37,7 +37,7 @@ func (es *es5Client) Init(esURL string) (err error) {
 
 func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, titleSource, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 	size := 1000
-	c.init(plugin.Name, confFile)
+	c.initWithConfig(plugin.Name, confFile)
 	var finalAgg, subSubTerm *elastic5.TermsAggregation
 	rootTerm := elastic5.NewTermsAggregation().Field(titleSource).Size(size)
 	subTerm := elastic5.NewTermsAggregation().Field(sidSource)
@@ -121,7 +121,7 @@ func (es *es5Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 func (es *es5Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categorySource string, shouldCollectCategory bool) (c tsvRef, err error) {
 
 	size := 1000
-	c.init(plugin.Name, confFile)
+	c.initWithConfig(plugin.Name, confFile)
 	var subTerm *elastic5.TermsAggregation
 	terms := elastic5.NewTermsAggregation().Field(sidSource).Size(size)
 	if shouldCollectCategory {

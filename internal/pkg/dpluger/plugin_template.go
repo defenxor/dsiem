@@ -19,20 +19,21 @@ package dpluger
 import "reflect"
 
 type pluginTemplate struct {
-	P             Plugin
+	Plugin        Plugin
 	Creator       string
 	CreateDate    string
-	R             tsvRef
+	Ref           tsvRef
 	SIDField      string
 	SIDFieldPlain string
+	SIDListGroup  []PluginSIDWithCustomDataGroup
 }
 
 func (pt pluginTemplate) IsPluginRule() bool {
-	return pt.P.Type == "PluginRule"
+	return pt.Plugin.Type == "PluginRule"
 }
 
 func (pt pluginTemplate) IsFieldActive(name string) bool {
-	s := reflect.ValueOf(&pt.P.Fields).Elem()
+	s := reflect.ValueOf(&pt.Plugin.Fields).Elem()
 	typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)

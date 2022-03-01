@@ -80,7 +80,6 @@ const (
 	ftES
 )
 
-var esVersion int
 var collector esCollector
 
 // Parse read dpluger config from confFile and returns a Plugin
@@ -149,161 +148,87 @@ func CreateConfig(confFile, address, index, name, typ string) error {
 	return err
 }
 
-// CreatePlugin starts plugin creation
-func CreatePlugin(plugin Plugin, confFile, creator string, validate, usePipeline bool) (err error) {
-	fmt.Print("Creating plugin (logstash config) for ", plugin.Name,
-		", using ES: ", plugin.ES, " and index pattern: ", plugin.Index, "\n")
-
-	if collector, err = newESCollector(plugin.ES); err != nil {
-		return
-	}
-
-	if validate {
-		if err = collector.ValidateIndex(plugin.Index); err != nil {
-			return
-		}
-		if err = validateESField(plugin); err != nil {
-			return
-		}
-	}
-	if getType(plugin.Fields.PluginSID) == ftCollect {
-		return createPluginCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
-	}
-	return createPluginNonCollect(plugin, confFile, creator, plugin.ESCollectionFilter, validate, usePipeline)
+type CreatePluginConfig struct {
+	Plugin      Plugin
+	ConfigFile  string
+	Creator     string
+	Validate    bool
+	UsePipeline bool
+	SIDListFile string
 }
 
-func createPluginNonCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
+func (cfg CreatePluginConfig) isCollect() bool {
+	return getType(cfg.Plugin.Fields.PluginSID) == ftCollect
+}
+
+// CreatePlugin starts plugin creation
+func CreatePlugin(cfg CreatePluginConfig) error {
+	fmt.Printf("Creating plugin (logstash config) for %s using ES: %s and index pattern: %s\n", cfg.Plugin.Name, cfg.Plugin.ES, cfg.Plugin.Index)
+
+	var err error
+	if collector, err = newESCollector(cfg.Plugin.ES); err != nil {
+		return err
+	}
+
+	if cfg.Validate {
+		if err := collector.ValidateIndex(cfg.Plugin.Index); err != nil {
+			return err
+		}
+
+		if err := validateESField(cfg.Plugin); err != nil {
+			return err
+		}
+	}
+
+	if cfg.isCollect() {
+		return createPluginCollect(cfg)
+	}
+
+	return createPluginNonCollect(cfg)
+}
+
+func createPluginNonCollect(cfg CreatePluginConfig) error {
 
 	// Prepare the struct to be used with the template
-	pt := pluginTemplate{}
-	pt.P = plugin
-	pt.Creator = creator
-	pt.CreateDate = time.Now().Format(time.RFC3339)
+	pt := pluginTemplate{
+		Plugin:     cfg.Plugin,
+		Creator:    cfg.Creator,
+		CreateDate: time.Now().Format(time.RFC3339),
+	}
 
-	transformToLogstashField(&pt.P.Fields)
+	FieldMappingToLogstashField(&pt.Plugin.Fields)
 
 	var identifierBlock string
-
-	if plugin.IdentifierBlockSource != "" {
-		b, err := os.ReadFile(plugin.IdentifierBlockSource)
-		if err != nil {
-			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
-			if usePipeline {
-				identifierBlock = templPipeline
-			} else {
-				identifierBlock = templNonPipeline
-			}
-		} else {
-			pt.P.IdentifierBlockSourceContent = string(b)
+	if cfg.Plugin.IdentifierBlockSource != "" {
+		b, err := os.ReadFile(cfg.Plugin.IdentifierBlockSource)
+		if err == nil {
+			pt.Plugin.IdentifierBlockSourceContent = string(b)
 			identifierBlock = templWithIdentifierBlockContent
+		} else {
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", cfg.Plugin.IdentifierBlockSource, err.Error())
 		}
-	} else {
-		if usePipeline {
+	}
+
+	if identifierBlock == "" {
+		if cfg.UsePipeline {
 			identifierBlock = templPipeline
 		} else {
 			identifierBlock = templNonPipeline
 		}
+	}
+
+	if cfg.SIDListFile != "" {
+		var ref tsvRef
+		ref.initWithConfig(cfg.Plugin.Name, cfg.SIDListFile)
+
+		pt.Ref = ref
+		pt.SIDListGroup = ref.GroupByCustomData()
 	}
 
 	// Parse and execute the template
 	templateText := templHeader + identifierBlock + templPluginNonCollect + templFooter
 
-	t, err := template.New(plugin.Name).Funcs(functions).Parse(templateText)
-	if err != nil {
-		return err
-	}
-	var buf bytes.Buffer
-	w := bufio.NewWriter(&buf)
-	err = t.Execute(w, pt)
-	w.Flush()
-	if err != nil {
-		return err
-	}
-
-	// Prepare plugin output file
-	dir := path.Dir(confFile)
-	fname := path.Join(dir, plugin.Output)
-	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	err = removeEmptyLines(&buf, f)
-	if err != nil {
-		return err
-	}
-
-	if plugin.Type != "SID" {
-		return nil
-	}
-
-	fmt.Println("Done creating plugin, now creating TSV for directive auto generation ..")
-	// first get the refs
-	ref, err := collectPair(plugin, confFile, esFilter, validate)
-	if err != nil {
-		return err
-	}
-	if err := ref.save(); err != nil {
-		return err
-	}
-	return nil
-}
-
-var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword")
-
-func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, validate, usePipeline bool) (err error) {
-
-	// Taxonomy type plugin doesnt need to collect title since it is relying on
-	// category field (which doesnt have to be unique per title) instead of Plugin_SID
-	// that requires a unique SID for each title
-	if plugin.Type != "SID" {
-		return ErrNonSIDCollect
-	}
-
-	// first get the refs
-	ref, err := collectSID(plugin, confFile, esFilter, validate)
-	if err != nil {
-		return err
-	}
-	if err := ref.save(); err != nil {
-		return err
-	}
-
-	// Prepare the struct to be used with template
-	pt := pluginTemplate{}
-	pt.P = plugin
-	pt.R = ref
-	pt.Creator = creator
-	pt.SIDField = getLogstashFieldNotation(
-		strings.Replace(plugin.Fields.Title, "collect:", "", 1))
-	pt.SIDFieldPlain = pt.SIDField
-	pt.SIDField = "%{" + pt.SIDField + "}"
-	pt.CreateDate = time.Now().Format(time.RFC3339)
-	transformToLogstashField(&pt.P.Fields)
-
-	var identifierBlock string
-	if plugin.IdentifierBlockSource != "" {
-		b, err := os.ReadFile(plugin.IdentifierBlockSource)
-		if err != nil {
-			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", plugin.IdentifierBlockSource, err.Error())
-		} else {
-			pt.P.IdentifierBlockSourceContent = string(b)
-			identifierBlock = templWithIdentifierBlockContent
-		}
-	} else {
-		if usePipeline {
-			identifierBlock = templPipeline
-		} else {
-			identifierBlock = templNonPipeline
-		}
-	}
-
-	// Parse and execute the template
-	templateText := templHeader + identifierBlock + templPluginCollect + templFooter
-
-	// Parse and execute the template, saving result to buff
-	t, err := template.New(plugin.Name).Funcs(functions).Parse(templateText)
+	t, err := template.New(cfg.Plugin.Name).Funcs(templateFunctions).Parse(templateText)
 	if err != nil {
 		return err
 	}
@@ -316,8 +241,124 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	}
 
 	// prepare plugin output file
-	dir := path.Dir(confFile)
-	fname := path.Join(dir, plugin.Output)
+	dir := path.Dir(cfg.ConfigFile)
+	fname := path.Join(dir, cfg.Plugin.Output)
+	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	err = removeEmptyLines(&buf, f)
+	if err != nil {
+		return err
+	}
+
+	if cfg.Plugin.Type != "SID" {
+		return nil
+	}
+
+	if cfg.SIDListFile != "" {
+		fmt.Println("Done creating plugin, no TSV file created, since dpluger already supplied with a TSV file")
+		return nil
+	}
+
+	fmt.Println("Done creating plugin, now creating TSV for directive auto generation ..")
+	// first get the refs
+	ref, err := collectPair(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
+	if err != nil {
+		return err
+	}
+	if err := ref.save(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var ErrNonSIDCollect = errors.New("only SID-type plugin support collect: keyword")
+
+func createPluginCollect(cfg CreatePluginConfig) error {
+
+	// Prepare the struct to be used with template
+	SIDField := LogstashFieldNotation(strings.Replace(cfg.Plugin.Fields.Title, "collect:", "", 1))
+
+	pt := pluginTemplate{
+		Plugin:        cfg.Plugin,
+		Creator:       cfg.Creator,
+		SIDField:      "%{" + SIDField + "}",
+		SIDFieldPlain: SIDField,
+		CreateDate:    time.Now().Format(time.RFC3339),
+	}
+
+	if cfg.SIDListFile == "" {
+		// Taxonomy type plugin doesnt need to collect title since it is relying on
+		// category field (which doesnt have to be unique per title) instead of Plugin_SID
+		// that requires a unique SID for each title
+		if cfg.Plugin.Type != "SID" {
+			return ErrNonSIDCollect
+		}
+
+		// first get the refs
+		ref, err := collectSID(cfg.Plugin, cfg.ConfigFile, cfg.Plugin.ESCollectionFilter, cfg.Validate)
+		if err != nil {
+			return err
+		}
+
+		if err := ref.save(); err != nil {
+			return err
+		}
+
+		pt.Ref = ref
+	} else {
+		var ref tsvRef
+		ref.initWithConfig(cfg.Plugin.Name, cfg.SIDListFile)
+
+		pt.Ref = ref
+		pt.SIDListGroup = ref.GroupByCustomData()
+	}
+
+	FieldMappingToLogstashField(&pt.Plugin.Fields)
+	var identifierBlock string
+	if cfg.Plugin.IdentifierBlockSource != "" {
+		b, err := os.ReadFile(cfg.Plugin.IdentifierBlockSource)
+		if err == nil {
+			pt.Plugin.IdentifierBlockSourceContent = string(b)
+			identifierBlock = templWithIdentifierBlockContent
+		} else {
+			fmt.Printf("error reading block source file '%s', skipping add block source from file, %s\n", cfg.Plugin.IdentifierBlockSource, err.Error())
+		}
+	}
+
+	if identifierBlock == "" {
+		if cfg.UsePipeline {
+			identifierBlock = templPipeline
+		} else {
+			identifierBlock = templNonPipeline
+		}
+	}
+
+	// Parse and execute the template
+	templateText := templHeader + identifierBlock + templPluginCollect + templFooter
+
+	// Parse and execute the template, saving result to buff
+	t, err := template.New(cfg.Plugin.Name).Funcs(templateFunctions).Parse(templateText)
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	w := bufio.NewWriter(&buf)
+	err = t.Execute(w, pt)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// prepare plugin output file
+	dir := path.Dir(cfg.ConfigFile)
+	fname := path.Join(dir, cfg.Plugin.Output)
 	f, err := os.OpenFile(fname, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -328,8 +369,8 @@ func createPluginCollect(plugin Plugin, confFile, creator, esFilter string, vali
 	if err != nil {
 		return err
 	}
-	return nil
 
+	return nil
 }
 
 func counter() func() int {
@@ -338,44 +379,6 @@ func counter() func() int {
 		i++
 		return i
 	}
-}
-
-func transformToLogstashField(fields *FieldMapping) {
-	// iterate over fields to change them to logstash notation
-	s := reflect.ValueOf(fields).Elem()
-	typeOfT := s.Type()
-	for i := 0; i < s.NumField(); i++ {
-		f := s.Field(i)
-		// skip empty fields
-		str := f.Interface().(string)
-		if str == "" {
-			continue
-		}
-		var v string
-		if t := getType(str); t == ftES {
-			// convert to logstash [field][subfield] notation
-			v = getLogstashFieldNotation(str)
-			// do this except for timestamp, as it is only used in date filter
-			if typeOfT.Field(i).Name != "Timestamp" {
-				v = "%{" + v + "}"
-			}
-		} else {
-			v = str
-		}
-		// set it
-		setField(fields, typeOfT.Field(i).Name, v)
-		// fmt.Printf("%d: %s %s = %v\n", i, typeOfT.Field(i).Name, f.Type(), f.Interface())
-	}
-}
-
-func getLogstashFieldNotation(src string) (res string) {
-	s := strings.Replace(src, "es:", "", 1)
-	s = strings.Replace(s, "collect:", "", 1)
-	s = strings.Replace(s, ".", "][", -1)
-	s = strings.Replace(s, s, "["+s, 1)
-	s = strings.Replace(s, s, s+"]", 1)
-	res = s
-	return
 }
 
 func removeEmptyLines(input io.Reader, output io.Writer) (err error) {
@@ -480,8 +483,13 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRe
 	return collector.CollectPair(plugin, confFile, sidSource, esFilter, titleSource, categorySource, shouldCollectCategory)
 }
 
-func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvRef, err error) {
-	ctx := context.Background()
+func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (tsvRef, error) {
+	var (
+		ctx = context.Background()
+		c   tsvRef
+		err error
+	)
+
 	sidSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1))
 	if err != nil {
 		return c, err
@@ -498,31 +506,37 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (c tsvR
 	}
 
 	if validate {
-		fmt.Print("Checking the existence of field ", sidSource, "... ")
-		var exist bool
-		exist, err = collector.IsESFieldExist(plugin.Index, sidSource)
+		fmt.Printf("Checking the existence of field '%s' ... ", sidSource)
+
+		exist, err := collector.IsESFieldExist(plugin.Index, sidSource)
 		if err != nil {
-			return
+			return c, err
 		}
+
 		if !exist {
-			err = errors.New("Plugin SID collection requires field " + sidSource + " to exist on index " + plugin.Index)
-			return
+			return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", sidSource, plugin.Index)
 		}
+
 		if shouldCollectCategory {
-			fmt.Print("Checking the existence of field ", categorySource, "... ")
-			exist, err = collector.IsESFieldExist(plugin.Index, categorySource)
+			fmt.Printf("Checking the existence of field '%s' .... ", categorySource)
+			exist, err := collector.IsESFieldExist(plugin.Index, categorySource)
 			if err != nil {
-				return
+				return c, err
 			}
 
-			_ = exist
+			if !exist {
+				return c, fmt.Errorf("Plugin SID collection requires field '%s' to exist on index '%s'", categorySource, plugin.Index)
+			}
 		}
+
 		fmt.Println("OK")
 	}
-	fmt.Println("Collecting unique entries from " + sidSource + " on index " + plugin.Index + " to create Plugin SIDs ...")
+
+	fmt.Printf("Collecting unique entries from '%s' on index '%s' to create Plugin SIDs ... \n", sidSource, plugin.Index)
 	if esFilter != "" {
-		fmt.Println("Limiting collection with term " + esFilter)
+		fmt.Printf("Limitting collection with term '%s'\n", esFilter)
 	}
+
 	return collector.Collect(plugin, confFile, sidSource, esFilter, categorySource, shouldCollectCategory)
 }
 
@@ -574,26 +588,6 @@ func getType(s string) int {
 func getStaticText(s string) string {
 	defStaticText := "INSERT_STATIC_VALUE_HERE"
 	return strings.Replace(defStaticText, "STATIC_VALUE", s, -1)
-}
-
-var functions = template.FuncMap{
-	"counter": counter,
-	"indent": func(n int, value string) string {
-		strs := strings.Split(value, "\n")
-		for idx, str := range strs {
-			if idx == 0 {
-				continue
-			}
-
-			if strings.HasPrefix(str, "#") {
-				continue
-			} else {
-				strs[idx] = fmt.Sprintf("%s%s", strings.Repeat("  ", n), str)
-			}
-		}
-
-		return strings.Join(strs, "\n")
-	},
 }
 
 func checkKeyword(ctx context.Context, index, field string) (string, error) {
