@@ -219,7 +219,7 @@ func createPluginNonCollect(cfg CreatePluginConfig) error {
 
 	if cfg.SIDListFile != "" {
 		var ref tsvRef
-		ref.initWithConfig(cfg.Plugin.Name, cfg.SIDListFile)
+		ref.initWithConfig(cfg.SIDListFile)
 
 		pt.Ref = ref
 		pt.SIDListGroup = ref.GroupByCustomData()
@@ -313,7 +313,7 @@ func createPluginCollect(cfg CreatePluginConfig) error {
 		pt.Ref = ref
 	} else {
 		var ref tsvRef
-		ref.initWithConfig(cfg.Plugin.Name, cfg.SIDListFile)
+		ref.initWithConfig(cfg.SIDListFile)
 
 		pt.Ref = ref
 		pt.SIDListGroup = ref.GroupByCustomData()
