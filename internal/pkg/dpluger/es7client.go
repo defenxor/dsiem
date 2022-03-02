@@ -47,7 +47,7 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 	)
 
 	var ref tsvRef
-	ref.initWithConfig(plugin.Name, confFile)
+	ref.init(plugin.Name, confFile)
 
 	if shouldCollectCategory {
 		categoryAgg := elastic7.NewTermsAggregation().Field(categorySource)
@@ -141,7 +141,7 @@ func (es *es7Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		ref            tsvRef
 	)
 
-	ref.initWithConfig(plugin.Name, confFile)
+	ref.init(plugin.Name, confFile)
 
 	var subTerm *elastic7.TermsAggregation
 	terms := elastic7.NewTermsAggregation().Field(sidSource).Size(size)

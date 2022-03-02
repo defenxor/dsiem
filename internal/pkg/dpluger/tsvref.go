@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -189,11 +190,23 @@ func (c *tsvRef) initWithReader(pluginName, base string, r io.Reader) {
 	c.initSIDList(r)
 }
 
-func (c *tsvRef) initWithConfig(pluginName string, configFile string) {
+func (c *tsvRef) initWithConfig(configFile string) {
+	c.SIDs = make(map[int]PluginSID)
+	c.filename = filepath.Base(configFile)
+	f, err := os.OpenFile(configFile, os.O_RDONLY, 0600)
+	if err != nil {
+		return
+	}
+
+	defer f.Close()
+	c.initSIDList(f)
+}
+
+func (c *tsvRef) init(pluginName string, configFile string) {
 	c.SIDs = make(map[int]PluginSID)
 	c.setFilename(pluginName, path.Dir(configFile))
 	// f, err := os.OpenFile(c.filename, os.O_RDONLY, 0600)
-	f, err := os.OpenFile(configFile, os.O_RDONLY, 0600)
+	f, err := os.OpenFile(c.filename, os.O_RDONLY, 0600)
 	if err != nil {
 		return
 	}
