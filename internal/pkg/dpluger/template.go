@@ -174,15 +174,18 @@ filter {
 
     {{ if .SIDListGroup }}{{ range $i, $g := .SIDListGroup }}
     if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
-      mutate { {{ if $g.CustomData.CustomLabel1 }}
-        "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
-        "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
-        "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
-        "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
-        "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
-        "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+      mutate { 
+        replace { {{ if $g.CustomData.CustomLabel1 }}
+          "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
+          "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
+          "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
+          "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
+          "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
+          "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+        }
       }
     }{{ end }}{{ end }}
+
     {{if .IsIntegerMutationRequired}}
     mutate {
       id => "integer fields {{.Plugin.Fields.PluginID}}"
@@ -259,13 +262,15 @@ filter {
 
     {{ if .SIDListGroup }}{{ range $i, $g := .SIDListGroup }}
     if [plugin_sid] in [{{ range $idx, $rev := $g.Plugins }}{{ if $idx }}, {{ end }}"{{ $rev.SID }}"{{ end }}] {
-      mutate { {{ if $g.CustomData.CustomLabel1 }}
-        "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
-        "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
-        "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
-        "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
-        "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
-        "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+      mutate { 
+        replace { {{ if $g.CustomData.CustomLabel1 }}
+          "custom_label1" => "{{ $g.CustomData.CustomLabel1 }}"{{ end }}{{ if $g.CustomData.CustomData1 }}
+          "custom_data1" => "{{ transform $g.CustomData.CustomData1 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel2 }}
+          "custom_label2" => "{{ $g.CustomData.CustomLabel2 }}"{{ end }}{{ if $g.CustomData.CustomData2 }}
+          "custom_data2" => "{{ transform $g.CustomData.CustomData2 "." }}"{{ end }}{{ if $g.CustomData.CustomLabel3 }}
+          "custom_label3" => "{{ $g.CustomData.CustomLabel3 }}"{{ end }}{{ if $g.CustomData.CustomData3 }}
+          "custom_data3" => "{{ transform $g.CustomData.CustomData3 "." }}"{{ end }}
+        }
       }
     }{{ end }}{{ end }}
 
