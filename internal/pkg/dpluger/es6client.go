@@ -223,7 +223,6 @@ func (es *es6Client) FieldType(ctx context.Context, index string, field string) 
 	m, err := elastic6.NewGetFieldMappingService(es.client).
 		Field(field).
 		Index(index).
-		Type("_doc").
 		Do(ctx)
 
 	if err != nil {
@@ -233,7 +232,7 @@ func (es *es6Client) FieldType(ctx context.Context, index string, field string) 
 	var fiedMapping map[string]interface{}
 	var ok bool
 	for _, v := range m {
-		fm, exist := v.(map[string]interface{})["mappings"].(map[string]interface{})["_doc"].(map[string]interface{})[field]
+		fm, exist := v.(map[string]interface{})["mappings"].(map[string]interface{})[field]
 		if !exist {
 			continue
 		}
