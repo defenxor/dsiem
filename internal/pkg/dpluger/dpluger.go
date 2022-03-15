@@ -417,7 +417,13 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRe
 	)
 
 	sidSource := strings.Replace(plugin.Fields.PluginSID, "es:", "", 1)
-	titleSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.Title, "es:", "", 1))
+	sidSource, err = checkKeyword(ctx, plugin.Index, sidSource)
+	if err != nil {
+		return c, err
+	}
+
+	titleSource := strings.Replace(plugin.Fields.Title, "es:", "", 1)
+	titleSource, err = checkKeyword(ctx, plugin.Index, titleSource)
 	if err != nil {
 		return c, err
 	}
@@ -475,7 +481,7 @@ func collectPair(plugin Plugin, confFile, esFilter string, validate bool) (tsvRe
 
 	fmt.Printf("Collecting unique entries for field '%s' and '%s' on index '%s' ... ", titleSource, sidSource, plugin.Index)
 	if esFilter != "" {
-		fmt.Printf("Limiting collection with term '%s'\n", esFilter)
+		fmt.Printf("Limiting collection with term '%s' ", esFilter)
 	}
 
 	fmt.Println("OK")
@@ -490,7 +496,8 @@ func collectSID(plugin Plugin, confFile, esFilter string, validate bool) (tsvRef
 		err error
 	)
 
-	sidSource, err := checkKeyword(ctx, plugin.Index, strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1))
+	sidSource := strings.Replace(plugin.Fields.PluginSID, "collect:", "", 1)
+	sidSource, err = checkKeyword(ctx, plugin.Index, sidSource)
 	if err != nil {
 		return c, err
 	}
