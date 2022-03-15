@@ -231,15 +231,19 @@ func (es *es6Client) FieldType(ctx context.Context, index string, field string) 
 
 	var fiedMapping map[string]interface{}
 	var ok bool
+MAPPING_SEARCH:
 	for _, v := range m {
-		fm, exist := v.(map[string]interface{})["mappings"].(map[string]interface{})[field]
-		if !exist {
+		fm, fmok := v.(map[string]interface{})["mappings"].(map[string]interface{})
+		if !fmok {
 			continue
 		}
 
-		fiedMapping, ok = fm.(map[string]interface{})
-		if ok {
-			break
+		for _, val := range fm {
+			// get the first child that has the mapping for the field
+			fiedMapping, ok = val.(map[string]interface{})[field].(map[string]interface{})
+			if ok {
+				break MAPPING_SEARCH
+			}
 		}
 
 	}
