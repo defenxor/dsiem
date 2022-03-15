@@ -205,7 +205,6 @@ func (c *tsvRef) initWithConfig(configFile string) {
 func (c *tsvRef) init(pluginName string, configFile string) {
 	c.SIDs = make(map[int]PluginSID)
 	c.setFilename(pluginName, path.Dir(configFile))
-	// f, err := os.OpenFile(c.filename, os.O_RDONLY, 0600)
 	f, err := os.OpenFile(c.filename, os.O_RDONLY, 0600)
 	if err != nil {
 		return

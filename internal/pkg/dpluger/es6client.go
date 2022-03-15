@@ -49,12 +49,11 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 
 	query := elastic6.NewBoolQuery()
 	if esFilter != "" {
-		coll := strings.Split(esFilter, ";")
-		for _, v := range coll {
-			s := strings.Split(v, "=")
+		filters := strings.Split(esFilter, ";")
+		for _, filter := range filters {
+			s := strings.Split(filter, "=")
 			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
-				return
+				return tsvRef{}, fmt.Errorf("invalid ES filter term, '%s', expected pair of strings with '=' delimitier", filter)
 			}
 			query = query.Must(elastic6.NewTermQuery(s[0], s[1]))
 		}
@@ -72,46 +71,49 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 	if err != nil {
 		return
 	}
-	agg, found := searchResult.Aggregations.Terms("finalAgg")
+
+	roots, found := searchResult.Aggregations.Terms("finalAgg")
 	if !found {
 		err = errors.New("cannot find aggregation finalAgg in ES query result")
 		return
 	}
-	count := len(agg.Buckets)
+	count := len(roots.Buckets)
 	if count == 0 {
 		err = errors.New("cannot find matching entry in field " + sidSource + " on index " + plugin.Index)
 		return
 	}
-	fmt.Println("Found", count, "uniq "+sidSource+".")
+
+	fmt.Printf("found %d unique '%s'\n", count, sidSource)
 	nID, err := strconv.Atoi(plugin.Fields.PluginID)
 	if err != nil {
 		return
 	}
 
-	for _, lvl1Bucket := range agg.Buckets {
-		subterm, found := lvl1Bucket.Terms("subterm")
+	for _, rootBucket := range roots.Buckets {
+		sidlist, found := rootBucket.Terms("subterm")
 		if !found {
 			continue
 		}
-		for _, lvl2Bucket := range subterm.Buckets {
-			sKey := lvl1Bucket.Key.(string)
-			nKey, err := toInt(lvl2Bucket.Key)
+
+		for _, sidBucket := range sidlist.Buckets {
+			root := rootBucket.Key.(string)
+			sid, err := toInt(sidBucket.Key)
 			if err != nil {
-				return c, fmt.Errorf("invalid sid aggregation key, %s", err.Error())
+				return c, fmt.Errorf("invalid signature ID, %s", err.Error())
 			}
 			// fmt.Println("item1:", sKey, "item2:", nKey)
 			if shouldCollectCategory {
-				subSubTerm, found2 := lvl1Bucket.Terms("subSubTerm")
+				subSubTerm, found2 := rootBucket.Terms("subSubTerm")
 				if !found2 {
 					continue
 				}
 				for _, lvl3Bucket := range subSubTerm.Buckets {
 					sCat := lvl3Bucket.Key.(string)
-					_ = c.upsert(plugin.Name, nID, &nKey, sCat, sKey)
+					_ = c.upsert(plugin.Name, nID, &sid, sCat, root)
 					break
 				}
 			} else {
-				_ = c.upsert(plugin.Name, nID, &nKey, categorySource, sKey)
+				_ = c.upsert(plugin.Name, nID, &sid, categorySource, root)
 			}
 			break
 		}
@@ -132,12 +134,11 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 
 	query := elastic6.NewBoolQuery()
 	if esFilter != "" {
-		coll := strings.Split(esFilter, ";")
-		for _, v := range coll {
-			s := strings.Split(v, "=")
+		filters := strings.Split(esFilter, ";")
+		for _, filter := range filters {
+			s := strings.Split(filter, "=")
 			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
-				return
+				return tsvRef{}, fmt.Errorf("invalid ES filter term, '%s', expected pair of strings with '=' delimitier", filter)
 			}
 			query = query.Must(elastic6.NewTermQuery(s[0], s[1]))
 		}
@@ -152,9 +153,11 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		Aggregation("uniqTerm", terms).
 		Pretty(true).
 		Do(ctx)
+
 	if err != nil {
 		return
 	}
+
 	agg, found := searchResult.Aggregations.Terms("uniqTerm")
 	if !found {
 		err = errors.New("cannot find aggregation uniqTerm in ES query result")
@@ -165,7 +168,8 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		err = errors.New("cannot find matching entry in field " + sidSource + " on index " + plugin.Index)
 		return
 	}
-	fmt.Println("Found", count, "uniq "+sidSource+".")
+
+	fmt.Printf("found %d unique '%s'\n", count, sidSource)
 	newSID := 1
 	nID, err := strconv.Atoi(plugin.Fields.PluginID)
 	if err != nil {
@@ -223,7 +227,6 @@ func (es *es6Client) FieldType(ctx context.Context, index string, field string) 
 	m, err := elastic6.NewGetFieldMappingService(es.client).
 		Field(field).
 		Index(index).
-		Type("_doc").
 		Do(ctx)
 
 	if err != nil {
@@ -232,15 +235,19 @@ func (es *es6Client) FieldType(ctx context.Context, index string, field string) 
 
 	var fiedMapping map[string]interface{}
 	var ok bool
+MAPPING_SEARCH:
 	for _, v := range m {
-		fm, exist := v.(map[string]interface{})["mappings"].(map[string]interface{})["_doc"].(map[string]interface{})[field]
-		if !exist {
+		fm, fmok := v.(map[string]interface{})["mappings"].(map[string]interface{})
+		if !fmok {
 			continue
 		}
 
-		fiedMapping, ok = fm.(map[string]interface{})
-		if ok {
-			break
+		for _, val := range fm {
+			// get the first child that has the mapping for the field
+			fiedMapping, ok = val.(map[string]interface{})[field].(map[string]interface{})
+			if ok {
+				break MAPPING_SEARCH
+			}
 		}
 
 	}

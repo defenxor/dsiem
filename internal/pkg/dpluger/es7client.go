@@ -104,9 +104,9 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 
 		for _, sidBucket := range SIDs.Buckets {
 			rootKey := root.Key.(string)
-			pluginSID, err := toInt(sidBucket.Key)
+			sid, err := toInt(sidBucket.Key)
 			if err != nil {
-				return ref, fmt.Errorf("invalid SID aggregation key, %s", err.Error())
+				return ref, fmt.Errorf("invalid signature ID, %s", err.Error())
 			}
 
 			if shouldCollectCategory {
@@ -117,12 +117,12 @@ func (es *es7Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 
 				for _, categoryBucket := range categories.Buckets {
 					category := categoryBucket.Key.(string)
-					ref.upsert(plugin.Name, pluginID, &pluginSID, category, rootKey)
+					ref.upsert(plugin.Name, pluginID, &sid, category, rootKey)
 					break
 				}
 
 			} else {
-				ref.upsert(plugin.Name, pluginID, &pluginSID, categorySource, rootKey)
+				ref.upsert(plugin.Name, pluginID, &sid, categorySource, rootKey)
 			}
 
 			break

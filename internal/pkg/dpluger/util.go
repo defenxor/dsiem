@@ -255,7 +255,7 @@ func toInt(v interface{}) (int, error) {
 	case string:
 		n, err := strconv.ParseInt(t, 10, 64)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("expecting numeric value, got '%s'", t)
 		}
 
 		if n >= 0 && n < math.MaxInt32 {
@@ -265,5 +265,5 @@ func toInt(v interface{}) (int, error) {
 		return 0, ErrIntValueExceedBoundary
 	}
 
-	return 0, fmt.Errorf("invalid value type, %T", v)
+	return 0, fmt.Errorf("invalid numeric value type, %T", v)
 }
