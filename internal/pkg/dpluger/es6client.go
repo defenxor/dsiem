@@ -49,12 +49,11 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 
 	query := elastic6.NewBoolQuery()
 	if esFilter != "" {
-		coll := strings.Split(esFilter, ";")
-		for _, v := range coll {
-			s := strings.Split(v, "=")
+		filters := strings.Split(esFilter, ";")
+		for _, filter := range filters {
+			s := strings.Split(filter, "=")
 			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
-				return
+				return tsvRef{}, fmt.Errorf("invalid ES filter term, '%s', expected pair of strings with '=' delimitier", filter)
 			}
 			query = query.Must(elastic6.NewTermQuery(s[0], s[1]))
 		}
@@ -72,6 +71,7 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 	if err != nil {
 		return
 	}
+
 	agg, found := searchResult.Aggregations.Terms("finalAgg")
 	if !found {
 		err = errors.New("cannot find aggregation finalAgg in ES query result")
@@ -82,7 +82,8 @@ func (es *es6Client) CollectPair(plugin Plugin, confFile, sidSource, esFilter, t
 		err = errors.New("cannot find matching entry in field " + sidSource + " on index " + plugin.Index)
 		return
 	}
-	fmt.Println("Found", count, "uniq "+sidSource+".")
+
+	fmt.Printf("found %d unique '%s'", count, sidSource)
 	nID, err := strconv.Atoi(plugin.Fields.PluginID)
 	if err != nil {
 		return
@@ -132,12 +133,11 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 
 	query := elastic6.NewBoolQuery()
 	if esFilter != "" {
-		coll := strings.Split(esFilter, ";")
-		for _, v := range coll {
-			s := strings.Split(v, "=")
+		filters := strings.Split(esFilter, ";")
+		for _, filter := range filters {
+			s := strings.Split(filter, "=")
 			if len(s) != 2 {
-				err = errors.New("Cannot split the ES filter term")
-				return
+				return tsvRef{}, fmt.Errorf("invalid ES filter term, '%s', expected pair of strings with '=' delimitier", filter)
 			}
 			query = query.Must(elastic6.NewTermQuery(s[0], s[1]))
 		}
@@ -152,9 +152,11 @@ func (es *es6Client) Collect(plugin Plugin, confFile, sidSource, esFilter, categ
 		Aggregation("uniqTerm", terms).
 		Pretty(true).
 		Do(ctx)
+
 	if err != nil {
 		return
 	}
+
 	agg, found := searchResult.Aggregations.Terms("uniqTerm")
 	if !found {
 		err = errors.New("cannot find aggregation uniqTerm in ES query result")
