@@ -22,8 +22,6 @@ import (
 	"strings"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
-
-	"github.com/olivere/elastic"
 )
 
 // esCollector is the interface for querying elasticsearch summaries
@@ -44,11 +42,12 @@ type esCollector interface {
 func newESCollector(esURL string) (collector esCollector, err error) {
 
 	esVersion := 0
-	c, err := elastic.NewSimpleClient(elastic.SetURL(esURL))
-	if err != nil {
-		return
-	}
-	ver, err := c.ElasticsearchVersion(esURL)
+	// c, err := elastic.NewSimpleClient(elastic.SetURL(esURL))
+	// if err != nil {
+	// 	return
+	// }
+
+	ver, err := elasticsearchVersion(esURL)
 	if err != nil {
 		return
 	}
