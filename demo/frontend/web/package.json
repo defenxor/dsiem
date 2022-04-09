@@ -6,7 +6,7 @@
     "@elastic/datemath": "^5.0.2",
     "@elastic/eui": "^14.10.0",
     "mermaid": "^8.13.8",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "react": "^16.11.0",
     "react-dom": "^16.11.0",
     "react-json-view": "^1.21.1",
