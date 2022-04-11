@@ -112,6 +112,10 @@ func Info(m M) {
 	}
 }
 
+func InfoMsg(msg string) {
+	Info(M{Msg: msg})
+}
+
 //Warn logs with warn level
 func Warn(m M) {
 	if TestMode {
