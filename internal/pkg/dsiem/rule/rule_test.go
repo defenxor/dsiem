@@ -512,6 +512,7 @@ func TestCustomDataMatch(t *testing.T) {
 		{"Network Command Shell", "Network Command Shell", true},
 		{"Network Command Shell", "Network Command Login", false},
 		{"!Network Command Shell", "Network Command Shell", false},
+		{"!Network Command Shell", "Network Command Login", true},
 		{"foo,bar,qux", "foo", true},
 		{"foo,bar,qux", "bar", true},
 		{"foo,bar,qux", "qux", true},
@@ -519,6 +520,8 @@ func TestCustomDataMatch(t *testing.T) {
 		{"foo,!bar,qux", "bar", false},
 		{"foo,bar,!qux", "qux", false},
 		{"!foo,bar,qux", "foo", false},
+		{"!foo, foo, bar, qux", "foo", false},
+		{"foo, !foo, bar, qux", "foo", true},
 	} {
 		t.Run(c.ruleCustomData, func(t *testing.T) {
 			r := DirectiveRule{
