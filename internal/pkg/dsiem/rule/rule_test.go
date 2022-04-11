@@ -28,39 +28,58 @@ import (
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
-func TestTermInCSV(t *testing.T) {
+func TestNetAddrInCSV(t *testing.T) {
 	type termTest struct {
-		term      string
-		csvRules  string
-		isNetAddr bool
-		expected  bool
+		term     string
+		csvRules string
+		expected bool
 	}
 
 	log.Setup(false)
 
 	var tbl = []termTest{
-		{"192.168.0", "192.168.0.0/16", true, false},
-		{"192.168.0.1", "192.168.0/16", true, false},
-		{"192.168.0.1", "192.168.0.0/16", true, true},
-		{"192.168.0.1", "!10.0.0.1/16", true, true},
-		{"192.168.0.1", "!10.0.0.1/16, 192.168.0.0/24", true, true},
-		{"192.168.0.1", "!192.168.0.1/16", true, false},
-		{"192.168.0.1", "10.0.0.0/16, !192.168.0.1/16", true, false},
-		{"192.168.0.1", "10.0.0.0/16, !192.168.0.1/16, 192.168.0.0/16", true, false},
-		{"1231", "1000, 1001", false, false},
-		{"1231", "!1231, 1001", false, false},
-		{"1231", "1000, !1231", false, false},
-		{"1231", "1231, !1231", false, true},
-		{"1231", "!1231, 1231", false, false},
-		{"1231", "!1000, !1001", false, true},
-		{"1231", "!1000, 1001", false, true},
-		{"1231", "1001, !1000", false, true},
-		{"1231", "!1000, 1231", false, true},
-		{"foo", "!bar, foobar, foo", false, true},
+		{"192.168.0", "192.168.0.0/16", false},
+		{"192.168.0.1", "192.168.0/16", false},
+		{"192.168.0.1", "192.168.0.0/16", true},
+		{"192.168.0.1", "!10.0.0.1/16", true},
+		{"192.168.0.1", "!10.0.0.1/16, 192.168.0.0/24", true},
+		{"192.168.0.1", "!192.168.0.1/16", false},
+		{"192.168.0.1", "10.0.0.0/16, !192.168.0.1/16", false},
+		{"192.168.0.1", "10.0.0.0/16, !192.168.0.1/16, 192.168.0.0/16", false},
 	}
 
 	for _, tt := range tbl {
-		actual := isStrMatchCSVRule(tt.csvRules, tt.term, tt.isNetAddr)
+		actual := isNetAddrMatchCSVRule(tt.csvRules, tt.term)
+		if actual != tt.expected {
+			t.Errorf("IP %s in %s result is %v. Expected %v.", tt.term, tt.csvRules, actual, tt.expected)
+		}
+	}
+}
+
+func TestTermInCSV(t *testing.T) {
+	type termTest struct {
+		term     string
+		csvRules string
+		expected bool
+	}
+
+	log.Setup(false)
+
+	var tbl = []termTest{
+		{"1231", "1000, 1001", false},
+		{"1231", "!1231, 1001", false},
+		{"1231", "1000, !1231", false},
+		{"1231", "1231, !1231", true},
+		{"1231", "!1231, 1231", false},
+		{"1231", "!1000, !1001", true},
+		{"1231", "!1000, 1001", true},
+		{"1231", "1001, !1000", true},
+		{"1231", "!1000, 1231", true},
+		{"foo", "!bar, foobar, foo", true},
+	}
+
+	for _, tt := range tbl {
+		actual := isStringMatchCSVRule(tt.csvRules, tt.term)
 		if actual != tt.expected {
 			t.Errorf("IP %s in %s result is %v. Expected %v.", tt.term, tt.csvRules, actual, tt.expected)
 		}
@@ -104,17 +123,17 @@ func TestQuickCheck(t *testing.T) {
 
 	var tpTbl = []tpTest{
 		{
-			[]TaxoPair{TaxoPair{Product: []string{"P1", "P2"}, Category: "C1"}},
+			[]TaxoPair{{Product: []string{"P1", "P2"}, Category: "C1"}},
 			event.NormalizedEvent{Product: "P1", Category: "C1"},
 			true,
 		},
 		{
-			[]TaxoPair{TaxoPair{Product: []string{"P1", "P2"}, Category: "C1"}},
+			[]TaxoPair{{Product: []string{"P1", "P2"}, Category: "C1"}},
 			event.NormalizedEvent{Product: "P1", Category: "C2"},
 			false,
 		},
 		{
-			[]TaxoPair{TaxoPair{Product: []string{"P1", "P2"}, Category: "C1"}},
+			[]TaxoPair{{Product: []string{"P1", "P2"}, Category: "C1"}},
 			event.NormalizedEvent{Product: "P3", Category: "C1"},
 			false,
 		},
@@ -136,17 +155,17 @@ func TestQuickCheck(t *testing.T) {
 
 	var spTbl = []spTest{
 		{
-			[]SIDPair{SIDPair{PluginID: 10, PluginSID: []int{1, 2}}},
+			[]SIDPair{{PluginID: 10, PluginSID: []int{1, 2}}},
 			event.NormalizedEvent{PluginID: 10, PluginSID: 1},
 			true,
 		},
 		{
-			[]SIDPair{SIDPair{PluginID: 10, PluginSID: []int{1, 2}}},
+			[]SIDPair{{PluginID: 10, PluginSID: []int{1, 2}}},
 			event.NormalizedEvent{PluginID: 10, PluginSID: 3},
 			false,
 		},
 		{
-			[]SIDPair{SIDPair{PluginID: 10, PluginSID: []int{1, 2}}},
+			[]SIDPair{{PluginID: 10, PluginSID: []int{1, 2}}},
 			event.NormalizedEvent{PluginID: 9, PluginSID: 1},
 			false,
 		},
@@ -466,4 +485,74 @@ func TestAppendUniqCustomData(t *testing.T) {
 	if cd[1].Label != "label2" || cd[1].Content != "data2" {
 		t.Fatal("customData expected to contain label2 = data2")
 	}
+}
+
+func TestCustomDataMatch(t *testing.T) {
+	var (
+		stickyDiffData *StickyDiffData
+		connID         uint64
+	)
+
+	d, err := test.DirEnv(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Using base dir %s", d)
+	err = asset.Init(path.Join(d, "configs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, c := range []struct {
+		ruleCustomData  string
+		eventCustomData string
+		expected        bool
+	}{
+		{"Network Command Shell", "Network Command Shell", true},
+		{"Network Command Shell", "Network Command Login", false},
+		{"!Network Command Shell", "Network Command Shell", false},
+		{"!Network Command Shell", "Network Command Login", true},
+		{"foo,bar,qux", "foo", true},
+		{"foo,bar,qux", "bar", true},
+		{"foo,bar,qux", "qux", true},
+		{"foo,bar,qux", "baz", false},
+		{"foo,!bar,qux", "bar", false},
+		{"foo,bar,!qux", "qux", false},
+		{"!foo,bar,qux", "foo", false},
+		{"!foo, foo, bar, qux", "foo", false},
+		{"foo, !foo, bar, qux", "foo", true},
+	} {
+		t.Run(c.ruleCustomData, func(t *testing.T) {
+			r := DirectiveRule{
+				PluginSID:    []int{9999},
+				PluginID:     999,
+				Type:         "PluginRule",
+				Stage:        1,
+				Occurrence:   1,
+				Reliability:  5,
+				Timeout:      0,
+				From:         "ANY",
+				To:           "ANY",
+				PortFrom:     "ANY",
+				PortTo:       "ANY",
+				Protocol:     "ANY",
+				CustomLabel1: "ANY",
+				CustomData1:  c.ruleCustomData,
+			}
+
+			e := event.NormalizedEvent{
+				PluginID:     999,
+				PluginSID:    9999,
+				CustomLabel1: "ANY",
+				CustomData1:  c.eventCustomData,
+			}
+
+			match := DoesEventMatch(e, r, stickyDiffData, connID)
+			if match != c.expected {
+				t.Errorf("expected %t got %t", c.expected, match)
+			}
+		})
+	}
+
 }
