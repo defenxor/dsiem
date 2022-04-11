@@ -202,28 +202,33 @@ func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 	return
 }
 
-func pluginRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) (ret bool) {
+func pluginRuleCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) bool {
 	if e.PluginID != r.PluginID {
-		return
+		return false
 	}
-	sidMatch := false
+
+	var sidMatch bool
 	for i := range r.PluginSID {
 		if r.PluginSID[i] == e.PluginSID {
 			sidMatch = true
 			break
 		}
 	}
+
 	if !sidMatch {
-		return
+		return false
 	}
+
 	if r.StickyDiff == "PLUGIN_SID" {
 		_ = isIntStickyDiff(e.PluginSID, s)
 	}
-	ret = ipPortCheck(e, r, s, connID)
-	if ret {
-		ret = customDataCheck(e, r, s, connID)
+
+	isMatch := ipPortCheck(e, r, s, connID)
+	if isMatch {
+		isMatch = customDataCheck(e, r, s, connID)
 	}
-	return
+
+	return isMatch
 }
 
 func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, connID uint64) (ret bool) {
