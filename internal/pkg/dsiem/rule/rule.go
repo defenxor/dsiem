@@ -181,13 +181,13 @@ func customDataCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData
 
 	var r1, r2, r3 = true, true, true
 	if r.CustomData1 != "" && r.CustomData1 != "ANY" {
-		r1 = isStrMatchCSVRule(r.CustomData1, e.CustomData1, false)
+		r1 = isStringMatchCSVRule(r.CustomData1, e.CustomData1)
 	}
 	if r.CustomData2 != "" && r.CustomData2 != "ANY" {
-		r2 = isStrMatchCSVRule(r.CustomData2, e.CustomData2, false)
+		r2 = isStringMatchCSVRule(r.CustomData2, e.CustomData2)
 	}
 	if r.CustomData3 != "" && r.CustomData3 != "ANY" {
-		r3 = isStrMatchCSVRule(r.CustomData3, e.CustomData3, false)
+		r3 = isStringMatchCSVRule(r.CustomData3, e.CustomData3)
 	}
 	switch {
 	case r.StickyDiff == "CUSTOM_DATA1":
@@ -241,7 +241,7 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	}
 	// covers  r.From == "IP", r.From == "IP1, IP2, !IP3", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2, !CIDR3"
 	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
-		!isStrMatchCSVRule(r.From, e.SrcIP, false) && !isStrMatchCSVRule(r.From, e.SrcIP, true) {
+		!isNetAddrMatchCSVRule(r.From, e.SrcIP) && !isNetAddrMatchCSVRule(r.From, e.SrcIP) {
 		return
 	}
 	eDstInHomeNet := e.DstIPInHomeNet()
@@ -253,13 +253,13 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2, !IP3", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2, !CIDR3"
 	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
-		!isStrMatchCSVRule(r.To, e.DstIP, false) && !isStrMatchCSVRule(r.To, e.DstIP, true) {
+		!isNetAddrMatchCSVRule(r.To, e.DstIP) && !isNetAddrMatchCSVRule(r.To, e.DstIP) {
 		return
 	}
-	if r.PortFrom != "ANY" && !isStrMatchCSVRule(r.PortFrom, strconv.Itoa(e.SrcPort), false) {
+	if r.PortFrom != "ANY" && !isStringMatchCSVRule(r.PortFrom, strconv.Itoa(e.SrcPort)) {
 		return
 	}
-	if r.PortTo != "ANY" && !isStrMatchCSVRule(r.PortTo, strconv.Itoa(e.DstPort), false) {
+	if r.PortTo != "ANY" && !isStringMatchCSVRule(r.PortTo, strconv.Itoa(e.DstPort)) {
 		return
 	}
 
@@ -322,23 +322,23 @@ func isIntStickyDiff(v int, r *StickyDiffData) (match bool) {
 	return true
 }
 
-func isStrMatchCSVRule(rulesInCSV string, term string, isNetAddr bool) (match bool) {
+func isNetAddrMatchCSVRule(rulesInCSV, term string) bool {
+
 	// s is something like stringA, stringB, !stringC, !stringD
 	sSlice := str.CsvToSlice(rulesInCSV)
 
 	var ipB net.IP
-	if isNetAddr {
-		if !strings.Contains(term, "/") {
-			term = term + "/32"
-		}
-		var err error
-		ipB, _, err = net.ParseCIDR(term)
-		if err != nil {
-			log.Warn(log.M{Msg: "Unable to parse IP address: " + term + ". Make sure the plugin is configured correctly!"})
-			return
-		}
+	if !strings.Contains(term, "/") {
+		term = term + "/32"
+	}
+	var err error
+	ipB, _, err = net.ParseCIDR(term)
+	if err != nil {
+		log.Warn(log.M{Msg: "Unable to parse IP address: " + term + ". Make sure the plugin is configured correctly!"})
+		return false
 	}
 
+	var match bool
 	for _, v := range sSlice {
 
 		isInverse := strings.HasPrefix(v, "!")
@@ -347,19 +347,15 @@ func isStrMatchCSVRule(rulesInCSV string, term string, isNetAddr bool) (match bo
 		}
 
 		termIsEqual := false
-		if isNetAddr {
-			if !strings.Contains(v, "/") {
-				v = v + "/32"
-			}
-			_, ipnetA, err := net.ParseCIDR(v)
-			if err != nil {
-				log.Warn(log.M{Msg: "Unable to parse CIDR address: " + v + ". Make sure the directive is configured correctly!"})
-				return
-			}
-			termIsEqual = ipnetA.Contains(ipB)
-		} else {
-			termIsEqual = v == term
+		if !strings.Contains(v, "/") {
+			v = v + "/32"
 		}
+		_, ipnetA, err := net.ParseCIDR(v)
+		if err != nil {
+			log.Warn(log.M{Msg: "Unable to parse CIDR address: " + v + ". Make sure the directive is configured correctly!"})
+			return false
+		}
+		termIsEqual = ipnetA.Contains(ipB)
 
 		/*
 			The correct logic here is to AND all inverse rules,
@@ -384,6 +380,47 @@ func isStrMatchCSVRule(rulesInCSV string, term string, isNetAddr bool) (match bo
 		// !isInverse && !termIsEqual should result in match = false (default)
 		// so there's no need to handle it
 	}
+
+	return match
+}
+
+func isStringMatchCSVRule(rulesInCSV string, term string) (match bool) {
+	// s is something like stringA, stringB, !stringC, !stringD
+	sSlice := str.CsvToSlice(rulesInCSV)
+	for _, v := range sSlice {
+
+		isInverse := strings.HasPrefix(v, "!")
+		if isInverse {
+			v = str.TrimLeftChar(v)
+		}
+
+		termIsEqual := false
+		termIsEqual = v == term
+
+		/*
+			The correct logic here is to AND all inverse rules,
+			and then OR the result with all the non-inverse rules.
+			The following code implement that with shortcuts.
+		*/
+
+		// break early if !condition is violated
+		if isInverse && termIsEqual {
+			match = false
+			break
+		}
+		// break early if condition is fulfilled
+		if !isInverse && termIsEqual {
+			match = true
+			break
+		}
+		// if !condition is fulfilled, continue evaluation of next in item
+		if isInverse && !termIsEqual {
+			match = true
+		}
+		// !isInverse && !termIsEqual should result in match = false (default)
+		// so there's no need to handle it
+	}
+
 	return
 }
 
