@@ -43,3 +43,4 @@ dev_*
 
 .DS_STORE
 *.http
+.dccache
