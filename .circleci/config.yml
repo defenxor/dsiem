@@ -169,7 +169,7 @@ jobs:
               done
               echo "building docker for release $ver .."
               cd deployments/docker/build
-              docker build -f Dockerfile -t defenxor/dsiem:$ver -t defenxor/dsiem:latest . --build-arg tag=$tag --build-arg token=$GITHUB_TOKEN
+              docker build -f Dockerfile -t defenxor/dsiem:$ver -t defenxor/dsiem:latest . --build-arg tag=$tag
               echo "$DOCKER_PASSWD" | docker login -u $DOCKER_USER --password-stdin
               docker push defenxor/dsiem:$ver
               docker push defenxor/dsiem:latest

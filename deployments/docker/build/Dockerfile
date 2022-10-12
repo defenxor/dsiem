@@ -8,8 +8,6 @@ RUN apk -U upgrade && \
     rm -rf /var/cache/apk/*
 
 # temporary, get fetch and download from private repo
-ARG token
-ENV GITHUB_OAUTH_TOKEN=$token
 RUN wget https://github.com/gruntwork-io/fetch/releases/download/v0.3.2/fetch_linux_amd64 -O /tmp/fetch && chmod +x /tmp/fetch && \
     /tmp/fetch --repo="https://github.com/defenxor/dsiem" --tag=$REL_TAG --release-asset="dsiem-server_linux_amd64.zip" /tmp && \
     unzip /tmp/dsiem-server_linux_amd64.zip -d /dsiem && rm -rf /tmp/dsiem-server_linux_amd64.zip /tmp/fetch
