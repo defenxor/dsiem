@@ -30,7 +30,6 @@ ENV S6_KEEP_ENV 1
 
 # fail container if init scripts failed
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS 2
-
 VOLUME ["/dsiem/logs", "/dsiem/configs" ]
 EXPOSE 8080
 ENTRYPOINT [ "/init"]
