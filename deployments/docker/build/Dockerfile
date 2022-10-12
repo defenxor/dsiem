@@ -27,6 +27,7 @@ ENV TERM xterm-256color
 # copy s6files and set default to expose all container env to the target app
 ADD s6files /etc/
 ENV S6_KEEP_ENV 1
+
 # fail container if init scripts failed
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS 2
 
