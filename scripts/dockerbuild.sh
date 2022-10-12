@@ -6,4 +6,4 @@ curdir=$(pwd)
 
 cd $dir
 ver=$(git describe --tags)
-docker build -f Dockerfile -t defenxor/dsiem:$ver -t defenxor/dsiem:latest . --build-arg ver=$ver --build-arg token=$GITHUB_OAUTH_TOKEN
+docker build -f Dockerfile -t defenxor/dsiem:$ver -t defenxor/dsiem:latest . --build-arg ver=$ver
