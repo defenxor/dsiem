@@ -48,7 +48,7 @@
     "eslint-plugin-standard": "^4.0.1",
     "espree": "^6.1.2",
     "mutationobserver-shim": "^0.3.3",
-    "react-scripts": "^4.0.3",
+    "react-scripts": "^5.0.1",
     "source-map-explorer": "^2.1.0",
     "standard": "^14.3.1"
   }
