@@ -60,5 +60,10 @@ func TestIdgen(t *testing.T) {
 	}
 
 	t.Logf("generated %d unique ids", len(m))
+}
 
+func BenchmarkGenerateID(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		GenerateID()
+	}
 }
