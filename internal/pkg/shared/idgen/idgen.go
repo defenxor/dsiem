@@ -17,12 +17,31 @@
 package idgen
 
 import (
-	"github.com/teris-io/shortid"
+	"math/rand"
+
+	"github.com/speps/go-hashids/v2"
 )
 
-var sid, _ = shortid.New(1, shortid.DefaultABC, 2342)
+const (
+	salt      = "IcthIyXcPH"
+	minLength = 10
+)
+
+var hd *hashids.HashID
+
+func init() {
+	h := hashids.NewData()
+	h.Salt = salt
+	h.MinLength = minLength
+
+	var err error
+	hd, err = hashids.NewWithData(h)
+	if err != nil {
+		panic(err)
+	}
+}
 
 // GenerateID creates random shortid
-func GenerateID() (id string, err error) {
-	return sid.Generate()
+func GenerateID() (string, error) {
+	return hd.Encode([]int{rand.Int()})
 }
