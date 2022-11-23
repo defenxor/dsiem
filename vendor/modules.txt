@@ -134,6 +134,9 @@ github.com/satori/go.uuid
 # github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
 ## explicit
 github.com/sebdah/goldie
+# github.com/speps/go-hashids/v2 v2.0.1
+## explicit
+github.com/speps/go-hashids/v2
 # github.com/spf13/afero v1.2.2
 ## explicit
 github.com/spf13/afero
@@ -152,9 +155,6 @@ github.com/spf13/pflag
 # github.com/spf13/viper v1.4.0
 ## explicit
 github.com/spf13/viper
-# github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
-## explicit
-github.com/teris-io/shortid
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.5.0
@@ -223,6 +223,9 @@ golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/ocsp
+# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+## explicit
+golang.org/x/sync/errgroup
 # golang.org/x/sys v0.0.0-20220111092808-5a964db01320
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
