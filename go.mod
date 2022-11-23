@@ -24,12 +24,12 @@ require (
 	github.com/remeh/sizedwaitgroup v0.0.0-20180822144253-5e7302b12cce
 	github.com/satori/go.uuid v0.0.0-20180103174451-36e9d2ebbde5
 	github.com/sebdah/goldie v0.0.0-20180424091453-8784dd1ab561
+	github.com/speps/go-hashids/v2 v2.0.1
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.4.0
-	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/valyala/fasthttp v1.5.0
 	github.com/valyala/tsvreader v1.0.0
 	github.com/yl2chen/cidranger v0.0.0-20190806234802-fed7223fd934
@@ -37,6 +37,7 @@ require (
 	go.elastic.co/apm/module/apmhttp v1.11.0
 	go.uber.org/multierr v1.2.0 // indirect
 	go.uber.org/zap v1.10.0
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11
 	gopkg.in/olivere/elastic.v5 v5.0.82
 )
