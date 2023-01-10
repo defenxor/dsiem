@@ -1,8 +1,7 @@
 # Dsiem 
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/defenxor/dsiem/tree/master.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/defenxor/dsiem/tree/master)
-
-[![CircleCI](https://circleci.com/gh/defenxor/dsiem.svg?style=shield&circle-token=def79b85071ad74a4bb86fd9d225bb09d00694c5)](https://circleci.com/gh/defenxor/dsiem) [![Codecov](https://codecov.io/gh/defenxor/dsiem/branch/master/graph/badge.svg?token=3446slNekt)](https://codecov.io/gh/defenxor/dsiem) [![Go Report Card](https://goreportcard.com/badge/defenxor/dsiem)](https://goreportcard.com/report/defenxor/dsiem) [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) 
+ [![Codecov](https://codecov.io/gh/defenxor/dsiem/branch/master/graph/badge.svg?token=3446slNekt)](https://codecov.io/gh/defenxor/dsiem) [![Go Report Card](https://goreportcard.com/badge/defenxor/dsiem)](https://goreportcard.com/report/defenxor/dsiem) [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) 
 
 Dsiem is a security event correlation engine for [ELK stack](https://www.elastic.co/elk-stack), allowing the platform to be used as a dedicated and full-featured [SIEM](https://en.wikipedia.org/wiki/Security_information_and_event_management) system.
 
