@@ -1,33 +1,33 @@
 {
-  "name": "dsiem-demo-frontend",
-  "version": "1.0.0",
+  "name": "web",
+  "version": "1.0.1",
   "private": true,
   "dependencies": {
-    "@elastic/datemath": "^5.0.2",
-    "@elastic/eui": "^14.10.0",
-    "mermaid": "^8.13.8",
-    "moment": "^2.24.0",
-    "react": "^16.11.0",
-    "react-dom": "^16.11.0",
-    "react-json-view": "^1.21.1",
-    "react-router-dom": "^5.1.2"
+    "@elastic/datemath": "^5.0.3",
+    "@elastic/eui": "^72.1.0",
+    "@emotion/css": "^11.10.5",
+    "@emotion/react": "^11.10.5",
+    "mermaid": "^9.3.0",
+    "moment": "^2.29.4",
+    "prop-types": "^15.8.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-json-view": "^1.21.3",
+    "react-router-dom": "^6.6.2"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "lint": "eslint --ext [.js,.jsx] ./",
-    "fix": "eslint --fix --ext [.js,.jsx] ./",
-    "build-analyze": "react-scripts build",
-    "analyze": "source-map-explorer 'build/static/js/*.js' --html /tmp/sme_result.html"
+    "lint": "eslint --ext [.js,.jsx] ./"
   },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
   },
-  "eslintIgnore": [
-    "build"
-  ],
   "browserslist": {
     "production": [
       ">0.2%",
@@ -41,15 +41,14 @@
     ]
   },
   "devDependencies": {
-    "babel-eslint": "^10.0.3",
-    "eslint": "^7.11.0",
-    "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-react-hooks": "^2.2.0",
-    "eslint-plugin-standard": "^4.0.1",
-    "espree": "^6.1.2",
-    "mutationobserver-shim": "^0.3.3",
-    "react-scripts": "^4.0.3",
-    "source-map-explorer": "^2.1.0",
-    "standard": "^14.3.1"
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-n": "^15.6.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-standard": "^5.0.0",
+    "react-scripts": "^5.0.1",
+    "web-vitals": "^2.1.4"
   }
 }

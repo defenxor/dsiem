@@ -1,26 +1,28 @@
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export const isChrome = () => {
+  const isChromium = window.chrome
+  const winNav = window.navigator
+  const vendorName = winNav.vendor
+  const isOpera = typeof window.opr !== 'undefined'
+  const isIEedge = winNav.userAgent.indexOf('Edg') > -1
+  const isIOSChrome = winNav.userAgent.match('CriOS')
+
   let res = false
-  try {
-    const isChromium = window.chrome
-    const winNav = window.navigator
-    const vendorName = winNav.vendor
-    const isOpera = typeof window.opr !== 'undefined'
-    const isIEedge = winNav.userAgent.indexOf('Edge') > -1
-    const isIOSChrome = winNav.userAgent.match('CriOS')
-    if (
-      isIOSChrome === null &&
-      isChromium !== null &&
-      typeof isChromium !== 'undefined' &&
-      vendorName === 'Google Inc.' &&
-      isOpera === false &&
-      isIEedge === false
-    ) {
-      res = true
-    }
-  } catch (e) {
+  if (isIOSChrome) {
+    // is Google Chrome on IOS
+  } else if (
+    isChromium !== null &&
+  typeof isChromium !== 'undefined' &&
+  vendorName === 'Google Inc.' &&
+  isOpera === false &&
+  isIEedge === false
+  ) {
+    // is Google Chrome
+    res = true
+  } else {
     res = false
+    // not Google Chrome
   }
   return res
 }
@@ -58,7 +60,7 @@ export const untilKibanaIsReady = async (url, sleepTime) => {
 }
 
 export const shellshockSend = async (url, targetFile, content) => {
-  var val = {
+  const val = {
     success: false,
     errMsg: ''
   }
@@ -80,7 +82,7 @@ export const shellshockSend = async (url, targetFile, content) => {
 }
 
 export const fetchUrl = async url => {
-  var val = {
+  const val = {
     result: {},
     status: ''
   }
