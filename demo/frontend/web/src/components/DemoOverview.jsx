@@ -6,8 +6,7 @@ import {
   EuiEmptyPrompt,
   EuiButton,
   EuiPageBody,
-  EuiPageContent,
-  EuiPageContentBody,
+  EuiPageSection,
   EuiFlexGroup,
   EuiFlexItem
 } from '@elastic/eui'
@@ -65,7 +64,7 @@ export const DemoOverview = props => {
 
   return (
     <EuiPageBody>
-      <EuiPageContent>
+      <EuiPageSection>
         <EuiEmptyPrompt
           iconType='questionInCircle'
           title={<h1>Demo Guide</h1>}
@@ -93,7 +92,7 @@ export const DemoOverview = props => {
             </EuiButton>
           }
         />
-        <EuiPageContentBody>
+        <EuiPageSection>
           <EuiFlexGroup
             // style={divStyle}
             justifyContent='spaceAround'
@@ -103,8 +102,8 @@ export const DemoOverview = props => {
               <div className='mermaid'>{chart}</div>
             </EuiFlexItem>
           </EuiFlexGroup>
-        </EuiPageContentBody>
-      </EuiPageContent>
+        </EuiPageSection>
+      </EuiPageSection>
     </EuiPageBody>
   )
 }

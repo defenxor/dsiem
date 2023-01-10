@@ -5,17 +5,18 @@
     "es6": true,
     "jest": true
   },
-  "parser": "babel-eslint",
-  "extends": ["eslint:recommended", "plugin:react/recommended", "standard"],
-  "plugins": ["react-hooks"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "standard"
+  ],
   "globals": {
     "Atomics": "readonly",
     "SharedArrayBuffer": "readonly"
   },
   "rules": {
     "react/jsx-indent": "off",
-    "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "warn"
+    "react/react-in-jsx-scope": "off"
   },
   "settings": {
     "react": {

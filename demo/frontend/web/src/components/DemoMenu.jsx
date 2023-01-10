@@ -6,9 +6,6 @@ import {
   EuiSpacer,
   EuiFlexGroup,
   EuiFlexItem,
-  EuiPageBody,
-  EuiPageContent,
-  EuiPageContentBody,
   EuiGlobalToastList,
   EuiAccordion,
   EuiHeader,
@@ -17,10 +14,12 @@ import {
   EuiHeaderLinks,
   EuiHeaderLink,
   EuiLoadingContent,
-  EuiButtonToggle
+  EuiButtonEmpty,
+  EuiPageSection,
+  EuiPageBody
 } from '@elastic/eui'
 
-export const DemoMenu = props => {
+export const DemoMenu = () => {
   const baseUrl = `${window.location.protocol}//${window.location.hostname}`
   const appPort = window.location.port
   const targetHost = `${baseUrl}:8081`
@@ -62,7 +61,7 @@ export const DemoMenu = props => {
   )
 
   const handleToggleTab = useCallback(e => {
-    setTab(e.target.checked)
+    setTab(val => !val)
   }, [])
 
   const openUrl = useCallback(
@@ -135,8 +134,7 @@ export const DemoMenu = props => {
 
   return (
     <EuiPageBody>
-      <EuiPageContent>
-        <EuiPageContentBody>
+      <EuiPageSection>
           <EuiHeader>
             <EuiHeaderSectionItem border='right'>
               <EuiHeaderLogo iconType='securityApp'>Dsiem Demo</EuiHeaderLogo>
@@ -150,20 +148,18 @@ export const DemoMenu = props => {
             </EuiHeaderLinks>
           </EuiHeader>
           <EuiSpacer />
-          {loading && <EuiLoadingContent lines={1} />}
-
+          {loading ? <EuiLoadingContent lines={1}/> : <></> }
           <EuiAccordion
             id='acc1'
             buttonContent='Show or hide the menu cards.'
             initialIsOpen
             extraAction={
-              <EuiButtonToggle
-                isEmpty
-                label='open on a new tab'
+              <EuiButtonEmpty
                 iconType={useTab ? 'check' : ''}
-                onChange={handleToggleTab}
+                fill={useTab}
+                onClick={handleToggleTab}
                 isSelected={useTab}
-              />
+              >{ useTab ? 'Open in a new tab' : 'Open in current tab'}</EuiButtonEmpty>
             }
           >
             <EuiSpacer />
@@ -209,7 +205,7 @@ export const DemoMenu = props => {
                 desc='Correlate Dsiem alarms further with ECS-compliant events from the Beats family and their modules.'
               />
               <Card
-                logo='logoAPM'
+                logo='logoElasticsearch'
                 title='Elastic APM'
                 disabled={loading}
                 clickHandler={openUrl}
@@ -225,17 +221,17 @@ export const DemoMenu = props => {
                   url='chrome-extension://iodihamcpbpeioajjeobimgagajmlibd/html/nassh.html'
                   //
                   desc='Use dpluger to integrate new logs and create Dsiem correlation directives (requires Chrome Secure Shell app).'
-                  footerUrl='https://chrome.google.com/webstore/detail/secure-shell-app/pnhechapfaindjhompbnflcldabbghjo'
+                  footerUrl='https://chrome.google.com/webstore/detail/secure-shell/iodihamcpbpeioajjeobimgagajmlibd'
                   footerText='Install Chrome Secure Shell'
                 />
               )}
             </EuiFlexGroup>
+            <EuiSpacer />
           </EuiAccordion>
-        </EuiPageContentBody>
-      </EuiPageContent>
+      </EuiPageSection>
       <EuiSpacer />
-      <EuiPageContent>
-        <EuiPageContentBody>
+      <EuiPageSection>
+        <EuiPageSection>
           <EuiFlexGroup>
             <EuiFlexItem>
               <Iframe
@@ -246,13 +242,13 @@ export const DemoMenu = props => {
               />
             </EuiFlexItem>
           </EuiFlexGroup>
-        </EuiPageContentBody>
-      </EuiPageContent>
+        </EuiPageSection>
+      </EuiPageSection>
       <EuiGlobalToastList
         toasts={toasts}
         dismissToast={removeToast}
         toastLifeTimeMs={6000}
       />
-    </EuiPageBody>
+    </EuiPageBody >
   )
 }
