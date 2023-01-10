@@ -66,7 +66,8 @@ jobs:
             cp -r ./dist ../
       - persist_to_workspace:
           root: .
-          paths: web/dist/*
+          paths:
+            - web/dist/*
   semantic-check:
     docker:
       - image: circleci/node:lts-browsers
@@ -80,10 +81,11 @@ jobs:
           name: check if release needed
           command: |
             # dry-run, but will trigger @semantic-release/exec to write ./release_ver as needed
-            npx semantic-release -b master -d
+            npx semantic-release -b master -d && touch release_ver
       - persist_to_workspace:
           root: .
-          paths: release_ver
+          paths:
+            - release_ver
   build-release:
     docker:
       - image: circleci/golang:1.16.0
@@ -159,8 +161,6 @@ jobs:
               chmod +x /tmp/fetch
               # wait until the release is approved, exit after waiting for >= 30 minutes
               minutewait=30
-              # fetch requires this
-              export GITHUB_OAUTH_TOKEN=$GITHUB_TOKEN
               while ! /tmp/fetch --repo="https://github.com/defenxor/dsiem" --tag=$tag --release-asset="dsiem-server_linux_amd64.zip" /tmp 2>/dev/null; do
                 [ "$minutewait" == "0" ] && echo "Timeout waiting for release asset, skipping docker build." && exit 0
                 echo "release $tag doesnt exist yet, sleeping for 60 seconds before retrying .. retry left: $minutewait"
