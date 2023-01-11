@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -256,7 +256,34 @@ const (
 	JSAuditAdvisory = "$JS.EVENT.ADVISORY.API"
 )
 
-var denyAllJs = []string{jscAllSubj, raftAllSubj, jsAllAPI}
+var denyAllClientJs = []string{jsAllAPI, "$KV.>", "$OBJ.>"}
+var denyAllJs = []string{jscAllSubj, raftAllSubj, jsAllAPI, "$KV.>", "$OBJ.>"}
+
+func generateJSMappingTable(domain string) map[string]string {
+	mappings := map[string]string{}
+	// This set of mappings is very very very ugly.
+	// It is a consequence of what we defined the domain prefix to be "$JS.domain.API" and it's mapping to "$JS.API"
+	// For optics $KV and $OBJ where made to be independent subject spaces.
+	// As materialized views of JS, they did not simply extend that subject space to say "$JS.API.KV" "$JS.API.OBJ"
+	// This is very unfortunate!!!
+	// Furthermore, it seemed bad to require different domain prefixes for JS/KV/OBJ.
+	// Especially since the actual API for say KV, does use stream create from JS.
+	// To avoid overlaps KV and OBJ views append the prefix to their API.
+	// (Replacing $KV with the prefix allows users to create collisions with say the bucket name)
+	// This mapping therefore needs to have extra token so that the mapping can properly discern between $JS, $KV, $OBJ
+	for srcMappingSuffix, to := range map[string]string{
+		"INFO":       JSApiAccountInfo,
+		"STREAM.>":   "$JS.API.STREAM.>",
+		"CONSUMER.>": "$JS.API.CONSUMER.>",
+		"META.>":     "$JS.API.META.>",
+		"SERVER.>":   "$JS.API.SERVER.>",
+		"$KV.>":      "$KV.>",
+		"$OBJ.>":     "$OBJ.>",
+	} {
+		mappings[fmt.Sprintf("$JS.%s.API.%s", domain, srcMappingSuffix)] = to
+	}
+	return mappings
+}
 
 // JSMaxDescription is the maximum description length for streams and consumers.
 const JSMaxDescriptionLen = 4 * 1024
@@ -574,9 +601,10 @@ const JSApiConsumerListResponseType = "io.nats.jetstream.api.v1.consumer_list_re
 
 // JSApiConsumerGetNextRequest is for getting next messages for pull based consumers.
 type JSApiConsumerGetNextRequest struct {
-	Expires time.Duration `json:"expires,omitempty"`
-	Batch   int           `json:"batch,omitempty"`
-	NoWait  bool          `json:"no_wait,omitempty"`
+	Expires   time.Duration `json:"expires,omitempty"`
+	Batch     int           `json:"batch,omitempty"`
+	NoWait    bool          `json:"no_wait,omitempty"`
+	Heartbeat time.Duration `json:"idle_heartbeat,omitempty"`
 }
 
 // JSApiStreamTemplateCreateResponse for creating templates.
@@ -1644,6 +1672,8 @@ func (s *Server) jsStreamInfoRequest(sub *subscription, c *client, a *Account, s
 		resp.ApiResponse.Type = JSApiStreamCreateResponseType
 	}
 
+	var clusterWideConsCount int
+
 	// If we are in clustered mode we need to be the stream leader to proceed.
 	if s.JetStreamIsClustered() {
 		// Check to make sure the stream is assigned.
@@ -1654,6 +1684,9 @@ func (s *Server) jsStreamInfoRequest(sub *subscription, c *client, a *Account, s
 
 		js.mu.RLock()
 		isLeader, sa := cc.isLeader(), js.streamAssignment(acc.Name, streamName)
+		if sa != nil {
+			clusterWideConsCount = len(sa.consumers)
+		}
 		js.mu.RUnlock()
 
 		if isLeader && sa == nil {
@@ -1728,6 +1761,9 @@ func (s *Server) jsStreamInfoRequest(sub *subscription, c *client, a *Account, s
 		Config:  config,
 		Domain:  s.getOpts().JetStreamDomain,
 		Cluster: js.clusterInfo(mset.raftGroup()),
+	}
+	if clusterWideConsCount > 0 {
+		resp.StreamInfo.State.Consumers = clusterWideConsCount
 	}
 	if mset.isMirror() {
 		resp.StreamInfo.Mirror = mset.mirrorInfo()
@@ -2704,7 +2740,7 @@ func (s *Server) processStreamRestore(ci *ClientInfo, acc *Account, cfg *StreamC
 
 	var resp = JSApiStreamRestoreResponse{ApiResponse: ApiResponse{Type: JSApiStreamRestoreResponseType}}
 
-	snapDir := path.Join(js.config.StoreDir, snapStagingDir)
+	snapDir := filepath.Join(js.config.StoreDir, snapStagingDir)
 	if _, err := os.Stat(snapDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(snapDir, defaultDirPerms); err != nil {
 			resp.Error = &ApiError{Code: 503, Description: "JetStream unable to create temp storage for restore"}
@@ -3244,7 +3280,7 @@ func (s *Server) jsConsumerCreate(sub *subscription, c *client, a *Account, subj
 		s.sendAPIErrResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(&resp))
 		return
 	}
-	resp.ConsumerInfo = o.info()
+	resp.ConsumerInfo = o.initialInfo()
 	s.sendAPIResponse(ci, acc, subject, reply, string(msg), s.jsonResponse(resp))
 }
 

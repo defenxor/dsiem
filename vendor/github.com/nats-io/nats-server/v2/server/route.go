@@ -1346,7 +1346,7 @@ func (s *Server) createRoute(conn net.Conn, rURL *url.URL) *client {
 	}
 
 	// Set the Ping timer
-	s.setFirstPingTimer(c)
+	c.setFirstPingTimer()
 
 	// For routes, the "client" is added to s.routes only when processing
 	// the INFO protocol, that is much later.
@@ -1420,7 +1420,7 @@ func (s *Server) addRoute(c *client, info *Info) (bool, bool) {
 		// check to be consistent and future proof. but will be same domain
 		if s.sameDomain(info.Domain) {
 			s.nodeToInfo.Store(c.route.hash,
-				nodeInfo{c.route.remoteName, s.info.Version, s.info.Cluster, info.Domain, id, nil, nil, false, info.JetStream})
+				nodeInfo{c.route.remoteName, s.info.Version, s.info.Cluster, info.Domain, id, nil, nil, nil, false, info.JetStream})
 		}
 		c.mu.Lock()
 		c.route.connectURLs = info.ClientConnectURLs

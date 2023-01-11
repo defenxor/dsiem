@@ -1,21 +1,24 @@
 import React from 'react'
-import { HashRouter as Router, Switch, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route } from 'react-router-dom'
 import { DemoMenu } from './components/DemoMenu.jsx'
 import { DemoOverview } from './components/DemoOverview.jsx'
 import { JsonViewer } from './components/JsonViewer.jsx'
-import { EuiPage } from '@elastic/eui'
-import './App.css'
+import '@elastic/eui/dist/eui_theme_light.css'
 
-const App = props => (
-  <Router>
-    <EuiPage>
-      <Switch>
-        <Route exact path='/' component={DemoMenu} />
-        <Route exact path='/directive/:directiveFile?' component={JsonViewer} />
-        <Route exact path='/overview' component={DemoOverview} />
-      </Switch>
-    </EuiPage>
-  </Router>
+import { EuiProvider, EuiPage } from '@elastic/eui'
+
+const App = () => (
+  <HashRouter>
+    <EuiProvider colorMode="light">
+      <EuiPage>
+        <Routes>
+          <Route exact path='/' element={ <DemoMenu />} />
+          <Route exact path='/directive/:directiveFile?' element={ <JsonViewer />} />
+          <Route exact path='/overview' element={ <DemoOverview />} />
+        </Routes>
+      </EuiPage>
+    </EuiProvider>
+  </HashRouter>
 )
 
 export default App

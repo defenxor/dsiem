@@ -54,6 +54,9 @@ type JetStreamManager interface {
 	// AddConsumer adds a consumer to a stream.
 	AddConsumer(stream string, cfg *ConsumerConfig, opts ...JSOpt) (*ConsumerInfo, error)
 
+	// UpdateConsumer updates an existing consumer.
+	UpdateConsumer(stream string, cfg *ConsumerConfig, opts ...JSOpt) (*ConsumerInfo, error)
+
 	// DeleteConsumer deletes a consumer.
 	DeleteConsumer(stream, consumer string, opts ...JSOpt) error
 
@@ -274,6 +277,16 @@ func (js *js) AddConsumer(stream string, cfg *ConsumerConfig, opts ...JSOpt) (*C
 		return nil, errors.New(info.Error.Description)
 	}
 	return info.ConsumerInfo, nil
+}
+
+func (js *js) UpdateConsumer(stream string, cfg *ConsumerConfig, opts ...JSOpt) (*ConsumerInfo, error) {
+	if cfg == nil {
+		return nil, ErrConsumerConfigRequired
+	}
+	if cfg.Durable == _EMPTY_ {
+		return nil, ErrInvalidDurableName
+	}
+	return js.AddConsumer(stream, cfg, opts...)
 }
 
 // consumerDeleteResponse is the response for a Consumer delete request.
@@ -871,7 +884,7 @@ func (js *js) DeleteMsg(name string, seq uint64, opts ...JSOpt) error {
 	return nil
 }
 
-// purgeRequest is optional request information to the purge API.
+// streamPurgeRequest is optional request information to the purge API.
 type streamPurgeRequest struct {
 	// Purge up to but not including sequence.
 	Sequence uint64 `json:"seq,omitempty"`
@@ -973,7 +986,7 @@ func (s *streamLister) Next() bool {
 		defer cancel()
 	}
 
-	slSubj := s.js.apiSubj(apiStreamList)
+	slSubj := s.js.apiSubj(apiStreamListT)
 	r, err := s.js.apiRequestWithContext(ctx, slSubj, req)
 	if err != nil {
 		s.err = err
