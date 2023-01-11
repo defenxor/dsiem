@@ -107,7 +107,10 @@ type Info struct {
 
 // Server is our main struct.
 type Server struct {
+	// Fields accessed with atomic operations need to be 64-bit aligned
 	gcid uint64
+	// How often user logon fails due to the issuer account not being pinned.
+	pinnedAccFail uint64
 	stats
 	mu                  sync.Mutex
 	kp                  nkeys.KeyPair
@@ -266,9 +269,6 @@ type Server struct {
 	// Keep track of what that user name is for config reload purposes.
 	sysAccOnlyNoAuthUser string
 
-	// How often user logon fails due to the issuer account not being pinned.
-	pinnedAccFail uint64
-
 	// This is a central logger for IPQueues when the number of pending
 	// messages reaches a certain thresold (per queue)
 	ipqLog *srvIPQueueLogger
@@ -287,6 +287,7 @@ type nodeInfo struct {
 	cluster string
 	domain  string
 	id      string
+	tags    jwt.TagList
 	cfg     *JetStreamConfig
 	stats   *JetStreamStats
 	offline bool
@@ -412,6 +413,7 @@ func NewServer(opts *Options) (*Server, error) {
 			opts.Cluster.Name,
 			opts.JetStreamDomain,
 			info.ID,
+			opts.Tags,
 			&JetStreamConfig{MaxMemory: opts.JetStreamMaxMemory, MaxStore: opts.JetStreamMaxStore},
 			nil,
 			false, true,
@@ -1403,10 +1405,12 @@ func (s *Server) registerAccountNoLock(acc *Account) *Account {
 			if jsEnabled {
 				s.Warnf("Skipping Default Domain %q, set for JetStream enabled account %q", defDomain, accName)
 			} else if defDomain != _EMPTY_ {
-				dest := fmt.Sprintf(jsDomainAPI, defDomain)
-				s.Noticef("Adding default domain mapping %q -> %q to account %q %p", jsAllAPI, dest, accName, acc)
-				if err := acc.AddMapping(jsAllAPI, dest); err != nil {
-					s.Errorf("Error adding JetStream default domain mapping: %v", err)
+				for src, dest := range generateJSMappingTable(defDomain) {
+					// flip src and dest around so the domain is inserted
+					s.Noticef("Adding default domain mapping %q -> %q to account %q %p", dest, src, accName, acc)
+					if err := acc.AddMapping(dest, src); err != nil {
+						s.Errorf("Error adding JetStream default domain mapping: %v", err)
+					}
 				}
 			}
 		}
@@ -3615,32 +3619,6 @@ func (s *Server) shouldReportConnectErr(firstConnect bool, attempts int) bool {
 		return true
 	}
 	return false
-}
-
-// Invoked for route, leaf and gateway connections. Set the very first
-// PING to a lower interval to capture the initial RTT.
-// After that the PING interval will be set to the user defined value.
-// Client lock should be held.
-func (s *Server) setFirstPingTimer(c *client) {
-	opts := s.getOpts()
-	d := opts.PingInterval
-
-	if !opts.DisableShortFirstPing {
-		if c.kind != CLIENT {
-			if d > firstPingInterval {
-				d = firstPingInterval
-			}
-			if c.kind == GATEWAY {
-				d = adjustPingIntervalForGateway(d)
-			}
-		} else if d > firstClientPingInterval {
-			d = firstClientPingInterval
-		}
-	}
-	// We randomize the first one by an offset up to 20%, e.g. 2m ~= max 24s.
-	addDelay := rand.Int63n(int64(d / 5))
-	d += time.Duration(addDelay)
-	c.ping.tmr = time.AfterFunc(d, c.processPingTimer)
 }
 
 func (s *Server) updateRemoteSubscription(acc *Account, sub *subscription, delta int32) {
