@@ -9,6 +9,8 @@ import (
 )
 
 // NewPipeConns returns new bi-directional connection pipe.
+//
+// PipeConns is NOT safe for concurrent use by multiple goroutines!
 func NewPipeConns() *PipeConns {
 	ch1 := make(chan *byteBuffer, 4)
 	ch2 := make(chan *byteBuffer, 4)
@@ -38,6 +40,7 @@ func NewPipeConns() *PipeConns {
 //     calling Read in order to unblock each Write call.
 //   * It supports read and write deadlines.
 //
+// PipeConns is NOT safe for concurrent use by multiple goroutines!
 type PipeConns struct {
 	c1         pipeConn
 	c2         pipeConn
@@ -166,7 +169,9 @@ func (c *pipeConn) readNextByteBuffer(mayBlock bool) error {
 		select {
 		case c.b = <-c.rCh:
 		case <-readDeadlineCh:
+			c.readDeadlineChLock.Lock()
 			c.readDeadlineCh = closedDeadlineCh
+			c.readDeadlineChLock.Unlock()
 			// rCh may contain data when deadline is reached.
 			// Read the data before returning ErrTimeout.
 			select {
@@ -192,9 +197,26 @@ func (c *pipeConn) readNextByteBuffer(mayBlock bool) error {
 var (
 	errWouldBlock       = errors.New("would block")
 	errConnectionClosed = errors.New("connection closed")
+)
 
+type timeoutError struct {
+}
+
+func (e *timeoutError) Error() string {
+	return "timeout"
+}
+
+// Only implement the Timeout() function of the net.Error interface.
+// This allows for checks like:
+//
+//   if x, ok := err.(interface{ Timeout() bool }); ok && x.Timeout() {
+func (e *timeoutError) Timeout() bool {
+	return true
+}
+
+var (
 	// ErrTimeout is returned from Read() or Write() on timeout.
-	ErrTimeout = errors.New("timeout")
+	ErrTimeout = &timeoutError{}
 )
 
 func (c *pipeConn) Close() error {
@@ -210,8 +232,8 @@ func (c *pipeConn) RemoteAddr() net.Addr {
 }
 
 func (c *pipeConn) SetDeadline(deadline time.Time) error {
-	c.SetReadDeadline(deadline)
-	c.SetWriteDeadline(deadline)
+	c.SetReadDeadline(deadline)  //nolint:errcheck
+	c.SetWriteDeadline(deadline) //nolint:errcheck
 	return nil
 }
 

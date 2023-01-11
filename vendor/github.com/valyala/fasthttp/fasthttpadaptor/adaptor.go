@@ -3,9 +3,7 @@
 package fasthttpadaptor
 
 import (
-	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/valyala/fasthttp"
 )
@@ -49,67 +47,38 @@ func NewFastHTTPHandlerFunc(h http.HandlerFunc) fasthttp.RequestHandler {
 func NewFastHTTPHandler(h http.Handler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		var r http.Request
-
-		body := ctx.PostBody()
-		r.Method = string(ctx.Method())
-		r.Proto = "HTTP/1.1"
-		r.ProtoMajor = 1
-		r.ProtoMinor = 1
-		r.RequestURI = string(ctx.RequestURI())
-		r.ContentLength = int64(len(body))
-		r.Host = string(ctx.Host())
-		r.RemoteAddr = ctx.RemoteAddr().String()
-
-		hdr := make(http.Header)
-		ctx.Request.Header.VisitAll(func(k, v []byte) {
-			sk := string(k)
-			sv := string(v)
-			switch sk {
-			case "Transfer-Encoding":
-				r.TransferEncoding = append(r.TransferEncoding, sv)
-			default:
-				hdr.Set(sk, sv)
-			}
-		})
-		r.Header = hdr
-		r.Body = &netHTTPBody{body}
-		rURL, err := url.ParseRequestURI(r.RequestURI)
-		if err != nil {
+		if err := ConvertRequest(ctx, &r, true); err != nil {
 			ctx.Logger().Printf("cannot parse requestURI %q: %s", r.RequestURI, err)
 			ctx.Error("Internal Server Error", fasthttp.StatusInternalServerError)
 			return
 		}
-		r.URL = rURL
 
 		var w netHTTPResponseWriter
-		h.ServeHTTP(&w, &r)
+		h.ServeHTTP(&w, r.WithContext(ctx))
 
 		ctx.SetStatusCode(w.StatusCode())
+		haveContentType := false
 		for k, vv := range w.Header() {
+			if k == fasthttp.HeaderContentType {
+				haveContentType = true
+			}
+
 			for _, v := range vv {
-				ctx.Response.Header.Set(k, v)
+				ctx.Response.Header.Add(k, v)
 			}
 		}
-		ctx.Write(w.body)
+		if !haveContentType {
+			// From net/http.ResponseWriter.Write:
+			// If the Header does not contain a Content-Type line, Write adds a Content-Type set
+			// to the result of passing the initial 512 bytes of written data to DetectContentType.
+			l := 512
+			if len(w.body) < 512 {
+				l = len(w.body)
+			}
+			ctx.Response.Header.Set(fasthttp.HeaderContentType, http.DetectContentType(w.body[:l]))
+		}
+		ctx.Write(w.body) //nolint:errcheck
 	}
-}
-
-type netHTTPBody struct {
-	b []byte
-}
-
-func (r *netHTTPBody) Read(p []byte) (int, error) {
-	if len(r.b) == 0 {
-		return 0, io.EOF
-	}
-	n := copy(p, r.b)
-	r.b = r.b[n:]
-	return n, nil
-}
-
-func (r *netHTTPBody) Close() error {
-	r.b = r.b[:0]
-	return nil
 }
 
 type netHTTPResponseWriter struct {
