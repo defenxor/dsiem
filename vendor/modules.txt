@@ -56,7 +56,7 @@ github.com/julienschmidt/httprouter
 # github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 ## explicit
 github.com/kardianos/osext
-# github.com/klauspost/compress v1.13.4
+# github.com/klauspost/compress v1.14.4
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/gzip
 github.com/klauspost/compress/s2
@@ -70,13 +70,13 @@ github.com/mailru/easyjson
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/minio/highwayhash v1.0.1
+# github.com/minio/highwayhash v1.0.2
 github.com/minio/highwayhash
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
 # github.com/nats-io/jwt/v2 v2.2.1-0.20220113022732-58e87895b296
 github.com/nats-io/jwt/v2
-# github.com/nats-io/nats-server/v2 v2.7.2
+# github.com/nats-io/nats-server/v2 v2.7.4
 ## explicit
 github.com/nats-io/nats-server/v2/conf
 github.com/nats-io/nats-server/v2/internal/ldap
@@ -84,7 +84,7 @@ github.com/nats-io/nats-server/v2/logger
 github.com/nats-io/nats-server/v2/server
 github.com/nats-io/nats-server/v2/server/pse
 github.com/nats-io/nats-server/v2/server/sysmem
-# github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
+# github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
 ## explicit
 github.com/nats-io/nats.go
 github.com/nats-io/nats.go/encoders/builtin
