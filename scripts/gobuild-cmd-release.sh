@@ -26,7 +26,7 @@ build () {
       [ "$os" != "linux" ] && [ "$n" = "dsiem" ] && continue
       [ "$os" = "windows" ] && n="${n}.exe"
       echo building $c ver=${ver} buildtime=${now} for $os: $n ..
-      GOFLAGS="-mod=vendor" CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
+      CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
       go build -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" -o $bdir/$n $c || exit 1
     done
     mkdir -p $bdir/web/dist && cp -r ./web/dist/* $bdir/web/dist/ || exit 1

@@ -17,6 +17,6 @@ now=$(date --utc --iso-8601=seconds)
 for c in $cmd; do
   [ ! -d $c ] && echo $c directory doesnt exist, skipping. && continue
   echo building $c ver=${ver} buildtime=${now}
-  GOFLAGS="-mod=vendor" CGO_ENABLED=${cgoflag} GOOS=linux GOARCH=amd64 go build ${xtraflag} -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" $c
+  CGO_ENABLED=${cgoflag} GOOS=linux GOARCH=amd64 go build ${xtraflag} -a -ldflags "-s -w -X main.version=${ver} -X main.buildTime=${now} -extldflags '-static'" $c
 done
 
