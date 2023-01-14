@@ -21,14 +21,13 @@ import (
 	"testing"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
-	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 	"github.com/sebdah/goldie"
 )
 
-var e = NormalizedEvent{}
-
 func TestValid(t *testing.T) {
+	var e NormalizedEvent
 	if e.Valid() {
 		t.Errorf("Event is valid %v", e)
 	}
@@ -42,6 +41,7 @@ func TestValid(t *testing.T) {
 	if e.Valid() {
 		t.Errorf("Event is valid %v", e)
 	}
+
 	e.Product = "IDS"
 	e.Category = "Malware"
 	e.PluginID = 1001
@@ -49,12 +49,26 @@ func TestValid(t *testing.T) {
 	if !e.Valid() {
 		t.Errorf("Event is valid %v", e)
 	}
+
+	goldie.FixtureDir = "testdata"
 	goldie.AssertWithTemplate(t, "event", ts, b)
 	if !e.Valid() {
 		t.Errorf("Event is not valid %v", e)
 	}
 }
 func TestFromToBytes(t *testing.T) {
+	e := NormalizedEvent{
+		EventID:   "1001",
+		Timestamp: "2018-10-08T07:16:50Z",
+		Sensor:    "sensor1",
+		SrcIP:     "10.0.0.1",
+		DstIP:     "8.8.8.8",
+		Product:   "IDS",
+		Category:  "Malware",
+		PluginID:  1001,
+		PluginSID: 50001,
+	}
+
 	b, err := e.ToBytes()
 	if err != nil {
 		t.Error(err)
@@ -65,12 +79,16 @@ func TestFromToBytes(t *testing.T) {
 }
 
 func TestInHomeNet(t *testing.T) {
-	d, err := test.DirEnv(false)
-	if err != nil {
-		t.Fatal(err)
+	log.Setup(true)
+	e := NormalizedEvent{
+		EventID:   "1001",
+		Timestamp: "2018-10-08T07:16:50Z",
+		Sensor:    "sensor1",
+		SrcIP:     "10.0.0.1",
+		DstIP:     "8.8.8.8",
 	}
-	t.Logf("Using base dir %s", d)
-	err = asset.Init(path.Join(d, "configs"))
+
+	err := asset.Init(path.Join("testdata", "configs"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,5 +98,4 @@ func TestInHomeNet(t *testing.T) {
 	if e.DstIPInHomeNet() {
 		t.Errorf("DstIP in Homenet")
 	}
-
 }
