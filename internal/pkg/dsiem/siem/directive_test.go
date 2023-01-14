@@ -63,7 +63,7 @@ func TestInitDirective(t *testing.T) {
 	e.PluginID = 1001
 	e.RcvdTime = time.Now().UnixNano()
 
-	err = asset.Init(path.Join(testDir, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
+	err = asset.Init(path.Join("testdata", "fixtures", "asset1"))
 	if err != nil {
 		t.Fatal(err)
 	}
