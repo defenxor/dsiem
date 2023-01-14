@@ -1,0 +1,11 @@
+{
+  "intel_sources": [
+    {
+      "name": "Dummy",
+      "plugin": "Dummy",
+      "type": "IP",
+      "enabled": true,
+      "config": 123
+    }
+  ]
+}

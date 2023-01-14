@@ -28,40 +28,27 @@ import (
 	xc "github.com/defenxor/dsiem/internal/pkg/dsiem/xcorrelator"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
-	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
 	"github.com/spf13/viper"
 )
 
-func initAsset(d string, t *testing.T) {
+func initAsset(t *testing.T) {
 	// needed by rule checkers
-	err := asset.Init(path.Join(d, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
+	err := asset.Init(path.Join("testdata", "fixtures", "asset1"))
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-var testRootDir string
-
-func initDirAndLog(t *testing.T) {
-	if testRootDir != "" {
-		return
-	}
-	d, err := test.DirEnv(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testRootDir = d
-}
 func TestAlarm(t *testing.T) {
-	initDirAndLog(t)
-
+	log.Setup(true)
 	t.Logf("Enabling log test mode")
 	log.EnableTestingMode()
 
-	initAsset(testRootDir, t)
-	registerTI(testRootDir, t)
-	registerVuln(testRootDir, t)
+	initAsset(t)
+
+	registerTI(t)
+	registerVuln(t)
 	xc.IntelEnabled = true
 	xc.VulnEnabled = true
 

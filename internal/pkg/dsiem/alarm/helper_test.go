@@ -24,7 +24,6 @@ import (
 )
 
 func TestHelper(t *testing.T) {
-	initDirAndLog(t)
 	t.Logf("Enabling log test mode")
 	log.EnableTestingMode()
 	a := alarm{Risk: 1}

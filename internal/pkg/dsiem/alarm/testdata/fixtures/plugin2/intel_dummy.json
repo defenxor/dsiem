@@ -1,0 +1,18 @@
+{
+  "intel_sources": [
+    {
+      "name": "Dummy",
+      "plugin": "Dummy",
+      "type": "IP",
+      "enabled": true,
+      "config": "N/A"
+    },
+    {
+      "name": "NoWhere",
+      "plugin": "NoWhere",
+      "type": "IP",
+      "enabled": true,
+      "config": "N/A"
+    }
+  ]
+}

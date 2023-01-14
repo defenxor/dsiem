@@ -68,13 +68,13 @@ func (d Dummy) CheckIP(ctx context.Context, ipstr string) (found bool, results [
 	}
 	return
 }
-func registerTI(d string, t *testing.T) {
+func registerTI(t *testing.T) {
 	if registeredTI {
 		return
 	}
 	intel.RegisterExtension(new(Dummy), "Dummy")
 
-	confDir := path.Join(d, "internal", "pkg", "dsiem", "xcorrelator", "fixtures", "plugin3")
+	confDir := path.Join("testdata", "fixtures", "plugin3")
 	t.Log("using confDir:", confDir)
 	fmt.Print("initializing intel xcorrelator ..")
 	verifyFuncOutput(t, func() {
@@ -86,13 +86,10 @@ func registerTI(d string, t *testing.T) {
 }
 
 func TestAsyncIntelCheck(t *testing.T) {
-
-	initDirAndLog(t)
-
 	t.Logf("Enabling log test mode")
 	log.EnableTestingMode()
 
-	registerTI(testRootDir, t)
+	registerTI(t)
 
 	apm.Enable(true)
 	tx := apm.StartTransaction("test", "test", nil, nil)
@@ -158,13 +155,13 @@ func (d DummyV) CheckIPPort(ctx context.Context, ipstr string, port int) (found 
 	return
 }
 
-func registerVuln(d string, t *testing.T) {
+func registerVuln(t *testing.T) {
 	if registeredVuln {
 		return
 	}
 	vuln.RegisterExtension(new(DummyV), "DummyV")
 
-	confDir := path.Join(d, "internal", "pkg", "dsiem", "xcorrelator", "fixtures", "plugin3")
+	confDir := path.Join("testdata", "fixtures", "plugin3")
 	t.Log("using confDir:", confDir)
 	fmt.Print("initializing vuln xcorrelator ..")
 	verifyFuncOutput(t, func() {
@@ -175,12 +172,11 @@ func registerVuln(d string, t *testing.T) {
 	registeredVuln = true
 }
 func TestAsyncVulnCheck(t *testing.T) {
-	initDirAndLog(t)
 
 	t.Logf("Enabling log test mode")
 	log.EnableTestingMode()
 
-	registerVuln(testRootDir, t)
+	registerVuln(t)
 
 	apm.Enable(true)
 	tx := apm.StartTransaction("test", "test", nil, nil)
