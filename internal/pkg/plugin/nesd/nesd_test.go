@@ -62,6 +62,7 @@ func startNesd(d string, wait time.Duration) error {
 	}()
 
 	timer := time.NewTimer(wait)
+	defer timer.Stop()
 	select {
 	case <-timer.C:
 		return nil
