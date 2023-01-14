@@ -21,18 +21,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/defenxor/dsiem/internal/pkg/shared/test"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
 func TestInit(t *testing.T) {
+	log.Setup(true)
 
-	d, err := test.DirEnv(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Using base dir %s", d)
-	fDir := path.Join(d, "internal", "pkg", "dsiem", "asset", "fixtures")
-	err = Init(path.Join(fDir, "asset2"))
+	fDir := path.Join("testdata", "fixtures")
+	err := Init(path.Join(fDir, "asset2"))
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -65,6 +61,7 @@ func TestInit(t *testing.T) {
 	}
 }
 func TestAsset(t *testing.T) {
+	log.Setup(true)
 
 	privIP := "192.168.0.1"
 	privNet := "192.168.0.0/16"
