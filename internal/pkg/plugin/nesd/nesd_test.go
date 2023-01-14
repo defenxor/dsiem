@@ -19,6 +19,7 @@ package nesd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -42,16 +43,31 @@ type vulnSources struct {
 	VulnSources []vulnSource `json:"vuln_sources"`
 }
 
-func startNesd(d string, t *testing.T) {
-	csvDir := path.Join(d, "fixtures")
-	err := nesdsrv.InitCSV(csvDir)
-	if err != nil {
-		t.Error("Cannot read Nessus CSV from "+csvDir, err)
-	}
+func startNesd(d string, wait time.Duration) error {
+	ch := make(chan error)
+	go func() {
+		defer close(ch)
 
-	err = nesdsrv.Start("127.0.0.1", 8081)
-	if err != nil {
-		t.Fatal("Cannot start server", err)
+		csvDir := path.Join(d, "fixtures")
+		err := nesdsrv.InitCSV(csvDir)
+		if err != nil {
+			ch <- fmt.Errorf("cannot read Nessus CSV from %s, %s", csvDir, err)
+			return
+		}
+
+		if err := nesdsrv.Start("127.0.0.1", 8081); err != nil {
+			ch <- fmt.Errorf("cannot start server, %s", err)
+			return
+		}
+	}()
+
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case err := <-ch:
+		return err
 	}
 }
 
@@ -61,10 +77,12 @@ func TestNesd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	log.Setup(true)
 
-	go startNesd(d, t)
-	time.Sleep(time.Second)
+	if err := startNesd(d, time.Second); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg := path.Join(d, "fixtures", "vuln_nessus.json")
 	var vs vulnSources
