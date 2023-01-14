@@ -23,7 +23,6 @@ import (
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
-	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
@@ -182,13 +181,8 @@ func TestQuickCheck(t *testing.T) {
 }
 
 func TestRule(t *testing.T) {
-
-	d, err := test.DirEnv(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Using base dir %s", d)
-	err = asset.Init(path.Join(d, "configs"))
+	log.Setup(true)
+	err := asset.Init(path.Join("testdata", "configs"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -493,13 +487,8 @@ func TestCustomDataMatch(t *testing.T) {
 		connID         uint64
 	)
 
-	d, err := test.DirEnv(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Logf("Using base dir %s", d)
-	err = asset.Init(path.Join(d, "configs"))
+	log.Setup(true)
+	err := asset.Init(path.Join("testdata", "configs"))
 	if err != nil {
 		t.Fatal(err)
 	}
