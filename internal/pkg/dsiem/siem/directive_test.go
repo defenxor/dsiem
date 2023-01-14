@@ -24,20 +24,18 @@ import (
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
+	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
 )
 
 func TestInitDirective(t *testing.T) {
-
+	log.Setup(true)
 	allBacklogsMu.Lock()
 	allBacklogs = []backlogs{}
 	allBacklogsMu.Unlock()
 
 	fmt.Println("Starting TestInitDirective.")
 
-	setTestDir(t)
-
-	t.Logf("Using base dir %s", testDir)
-	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	fDir := path.Join("testdata", "fixtures")
 	evtChan := make(chan event.NormalizedEvent)
 	err := InitDirectives(path.Join(fDir, "directive2"), evtChan, 0, 1000, 0)
 

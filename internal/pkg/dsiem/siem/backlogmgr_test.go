@@ -28,22 +28,9 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/event"
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
-	"github.com/defenxor/dsiem/internal/pkg/shared/test"
 
 	"github.com/jonhoo/drwmutex"
 )
-
-var testDir string
-
-func setTestDir(t *testing.T) {
-	if testDir == "" {
-		d, err := test.DirEnv(true)
-		if err != nil {
-			t.Fatal(err)
-		}
-		testDir = d
-	}
-}
 
 func TestBacklogMgr(t *testing.T) {
 
@@ -53,15 +40,14 @@ func TestBacklogMgr(t *testing.T) {
 	allBacklogs = []backlogs{}
 	allBacklogsMu.Unlock()
 
-	setTestDir(t)
-	t.Logf("Using base dir %s", testDir)
+	log.Setup(true)
 
 	if !log.TestMode {
 		t.Logf("Enabling log test mode")
 		log.EnableTestingMode()
 	}
 
-	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	fDir := path.Join("testdata", "fixtures")
 	apm.Enable(true)
 
 	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
@@ -304,15 +290,15 @@ func TestBacklogManagerCustomData(t *testing.T) {
 	allBacklogsMu.Lock()
 	allBacklogs = make([]backlogs, 0)
 	allBacklogsMu.Unlock()
-	setTestDir(t)
 
-	t.Logf("Using base dir %s", testDir)
+	log.Setup(true)
+
 	if !log.TestMode {
 		t.Logf("Enabling log test mode")
 		log.EnableTestingMode()
 	}
 
-	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	fDir := path.Join("testdata", "fixtures")
 	apm.Enable(true)
 
 	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")

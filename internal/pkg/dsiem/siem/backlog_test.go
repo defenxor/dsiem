@@ -42,6 +42,7 @@ func initAlarm(t *testing.T) {
 	if alarmInitialized {
 		return
 	}
+
 	viper.Set("medRiskMin", 3)
 	viper.Set("medRiskMax", 6)
 	viper.Set("tags", []string{"Identified Threat", "Valid Threat"})
@@ -59,19 +60,16 @@ func initAsset(t *testing.T) {
 	if assetInitialized {
 		return
 	}
-	err := asset.Init(path.Join(testDir, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
+	err := asset.Init(path.Join("testdata", "fixtures", "asset1"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	assetInitialized = true
 }
+
 func TestBackLog(t *testing.T) {
-
 	fmt.Println("Starting TestBackLog.")
-
-	setTestDir(t)
-	t.Logf("Using base dir %s", testDir)
-
+	log.Setup(true)
 	if !log.TestMode {
 		t.Logf("Enabling log test mode")
 		log.EnableTestingMode()
@@ -82,7 +80,7 @@ func TestBackLog(t *testing.T) {
 	tmpLog := path.Join(os.TempDir(), "siem_alarm_events.log")
 	fWriter.Init(tmpLog, 10)
 
-	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	fDir := path.Join("testdata", "fixtures")
 
 	// use directive that expires fast and has only 3 stages
 	dirs, _, err := LoadDirectivesFromFile(path.Join(fDir, "directive4"), directiveFileGlob, false)
