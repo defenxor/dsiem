@@ -2,7 +2,7 @@ version: 2
 jobs:
   build-cmd:
     docker:
-      - image: circleci/golang:1.16.0
+      - image: circleci/golang:1.19.4
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
@@ -85,7 +85,7 @@ jobs:
             - release_ver
   build-release:
     docker:
-      - image: circleci/golang:1.16.0
+      - image: circleci/golang:1.19.4
     working_directory: /go/src/github.com/defenxor/dsiem
     steps:
       - checkout
