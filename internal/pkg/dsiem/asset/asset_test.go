@@ -29,9 +29,10 @@ func TestInit(t *testing.T) {
 
 	fDir := path.Join("testdata", "fixtures")
 	err := Init(path.Join(fDir, "asset2"))
-	if err == nil {
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	assets = NetworkAssets{}
 	err = Init(path.Join(fDir, "asset3"))
 	if err == nil {
@@ -63,13 +64,21 @@ func TestInit(t *testing.T) {
 func TestAsset(t *testing.T) {
 	log.Setup(true)
 
+	fDir := path.Join("testdata", "fixtures")
+	err := Init(path.Join(fDir, "asset1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	privIP := "192.168.0.1"
 	privNet := "192.168.0.0/16"
 	privNetName := "192-168-Net"
 	pubIP := "8.8.8.200"
+
 	if ok, err := IsInHomeNet(privIP); !ok {
 		t.Error(err)
 	}
+
 	if ok, err := IsInHomeNet(pubIP); ok {
 		t.Error(err)
 	}
