@@ -8,8 +8,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - go-mod-v1-{{ checksum "go.sum" }}
-            - go-path-v1-{{ checksum "go.sum" }}
+            - go-mod-v2-{{ checksum "go.sum" }}
+            - go-path-v2-{{ checksum "go.sum" }}
       - run:
           name: run build
           command: |
@@ -21,11 +21,11 @@ jobs:
             go test -v -cover -race -timeout=60s -coverprofile=./coverage.out $(go list ./...)
             bash <(curl -s https://codecov.io/bash)
       - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}
+          key: go-mod-v2-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
       - save_cache:
-          key: go-path-v1-{{ checksum "go.sum" }}
+          key: go-path-v2-{{ checksum "go.sum" }}
           paths:
             - "/go/src"
   build-web:
@@ -92,8 +92,8 @@ jobs:
       - add_ssh_keys
       - restore_cache:
           keys:
-            - go-mod-v1-{{ checksum "go.sum" }}
-            - go-path-v1-{{ checksum "go.sum" }}
+            - go-mod-v2-{{ checksum "go.sum" }}
+            - go-path-v2-{{ checksum "go.sum" }}
       - attach_workspace:
           at: .
       - run:
@@ -107,11 +107,11 @@ jobs:
               mkdir -p temp
             fi
       - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}
+          key: go-mod-v2-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
       - save_cache:
-          key: go-path-v1-{{ checksum "go.sum" }}
+          key: go-path-v2-{{ checksum "go.sum" }}
           paths:
             - "/go/src"
       - persist_to_workspace:
