@@ -3,7 +3,7 @@ jobs:
   build-cmd:
     docker:
       - image: cimg/go:1.19.4
-    working_directory: dsiem
+    working_directory: ./dsiem
     steps:
       - checkout
       - restore_cache:
@@ -86,7 +86,7 @@ jobs:
   build-release:
     docker:
       - image: cimg/go:1.19.4
-    working_directory: dsiem
+    working_directory: ./dsiem
     steps:
       - checkout
       - add_ssh_keys
