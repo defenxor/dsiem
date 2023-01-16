@@ -2,11 +2,8 @@ version: 2
 jobs:
   build-cmd:
     docker:
-      - image: circleci/golang:1.16.0
-        environment:
-          GO111MODULE: "on"
-          GOFLAGS: "-mod=vendor"
-    working_directory: /go/src/github.com/defenxor/dsiem
+      - image: cimg/go:1.19.4
+    working_directory: /home/circleci/project/dsiem
     steps:
       - checkout
       - restore_cache:
@@ -88,11 +85,8 @@ jobs:
             - release_ver
   build-release:
     docker:
-      - image: circleci/golang:1.16.0
-        environment:
-          GO111MODULE: "on"
-          GOFLAGS: "-mod=vendor"
-    working_directory: /go/src/github.com/defenxor/dsiem
+      - image: cimg/go:1.19.4
+    working_directory: /home/circleci/project/dsiem
     steps:
       - checkout
       - add_ssh_keys

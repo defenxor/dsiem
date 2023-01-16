@@ -5,6 +5,7 @@ github.com/allegro/bigcache/queue
 # github.com/andybalholm/brotli v1.0.4
 github.com/andybalholm/brotli
 # github.com/armon/go-radix v1.0.0
+## explicit
 github.com/armon/go-radix
 # github.com/buaazp/fasthttprouter v0.1.1
 ## explicit
@@ -13,6 +14,7 @@ github.com/buaazp/fasthttprouter
 ## explicit
 github.com/dogenzaka/tsv
 # github.com/elastic/go-sysinfo v1.1.1
+## explicit; go 1.13
 github.com/elastic/go-sysinfo
 github.com/elastic/go-sysinfo/internal/registry
 github.com/elastic/go-sysinfo/providers/darwin
@@ -30,11 +32,13 @@ github.com/enriquebris/goconcurrentqueue
 ## explicit
 github.com/fasthttp-contrib/websocket
 # github.com/fsnotify/fsnotify v1.4.7
+## explicit
 github.com/fsnotify/fsnotify
 # github.com/gocarina/gocsv/v2 v2.0.0-20181026075406-cde31a6ec2a8
 ## explicit
 github.com/gocarina/gocsv/v2
 # github.com/hashicorp/hcl v1.0.0
+## explicit
 github.com/hashicorp/hcl
 github.com/hashicorp/hcl/hcl/ast
 github.com/hashicorp/hcl/hcl/parser
@@ -46,19 +50,22 @@ github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/inconshreveable/mousetrap v1.0.0
+## explicit
 github.com/inconshreveable/mousetrap
 # github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901
+## explicit
 github.com/joeshaw/multierror
 # github.com/jonhoo/drwmutex v0.0.0-20190519183033-0cffe0733098
 ## explicit
 github.com/jonhoo/drwmutex
 # github.com/julienschmidt/httprouter v1.3.0
-## explicit
+## explicit; go 1.7
 github.com/julienschmidt/httprouter
 # github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 ## explicit
 github.com/kardianos/osext
-# github.com/klauspost/compress v1.15.0
+# github.com/klauspost/compress v1.14.4
+## explicit; go 1.15
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/gzip
 github.com/klauspost/compress/s2
@@ -67,19 +74,22 @@ github.com/klauspost/compress/zlib
 ## explicit
 github.com/magiconair/properties
 # github.com/mailru/easyjson v0.7.0
-## explicit
+## explicit; go 1.12
 github.com/mailru/easyjson
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
 # github.com/minio/highwayhash v1.0.2
+## explicit; go 1.15
 github.com/minio/highwayhash
 # github.com/mitchellh/mapstructure v1.1.2
+## explicit
 github.com/mitchellh/mapstructure
 # github.com/nats-io/jwt/v2 v2.2.1-0.20220113022732-58e87895b296
+## explicit; go 1.16
 github.com/nats-io/jwt/v2
 # github.com/nats-io/nats-server/v2 v2.7.4
-## explicit
+## explicit; go 1.17
 github.com/nats-io/nats-server/v2/conf
 github.com/nats-io/nats-server/v2/internal/ldap
 github.com/nats-io/nats-server/v2/logger
@@ -87,13 +97,15 @@ github.com/nats-io/nats-server/v2/server
 github.com/nats-io/nats-server/v2/server/pse
 github.com/nats-io/nats-server/v2/server/sysmem
 # github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
-## explicit
+## explicit; go 1.16
 github.com/nats-io/nats.go
 github.com/nats-io/nats.go/encoders/builtin
 github.com/nats-io/nats.go/util
 # github.com/nats-io/nkeys v0.3.0
+## explicit; go 1.16
 github.com/nats-io/nkeys
 # github.com/nats-io/nuid v1.0.1
+## explicit
 github.com/nats-io/nuid
 # github.com/olivere/elastic v6.2.25+incompatible
 ## explicit
@@ -101,7 +113,7 @@ github.com/olivere/elastic
 github.com/olivere/elastic/config
 github.com/olivere/elastic/uritemplates
 # github.com/olivere/elastic/v7 v7.0.8
-## explicit
+## explicit; go 1.12
 github.com/olivere/elastic/v7
 github.com/olivere/elastic/v7/config
 github.com/olivere/elastic/v7/uritemplates
@@ -109,9 +121,10 @@ github.com/olivere/elastic/v7/uritemplates
 ## explicit
 github.com/paulbellamy/ratecounter
 # github.com/pelletier/go-toml v1.5.0
-## explicit
+## explicit; go 1.12
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.8.1
+## explicit
 github.com/pkg/errors
 # github.com/pkg/profile v1.3.0
 ## explicit
@@ -125,6 +138,7 @@ github.com/prometheus/procfs/internal/util
 ## explicit
 github.com/remeh/sizedwaitgroup
 # github.com/santhosh-tekuri/jsonschema v1.2.4
+## explicit
 github.com/santhosh-tekuri/jsonschema
 github.com/santhosh-tekuri/jsonschema/decoders
 github.com/santhosh-tekuri/jsonschema/formats
@@ -141,15 +155,16 @@ github.com/sebdah/goldie
 github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.0
+## explicit
 github.com/spf13/cast
 # github.com/spf13/cobra v0.0.5
-## explicit
+## explicit; go 1.12
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
 ## explicit
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.5
-## explicit
+## explicit; go 1.12
 github.com/spf13/pflag
 # github.com/spf13/viper v1.4.0
 ## explicit
@@ -158,6 +173,7 @@ github.com/spf13/viper
 ## explicit
 github.com/teris-io/shortid
 # github.com/valyala/bytebufferpool v1.0.0
+## explicit
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.34.0
 ## explicit
@@ -178,7 +194,7 @@ github.com/valyala/tsvreader
 github.com/yl2chen/cidranger
 github.com/yl2chen/cidranger/net
 # go.elastic.co/apm v1.11.0
-## explicit
+## explicit; go 1.13
 go.elastic.co/apm
 go.elastic.co/apm/apmconfig
 go.elastic.co/apm/internal/apmcloudutil
@@ -198,11 +214,13 @@ go.elastic.co/apm/model
 go.elastic.co/apm/stacktrace
 go.elastic.co/apm/transport
 # go.elastic.co/apm/module/apmhttp v1.11.0
-## explicit
+## explicit; go 1.13
 go.elastic.co/apm/module/apmhttp
 # go.elastic.co/fastjson v1.1.0
+## explicit; go 1.14
 go.elastic.co/fastjson
 # go.uber.org/atomic v1.4.0
+## explicit
 go.uber.org/atomic
 # go.uber.org/multierr v1.2.0
 ## explicit
@@ -245,7 +263,9 @@ gopkg.in/olivere/elastic.v5
 gopkg.in/olivere/elastic.v5/config
 gopkg.in/olivere/elastic.v5/uritemplates
 # gopkg.in/yaml.v2 v2.2.4
+## explicit
 gopkg.in/yaml.v2
 # howett.net/plist v0.0.0-20181124034731-591f970eefbb
+## explicit
 howett.net/plist
 # git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
