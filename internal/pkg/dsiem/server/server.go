@@ -22,6 +22,7 @@ import (
 	"net"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -184,15 +185,31 @@ func Start(cfg Config) (err error) {
 		// but its ok to quit ASAP in that case
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error(log.M{Msg: "Unable to listen and serve, perhaps the port is already-in-use?"})
+				log.Error(log.M{Msg: fmt.Sprintf("Unable to listen and serve, perhaps the port is already-in-use?, %s", r)})
 				proc.StopProcess(proc.GetProcID())
 			}
 		}()
 		if runtime.GOOS == "windows" {
-			_ = fServer.ListenAndServe(cfg.Addr + ":" + p)
+			if err := fServer.ListenAndServe(cfg.Addr + ":" + p); err != nil {
+				log.Error(log.M{Msg: fmt.Sprintf("serve error, %s", err)})
+				return
+			}
+
 		} else {
-			ln, _ := reuseport.Listen("tcp4", cfg.Addr+":"+p)
-			_ = fServer.Serve(ln)
+			ln, err := reuseport.Listen("tcp4", cfg.Addr+":"+p)
+			if err != nil {
+				log.Error(log.M{Msg: fmt.Sprintf("unable to reuse port %s, %s", cfg.Addr+":"+p, err)})
+				if isAlreadyInUseError(err) {
+					proc.StopProcess(proc.GetProcID())
+				}
+
+				return
+			}
+
+			if err := fServer.Serve(ln); err != nil {
+				log.Error(log.M{Msg: fmt.Sprintf("serve error, %s", err)})
+				return
+			}
 		}
 		// for some reason, using err.Error() here causes fasthttp.server Shutdown in Stop() to exit
 		// during test
@@ -346,4 +363,9 @@ func initWSServer() {
 			time.Sleep(250 * time.Millisecond)
 		}
 	}()
+}
+
+// FIXME: this is an inefficient way to check wether the error is address-alread-in-use error.
+func isAlreadyInUseError(err error) bool {
+	return strings.Contains(err.Error(), "address already in use")
 }
