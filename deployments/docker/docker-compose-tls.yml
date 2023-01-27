@@ -1,8 +1,12 @@
+# this covers only the initial ES setup
+# refer to https://www.elastic.co/guide/en/elasticsearch/reference/7.11/configuring-security.html
+# for setting up the rest
+
 version: '3'
 services:
   elasticsearch:
     container_name: elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
     environment:
       - discovery.type=single-node
       - 'ES_JAVA_OPTS=-Xms256m -Xmx256m'
@@ -32,7 +36,7 @@ services:
 
   logstash:
     container_name: logstash
-    image: defenxor/docker-logstash:7.4.0
+    image: defenxor/docker-logstash:7.11.0
     command:
       - -f/etc/logstash/conf.d
     environment:
@@ -45,7 +49,7 @@ services:
 
   kibana:
     container_name: kibana
-    image: docker.elastic.co/kibana/kibana:7.4.0
+    image: docker.elastic.co/kibana/kibana:7.11.0
     environment:
       - XPACK_MONITORING_ENABLED=false
     ports:
@@ -68,7 +72,7 @@ services:
 
   filebeat:
     container_name: filebeat
-    image: docker.elastic.co/beats/filebeat:7.4.0
+    image: docker.elastic.co/beats/filebeat:7.11.0
     user: root
     networks:
       - siemnet
@@ -80,7 +84,7 @@ services:
 
   filebeat-es:
     container_name: filebeat-es
-    image: docker.elastic.co/beats/filebeat:7.4.0
+    image: docker.elastic.co/beats/filebeat:7.11.0
     user: root
     networks:
       - siemnet
@@ -104,7 +108,7 @@ services:
       [
         '/bin/bash',
         '-c',
-        'chown -R suri /var/log/suricata && /usr/bin/suricata -v -i ${PROMISC_INTERFACE}',
+        'chown -R suri /var/log/suricata && /usr/bin/suricata -v -i ${PROMISC_INTERFACE}'
       ]
     volumes:
       - suricata-log:/var/log/suricata
