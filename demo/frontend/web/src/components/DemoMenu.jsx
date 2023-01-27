@@ -66,7 +66,6 @@ export const DemoMenu = () => {
 
   const openUrl = useCallback(
     (url, forceTab) => {
-      console.log('rerendering?')
       if (useTab || forceTab) {
         window.open(url, '_blank')
       } else {
