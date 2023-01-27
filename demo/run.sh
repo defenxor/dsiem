@@ -1,37 +1,43 @@
 #!/bin/bash
 
-scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+scriptdir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cd $scriptdir
 
 clear
-title () {
+title() {
   echo -e -n "\e[96m$@\e[0m"
 }
 
 for c in docker docker-compose curl sudo rm sleep grep awk dirname ip; do
- command -v $c >/dev/null || { echo -e "\ncannot find a required command: $c"; exit 1; }
+  command -v $c >/dev/null || {
+    echo -e "\ncannot find a required command: $c"
+    exit 1
+  }
 done
 
 OP=$1
 
 function end_demo() {
-  cd $scriptdir/docker && \
-  DEMO_HOST=$DEMO_HOST PROMISC_INTERFACE=$PROMISC_INTERFACE docker-compose down -v
+  cd $scriptdir/docker &&
+    DEMO_HOST=$DEMO_HOST PROMISC_INTERFACE=$PROMISC_INTERFACE docker-compose down -v
   exit $?
 }
 
 [ "$OP" == "down" ] && end_demo
-[ "$OP" == "pull" ] && { cd docker && docker-compose pull; exit $?; }
+[ "$OP" == "pull" ] && {
+  cd docker && docker-compose pull
+  exit $?
+}
 
 title "** DSIEM DEMO **\n\n"
 
 DEMO_HOST=${DEMO_HOST:-$2}
 iface=${iface:-$3}
 
-function list_include_item () {
+function list_include_item() {
   local list="$1"
   local item="$2"
-  if [[ $list =~ (^|[[:space:]])"$item"($|[[:space:]]) ]] ; then
+  if [[ $list =~ (^|[[:space:]])"$item"($|[[:space:]]) ]]; then
     # yes, list include item
     result=0
   else
@@ -63,15 +69,18 @@ allow the above to happen.
 Press any key to confirm the above and continue, or CTRL-C to abort.
 **"
   read -p ""
-else 
- ifaceIP=$(ip a | grep $iface | grep inet | awk '{ print $2}' | cut -d'/' -f1)
+else
+  ifaceIP=$(ip a | grep $iface | grep inet | awk '{ print $2}' | cut -d'/' -f1)
 fi
 
 trap end_demo INT
 
 title "** making sure beat config files are owned by root .. "
-sudo chown root $(find ./docker/conf/filebeat ./docker/conf/filebeat-es/ ./docker/conf/auditbeat/ -name "*.yml") || \
-  { echo cannot set filebeat config owner to root; exit 1; }
+sudo chown root $(find ./docker/conf/filebeat ./docker/conf/filebeat-es/ ./docker/conf/auditbeat/ -name "*.yml") ||
+  {
+    echo cannot set filebeat config owner to root
+    exit 1
+  }
 echo done
 
 cd docker && DEMO_HOST=$DEMO_HOST docker-compose up -d || exit $?
@@ -80,9 +89,12 @@ cd ..
 # first find target internal IP
 title "** finding target IP address .. "
 while [ "$targetIP" == "" ]; do
-targetIP=$(docker exec -it logstash ping -c1 shellshock | grep "PING shellshock" | cut -d' ' -f3 | sed 's/(//;s/)//;') || \
-  { echo cannot determine target IP address; end_demo; }
-sleep 3
+  targetIP=$(docker exec -it logstash ping -c1 shellshock | grep "PING shellshock" | cut -d' ' -f3 | sed 's/(//;s/)//;') ||
+    {
+      echo cannot determine target IP address
+      end_demo
+    }
+  sleep 3
 done
 echo done
 
@@ -99,7 +111,7 @@ echo done
 
 # wise readiness
 title "** verifying $ifaceIP in Wise .. "
-while ! (curl -fsS localhost:8083/ip/$ifaceIP 2>&1| grep -q 'testing only'); do
+while ! (curl -fsS localhost:8083/ip/$ifaceIP 2>&1 | grep -q 'testing only'); do
   sleep 1
 done
 echo done
@@ -107,7 +119,7 @@ echo done
 # nesd readiness
 title "** verifying $targetIP:80 in Nesd .. "
 ./scripts/nesd-upsert-csv.sh $targetIP 80 ./docker/conf/nesd/csv/nessus_shellshock.csv
-while ! (curl -fsS 'localhost:8082/?ip='$targetIP'&port=80' 2>&1| grep -q 'CVE-2014-6271'); do
+while ! (curl -fsS 'localhost:8082/?ip='$targetIP'&port=80' 2>&1 | grep -q 'CVE-2014-6271'); do
   sleep 1
 done
 echo done
@@ -115,7 +127,7 @@ echo done
 # elasticsearch readiness
 title "** ensuring elasticsearch is ready .. "
 while ! curl -fsS localhost:9200 >/dev/null 2>&1; do
- sleep 1
+  sleep 1
 done
 echo done
 
@@ -125,17 +137,29 @@ echo done
 
 # prep suricata
 title "** setting up suricata interface .. "
-targetif=$(docker exec -it shellshock ip a | grep 'eth0@' | cut -d: -f1) || { echo "cannot get shellshock container interface!"; end_demo;}
-surif=$(docker exec -it suricata ip a | grep if${targetif} | cut -d: -f2 | cut -d'@' -f1) || { echo "cannot get suricata interface!"; end_demo; }
-docker exec suricata bash -c "echo $surif > /tmp/iface" || { echo "cannot set suricata interface"; end_demo; }
+targetif=$(docker exec -it shellshock ip a | grep 'eth0@' | cut -d: -f1) || {
+  echo "cannot get shellshock container interface!"
+  end_demo
+}
+surif=$(docker exec -it suricata ip a | grep if${targetif} | cut -d: -f2 | cut -d'@' -f1) || {
+  echo "cannot get suricata interface!"
+  end_demo
+}
+docker exec suricata bash -c "echo $surif > /tmp/iface" || {
+  echo "cannot set suricata interface"
+  end_demo
+}
 sleep 3
-docker exec suricata ps axuw | grep -q suricata || { echo "cannot find suricata process inside its container!"; end_demo; }
+docker exec suricata ps axuw | grep -q suricata || {
+  echo "cannot find suricata process inside its container!"
+  end_demo
+}
 echo done
 
 # target readiness
 title "** making sure target is ready .. "
 while ! $(curl -fsS localhost:8081/cgi-bin/vulnerable 2>/dev/null | grep -q average); do
-  docker restart shellshock >/dev/null >&1 
+  docker restart shellshock >/dev/null >&1
   sleep 3
 done
 echo done
@@ -165,28 +189,40 @@ echo done
 
 # ossec-syslog core dumped if the destination address uses hostname, likely chroot problem
 
-logstashIP=$(docker exec ossec ping -c1 logstash | grep "PING logstash" | cut -d' ' -f3 | sed 's/(//;s/)//;') || \
-  { echo cannot obtain logstash IP address; end_demo; }
+logstashIP=$(docker exec ossec ping -c1 logstash | grep "PING logstash" | cut -d' ' -f3 | sed 's/(//;s/)//;') ||
+  {
+    echo cannot obtain logstash IP address
+    end_demo
+  }
 title "** setting ossec syslog destination to logstash IP ($logstashIP) .. "
-docker exec ossec /usr/bin/sed -i s/logstash/$logstashIP/g /var/ossec/etc/ossec.conf || \
-  { echo cannot replace ossec syslog destination; exit 1; }
-docker exec ossec /var/ossec/bin/ossec-control restart >/dev/null 2>&1 || \
-  { echo cannot restart ossec; exit 1; }
+docker exec ossec /usr/bin/sed -i s/logstash/$logstashIP/g /var/ossec/etc/ossec.conf ||
+  {
+    echo cannot replace ossec syslog destination
+    exit 1
+  }
+docker exec ossec /var/ossec/bin/ossec-control restart >/dev/null 2>&1 ||
+  {
+    echo cannot restart ossec
+    exit 1
+  }
 sleep 3
-docker exec ossec bash -c "ps axuw | grep -v grep | grep -q syslog" || \
-  { echo cannot find ossec syslog process; exit 1; }
+docker exec ossec bash -c "ps axuw | grep -v grep | grep -q syslog" ||
+  {
+    echo cannot find ossec syslog process
+    exit 1
+  }
 echo done
 
 title "** ossec initialization .. "
-while ! docker logs ossec 2>&1| grep -q 'ossec-syscheckd: INFO: Ending syscheck scan (forwarding database).'; do
+while ! docker logs ossec 2>&1 | grep -q 'ossec-syscheckd: INFO: Ending syscheck scan (forwarding database).'; do
   sleep 1
 done
 echo done
 
 title "** ossec integrity check logging .. "
 while ! docker exec ossec grep -q md5 /var/ossec/logs/alerts/alerts.log; do
- docker exec ossec bash -c 'echo $RANDOM >> /var/www/html/test.html'
- sleep 1
+  docker exec ossec bash -c 'echo $RANDOM >> /var/www/html/test.html'
+  sleep 1
 done
 echo done
 
@@ -211,8 +247,8 @@ done
 echo done
 
 title "** installing kibana dashboards .. "
-cp -r ./kibana /tmp/ && \
-sed -i "s/localhost/$DEMO_HOST/g" /tmp/kibana/dashboard-siem.json
+cp -r ./kibana /tmp/ &&
+  sed -i "s/localhost/$DEMO_HOST/g" /tmp/kibana/dashboard-siem.json
 while (./scripts/kbndashboard-import.sh localhost /tmp/kibana/dashboard-siem.json | grep -q "failed"); do
   sleep 1
 done
@@ -228,9 +264,13 @@ echo done
 title "** removing test entries .. "
 idxname=$(curl -fsS "localhost:9200/_cat/indices?v&pretty" | grep siem_events | awk '{ print $3}')
 curl -fsS -X POST "localhost:9200/$idxname/_delete_by_query?pretty" -H 'Content-type:application/json' -d'
-{ "query": { "match": { "plugin_id": 50001 } } }' >/dev/null 2>&1 && \
-curl -fsS -X DELETE "localhost:9200/auditbeat-*/" >/dev/null 2>&1 && \
-echo done 
+{ "query": { "match": { "plugin_id": 50001 } } }' >/dev/null 2>&1 &&
+  curl -fsS -X DELETE "localhost:9200/auditbeat-*/" >/dev/null 2>&1 &&
+  echo done
+
+title "** ensuring dsiem-demo-frontend readiness  .. "
+docker start dsiem-demo-frontend >/dev/null 2>&1 &&
+  echo done
 
 echo "
 Demo is ready, access the web interface from http://${DEMO_HOST}:8000/
