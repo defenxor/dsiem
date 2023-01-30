@@ -25,10 +25,12 @@ var privateIPBlocks []*net.IPNet
 
 func init() {
 	for _, cidr := range []string{
-		"127.0.0.0/8",    // IPv4 loopback
 		"10.0.0.0/8",     // RFC1918
 		"172.16.0.0/12",  // RFC1918
 		"192.168.0.0/16", // RFC1918
+		"fc00::/7",       // RFC4193
+		"127.0.0.0/8",    // IPv4 loopback
+		"169.254.0.0/16", // IPv4 link-local
 		"::1/128",        // IPv6 loopback
 		"fe80::/10",      // IPv6 link-local
 	} {
@@ -41,7 +43,7 @@ func init() {
 func IsPrivateIP(ip string) (bool, error) {
 	ipn := net.ParseIP(ip)
 	if ipn == nil {
-		return false, errors.New("Not a valid IP")
+		return false, errors.New("not a valid IP")
 	}
 	for _, block := range privateIPBlocks {
 		if block.Contains(ipn) {
