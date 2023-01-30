@@ -99,7 +99,7 @@ func TestAsset(t *testing.T) {
 		t.Errorf("expected %v, obtained %v", expected, net)
 	}
 
-	privIP2 := "2002:c0a8:0001:0:0:0:0:0"
+	privIP2 := "2002:c0a8:0001:0:0:0:0:1"
 	privNet2 := "2002:c0a8:1::/64"
 	privNetName2 := "2002:c0a8:1::/64-Net"
 	if ok, err := IsInHomeNet(privIP2); !ok {
