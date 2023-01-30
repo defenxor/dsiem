@@ -131,7 +131,7 @@ func Init(confDir string) error {
 	}
 
 	// total := len(assets.NetworkAssets)
-	_, allIPs, _ := net.ParseCIDR("0.0.0.0/0")
+	_, allIPs, _ := net.ParseCIDR("::/0")
 	r, _ := ranger.CoveredNetworks(*allIPs)
 	ttlAssets := len(r)
 	r, _ = whitelist.CoveredNetworks(*allIPs)
@@ -162,11 +162,11 @@ func GetName(ip string) string {
 	if err != nil || len(containingNetworks) == 0 {
 		return val
 	}
-	// return the one with /32
+	// return the one with /32 or /128
 	for i := range containingNetworks {
 		r := containingNetworks[i].(*assetEntry)
 		m := r.ipNet.Mask.String()
-		if m == "ffffffff" {
+		if m == "ffffffff" || m == "ffffffffffffffffffffffffffffffff" {
 			val = r.name
 			break
 		}
@@ -204,7 +204,7 @@ func GetAssetNetworks(ip string) []string {
 	for i := range containingNetworks {
 		r := containingNetworks[i].(*assetEntry)
 		m := r.ipNet.Mask.String()
-		if m != "ffffffff" {
+		if m != "ffffffff" && m != "ffffffffffffffffffffffffffffffff" {
 			s := r.ipNet.String()
 			val = str.AppendUniq(val, s)
 		}
