@@ -77,7 +77,7 @@ func TestAsset(t *testing.T) {
 		t.Error(err)
 	}
 	if GetName(privNet) == privNetName {
-		t.Errorf("Cannot find name for %s", privIP)
+		t.Errorf("Cannot find name for %s", privNet)
 	}
 	if GetName(privIP) != "firewall" {
 		t.Errorf("Cannot find name for %s", privIP)
@@ -98,4 +98,26 @@ func TestAsset(t *testing.T) {
 	if !reflect.DeepEqual(net, expected) {
 		t.Errorf("expected %v, obtained %v", expected, net)
 	}
+
+	privIP2 := "2002:c0a8:0001:0:0:0:0:1"
+	privNet2 := "2002:c0a8:1::/64"
+	privNetName2 := "2002:c0a8:1::/64-Net"
+	if ok, err := IsInHomeNet(privIP2); !ok {
+		t.Error(err)
+	}
+	if GetName(privNet2) == privNetName2 {
+		t.Errorf("Cannot find name for %s", privNet2)
+	}
+	if GetName(privIP2) != "firewall-ipv6" {
+		t.Errorf("Cannot find name for %s", privIP2)
+	}
+	if GetValue(privIP2) != 5 {
+		t.Errorf("Cannot get correct asset value for %s", privIP2)
+	}
+	net2 := GetAssetNetworks(privIP2)
+	expected2 := []string{"2002:c0a8:1::/64"}
+	if !reflect.DeepEqual(net2, expected2) {
+		t.Errorf("expected %v, obtained %v", expected2, net2)
+	}
+
 }

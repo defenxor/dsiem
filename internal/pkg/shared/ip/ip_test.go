@@ -33,6 +33,8 @@ func TestIP(t *testing.T) {
 		{"172.16.0.1", true, false},
 		{"8.8.8.8", false, false},
 		{"not-an-ip", false, true},
+		{"fd12:3456:789a:1::1", true, false},
+		{"fb00:3456:789a:1::1", false, false},
 	}
 
 	for _, tt := range tbl {
