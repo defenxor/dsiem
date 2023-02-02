@@ -384,23 +384,9 @@ func isNetAddrMatchCSVRule(rulesInCSV, term string) bool {
 	return match
 }
 
-// matchText match the given term against the subject, if the subject is a comma-separated-values,
-// split it into slice of strings, match its value one by one, and returns if one of the value matches.
-// otherwose, matchText will do non case-sensitve match for the subject and term.
+// matchText will do non case-sensitve match for the subject and term.
 func matchText(subject, term string) bool {
-
-	if isCSV(subject) {
-		return isStringMatchCSVRule(subject, term)
-	}
-
 	return matchTextNonSensitive(subject, term)
-}
-
-// isCSV determines wether the given term is a comma separated list of strings or not.
-// FIXME: this is currently implemented by checking if the term contains comma character ",", which
-// can cause misbehave if the term is actually a non-csv long string that contains comma character.
-func isCSV(term string) bool {
-	return strings.Contains(term, ",")
 }
 
 func matchTextNonSensitive(term1, term2 string) bool {
