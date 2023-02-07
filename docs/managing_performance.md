@@ -34,7 +34,7 @@ You can treat directives differently by using a separate set of nodes (both fron
 
 Dsiem offers two such strategies to select from:
 
-1. Use a fixed length queue and discard new events when that queue is full.
+1. Use a fixed length queue and discard new events when that queue is full
 
    The advantages of this strategy are:
    - Events that *do* get processed will have a recent timestamp.
@@ -42,6 +42,8 @@ Dsiem offers two such strategies to select from:
    - NATS, Logstash, and frontend nodes do not have to adapt to backend nodes condition.
 
    The obvious (and rather severe) disadvantage of this is Dsiem will skip processing events from time to time.
+
+   > Use this strategy by setting `maxQueue` to a number higher than 0, and `maxDelay` to 0. The fixed queue length then will be set to `maxQueue`, and `maxDelay` = 0 will prevent frontend from throttling incoming events.
 
 1. Use an unbounded queue and auto-adjust frontend ingestion rate (events/sec) to apply back-pressure to Logstash
 
@@ -53,6 +55,11 @@ Dsiem offers two such strategies to select from:
    - There could be processing delays from time to time.
    - The processing delays may never go away if the log sources never reduce their output rate.
    - Sustained reduction of delivery rate from Logstash to frontends will cause Logstash to overflow its queue capacity, and depending on how it's configured, Logstash may end up stop receiving incoming events from its input. Using Logstash persistent queue backed by a large amount of storage space will not help either — in fact that may only worsen the processing delay issue.
+
+
+   > Use this strategy by setting `maxQueue` to 0, and `maxDelay` to a number higher than 0. The queue length will then be unbounded, and `maxDelay` (seconds) will be used by backend to detect processing delay and report this condition to frontend, which will then apply back-pressure to Logstash.
+
+   >  **Note**: _Processing delay_ occurs when the duration between the time that _an event was received by frontend_ to the time when _that event is processed by a directive_, is greater than `maxDelay`.
 
 Now, for instance suppose that in a limited resource environment, you have 100 critical directives and 1000 lower priority directives both evaluating the same sources of logs. You want the critical directives to be applied to all events at all times, and to have a maximum processing delays of 5 minutes. In exchange for that, you're willing to let the lower priority directives occasionally skip events, as long as the alarms that they do manage to produce are based on recent enough events, which will make them at least relevant and still actionable.
 
