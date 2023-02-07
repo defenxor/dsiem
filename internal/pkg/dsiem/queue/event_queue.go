@@ -59,9 +59,8 @@ type bufEvent struct {
 }
 
 type bufChan struct {
-	dirID         int
-	ch            chan bufEvent
-	timeoutStatus int
+	dirID int
+	ch    chan bufEvent
 	sync.RWMutex
 }
 
@@ -147,6 +146,7 @@ func (eq *EventQueue) Dequeue() {
 		}
 		bEvt.evt = res
 		sTime := time.Now()
+		// set maxwait to zero unbounded queue, or if capacity is > 50% for bounded queue
 		if eq.qMode == unbound || eq.q.GetLen() > eq.limitCap {
 			bEvt.maxWait = 0
 		} else {
