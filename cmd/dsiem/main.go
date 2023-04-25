@@ -65,8 +65,8 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug messages for tracing and troubleshooting")
 	serverCmd.Flags().StringP("address", "a", "0.0.0.0", "IP address for the HTTP server to listen on")
 	serverCmd.Flags().IntP("port", "p", 8080, "TCP port for the HTTP server to listen on")
-	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling incoming events")
-	serverCmd.Flags().IntP("maxQueue", "q", 25000, "Length of queue for directive evaluation process, 0 means unlimited and will deactivate maxDelay")
+	serverCmd.Flags().IntP("maxDelay", "d", 180, "Max. processing delay in seconds before throttling incoming events (under-pressure condition), 0 means disabled")
+	serverCmd.Flags().IntP("maxQueue", "q", 25000, "Length of queue for directive evaluation process, 0 means unlimited/unbounded")
 	serverCmd.Flags().IntP("maxEPS", "e", 1000, "Max. number of incoming events/second")
 	serverCmd.Flags().IntP("minEPS", "i", 100, "Min. events/second rate allowed when throttling incoming events")
 	serverCmd.Flags().IntP("minAlarmLifetime", "l", 0,
