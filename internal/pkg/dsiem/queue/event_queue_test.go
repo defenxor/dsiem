@@ -122,7 +122,7 @@ func TestQueue(t *testing.T) {
 			}
 		}
 		if ttl != actual {
-			//t.Fatalf("Expected # of timeout to be %d, actual is %d", ttl, actual)
+			t.Fatalf("Expected # of timeout to be %d, actual is %d", ttl, actual)
 		}
 		eq.reporter.Unlock()
 

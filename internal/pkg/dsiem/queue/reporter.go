@@ -27,7 +27,6 @@ import (
 // Reporter represent reporter object
 type Reporter struct {
 	statusChan         []chan int
-	queueLength        int
 	dequeueDuration    time.Duration
 	nDeadlock          int
 	nZero              int

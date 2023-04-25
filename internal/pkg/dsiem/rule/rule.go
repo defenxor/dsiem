@@ -242,7 +242,7 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	}
 	// covers  r.From == "IP", r.From == "IP1, IP2, !IP3", r.From == CIDR-netaddr, r.From == "CIDR1, CIDR2, !CIDR3"
 	if r.From != "HOME_NET" && r.From != "!HOME_NET" && r.From != "ANY" &&
-		!isNetAddrMatchCSVRule(r.From, e.SrcIP) && !isNetAddrMatchCSVRule(r.From, e.SrcIP) {
+		!isNetAddrMatchCSVRule(r.From, e.SrcIP) {
 		return
 	}
 	eDstInHomeNet := e.DstIPInHomeNet()
@@ -254,7 +254,7 @@ func ipPortCheck(e event.NormalizedEvent, r DirectiveRule, s *StickyDiffData, co
 	}
 	// covers  r.To == "IP", r.To == "IP1, IP2, !IP3", r.To == CIDR-netaddr, r.To == "CIDR1, CIDR2, !CIDR3"
 	if r.To != "HOME_NET" && r.To != "!HOME_NET" && r.To != "ANY" &&
-		!isNetAddrMatchCSVRule(r.To, e.DstIP) && !isNetAddrMatchCSVRule(r.To, e.DstIP) {
+		!isNetAddrMatchCSVRule(r.To, e.DstIP) {
 		return
 	}
 	if r.PortFrom != "ANY" && !isStringMatchCSVRule(r.PortFrom, strconv.Itoa(e.SrcPort)) {
@@ -324,7 +324,7 @@ func isIntStickyDiff(v int, r *StickyDiffData) (match bool) {
 }
 
 func isNetAddrMatchCSVRule(rulesInCSV, term string) bool {
-	// s is something like stringA, stringB, !stringC, !stringD
+	// rulesInCSV is something like stringA, stringB, !stringC, !stringD
 	sSlice := str.CsvToSlice(rulesInCSV)
 
 	var ipB net.IP
@@ -386,7 +386,7 @@ func isNetAddrMatchCSVRule(rulesInCSV, term string) bool {
 
 // matchText match the given term against the subject, if the subject is a comma-separated-values,
 // split it into slice of strings, match its value one by one, and returns if one of the value matches.
-// otherwose, matchText will do non case-sensitve match for the subject and term.
+// otherwise, matchText will do non case-sensitve match for the subject and term.
 func matchText(subject, term string) bool {
 
 	if isCSV(subject) {
