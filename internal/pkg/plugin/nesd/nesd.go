@@ -19,7 +19,7 @@ package nesd
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,7 +67,7 @@ func (n Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool,
 		return
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return
 	}

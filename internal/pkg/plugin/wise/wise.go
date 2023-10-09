@@ -19,7 +19,7 @@ package wise
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -64,7 +64,7 @@ func (w Wise) CheckIP(ctx context.Context, ip string) (found bool, results []int
 		return
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return
 	}

@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"testing"
@@ -92,7 +92,7 @@ func TestNesd(t *testing.T) {
 	}
 	defer file.Close()
 
-	byteValue, _ := ioutil.ReadAll(file)
+	byteValue, _ := io.ReadAll(file)
 	err = json.Unmarshal(byteValue, &vs)
 	if err != nil {
 		t.Fatal(err)

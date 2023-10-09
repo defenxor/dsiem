@@ -24,7 +24,7 @@ import (
 
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"path"
@@ -94,7 +94,7 @@ func Init(confDir string) error {
 		}
 		defer file.Close()
 
-		byteValue, _ := ioutil.ReadAll(file)
+		byteValue, _ := io.ReadAll(file)
 		err = json.Unmarshal(byteValue, &a)
 		if err != nil {
 			log.Info(log.M{Msg: "Cannot unmarshal asset!"})

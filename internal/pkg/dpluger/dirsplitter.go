@@ -2,8 +2,8 @@ package dpluger
 
 import (
 	"encoding/json"
+	"io"
 	"os"
-	"io/ioutil"
 	"math"
 	"strconv"
 	"path/filepath"
@@ -22,7 +22,7 @@ func SplitDirective(target string, suffix string, count int, delete bool) (err e
 
 	defer directiveFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(directiveFile);
+	byteValue, _ := io.ReadAll(directiveFile);
 	var directives siem.Directives
 	json.Unmarshal(byteValue, &directives)
 
