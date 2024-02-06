@@ -169,6 +169,9 @@ Elasticsearch CORS configuration should also be adjusted as follows:
     http.cors.allow-headers=Authorization,X-Requested-With,Content-Type,Content-Length
 ```
 
+> [!TIP]
+> Example of how to use Dsiem with authentication-enabled Elastic stack is given in [this docker compose file](https://github.com/defenxor/dsiem/blob/master/deployments/docker/docker-compose-basic-auth.yml). It's using the default `elastic` account everywhere (including in the Logstash config files), but it should be easy to use multiple dedicated accounts instead.
+
 _Don't forget to also restrict access to `esconfig.json` from the web with something like Nginx/Apache or similar frontend that does authentication and authorization._
 
 Kibana on the other hand uses form-based authentication, so the above method will not work. The workaround for now is to first login into it manually from a separate browser tab, before attempting to click a link to it from the web UI.
