@@ -18,7 +18,7 @@ package nesd
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -71,7 +71,7 @@ func InitCSV(dir string) error {
 		if err == nil {
 			defer file.Close()
 
-			byteValue, _ := ioutil.ReadAll(file)
+			byteValue, _ := io.ReadAll(file)
 			err = gocsv.UnmarshalBytes(byteValue, &n.entries)
 			if err != nil {
 				return err

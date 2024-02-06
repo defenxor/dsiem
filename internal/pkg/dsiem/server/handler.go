@@ -19,7 +19,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"strconv"
@@ -66,7 +66,7 @@ func handleConfFileList(ctx *fasthttp.RequestCtx) {
 	clientAddr := ctx.RemoteAddr().String()
 	log.Info(log.M{Msg: "Request for list of configuration files from " + clientAddr + ". Using config dir: " + c.Confd})
 
-	files, err := ioutil.ReadDir(c.Confd)
+	files, err := os.ReadDir(c.Confd)
 	if err != nil {
 		fmt.Fprintf(ctx, "Error reading config directory")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
@@ -131,7 +131,7 @@ func handleConfFileDownload(ctx *fasthttp.RequestCtx) {
 	}
 	defer file.Close()
 
-	byteValue, err := ioutil.ReadAll(file)
+	byteValue, err := io.ReadAll(file)
 	if err != nil {
 		fmt.Fprintf(ctx, "cannot read "+filename)
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)

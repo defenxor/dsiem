@@ -19,7 +19,7 @@ package xcorrelator
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -166,7 +166,7 @@ func InitIntel(confDir string, cacheDuration int) error {
 		}
 		defer file.Close()
 
-		byteValue, _ := ioutil.ReadAll(file)
+		byteValue, _ := io.ReadAll(file)
 		err = json.Unmarshal(byteValue, &it)
 		if err != nil {
 			return err
