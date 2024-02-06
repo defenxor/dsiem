@@ -21,7 +21,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -72,7 +71,7 @@ type rule struct {
 }
 
 func insertDirectivesXML(filename string) error {
-	input, err := ioutil.ReadFile(filename)
+	input, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -85,7 +84,7 @@ func insertDirectivesXML(filename string) error {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filename, []byte(output), 0644)
+	err = os.WriteFile(filename, []byte(output), 0644)
 	return err
 }
 
@@ -98,7 +97,7 @@ func CreateSIEMDirective(tempXMLFile string, resFile string, nSplit int) (err er
 	defer xmlFile.Close()
 	defer os.Remove(tempXMLFile)
 
-	byteValue, _ := ioutil.ReadAll(xmlFile)
+	byteValue, _ := io.ReadAll(xmlFile)
 	sValue := string(byteValue)
 	if sValue == "" {
 		return errors.New("Cannot read content from " + tempXMLFile)
