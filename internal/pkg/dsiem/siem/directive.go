@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -161,7 +161,7 @@ func LoadDirectivesFromFile(confDir string, namePattern string, includeDisabled 
 		}
 		defer file.Close()
 
-		byteValue, _ := ioutil.ReadAll(file)
+		byteValue, _ := io.ReadAll(file)
 		err = json.Unmarshal(byteValue, &d)
 		if err != nil {
 			return res, 0, err

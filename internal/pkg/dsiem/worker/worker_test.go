@@ -19,7 +19,6 @@ package worker
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -137,7 +136,7 @@ func TestWorker(t *testing.T) {
 	defer cleanUp(t)
 
 	nodeName := "dsiem-backend-0"
-	wd, err := ioutil.TempDir(os.TempDir(), "dsiem-worker")
+	wd, err := os.MkdirTemp(os.TempDir(), "dsiem-worker")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,7 +19,6 @@ package worker
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -59,7 +58,7 @@ func getConfigFileList(frontendAddr string) (cf *configFiles, err error) {
 		return
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	// fmt.Println(string(body))
 
 	if err == nil {
