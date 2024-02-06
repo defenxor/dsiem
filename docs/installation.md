@@ -37,6 +37,9 @@ Then after you get a feel on how everything fits together, you can start integra
     $ docker-compose up
     ```
 
+> [!TIP]
+> There are 2 extra docker-compose example configurations in `deployments/docker` for slightly more complex environment than the default standalone mode above. You can use the `-f` parameter to specify which configuration file to load.
+
 * Everything should be up and ready for testing in a few minutes. Here's things to note about the environment created by `docker-compose`:
   
     * Dsiem web UI should be accessible from http://localhost:8080/ui, Elasticsearch from http://localhost:9200, and Kibana from http://localhost:5601.
@@ -74,6 +77,14 @@ Then after you get a feel on how everything fits together, you can start integra
     $ cat esconfig.json
     {
       "elasticsearch": "http://elasticsearch:9200",
+      "kibana": "http://kibana:5601"
+    }
+  ```
+  If Elasticsearch requires authentication, you can supply basic authentication credential in the following format:
+  ```shell
+    $ cat esconfig.json
+    {
+      "elasticsearch": "http://username:password@elasticsearch:9200",
       "kibana": "http://kibana:5601"
     }
   ```
@@ -122,6 +133,14 @@ Then after you get a feel on how everything fits together, you can start integra
     ```shell
     $ ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname} ./deployments/kibana/dashboard-siem.json
     ```
+    
+    If Kibana requires authentication, you can supply the credentials in `ES_USERNAME` and `ES_PASSWORD` environment variables, like so:
+    ```shell
+    $ export ES_USERNAME=elastic
+    $ export ES_PASSWORD=weak
+    $ ./scripts/kbndashboard-import.sh ${your-kibana-IP-or-hostname} ./deployments/kibana/dashboard-siem.json
+    ```
+
 
 ## Uninstalling Dsiem
 
