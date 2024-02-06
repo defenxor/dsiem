@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"testing"
@@ -131,7 +131,7 @@ func TestWise(t *testing.T) {
 	}
 	defer file.Close()
 
-	byteValue, _ := ioutil.ReadAll(file)
+	byteValue, _ := io.ReadAll(file)
 	err = json.Unmarshal(byteValue, &it)
 	if err != nil {
 		t.Fatal(err)

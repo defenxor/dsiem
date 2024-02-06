@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -311,7 +310,7 @@ func sendHTTPSingleConn(e *event.NormalizedEvent, c *http.Client, stage int, ite
 	if err != nil {
 		return err
 	}
-	_, _ = io.Copy(ioutil.Discard, resp.Body) // read the body to avoid mem leak? internet says we has to do this
+	_, _ = io.Copy(io.Discard, resp.Body) // read the body to avoid mem leak? internet says we has to do this
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("Received HTTP " + strconv.Itoa(resp.StatusCode) + " status")

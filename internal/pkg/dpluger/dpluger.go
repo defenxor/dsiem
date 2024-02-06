@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"reflect"
@@ -89,7 +88,7 @@ func Parse(confFile string) (plugin Plugin, err error) {
 		return
 	}
 	defer file.Close()
-	byteValue, err := ioutil.ReadAll(file)
+	byteValue, err := io.ReadAll(file)
 	if err != nil {
 		return
 	}

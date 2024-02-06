@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
@@ -229,7 +228,7 @@ external message queue.`,
 		}
 
 		if traceFlag {
-			fo, err := ioutil.TempFile(os.TempDir(), progName+"*.trace")
+			fo, err := os.CreateTemp(os.TempDir(), progName+"*.trace")
 			if err != nil {
 				exit("Cannot create temp file for tracer", err)
 			}
