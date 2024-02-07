@@ -26,7 +26,47 @@ Dsiem provides [OSSIM](https://www.alienvault.com/products/ossim)-style correlat
 
 ## How It Works
 
-![Simple Architecture](https://github.com/defenxor/dsiem/blob/master/docs/images/simple-arch.png)
+```mermaid
+flowchart TB
+
+l1 --> |Normalized Logs/Events| e1
+l1 --> |Alarms|e1
+l1 --> |Normalized Logs/Events| d1
+
+f1 --> |Logs| l1
+
+s1 --> |Logs| f1
+s2 --> |Logs| f1
+s3 --> |Logs| f1
+
+d1 --> |Alarms| d2
+d2 --> |Alarms| l1
+d1 --> |Query| d3
+
+subgraph Elasticsearch
+  e1[Elasticsearch]
+end
+
+subgraph Logstash
+  l1[Logstash] 
+end
+
+subgraph Filebeat
+ f1[Syslog/Filebeat]
+end
+
+subgraph Log Sources
+  s1[IDS]
+  s2[Firewall]
+  s3[OS]
+end
+
+subgraph Dsiem
+  d1[Dsiem]
+  d2[Dsiem-filebeat]
+  d3[Threat-Intel/Vulnerability-Info-Sources]
+end
+```
 
 On the diagram above:
 

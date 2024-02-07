@@ -2,7 +2,57 @@
 
 Dsiem supports clustering mode for horizontal scalability. In this mode, each instance of dsiem will run either as frontend or backend node, with NATS messaging in between to facilitate communication. The architecture is depicted in the following diagram.
 
-![Advanced Architecture](./images/advanced-arch.png)
+```mermaid
+flowchart TB
+
+l1 --> |Normalized Event| f1
+l1 --> |Normalized Event| f2
+l1 --> |Normalized Event| f3
+
+f1 --> |Normalized Event| m1
+
+m1 --> |Normalized Event| b1
+m1 --> |Normalized Event| b2
+m1 --> |Normalized Event| b3
+
+b1 --> |Query+Cache| v1
+b1 --> |Query+Cache| v2
+
+b1 --> |Alarm|fb
+
+subgraph Logstash
+  l1[Logstash] 
+end
+
+subgraph Dsiem
+  subgraph Frontend
+    f1[fe1]
+    f2[fe2]
+    f3[fe..N]
+  end
+  subgraph Message Queue
+    m1[nats1]
+    m2[nats2]
+    m3[nats..N]
+  end
+  subgraph Backend
+    b1[be1]
+    b2[be2]
+    b3[be..N]
+  end
+end
+
+subgraph Vuln and Intel Sources
+  v1[Moloch-Wise]
+  v2[Nessus-CSV]
+  v3[Others]
+end
+
+subgraph Filebeat
+  fb[Filebeat]
+end
+
+```
 
 ## About the Architecture
 
