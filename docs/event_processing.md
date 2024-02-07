@@ -2,7 +2,41 @@
 
 This section provides more details on how event processing works in Dsiem, compared to the rather simplified version description on the main [Readme](https://github.com/defenxor/dsiem/#how-it-works). We'll use the following diagram and <a href="https://github.com/defenxor/dsiem/tree/master/deployments/docker/conf/">Dsiem example Logstash and Filebeat configuration files</a> as reference.
 
-![Event Processing Flow](/docs/images/flow.png)
+```mermaid
+flowchart TB
+
+s1 --> |Incoming Events| l1
+l1 --> |Parsed Logs| e1
+l1 --> |Normalized Events| e1
+l1 --> |Alarms| e1
+l1 --> |Alarm_events| e1
+
+l1 --> |Normalized Events| d1
+
+d1 --> |Alarms| f1
+d1 --> |Alarm_events| f1
+
+f1 --> |Alarms| l1
+f1 --> |Alarm_events| l1
+
+subgraph Sources
+ s1[syslog/Filebeat]
+end
+
+subgraph Aggregation Layer
+ l1[Logstash]
+end
+
+subgraph Storage Layer
+ e1[Elasticsearch]
+end
+
+subgraph SIEM Layer
+ d1[Dsiem]
+ f1[Filebeat]
+end
+
+```
 
 The diagram shows how logstash plays a central role in the event flow. It is therefore important to get an idea of how it works first before diving further. The basic things to understand are:
 
