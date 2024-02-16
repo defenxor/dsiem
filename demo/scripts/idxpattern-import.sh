@@ -8,7 +8,6 @@ for f in $(ls $dname/idxpattern-*); do
   echo -n "Installing index pattern $f .. "
   idxpattern=$(cat $f)
   res=$(curl -fsS -o /dev/null -X POST "http://${host}:5601/api/saved_objects/index-pattern/$name-*" -H 'kbn-xsrf: true' -H 'Content-Type: application/json' -d "$idxpattern" 2>&1)
-  ( echo $res | grep -q "409 Conflict" && echo done ) || echo "failed to install: $res"
+  (echo $res | grep -q "409" && echo done) || echo "failed to install: $res"
 
 done
-
