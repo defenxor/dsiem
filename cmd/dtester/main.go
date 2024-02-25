@@ -63,6 +63,8 @@ func init() {
 	dsiemCmd.Flags().StringP("address", "a", "127.0.0.1", "Dsiem IP address to send events to")
 	dsiemCmd.Flags().IntP("port", "p", 8080, "Dsiem TCP port")
 	dsiemCmd.Flags().StringP("homenet", "i", "192.168.0.1", "IP address to use to represent HOME_NET. This IP must already be defined in dsiem assets configuration")
+	dsiemCmd.Flags().StringP("srcip", "s", "", "Fixed source IP address to use for all events, put a high value asset here to quickly raise alarms")
+	dsiemCmd.Flags().StringP("destip", "d", "", "Fixed destination IP address to use for all events, put a high value asset here to quickly raise alarms")
 	dsiemCmd.Flags().IntP("rps", "r", 500, "number of HTTP post request per second")
 	dsiemCmd.Flags().IntP("concurrency", "c", 50, "number of concurrent HTTP post to submit")
 
@@ -76,6 +78,8 @@ func init() {
 	viper.BindPFlag("address", dsiemCmd.Flags().Lookup("address"))
 	viper.BindPFlag("port", dsiemCmd.Flags().Lookup("port"))
 	viper.BindPFlag("homenet", dsiemCmd.Flags().Lookup("homenet"))
+	viper.BindPFlag("srcip", dsiemCmd.Flags().Lookup("srcip"))
+	viper.BindPFlag("destip", dsiemCmd.Flags().Lookup("destip"))
 	viper.BindPFlag("rps", dsiemCmd.Flags().Lookup("rps"))
 
 	viper.BindPFlag("logfile", fbeatCmd.Flags().Lookup("logfile"))
@@ -102,7 +106,7 @@ var rootCmd = &cobra.Command{
 	Short: "Directive rules tester for Dsiem",
 	Long: `
 Dtester test directive rules by sending a simulated matching event to dsiem,
-either directly or through filebeat and logstash`,
+either directly, or through filebeat and logstash`,
 }
 
 var versionCmd = &cobra.Command{
@@ -157,6 +161,8 @@ func toFilebeat(d *siem.Directives, logfile string) {
 	max := viper.GetInt("max")
 	verbose := viper.GetBool("verbose")
 	swg := sizedwaitgroup.New(10)
+	srcip := viper.GetString("srcip")
+	destip := viper.GetString("destip")
 
 	for _, v := range d.Dirs {
 		var prevPortTo int
@@ -171,8 +177,6 @@ func toFilebeat(d *siem.Directives, logfile string) {
 			e := event.NormalizedEvent{}
 			e.Sensor = progName
 			e.Title = j.Name
-			e.SrcIP = genIP(j.From, prevFrom, "")
-			e.DstIP = genIP(j.To, prevTo, e.SrcIP)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
 			e.DstPort = genPort(j.PortTo, prevPortTo, true)
 			e.Protocol = genProto(j.Protocol)
@@ -181,6 +185,18 @@ func toFilebeat(d *siem.Directives, logfile string) {
 			e.Product = pickOneFromStrSlice(j.Product)
 			e.Category = j.Category
 			e.SubCategory = pickOneFromStrSlice(j.SubCategory)
+
+			if destip == "" {
+				e.DstIP = genIP(j.To, prevTo, e.SrcIP)
+			} else {
+				e.DstIP = destip
+			}
+
+			if srcip == "" {
+				e.SrcIP = genIP(j.From, prevFrom, "")
+			} else {
+				e.SrcIP = srcip
+			}
 
 			prevPortTo = e.DstPort
 			prevPortFrom = e.SrcPort
@@ -209,6 +225,9 @@ func sender(d *siem.Directives, addr string, port int) {
 	rps := viper.GetInt("rps")
 	conc := viper.GetInt("concurrency")
 	verbose := viper.GetBool("verbose")
+	srcip := viper.GetString("srcip")
+	destip := viper.GetString("destip")
+
 	keepAliveTimeout := 600 * time.Second
 	timeout := 5 * time.Second
 
@@ -235,9 +254,8 @@ func sender(d *siem.Directives, addr string, port int) {
 				amt = max
 			}
 			e := event.NormalizedEvent{}
+			e.Title = "Dtester event"
 			e.Sensor = progName
-			e.SrcIP = genIP(j.From, prevFrom, "")
-			e.DstIP = genIP(j.To, prevTo, e.SrcIP)
 			e.SrcPort = genPort(j.PortFrom, prevPortFrom, false)
 			e.DstPort = genPort(j.PortTo, prevPortTo, true)
 			e.Protocol = genProto(j.Protocol)
@@ -246,6 +264,18 @@ func sender(d *siem.Directives, addr string, port int) {
 			e.Product = pickOneFromStrSlice(j.Product)
 			e.Category = j.Category
 			e.SubCategory = pickOneFromStrSlice(j.SubCategory)
+
+			if destip == "" {
+				e.DstIP = genIP(j.To, prevTo, e.SrcIP)
+			} else {
+				e.DstIP = destip
+			}
+
+			if srcip == "" {
+				e.SrcIP = genIP(j.From, prevFrom, "")
+			} else {
+				e.SrcIP = srcip
+			}
 
 			prevPortTo = e.DstPort
 			prevPortFrom = e.SrcPort
