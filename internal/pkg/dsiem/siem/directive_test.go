@@ -29,15 +29,15 @@ import (
 func TestInitDirective(t *testing.T) {
 
 	allBacklogsMu.Lock()
-	allBacklogs = []backlogs{}
+	allBacklogs = []*backlogs{}
 	allBacklogsMu.Unlock()
 
 	fmt.Println("Starting TestInitDirective.")
 
 	setTestDir(t)
 
-	t.Logf("Using base dir %s", testDir)
-	fDir := path.Join(testDir, "internal", "pkg", "dsiem", "siem", "fixtures")
+	t.Logf("Using base dir %s", testDirPath)
+	fDir := path.Join(testDirPath, "internal", "pkg", "dsiem", "siem", "fixtures")
 	evtChan := make(chan event.NormalizedEvent)
 	err := InitDirectives(path.Join(fDir, "directive2"), evtChan, 0, 1000, 0)
 
@@ -65,7 +65,7 @@ func TestInitDirective(t *testing.T) {
 	e.PluginID = 1001
 	e.RcvdTime = time.Now().UnixNano()
 
-	err = asset.Init(path.Join(testDir, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
+	err = asset.Init(path.Join(testDirPath, "internal", "pkg", "dsiem", "asset", "fixtures", "asset1"))
 	if err != nil {
 		t.Fatal(err)
 	}

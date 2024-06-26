@@ -62,6 +62,14 @@ type siemAlarmEvents struct {
 	Event string `json:"event_id"`
 }
 
+func (b *backLog) resume(minAlarmLifetime int) {
+	// convert to int64 and to seconds
+	b.logger = newBacklogLogger(b.ID)
+	b.minAlarmLifetime = int64(minAlarmLifetime * 60)
+	go b.newEventProcessor()
+	go b.expirationChecker()
+}
+
 func (b *backLog) start(initialEvent event.NormalizedEvent, minAlarmLifetime int) {
 	// convert to int64 and to seconds
 	b.logger = newBacklogLogger(b.ID)
@@ -462,5 +470,22 @@ func (b *backLog) updateElasticsearch(e event.NormalizedEvent, idx int) (err err
 	if err == nil {
 		err = fWriter.EnqueueWrite(string(vJSON))
 	}
+	return
+}
+
+func (b *backLog) DuplicateRawData() (backlog backLog) {
+	b.RLock()
+	defer b.RUnlock()
+
+	backlog.ID = b.ID
+	backlog.StatusTime = b.StatusTime
+	backlog.Risk = b.Risk
+	backlog.CurrentStage = b.CurrentStage
+	backlog.HighestStage = b.HighestStage
+	backlog.Directive = b.Directive
+	backlog.SrcIPs = append(backlog.SrcIPs, b.SrcIPs...)
+	backlog.DstIPs = append(backlog.DstIPs, b.DstIPs...)
+	backlog.CustomData = append(backlog.CustomData, b.CustomData...)
+
 	return
 }

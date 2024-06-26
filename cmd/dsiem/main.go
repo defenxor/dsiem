@@ -296,8 +296,13 @@ external message queue.`,
 			if err != nil {
 				exit("Cannot initialize alarm", err)
 			}
+
+			interruptChannel := make(chan os.Signal, 1)
+			signal.Notify(interruptChannel, os.Interrupt)
+
 			err = siem.InitBackLogManager(path.Join(logDir, aEventsLogs),
-				sendBpChan, holdDuration)
+				sendBpChan, interruptChannel, holdDuration)
+
 			if err != nil {
 				exit("Cannot initialize backlog manager", err)
 			}

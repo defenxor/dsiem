@@ -64,8 +64,8 @@ type DirectiveRule struct {
 // This is mutable, so its separated from DirectiveRule
 type StickyDiffData struct {
 	sync.RWMutex
-	SDiffString []string
-	SDiffInt    []int
+	SDiffString []string `json:"sticky_diff_strings"`
+	SDiffInt    []int    `json:"sticky_diff_ints"`
 }
 
 // CustomData combine all custom fields into a struct for easier use

@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/defenxor/dsiem/internal/pkg/dsiem/asset"
@@ -35,8 +36,6 @@ import (
 	"github.com/defenxor/dsiem/internal/pkg/shared/apm"
 
 	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
-
-	"github.com/jonhoo/drwmutex"
 )
 
 const (
@@ -53,7 +52,7 @@ type Directive struct {
 	Kingdom              string                `json:"kingdom"`
 	Category             string                `json:"category"`
 	Rules                []rule.DirectiveRule  `json:"rules"`
-	StickyDiffs          []rule.StickyDiffData `json:"-"`
+	StickyDiffs          []rule.StickyDiffData `json:"sticky_differents"`
 }
 
 // Directives group directive together
@@ -83,13 +82,14 @@ func InitDirectives(confDir string, ch <-chan event.NormalizedEvent, minAlarmLif
 			DirID: uCases.Dirs[i].ID,
 		})
 		blogs := backlogs{}
-		blogs.DRWMutex = drwmutex.New()
-		blogs.id = i
+		// blogs.DRWMutex = drwmutex.New()
+		blogs.mut = sync.RWMutex{}
+		blogs.Id = i
 		blogs.bpCh = make(chan bool)
-		blogs.bl = make(map[string]*backLog) // have to do it here before the append
-		l := blogs.RLock()
-		allBacklogs = append(allBacklogs, blogs)
-		l.Unlock()
+		blogs.blogs = make(map[string]*backLog) // have to do it here before the append
+		allBacklogsMu.Lock()
+		allBacklogs = append(allBacklogs, &blogs)
+		allBacklogsMu.Unlock()
 		go allBacklogs[i].manager(uCases.Dirs[i], dirchan[i].Ch, minAlarmLifetime)
 	}
 
