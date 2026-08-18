@@ -59,6 +59,10 @@ type Nesd struct {
 
 var validRiskLevels = []string{"Medium", "High", "Critical"}
 
+const (
+	notFoundMessage string = "no vulnerability found\n"
+)
+
 // CheckIPPort implement iface
 func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool, results []vuln.Result, err error) {
 	n.mu.Lock()
@@ -85,7 +89,7 @@ func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool
 	defer res.Body.Close()
 
 	str := string(body)
-	if str == "no vulnerability found\n" {
+	if str == notFoundMessage {
 		return
 	}
 

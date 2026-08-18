@@ -229,7 +229,7 @@ func TestNesd(t *testing.T) {
 			} else {
 				rt.setNextResponse(tt.httpStatus, tt.httpResponse)
 			}
-			found, result, err := n.CheckIPPort(context.Background(), "10.0.0.1", 80)
+			found, _, err := n.CheckIPPort(context.Background(), "10.0.0.1", 80)
 			if tt.expectedError {
 				if err == nil {
 					t.Fatal("expected to error due to mistake in config")
@@ -242,8 +242,6 @@ func TestNesd(t *testing.T) {
 				if found != tt.expectedFound {
 					t.Fatalf("expecting found %t, got %t", tt.expectedFound, found)
 				}
-
-				t.Logf("result: %v", result)
 			}
 
 		})
