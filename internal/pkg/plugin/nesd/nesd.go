@@ -36,7 +36,8 @@ func init() {
 
 // Config defins
 type Config struct {
-	URL string `json:"url"`
+	URL              string `json:"url"`
+	AllowLowSeverity bool   `json:"allow_low_severity"`
 }
 
 type nesdResult struct {
@@ -56,8 +57,6 @@ type Nesd struct {
 	Client *http.Client
 	mu     sync.Mutex
 }
-
-var validRiskLevels = []string{"Medium", "High", "Critical"}
 
 const (
 	notFoundMessage string = "no vulnerability found\n"
@@ -100,9 +99,10 @@ func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool
 	}
 
 	for _, v := range result {
-		if !slices.Contains(validRiskLevels, v.Risk) {
+		if !n.checkRisk(v.Risk) {
 			continue
 		}
+
 		s := fmt.Sprintf(`%s - %s`, v.Risk, v.Name)
 		if v.Cve != "" {
 			s = fmt.Sprintf(`%s ("%s")`, s, v.Cve)
@@ -113,4 +113,12 @@ func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool
 	}
 
 	return
+}
+
+func (n *Nesd) checkRisk(risk string) bool {
+	if n.Cfg.AllowLowSeverity {
+		return slices.Contains([]string{"Low", "Medium", "High", "Critical"}, risk)
+	}
+
+	return slices.Contains([]string{"Medium", "High", "Critical"}, risk)
 }
