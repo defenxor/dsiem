@@ -93,7 +93,7 @@ func TestNesd(t *testing.T) {
 			expectedFound: false,
 		},
 		{
-			description: "match 192.168.225.196:80 - Found None Risk",
+			description: "match 192.168.225.196:80 - Not Found (None Risk)",
 			vuln: vulnSource{
 				Name:    "Nessus",
 				Type:    "Ip-Port",
@@ -106,7 +106,7 @@ func TestNesd(t *testing.T) {
 			expectedFound: false,
 		},
 		{
-			description: "match 192.168.225.196:80 - Found Low Risk",
+			description: "match 192.168.225.196:80 - Not Found (Low Risk)",
 			vuln: vulnSource{
 				Name:    "Nessus",
 				Type:    "Ip-Port",
@@ -116,7 +116,7 @@ func TestNesd(t *testing.T) {
 			},
 			httpStatus:    http.StatusOK,
 			httpResponse:  []byte(`[{"cve": "CVE-1999-0524", "name": "ICMP Timestamp Request Remote Date Disclosure", "risk": "Low"}]`),
-			expectedFound: true,
+			expectedFound: false,
 		},
 		{
 			description: "match 192.168.225.196:22 - Found High Risk",

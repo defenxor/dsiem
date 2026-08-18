@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,6 +55,8 @@ type Nesd struct {
 	Client *http.Client
 	mu     sync.Mutex
 }
+
+var validRiskLevels = []string{"Medium", "High", "Critical"}
 
 // CheckIPPort implement iface
 func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool, results []vuln.Result, err error) {
@@ -92,7 +95,7 @@ func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool
 	}
 
 	for _, v := range result {
-		if v.Risk != "Medium" && v.Risk != "High" && v.Risk != "Critical" {
+		if !slices.Contains(validRiskLevels, v.Risk) {
 			continue
 		}
 		s := v.Risk + " - " + v.Name
