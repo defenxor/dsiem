@@ -17,18 +17,18 @@
 package nesd
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
-	"os"
-	"path"
+	"net/http"
 	"testing"
-	"time"
 
-	nesdsrv "github.com/defenxor/dsiem/internal/pkg/nesd"
-	log "github.com/defenxor/dsiem/internal/pkg/shared/logger"
+	"github.com/defenxor/dsiem/pkg/vuln"
 )
+
+// ensure the Nesd fits the vuln.Checker interface
+var _ vuln.Checker = &Nesd{}
 
 type vulnSource struct {
 	Name    string `json:"name"`
@@ -39,112 +39,185 @@ type vulnSource struct {
 	Config  string `json:"config"`
 }
 
-type vulnSources struct {
-	VulnSources []vulnSource `json:"vuln_sources"`
+func prepareTestNesd(rt *dummyRoundTripper) *Nesd {
+	return &Nesd{
+		Client: &http.Client{
+			Transport: rt,
+		},
+	}
 }
 
-func startNesd(d string, wait time.Duration) error {
-	ch := make(chan error)
-	go func() {
-		defer close(ch)
+type dummyRoundTripper struct {
+	nextResponse *http.Response
+	nextError    error
+}
 
-		csvDir := path.Join(d, "fixtures")
-		err := nesdsrv.InitCSV(csvDir)
-		if err != nil {
-			ch <- fmt.Errorf("cannot read Nessus CSV from %s, %s", csvDir, err)
-			return
-		}
+func (d *dummyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return d.nextResponse, d.nextError
+}
 
-		if err := nesdsrv.Start("127.0.0.1", 8081); err != nil {
-			ch <- fmt.Errorf("cannot start server, %s", err)
-			return
-		}
-	}()
-
-	timer := time.NewTimer(wait)
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case err := <-ch:
-		return err
+func (d *dummyRoundTripper) setNextResponse(status int, b []byte) {
+	d.nextError = nil
+	d.nextResponse = &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(bytes.NewReader(b)),
 	}
+}
+
+func (d *dummyRoundTripper) setNextError(err error) {
+	d.nextResponse = nil
+	d.nextError = err
 }
 
 func TestNesd(t *testing.T) {
+	for _, tt := range []struct {
+		description   string
+		vuln          vulnSource
+		httpResponse  []byte
+		httpError     error
+		httpStatus    int
+		expectedFound bool
+		expectedError bool
+	}{
+		{
+			description: "match 10.0.0.1:22 - Not Found",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte("no vulnerability found\n"),
+			expectedFound: false,
+		},
+		{
+			description: "match 192.168.225.196:80 - Found None Risk",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(`[{"cve": "CVE-1999-0524", "name": "ICMP Timestamp Request Remote Date Disclosure", "risk": "None"}]`),
+			expectedFound: false,
+		},
+		{
+			description: "match 192.168.225.196:80 - Found Low Risk",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(`[{"cve": "CVE-1999-0524", "name": "ICMP Timestamp Request Remote Date Disclosure", "risk": "Low"}]`),
+			expectedFound: true,
+		},
+		{
+			description: "match 192.168.225.196:22 - Found High Risk",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(`[{"cve": "CVE-1999-0524", "name": "ICMP Timestamp Request Remote Date Disclosure", "risk": "High"}]`),
+			expectedFound: true,
+		},
+		{
+			description: "config error - missing URL",
+			vuln: vulnSource{
+				Name:    "Nessus-ERror",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  nil,
+			httpError:     errors.New("test"),
+			expectedFound: false,
+			expectedError: true,
+		},
+		{
+			description: "config error - missing IP Port",
+			vuln: vulnSource{
+				Name:    "Nessus-ERror",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  nil,
+			httpError:     errors.New("test"),
+			expectedFound: false,
+			expectedError: true,
+		},
+		{
+			description: "invalid response",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(`{"foo":"bar"}`),
+			expectedFound: false,
+			expectedError: true,
+		},
+		{
+			description: "non-JSON response",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(``),
+			expectedFound: false,
+			expectedError: true,
+		},
+	} {
+		t.Run(tt.description, func(t *testing.T) {
+			rt := &dummyRoundTripper{}
 
-	d, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+			n := prepareTestNesd(rt)
+			if err := n.Initialize([]byte(tt.vuln.Config)); err != nil {
+				t.Fatal(err)
+			}
 
-	log.Setup(true)
+			if tt.httpError != nil {
+				rt.setNextError(tt.httpError)
+			} else {
+				rt.setNextResponse(tt.httpStatus, tt.httpResponse)
+			}
+			found, _, err := n.CheckIPPort(context.Background(), "10.0.0.1", 80)
+			if tt.expectedError {
+				if err == nil {
+					t.Fatal("expected to error due to mistake in config")
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
 
-	if err := startNesd(d, time.Second); err != nil {
-		t.Fatal(err)
-	}
+				if found != tt.expectedFound {
+					t.Fatalf("expecting found %t, got %t", tt.expectedFound, found)
+				}
+			}
 
-	cfg := path.Join(d, "fixtures", "vuln_nessus.json")
-	var vs vulnSources
-	file, err := os.Open(cfg)
-	if err != nil {
-		t.Fatal(err)
+		})
 	}
-	defer file.Close()
-
-	byteValue, _ := io.ReadAll(file)
-	err = json.Unmarshal(byteValue, &vs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	n := Nesd{}
-	if err = n.Initialize([]byte(vs.VulnSources[0].Config)); err != nil {
-		t.Fatal(err)
-	}
-
-	found, _, err := n.CheckIPPort(context.Background(), "10.0.0.1", 80)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if found {
-		t.Fatal("Expected to not find a match")
-	}
-
-	found, _, err = n.CheckIPPort(context.Background(), "192.168.225.196", 80)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !found {
-		t.Fatal("Expected to find a match")
-	}
-
-	found, _, err = n.CheckIPPort(context.Background(), "192.168.225.196", 22)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if found {
-		t.Fatal("Expected to not find a match (only Low risks found)")
-	}
-
-	// for error in config
-
-	n = Nesd{}
-	if err = n.Initialize([]byte(vs.VulnSources[1].Config)); err != nil {
-		t.Fatal(err)
-	}
-	found, _, err = n.CheckIPPort(context.Background(), "10.0.0.1", 80)
-	if err == nil {
-		t.Fatal("expected to error due to mistake in config")
-	}
-
-	n = Nesd{}
-	if err = n.Initialize([]byte(vs.VulnSources[2].Config)); err != nil {
-		t.Fatal(err)
-	}
-	found, _, err = n.CheckIPPort(context.Background(), "10.0.0.1", 80)
-	if err == nil {
-		t.Fatal("expected to error due to mistake in config")
-	}
-
 }

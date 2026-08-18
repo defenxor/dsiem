@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/defenxor/dsiem/pkg/vuln"
 )
@@ -49,20 +50,26 @@ func (n *Nesd) Initialize(b []byte) error {
 
 // Nesd is a vuln plugin
 type Nesd struct {
-	Cfg Config `json:"cfg"`
+	Cfg    Config `json:"cfg"`
+	Client *http.Client
+	mu     sync.Mutex
 }
 
 // CheckIPPort implement iface
-func (n Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool, results []vuln.Result, err error) {
+func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool, results []vuln.Result, err error) {
+	n.mu.Lock()
+	if n.Client == nil {
+		n.Client = &http.Client{}
+	}
+	n.mu.Unlock()
 
 	url := strings.Replace(n.Cfg.URL, "${ip}", ip, 1)
 	url = strings.Replace(url, "${port}", strconv.Itoa(port), 1)
 
-	c := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req = req.WithContext(ctx)
 
-	res, err := c.Do(req)
+	res, err := n.Client.Do(req)
 	if err != nil {
 		return
 	}
