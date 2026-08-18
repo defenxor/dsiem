@@ -260,3 +260,11 @@ func TestNesd(t *testing.T) {
 		})
 	}
 }
+
+func TestInitializeHTTPClient(t *testing.T) {
+	var n Nesd
+	n.initializeHTTPClient()
+	if n.Client == nil {
+		t.Error("expecting n.Client to be not nil")
+	}
+}

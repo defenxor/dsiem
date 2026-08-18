@@ -30,6 +30,10 @@ import (
 	"github.com/defenxor/dsiem/pkg/vuln"
 )
 
+const (
+	notFoundMessage string = "no vulnerability found\n"
+)
+
 func init() {
 	vuln.RegisterExtension(new(Nesd), "Nesd")
 }
@@ -58,17 +62,17 @@ type Nesd struct {
 	mu     sync.Mutex
 }
 
-const (
-	notFoundMessage string = "no vulnerability found\n"
-)
-
-// CheckIPPort implement iface
-func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool, results []vuln.Result, err error) {
+func (n *Nesd) initializeHTTPClient() {
 	n.mu.Lock()
 	if n.Client == nil {
 		n.Client = &http.Client{}
 	}
 	n.mu.Unlock()
+}
+
+// CheckIPPort implement iface
+func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool, results []vuln.Result, err error) {
+	n.initializeHTTPClient()
 
 	url := strings.Replace(n.Cfg.URL, "${ip}", ip, 1)
 	url = strings.Replace(url, "${port}", strconv.Itoa(port), 1)
