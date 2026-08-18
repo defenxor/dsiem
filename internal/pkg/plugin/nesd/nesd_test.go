@@ -132,6 +132,32 @@ func TestNesd(t *testing.T) {
 			expectedFound: true,
 		},
 		{
+			description: "match 192.168.225.196:22 - Found Medium Risk",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(`[{"cve": "CVE-1999-0524", "name": "ICMP Timestamp Request Remote Date Disclosure", "risk": "Medium"}]`),
+			expectedFound: true,
+		},
+		{
+			description: "match 192.168.225.196:22 - Found Critical Risk",
+			vuln: vulnSource{
+				Name:    "Nessus",
+				Type:    "Ip-Port",
+				Plugin:  "Nesd",
+				Enabled: true,
+				Config:  "{ \"url\" : \"http://localhost:8081/?ip=${ip}&port=${port}\" }",
+			},
+			httpStatus:    http.StatusOK,
+			httpResponse:  []byte(`[{"cve": "CVE-1999-0524", "name": "ICMP Timestamp Request Remote Date Disclosure", "risk": "Critical"}]`),
+			expectedFound: true,
+		},
+		{
 			description: "config error - missing URL",
 			vuln: vulnSource{
 				Name:    "Nessus-ERror",
@@ -203,7 +229,7 @@ func TestNesd(t *testing.T) {
 			} else {
 				rt.setNextResponse(tt.httpStatus, tt.httpResponse)
 			}
-			found, _, err := n.CheckIPPort(context.Background(), "10.0.0.1", 80)
+			found, result, err := n.CheckIPPort(context.Background(), "10.0.0.1", 80)
 			if tt.expectedError {
 				if err == nil {
 					t.Fatal("expected to error due to mistake in config")
@@ -216,6 +242,8 @@ func TestNesd(t *testing.T) {
 				if found != tt.expectedFound {
 					t.Fatalf("expecting found %t, got %t", tt.expectedFound, found)
 				}
+
+				t.Logf("result: %v", result)
 			}
 
 		})

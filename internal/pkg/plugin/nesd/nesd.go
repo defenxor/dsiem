@@ -19,6 +19,7 @@ package nesd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
@@ -98,11 +99,11 @@ func (n *Nesd) CheckIPPort(ctx context.Context, ip string, port int) (found bool
 		if !slices.Contains(validRiskLevels, v.Risk) {
 			continue
 		}
-		s := v.Risk + " - " + v.Name
+		s := fmt.Sprintf(`%s - %s`, v.Risk, v.Name)
 		if v.Cve != "" {
-			s = s + " (" + v.Cve + ")"
+			s = fmt.Sprintf(`%s ("%s")`, s, v.Cve)
 		}
-		term := ip + ":" + strconv.Itoa(port)
+		term := fmt.Sprintf(`%s:%s`, ip, strconv.Itoa(port))
 		results = append(results, vuln.Result{Provider: "Nesd", Term: term, Result: s})
 		found = true
 	}
