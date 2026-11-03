@@ -1,0 +1,203 @@
+name: Go CI
+
+on:
+  push:
+    branches: ["master"]
+  # Validate PRs to feature branches as well as the default branch.
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Nightly UTC; stagger repositories to avoid starting every scan together.
+    - cron: "51 20 * * *"
+
+permissions:
+  contents: read
+
+# Scheduled scans cannot be cancelled by a push to the same branch.
+concurrency:
+  group: go-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
+env:
+  # CI must use the committed dependency graph without running go mod tidy.
+  GOFLAGS: '-mod=vendor'
+
+# Actions use immutable SHAs; Dependabot maintains the pins. Scanner versions
+# are deliberate pins and must be reviewed separately when updating Go.
+# Check failures stay visible. Required-check policy is configured in GitHub.
+jobs:
+  test:
+    name: Test
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up project Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: Verify vendored dependencies
+        run: go list -mod=vendor ./...
+      - name: Go vet
+        run: go vet ./...
+      - name: Run tests with race detector
+        run: go test -race -count=1 -timeout 10m ./...
+
+  lint:
+    name: Lint
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up project Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          # PR/push checks report new findings; manual runs show the full backlog.
+          only-new-issues: ${{ github.event_name != 'workflow_dispatch' }}
+          args: --timeout=10m
+
+  build:
+    name: Build
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up project Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      # Build independently so a scanner failure does not hide build failures.
+      - name: Build production commands
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          CGO_ENABLED=0 go build -o "$RUNNER_TEMP/bin/" ./cmd/...
+
+  vulnerabilities:
+    name: Go vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      # Install tooling with a supported Go version, then analyze using the
+      # project's compiler (including legacy projects that predate auto toolchains).
+      - name: Set up scanner toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Install pinned scanner
+        working-directory: ${{ runner.temp }}
+        env:
+          GOFLAGS: ""
+          GOWORK: "off"
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+      - name: Set up project Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: Scan
+        run: govulncheck ./...
+
+  sast:
+    name: Go security analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      # Install tooling with a supported Go version, then analyze using the
+      # project's compiler (including legacy projects that predate auto toolchains).
+      - name: Set up scanner toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Install pinned scanner
+        working-directory: ${{ runner.temp }}
+        env:
+          GOFLAGS: ""
+          GOWORK: "off"
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0
+      - name: Set up project Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: Scan
+        run: gosec -severity medium -confidence medium ./...
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up scanner toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Install pinned scanner
+        working-directory: ${{ runner.temp }}
+        env:
+          GOFLAGS: ""
+          GOWORK: "off"
+        run: go install github.com/zricethezav/gitleaks/v8@v8.30.1
+      - name: Scan Git history
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            gitleaks git --redact --log-opts="${BASE_SHA}..${HEAD_SHA}"
+          else
+            gitleaks git --redact
+          fi
+
+  container-config:
+    name: Container configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Prepare Dockerfiles for scanning
+        run: |
+          mkdir -p "$RUNNER_TEMP/dockerfiles/0"
+          cp "deployments/docker/build/Dockerfile" "$RUNNER_TEMP/dockerfiles/0/Dockerfile"
+      - name: Scan Dockerfile configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0
+          scan-type: config
+          scan-ref: ${{ runner.temp }}/dockerfiles
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+  # This Dockerfile downloads an existing release archive instead of building
+  # the checkout. Scan its configuration here; do not label a released binary
+  # as a scan of this PR. The Go build and vulnerability jobs inspect this source.
