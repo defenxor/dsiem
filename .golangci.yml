@@ -1,0 +1,9 @@
+version: "2"
+
+linters:
+  # Correctness checks; existing findings are reported on manual workflow runs.
+  default: standard
+  enable:
+    - bodyclose
+    - noctx
+    - sqlclosecheck

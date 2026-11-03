@@ -24,3 +24,8 @@ updates:
     open-pull-requests-limit: 0
     commit-message:
       prefix: "build"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
